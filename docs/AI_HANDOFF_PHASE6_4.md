@@ -1,8 +1,8 @@
 # AI 交接文档 — Phase 6.4 数据底座 + NPC 修复
 
-**写于**: 2026-04-18  
+**写于**: 2026-04-18（更新: P2 前端审查台完工）  
 **当前分支**: `feat/phase-6.4-p0-data-foundation`  
-**测试基线**: 95 passed, 0 failures（`python -m pytest tests/ -q` 在 backend/ 目录执行）
+**测试基线**: 110 passed, 0 failures（`python -m pytest tests/ -q` 在 backend/ 目录执行）
 
 ---
 
@@ -84,7 +84,19 @@ pitch_jobs (
 
 ### ~~P1：HTML 报告生成端点~~ ✅ 已完成
 
-### P2（下一 session 优先）：前端全屏审查台（约 8-10 个 subagent）
+### ~~P2：前端全屏审查台~~ ✅ 已完成（2026-04-18 第三轮 session）
+
+**Commit**: `c619758`  
+**新增文件**（18 files, 1520 insertions）：
+- `frontend/src/types/review.ts` — 全量前端类型
+- `frontend/src/pages/ReviewWorkbench.tsx` — 主容器，路由 `/review/:job_id`
+- `frontend/src/components/workbench/` — 13 个组件（见组件树）
+- `frontend/src/main.tsx` — BrowserRouter + lazy Routes
+- `frontend/src/components/PitchReportPreviewModal.tsx` — 改为跳转入口
+
+**可访问**：启动前端后访问 `http://localhost:5173/review/{job_id}`
+
+### P3（下一 session）：集成测试 + 前端 E2E 验收
 
 **目标**: `POST /api/pitch/jobs/{job_id}/html-report`
 
