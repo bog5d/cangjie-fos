@@ -135,7 +135,7 @@ def db_job_update(job_id: str, **kwargs: Any) -> None:
 
     Accepted kwargs: status, original_report (JSON string or dict),
     edited_report (JSON string or dict), words_json (JSON string or list),
-    audio_path, committed_at, exp_delta, exp_reason,
+    audio_path, html_report_path, committed_at, exp_delta, exp_reason,
     error_summary, error_detail, error_code.
 
     If a value is a dict or list, it is JSON-serialized automatically.
