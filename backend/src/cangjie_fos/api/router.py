@@ -1,0 +1,31 @@
+"""顶层 API 聚合（禁止在此写业务实现）。"""
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from cangjie_fos.api.routes import (
+    dashboard,
+    feedback,
+    health,
+    npc,
+    pipeline,
+    pitch,
+    pitch_wizard,
+    reflection_settle,
+    war_room,
+    watch,
+    webhooks,
+)
+
+api_router = APIRouter()
+api_router.include_router(health.router, tags=["health"])
+api_router.include_router(feedback.router, prefix="/api/v1", tags=["evolution"])
+api_router.include_router(reflection_settle.router)
+api_router.include_router(webhooks.router, prefix="/api/v1", tags=["webhooks"])
+api_router.include_router(watch.router, prefix="/api/v1", tags=["watch"])
+api_router.include_router(pipeline.router)
+api_router.include_router(dashboard.router)
+api_router.include_router(war_room.router)
+api_router.include_router(pitch.router)
+api_router.include_router(pitch_wizard.router)
+api_router.include_router(npc.router)

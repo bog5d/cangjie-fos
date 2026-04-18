@@ -1,0 +1,38 @@
+[project]
+name = "cangjie-fos-backend"
+version = "0.1.0"
+description = "仓颉 FOS — FastAPI + LangGraph 后端"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "langgraph>=0.2",
+  "langgraph-checkpoint-sqlite>=2.0",
+  "langchain-core>=0.3",
+  "pydantic>=2",
+  "python-dotenv>=1",
+  "httpx>=0.27",
+  "watchdog>=4",
+  "openai>=1.0.0",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = [
+  "tests",
+  "../../AI_Pitch_Coach/tests",
+]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+addopts = "-q"
+python_files = ["test_*.py", "*_test.py"]

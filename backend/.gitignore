@@ -1,0 +1,7 @@
+data/evolution/
+data/watch_inbox/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.egg-info/
