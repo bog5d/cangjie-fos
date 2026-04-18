@@ -1,10 +1,13 @@
 """LangGraph 融资评估 REST 桥接（Phase 2 SPEC A5）+ Phase 3 对话/上传。"""
 from __future__ import annotations
 
+import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 
 from cangjie_fos.core.paths import ensure_pitch_coach_runtime
 from cangjie_fos.core.thread_sqlite import list_threads, upsert_thread
@@ -15,10 +18,19 @@ from cangjie_fos.schemas.pitch_chat import (
     PitchThreadSummary,
 )
 from cangjie_fos.schemas.pitch_run import PitchRunRequest
-from cangjie_fos.schemas.pitch_upload import PitchJobStatus, PitchJobStatusResponse, PitchJobSummary, PitchUploadAck
+from cangjie_fos.schemas.pitch_upload import (
+    PitchJobStatus,
+    PitchJobStatusResponse,
+    PitchJobSummary,
+    PitchReviewCommitRequest,
+    PitchReviewCommitResponse,
+    PitchReviewResponse,
+    PitchUploadAck,
+)
 from cangjie_fos.services.npc_chat_graph import export_thread_messages, invoke_npc_chat
 from cangjie_fos.services.pitch_graph_service import PitchGraphService
 from cangjie_fos.services.pitch_failure_present import resolve_stored_job_errors
+from cangjie_fos.services.pitch_job_db import db_job_get, db_job_update
 from cangjie_fos.services.pitch_job_store import job_create, job_get, job_list_for_tenant
 from cangjie_fos.services.pitch_upload_pipeline import run_pitch_upload_job
 
@@ -181,4 +193,85 @@ def pitch_job_status(job_id: str) -> PitchJobStatusResponse:
         error_detail=errs["error_detail"],
         error_code=errs["error_code"],
         error=errs["error"],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 6.4 Task 3 — HITL Review endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/jobs/{job_id}/review", response_model=PitchReviewResponse)
+def pitch_job_review_get(job_id: str) -> PitchReviewResponse:
+    """Return both original and edited reports for the HITL workbench."""
+    job_row = db_job_get(job_id)
+    if job_row is None:
+        raise HTTPException(status_code=404, detail="unknown job")
+
+    words_json = job_row.get("words_json")
+    words_total = len(words_json) if isinstance(words_json, list) else 0
+
+    audio_path = job_row.get("audio_path")
+    audio_available = bool(audio_path and Path(audio_path).exists())
+
+    return PitchReviewResponse(
+        job_id=job_id,
+        status=job_row["status"],
+        original_report=job_row.get("original_report"),
+        edited_report=job_row.get("edited_report"),
+        committed_at=job_row.get("committed_at"),
+        words_total=words_total,
+        audio_available=audio_available,
+    )
+
+
+@router.patch("/jobs/{job_id}/review", response_model=PitchReviewCommitResponse)
+def pitch_job_review_commit(job_id: str, body: PitchReviewCommitRequest) -> PitchReviewCommitResponse:
+    """Save human-edited report. Only writes edited_report — never touches original_report."""
+    job_row = db_job_get(job_id)
+    if job_row is None:
+        raise HTTPException(status_code=404, detail="unknown job")
+
+    if not body.edited_report:
+        raise HTTPException(status_code=422, detail="edited_report must be a non-empty dict")
+
+    committed_at = time.time()
+    db_job_update(job_id, edited_report=body.edited_report, committed_at=committed_at)
+
+    return PitchReviewCommitResponse(job_id=job_id, committed_at=committed_at)
+
+
+@router.get("/jobs/{job_id}/words")
+def pitch_job_words(job_id: str) -> list[dict]:
+    """Return the list of transcription words for audio time-alignment."""
+    job_row = db_job_get(job_id)
+    if job_row is None:
+        raise HTTPException(status_code=404, detail="unknown job")
+
+    return job_row.get("words_json") or []
+
+
+@router.get("/jobs/{job_id}/audio")
+def pitch_job_audio(job_id: str) -> FileResponse:
+    """Stream the audio file for the given job."""
+    job_row = db_job_get(job_id)
+    if job_row is None:
+        raise HTTPException(status_code=404, detail="unknown job")
+
+    audio_path = job_row.get("audio_path")
+    if not audio_path or not Path(audio_path).exists():
+        raise HTTPException(status_code=404, detail="audio not available")
+
+    suffix = Path(audio_path).suffix.lower()
+    media_type_map = {
+        ".m4a": "audio/mp4",
+        ".mp3": "audio/mpeg",
+        ".wav": "audio/wav",
+    }
+    media_type = media_type_map.get(suffix, "application/octet-stream")
+
+    return FileResponse(
+        path=audio_path,
+        media_type=media_type,
+        filename=f"pitch-{job_id}{suffix}",
     )

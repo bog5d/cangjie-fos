@@ -52,3 +52,22 @@ class PitchJobSummary(BaseModel):
     error_code: str | None = None
     error: str | None = Field(default=None, description="兼容字段，同 error_summary")
     has_report: bool = False
+
+
+class PitchReviewResponse(BaseModel):
+    job_id: str
+    status: PitchJobStatus
+    original_report: dict | None = None
+    edited_report: dict | None = None
+    committed_at: float | None = None
+    words_total: int = 0
+    audio_available: bool = False
+
+
+class PitchReviewCommitRequest(BaseModel):
+    edited_report: dict
+
+
+class PitchReviewCommitResponse(BaseModel):
+    job_id: str
+    committed_at: float
