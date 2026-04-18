@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS pitch_jobs (
     exp_reason    TEXT DEFAULT '',
     error_summary TEXT,
     error_detail  TEXT,
-    error_code    TEXT
+    error_code    TEXT,
+    html_report_path TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_pitch_jobs_tenant ON pitch_jobs(tenant_id, created_at DESC);
 """
@@ -50,6 +51,7 @@ _WRITABLE_COLS = {
     "error_summary",
     "error_detail",
     "error_code",
+    "html_report_path",
 }
 
 
@@ -59,13 +61,24 @@ def _db_path() -> str:
     return str(p)
 
 
+def _init_db(conn: sqlite3.Connection) -> None:
+    """Initialize schema and run migrations on an open connection."""
+    conn.executescript(_DDL)
+    conn.commit()
+    # Migration: add html_report_path if this is an older DB
+    try:
+        conn.execute("ALTER TABLE pitch_jobs ADD COLUMN html_report_path TEXT")
+        conn.commit()
+    except Exception:
+        pass  # column already exists
+
+
 def _connect() -> sqlite3.Connection:
     """Open (or create) the DB and ensure schema exists. WAL mode for concurrent access."""
     conn = sqlite3.connect(_db_path(), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.executescript(_DDL)
-    conn.commit()
+    _init_db(conn)
     return conn
 
 
