@@ -28,6 +28,13 @@ def job_create(job_id: str, tenant_id: str, **extra: Any) -> None:
         row.update(extra)
         _jobs[job_id] = row
 
+    # Also persist to SQLite (best-effort; in-memory remains authoritative for now)
+    try:
+        from cangjie_fos.services.pitch_job_db import db_job_create
+        db_job_create(job_id, tenant_id, **{k: v for k, v in row.items() if k != "tenant_id"})
+    except Exception:
+        pass
+
 
 def job_update(job_id: str, **kwargs: Any) -> None:
     with _lock:
