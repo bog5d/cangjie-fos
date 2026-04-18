@@ -99,6 +99,7 @@ def pitch_chat(body: PitchChatRequest) -> PitchChatResponse:
         user_message=body.message,
         thread_id=body.thread_id,
         user_name=(body.user_name or "").strip() or None,
+        active_job_id=body.active_job_id,
     )
     upsert_thread(thread_id=tid, tenant_id=body.tenant_id, preview=body.message)
     return PitchChatResponse(

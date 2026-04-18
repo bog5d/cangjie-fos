@@ -26,6 +26,7 @@ class NpcGraphState(TypedDict, total=False):
     user_name: str
     evolution_guidelines: str
     narrative: str
+    active_job_id: str | None   # new: current job being reviewed, passed by frontend
 
 
 def _npc_display_name() -> str:
@@ -34,11 +35,21 @@ def _npc_display_name() -> str:
 
 def _base_system() -> str:
     n = _npc_display_name()
-    return (
+    base = (
         f"你是「仓颉 FOS」里的融资陪练 NPC「{n}」。"
         "回答简短、可执行，偏一级市场语境；不要编造私密数据。"
         "若用户问「是否准备好见红杉」等，请结合下方「资料室清单」指出明显缺口。"
     )
+    capability = (
+        "\n\n[系统能力]\n"
+        "本系统已具备「音轨复盘与路演打分」能力：\n"
+        "1. 用户可上传路演录音，系统通过 ASR 获取词级时间戳转写；\n"
+        "2. LangGraph 对每段对话进行双层风险诊断（Tier1 全球 VC 视角 / Tier2 QA 对齐）；\n"
+        "3. 报告含总分（0-100）与风险点列表，支持人工审查台逐条复盘；\n"
+        "4. 审查台支持增删改风险点、锁定最终版本、生成单文件 HTML 报告。\n"
+        "当用户询问录音评估、复盘、打分相关问题时，主动协助解读，不要声称系统不支持。"
+    )
+    return base + capability
 
 
 def _last_user_text(state: NpcGraphState) -> str:
@@ -75,6 +86,37 @@ def _inject_narrative(state: NpcGraphState) -> dict[str, str]:
     if epi:
         block = f"{block}\n\n[错题本 Top-N 命中]\n{epi}"
     return {"narrative": block}
+
+
+def _inject_job_context(state: NpcGraphState) -> dict[str, str]:
+    """Append current job status to narrative if active_job_id is set."""
+    job_id = (state.get("active_job_id") or "").strip()
+    if not job_id:
+        return {}
+    try:
+        from cangjie_fos.services.pitch_job_db import db_job_get
+        row = db_job_get(job_id)
+    except Exception:  # noqa: BLE001
+        return {}
+    if not row:
+        return {}
+    status = row.get("status", "unknown")
+    score = ""
+    original = row.get("original_report") or {}
+    if isinstance(original, dict):
+        score = str(original.get("total_score", ""))
+    risk_count = 0
+    risks = original.get("risk_points") or [] if isinstance(original, dict) else []
+    if isinstance(risks, list):
+        risk_count = len(risks)
+    committed = "已人工审查锁定" if row.get("committed_at") else "未审查"
+    block = (
+        f"\n\n[当前复盘任务]\n"
+        f"job_id: {job_id}  状态: {status}  审查状态: {committed}\n"
+    )
+    if score:
+        block += f"总分: {score}  风险点数: {risk_count}\n"
+    return {"narrative": (state.get("narrative") or "") + block}
 
 
 def _call_llm(state: NpcGraphState) -> dict[str, Sequence[BaseMessage]]:
@@ -141,10 +183,12 @@ def _build_graph(checkpointer: Any) -> Any:
     g = StateGraph(NpcGraphState)
     g.add_node("preload", _preload_evolution)
     g.add_node("inject", _inject_narrative)
+    g.add_node("inject_job", _inject_job_context)   # NEW
     g.add_node("agent", _call_llm)
     g.set_entry_point("preload")
     g.add_edge("preload", "inject")
-    g.add_edge("inject", "agent")
+    g.add_edge("inject", "inject_job")               # NEW
+    g.add_edge("inject_job", "agent")                # NEW (replaces inject→agent)
     g.add_edge("agent", END)
     return g.compile(checkpointer=checkpointer)
 
@@ -169,6 +213,7 @@ def invoke_npc_chat(
     user_message: str,
     thread_id: str | None,
     user_name: str | None = None,
+    active_job_id: str | None = None,   # NEW
 ) -> tuple[str, str, str]:
     """返回 (reply, trace_turn_id, thread_id)。"""
     tid = (thread_id or "").strip() or uuid.uuid4().hex
@@ -180,6 +225,7 @@ def invoke_npc_chat(
             "messages": [HumanMessage(content=user_message)],
             "tenant_id": tenant_id,
             "user_name": (user_name or "").strip(),
+            "active_job_id": (active_job_id or "").strip() or None,   # NEW
         },
         cfg,
     )
