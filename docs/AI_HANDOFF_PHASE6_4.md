@@ -63,9 +63,28 @@ pitch_jobs (
 
 ---
 
+## P1 已完成（2026-04-18 第二轮 session）
+
+**测试基线**: 110 passed（+15 新测试）
+
+| Commit | 内容 |
+|--------|------|
+| `6146b20` | `html_report_path` 列 + `imageio-ffmpeg`/`jinja2` 依赖 |
+| `bf67990` | `html_report_service.py` — 桥接旧系统 `report_builder` |
+| `d597879` | `POST /api/pitch/jobs/{job_id}/html-report` 端点 + `PitchHtmlReportResponse` schema |
+
+**P1 新增端点**: `POST /api/pitch/jobs/{job_id}/html-report`  
+→ 触发 FFmpeg 切片 + Jinja2 渲染，HTML 输出到 `data/html_reports/{job_id}.html`  
+→ 优先使用 `edited_report`（已人工审查），否则用 `original_report`  
+→ `ValueError` → 404，`FileNotFoundError` → 404，其他 → 500
+
+---
+
 ## 待完成任务（下一 session）
 
-### P1：HTML 报告生成端点（后端，约 3-4 个 subagent）
+### ~~P1：HTML 报告生成端点~~ ✅ 已完成
+
+### P2（下一 session 优先）：前端全屏审查台（约 8-10 个 subagent）
 
 **目标**: `POST /api/pitch/jobs/{job_id}/html-report`
 
