@@ -71,3 +71,9 @@ class PitchReviewCommitRequest(BaseModel):
 class PitchReviewCommitResponse(BaseModel):
     job_id: str
     committed_at: float
+
+
+class PitchHtmlReportResponse(BaseModel):
+    job_id: str
+    html_path: str
+    generated_at: float

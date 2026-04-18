@@ -19,6 +19,7 @@ from cangjie_fos.schemas.pitch_chat import (
 )
 from cangjie_fos.schemas.pitch_run import PitchRunRequest
 from cangjie_fos.schemas.pitch_upload import (
+    PitchHtmlReportResponse,
     PitchJobStatus,
     PitchJobStatusResponse,
     PitchJobSummary,
@@ -27,6 +28,7 @@ from cangjie_fos.schemas.pitch_upload import (
     PitchReviewResponse,
     PitchUploadAck,
 )
+from cangjie_fos.services.html_report_service import generate_job_html_report
 from cangjie_fos.services.npc_chat_graph import export_thread_messages, invoke_npc_chat
 from cangjie_fos.services.pitch_graph_service import PitchGraphService
 from cangjie_fos.services.pitch_failure_present import resolve_stored_job_errors
@@ -240,6 +242,28 @@ def pitch_job_review_commit(job_id: str, body: PitchReviewCommitRequest) -> Pitc
     db_job_update(job_id, edited_report=body.edited_report, committed_at=committed_at)
 
     return PitchReviewCommitResponse(job_id=job_id, committed_at=committed_at)
+
+
+@router.post("/jobs/{job_id}/html-report", response_model=PitchHtmlReportResponse)
+def generate_html_report_endpoint(job_id: str) -> PitchHtmlReportResponse:
+    """Trigger FFmpeg-based HTML report generation for a completed job.
+
+    Uses edited_report if committed, else original_report.
+    Requires audio file and words_json to be present in DB.
+    """
+    try:
+        result_path = generate_job_html_report(job_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {e}") from e
+    return PitchHtmlReportResponse(
+        job_id=job_id,
+        html_path=str(result_path),
+        generated_at=time.time(),
+    )
 
 
 @router.get("/jobs/{job_id}/words")
