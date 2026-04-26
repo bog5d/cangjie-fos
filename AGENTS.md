@@ -1,46 +1,142 @@
-# CangJie_FOS — Agent / 协作者速览
+# AGENTS.md — 仓颉 FOS · AI 协作操作手册
 
-本仓库为 **仓颉 FOS 融资作战系统** 单体 Monorepo。人类与 AI 协作时，请先读 **`docs/MASTER_PRD.md`**；**Phase 1 验收**以 **`docs/PHASE1_SPEC.md`** 为准。
+> **所有 AI Agent（Claude、Cursor、Hermes、Codex 等）进入本仓库前必读。**  
+> 本文档是权威操作规范，优先级高于任何其他文档。
 
-**Phase 6.x（机构沙盘 + 上传/NPC/UX）已落地脉络：** 新会话/新 AI 建议先读 **`docs/AI_HANDOFF_PHASE6.md`**（单页交接：路径、环境、契约、测试锚点、待优化清单），再按需打开 `docs/PHASE6_3_UX_PLAN.md` 等长文方案。
+---
 
-## 仓库地图（规划/落地后以此为准）
+## 当前版本状态（最后更新：2026-04-26）
 
-| 路径 | 职责 |
+| 项目 | 状态 |
 |------|------|
-| `docs/AI_HANDOFF_PHASE6.md` | **新 AI 推荐入口**：Phase 6.x 事实摘要、文件锚点、环境与 pytest 注意点 |
-| `backend/` | FastAPI + LangGraph；API、图编排、领域服务 |
-| `backend/tests/` | 本仓库契约测试；与 `AI_Pitch_Coach/tests` **双路径**合并跑满 **620+**（见 `pyproject.toml`） |
-| `docs/PHASE1_SPEC.md` | Phase 1：脚手架 + 进化地基的 **Spec 与验收** |
-| `docs/PHASE3_SPEC.md` | Phase 3：NPC 真机对话、上传、大盘、错题本 **Spec** |
-| `TODO_LIST_PHASE3.md` | Phase 3 **施工任务单** |
-| `docs/PHASE4_SPEC.md` | Phase 4：Checkpointer、真实大盘、RAG、反思飞轮 **Spec** |
-| `TODO_LIST_PHASE4.md` | Phase 4 **施工任务单** |
-| `frontend/` | React + Vite；构建输出 `dist/` |
-| `docs/MASTER_PRD.md` | 产品灵魂、架构、红线、交付标准 |
-| `.cursor/rules/` | Cursor 规则：Monorepo/隐私/测试 + 自我进化飞轮 + 外发铁律/质量门禁 |
-| `tools/ci_check.ps1` | **发版/PR 前**一键：后端约定 pytest 子集 + `npm run build`；失败非零。详见 `docs/RELEASE_CHECKLIST.md` 第 0/5 节。 |
+| 版本 | v0.2.0 |
+| 测试基线 | **228 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
+| 前端构建 | **零错误**（`cd frontend && npm run build`） |
+| 当前 Phase | **Phase 6.4 完工 → Phase 7.0 待开始** |
+| 详细变更历史 | 见 `CHANGELOG.md` |
 
-## 如何跑起来
+---
 
-1. **API + 静态前端（Phase 2）：** 先 `.\build_frontend.ps1`，再 `.\run_dev.ps1`（`http://127.0.0.1:8000/` 打开 React；`npm run dev` 在 `frontend/` 为 Vite 5173 开发态）。
-2. **发版/PR 前质量门禁（推荐与对外交付前同跑）：** 在仓库根执行 `Set-Location .\tools; .\ci_check.ps1`（或从 `CangJie_FOS` 根：`& .\tools\ci_check.ps1`），依赖本机已安装 `uv` 与 Node。详见 `docs/RELEASE_CHECKLIST.md` 与 `.cursor/rules/cangjie-fos-quality-gate.mdc`。
-3. **全量测试（须在 `backend/` 下，保证相对路径）：**
-   `Set-Location .\backend` → `python -m pip install -e ".[dev]"` → `python -m pytest`。
-4. **前端单测（Phase 3）：** `Set-Location .\frontend` → `npm run test`（Vitest + Axios Mock）。
-5. **Pitch_Coach 根目录：** 环境变量 `CANGJIE_PITCH_COACH_ROOT` 可覆盖默认的 `…/AI_Workspaces/AI_Pitch_Coach`。
-6. 前端 `dist/` 由 FastAPI 伺服（先 `build_frontend.ps1`）。
+## 读代码前必须知道的架构事实
 
-## 自我进化飞轮（实现时必须四段齐全）
+### 1. 双系统架构
+本仓库（FOS）是**前端 + 后端 + 业务编排**。  
+**AI Pitch Coach（FSS）** 是独立的 LLM/ASR 评估引擎，不在本仓库内。
 
-**捕获 (Diff) → 反思 (Reflection，异步) → 校验 (Red Teaming) → 固化 (合并 Prompt/Skill，可版本化)**。详见 `docs/MASTER_PRD.md` 第 2 节与 `.cursor/rules/cangjie-fos-evolution-flywheel.mdc`。
+```
+cangjie-fos（本仓库）
+    ├── 负责：UI、API路由、任务管理、报告生成、豆豆NPC
+    └── 依赖：AI Pitch Coach（FSS）提供 LLM 评估能力
+              └── 位置：PITCH_COACH_ROOT 环境变量指定
+                        （本地开发通常是 D:\AI_Workspaces\AI_Pitch_Coach）
+```
 
-## Cursor 规则生效方式
+**重要**：没有 FSS 也能运行大部分功能。FSS 只在以下操作时才需要：
+- 实际 ASR 转写（测试用 mock 替代）
+- LangGraph Coach 评估（测试用 mock 替代）
+- 机构数据同步（Adapters）
 
-将 Cursor **工作区根目录** 设为 **`CangJie_FOS`**，以便加载 `.cursor/rules/*.mdc`。若以父级文件夹（例如整盘 `AI_Workspaces`）为工作区打开，则需在对应工作区根配置等效规则，或改为打开本文件夹为根。
+### 2. 测试在无 FSS 环境下全部通过
 
-## 红线速查
+所有测试已 mock FSS 依赖。设置环境变量即可：
+```bash
+export PITCH_COACH_ROOT=/tmp/mock_pitch_coach
+mkdir -p /tmp/mock_pitch_coach/src
+cd backend && uv run --extra dev pytest tests/ -q
+# 期望：228 passed
+```
 
-- 禁止「上帝文件」；按 Router / Service / Schema / Utils / Event 模块化。
-- 所有子智能体与敏感业务数据 **强绑定 `tenant_id`**，禁止跨租户明文流动。
-- 功能迁移须 **带测试迁移**。
+### 3. 数据目录不在 git 里
+
+`backend/data/`（SQLite + 音频文件）已 gitignore。首次运行会自动创建。
+
+---
+
+## 强制操作规范
+
+### 改代码前
+```bash
+git pull origin master          # 拉最新
+cd backend && uv run --extra dev pytest tests/ -q  # 确认基线
+```
+
+### 改完代码后（缺一不可）
+
+```bash
+# 1. 跑全套测试
+cd backend && uv run --extra dev pytest tests/ -q
+# 期望：≥228 passed，0 failed
+
+# 2. 前端构建检查
+cd frontend && npm run build
+# 期望：✓ built in X.XXs，零 TS 错误
+
+# 3. 更新 CHANGELOG.md
+# 在 [Unreleased] 下添加你的变更条目
+
+# 4. 提交
+git add <具体文件>    # 禁止 git add -A（防止误提交 .env）
+git commit -m "type(scope): 简短描述"
+
+# 5. 推送（CI 会自动验证）
+git push origin <分支名>
+```
+
+### 提 PR 必须
+- PR 描述填写 `.github/pull_request_template.md` 模板
+- CI（GitHub Actions）全绿才能合并
+- 更新 `CHANGELOG.md`
+
+---
+
+## 禁止行为
+
+| 禁止 | 原因 |
+|------|------|
+| `git add -A` 或 `git add .` | 可能误提交 `.env`（API Key）或 SQLite 文件 |
+| 改完说"应该好了你试试" | 必须先跑测试证明 |
+| 只 mock 外部服务不验证 DB 写入 | DB 才是审查台的数据源 |
+| 新增 pipeline 步骤不更新 E2E 测试 | 会导致测试不覆盖真实链路 |
+| 提交 `.env` / `*.sqlite` / `*.zip` | 已 gitignore，不应强制添加 |
+| 删除/跳过现有测试来让数量达标 | CI 验证数量 ≥200，但测试必须真实有效 |
+
+---
+
+## 关键文件速查
+
+| 文件 | 作用 |
+|------|------|
+| `CHANGELOG.md` | 版本历史，**每次提交前必须更新** |
+| `CLAUDE.md` | Claude 专用规范（测试标准、架构约定） |
+| `backend/src/cangjie_fos/services/pitch_upload_pipeline.py` | 上传→ASR→评估主流水线 |
+| `backend/src/cangjie_fos/services/pitch_job_db.py` | SQLite 持久化层（单一真相源） |
+| `backend/src/cangjie_fos/services/npc_chat_graph.py` | 豆豆 NPC 对话图 |
+| `backend/src/cangjie_fos/core/readiness.py` | 系统就绪检查（Doctor 模块） |
+| `backend/tests/test_pipeline_e2e.py` | Pipeline 核心 E2E 测试 |
+| `frontend/src/components/TaskRail.tsx` | 任务进度组件 |
+| `frontend/src/pages/ReviewWorkbench.tsx` | 全屏审查台 |
+
+---
+
+## 下一步开发（Phase 7.0，待认领）
+
+1. **R3 LLM 重试**：`pitch_graph_service.py` 加指数退避重试，新增 `POST /api/pitch/jobs/{id}/retry-eval`
+2. **WebSocket 实时推送**：替代 Task Rail 1 秒轮询
+3. **Doctor 模块强化**：自动修复常见环境问题（不只诊断）
+4. 详见 `CHANGELOG.md` [Unreleased] 节
+
+---
+
+## 提交消息格式
+
+```
+type(scope): 简短描述（中英文均可）
+
+type: feat | fix | docs | chore | refactor | test
+scope: backend | frontend | pipeline | npc | db | ci
+
+示例：
+feat(pipeline): 新增 substatus 8节点进度追踪
+fix(api): 修复 warnings JSON 反序列化 500 错误
+docs: 更新 CHANGELOG Phase 7.0 进度
+```
