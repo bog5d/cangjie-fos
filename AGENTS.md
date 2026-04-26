@@ -18,16 +18,18 @@
 | `TODO_LIST_PHASE4.md` | Phase 4 **施工任务单** |
 | `frontend/` | React + Vite；构建输出 `dist/` |
 | `docs/MASTER_PRD.md` | 产品灵魂、架构、红线、交付标准 |
-| `.cursor/rules/` | Cursor 规则：Monorepo/隐私/测试 + 自我进化飞轮 |
+| `.cursor/rules/` | Cursor 规则：Monorepo/隐私/测试 + 自我进化飞轮 + 外发铁律/质量门禁 |
+| `tools/ci_check.ps1` | **发版/PR 前**一键：后端约定 pytest 子集 + `npm run build`；失败非零。详见 `docs/RELEASE_CHECKLIST.md` 第 0/5 节。 |
 
 ## 如何跑起来
 
 1. **API + 静态前端（Phase 2）：** 先 `.\build_frontend.ps1`，再 `.\run_dev.ps1`（`http://127.0.0.1:8000/` 打开 React；`npm run dev` 在 `frontend/` 为 Vite 5173 开发态）。
-2. **测试（须在 `backend/` 下，保证相对路径）：**
+2. **发版/PR 前质量门禁（推荐与对外交付前同跑）：** 在仓库根执行 `Set-Location .\tools; .\ci_check.ps1`（或从 `CangJie_FOS` 根：`& .\tools\ci_check.ps1`），依赖本机已安装 `uv` 与 Node。详见 `docs/RELEASE_CHECKLIST.md` 与 `.cursor/rules/cangjie-fos-quality-gate.mdc`。
+3. **全量测试（须在 `backend/` 下，保证相对路径）：**
    `Set-Location .\backend` → `python -m pip install -e ".[dev]"` → `python -m pytest`。
-3. **前端单测（Phase 3）：** `Set-Location .\frontend` → `npm run test`（Vitest + Axios Mock）。
-4. **Pitch_Coach 根目录：** 环境变量 `CANGJIE_PITCH_COACH_ROOT` 可覆盖默认的 `…/AI_Workspaces/AI_Pitch_Coach`。
-5. 前端 `dist/` 由 FastAPI 伺服（先 `build_frontend.ps1`）。
+4. **前端单测（Phase 3）：** `Set-Location .\frontend` → `npm run test`（Vitest + Axios Mock）。
+5. **Pitch_Coach 根目录：** 环境变量 `CANGJIE_PITCH_COACH_ROOT` 可覆盖默认的 `…/AI_Workspaces/AI_Pitch_Coach`。
+6. 前端 `dist/` 由 FastAPI 伺服（先 `build_frontend.ps1`）。
 
 ## 自我进化飞轮（实现时必须四段齐全）
 

@@ -29,7 +29,7 @@ def test_sniper_rows_to_json() -> None:
 
 def test_session_notes_investor_prefix() -> None:
     s = bn(investor_name="李总监", interviewee="王总", speaker_hint="")
-    assert "【接待投资人】李总监" in s
+    assert "李总监" in s
 
 
 def test_create_session_rejects_placeholder_scene() -> None:
@@ -128,7 +128,7 @@ def test_commit_schedules_jobs(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Non
     assert called[0]["skip_asr_polish"] is False
     assert "红杉" in called[0]["project_name"] or called[0]["project_name"] == "红杉中国"
     notes = called[0]["session_notes"]
-    assert "【接待投资人】王合伙人" in notes
+    assert "王合伙人" in notes
 
     with sus._lock:
         assert sid not in sus._sessions

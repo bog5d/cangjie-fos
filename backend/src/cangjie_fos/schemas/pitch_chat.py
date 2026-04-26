@@ -10,6 +10,7 @@ class PitchChatRequest(BaseModel):
     session_id: str | None = None
     thread_id: str | None = Field(None, description="不传则新建线程；传则续写 LangGraph checkpoint")
     user_name: str | None = Field(None, description="当前指挥官展示名，注入 System Prompt")
+    active_job_id: str | None = None
 
 
 class PitchChatResponse(BaseModel):

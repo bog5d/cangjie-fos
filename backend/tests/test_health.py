@@ -13,3 +13,14 @@ async def test_health_ok() -> None:
         r = await client.get("/health")
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
+
+
+def test_pitch_health_ok() -> None:
+    from fastapi.testclient import TestClient
+    from cangjie_fos.main import create_app
+    client = TestClient(create_app())
+    r = client.get("/api/pitch/health")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] in ("ok", "degraded")
+    assert "issues" in data

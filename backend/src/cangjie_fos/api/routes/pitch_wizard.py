@@ -8,8 +8,10 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile
 
+from cangjie_fos.api.upload_io import read_upload_limited
+from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
 from cangjie_fos.core.paths import ensure_pitch_coach_import_path
 from cangjie_fos.events.npc_ws_house import schedule_broadcast_to_tenant
 from cangjie_fos.schemas.pitch_upload_wizard import (
@@ -85,7 +87,7 @@ async def upload_session_audio(
     payload = UploadWizardCreateRequest.model_validate(s["payload"])
     if track_index < 0 or track_index >= len(payload.tracks):
         raise HTTPException(status_code=400, detail="track_index 越界")
-    raw = await file.read()
+    raw = await read_upload_limited(file)
     if not raw:
         raise HTTPException(status_code=400, detail="empty file")
     suffix = Path(file.filename or "upload.bin").suffix or ".bin"
@@ -112,7 +114,7 @@ async def upload_session_qa(
     payload = UploadWizardCreateRequest.model_validate(s["payload"])
     if track_index < 0 or track_index >= len(payload.tracks):
         raise HTTPException(status_code=400, detail="track_index 越界")
-    raw = await file.read()
+    raw = await read_upload_limited(file)
     if not raw:
         raise HTTPException(status_code=400, detail="empty file")
     suffix = Path(file.filename or "qa.bin").suffix or ".bin"
@@ -130,6 +132,7 @@ async def upload_session_qa(
 
 @router.post("/upload-sessions/{session_id}/commit", response_model=UploadSessionCommitResponse)
 def commit_upload_session(
+    request: Request,
     session_id: str,
     background_tasks: BackgroundTasks,
 ) -> UploadSessionCommitResponse:
@@ -148,6 +151,12 @@ def commit_upload_session(
     for i in range(n):
         if i not in audio_map:
             raise HTTPException(status_code=400, detail=f"轨道 {i} 尚未上传音频")
+
+    if not try_reserve_jobs(n):
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "E_QUEUE_FULL", "message": "任务队列已满，请稍后或减少同时提交数"},
+        )
 
     ensure_pitch_coach_import_path()
     from sensitive_words import parse_sensitive_words
@@ -187,6 +196,7 @@ def commit_upload_session(
 
         sniper_json = sniper_rows_to_json(tr.sniper_rows)
         notes = _build_notes(
+            institution_name=payload.institution_name,
             investor_name=payload.investor_name,
             interviewee=tr.interviewee,
             speaker_hint=tr.speaker_hint,
@@ -200,11 +210,11 @@ def commit_upload_session(
             submitted_by=(payload.user_name or "").strip(),
             upload_session_id=session_id,
             wizard_track_index=i,
+            interviewee=tr.interviewee.strip(),
         )
         job_ids.append(job_id)
 
-        background_tasks.add_task(
-            run_pitch_wizard_track_job,
+        kw = dict(
             job_id=job_id,
             tenant_id=payload.tenant_id,
             audio_path=dst,
@@ -224,6 +234,16 @@ def commit_upload_session(
             use_langgraph_v1=bool(payload.use_langgraph_v1),
         )
 
+        snap = dict(kw)
+
+        def _run(captured: dict = snap) -> None:  # noqa: B008
+            try:
+                run_pitch_wizard_track_job(**captured)  # type: ignore[arg-type]
+            finally:
+                release_job_slot()
+
+        background_tasks.add_task(_run)
+
     inst = safe_fs_segment(payload.institution_name)
     assistant_echo = (
         f"豆豆：已收到 {n} 条关于「{inst}」的录音，正在逐条分析…"
@@ -240,7 +260,8 @@ def commit_upload_session(
     session_delete(session_id)
 
     logger.info(
-        "pitch_wizard_committed session=%s jobs=%s tenant=%s submitted_by=%s",
+        "pitch_wizard_committed request_id=%s session=%s jobs=%s tenant=%s submitted_by=%s",
+        getattr(request.state, "request_id", ""),
         session_id,
         job_ids,
         payload.tenant_id,

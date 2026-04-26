@@ -1,0 +1,60 @@
+# ─── Git 工作树 ───────────────────────────────────────────
+.worktrees/
+
+# ─── 环境变量 / API Keys（严禁入库）─────────────────────────
+backend/.env
+backend/.env.*
+.env
+.env.*
+
+# ─── 后端运行时数据（SQLite + 音频文件）───────────────────────
+backend/data/
+!backend/data/.gitkeep
+
+# ─── Python 构建产物 ──────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+*.so
+
+# ─── Python 虚拟环境 ─────────────────────────────────────
+backend/.venv/
+.venv/
+venv/
+env/
+
+# ─── 前端构建产物 ─────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# ─── 发布包 / 压缩文件（体积大，用 Releases 页管理）──────────
+releases/
+*.zip
+*.tar.gz
+*.7z
+
+# ─── 软著申请材料（本地存档，不入库）──────────────────────────
+软著申请材料/
+
+# ─── IDE / 系统文件 ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# ─── 测试 / 覆盖率报告 ────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# ─── 日志文件 ────────────────────────────────────────────
+*.log
+logs/

@@ -36,6 +36,10 @@ class PitchJobStatusResponse(BaseModel):
         default=None,
         description="兼容旧客户端；与 error_summary 同源（人话），禁止为 Raw JSON。",
     )
+    warnings: dict | None = Field(
+        default=None,
+        description="非致命告警，如机构情报抽取失败。不影响报告生成。",
+    )
 
 
 class PitchJobSummary(BaseModel):
@@ -52,3 +56,39 @@ class PitchJobSummary(BaseModel):
     error_code: str | None = None
     error: str | None = Field(default=None, description="兼容字段，同 error_summary")
     has_report: bool = False
+    warnings: dict | None = None
+    substatus: str | None = Field(default=None, description="流水线子步骤进度文本，active 状态时展示")
+
+
+class WordsSummary(BaseModel):
+    total_words: int = 0
+    duration_sec: float = 0.0
+
+
+class PitchReviewResponse(BaseModel):
+    job_id: str
+    status: PitchJobStatus
+    original_report: dict | None = None
+    edited_report: dict | None = None
+    committed_at: float | None = None
+    words_summary: WordsSummary = WordsSummary()
+    audio_available: bool = False
+    interviewee: str | None = Field(
+        default=None,
+        description="上传向导填写的被访谈人；简单上传无此项",
+    )
+
+
+class PitchReviewCommitRequest(BaseModel):
+    edited_report: dict
+
+
+class PitchReviewCommitResponse(BaseModel):
+    job_id: str
+    committed_at: float
+
+
+class PitchHtmlReportResponse(BaseModel):
+    job_id: str
+    html_path: str
+    generated_at: float

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { NPC_DISPLAY_NAME } from "../constants/npc";
 import { DoudouPresence, type DoudouNpcUiState, MessageSideAvatar } from "./DoudouAvatar";
@@ -26,6 +26,8 @@ interface Props {
   onPipelineDataChanged?: () => void;
   /** Phase 6.1：当前指挥官，注入 /api/pitch/chat */
   userName?: string;
+  /** 打开复盘上传向导（统一入口） */
+  onOpenWizard?: () => void;
 }
 
 function threadStorageKey(tenantId: string) {
@@ -42,20 +44,16 @@ function mapServerMessagesToLines(messages: { role: string; content: string }[])
   }));
 }
 
-export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName = "" }: Props) {
+export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName = "", onOpenWizard }: Props) {
   const [uiState, setUiState] = useState<NpcUiState>("idle");
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<string>("");
   const [reportModalJobId, setReportModalJobId] = useState<string | null>(null);
   const [correcting, setCorrecting] = useState<ChatLine | null>(null);
   const [correctionText, setCorrectionText] = useState("");
   /** 实时通道：不向聊天流写入底层错误；首帧即「连接中」避免误显示「重连」 */
   const [wsPhase, setWsPhase] = useState<"connecting" | "open" | "closed">("connecting");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const pollRef = useRef<number | null>(null);
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -285,68 +283,6 @@ export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName
     }
   };
 
-  const onPickFile = () => fileRef.current?.click();
-
-  const onFileChange = async (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const f = ev.target.files?.[0];
-    ev.target.value = "";
-    if (!f) return;
-    setJobStatus("上传中…");
-    const fd = new FormData();
-    fd.append("tenant_id", tenantId);
-    fd.append("file", f);
-    try {
-      const { data } = await api.post<{ job_id: string; status: string }>("/api/pitch/upload", fd);
-      setJobId(data.job_id);
-      setJobStatus("处理中：转写 → LangGraph 复盘…");
-      onExpEvent(5, "录音已受理", "解析完成后发放更多 Exp");
-    } catch (e) {
-      setJobStatus(e instanceof Error ? e.message : "上传失败");
-    }
-  };
-
-  useEffect(() => {
-    if (!jobId) return;
-    const tick = async () => {
-      try {
-        const { data } = await api.get<{
-          status: string;
-          exp_delta?: number;
-          exp_reason?: string;
-          error?: string | null;
-          error_summary?: string | null;
-          report?: unknown;
-        }>(`/api/pitch/jobs/${jobId}`);
-        setJobStatus(data.status);
-        if (data.status === "completed") {
-          if (data.exp_delta) {
-            onExpEvent(data.exp_delta, data.exp_reason ?? "复盘完成");
-          }
-          onPipelineDataChanged?.();
-          /** 完成气泡与「查看报告」统一由 Task Rail 轮询检测，避免与单 job 轮询重复推送 */
-          setJobId(null);
-        }
-        if (data.status === "failed") {
-          const why = (data.error_summary ?? data.error ?? "unknown").trim();
-          pushLine({
-            id: `fail-${jobId}`,
-            role: "系统",
-            text: `处理失败：${why}`,
-            isAi: false,
-          });
-          setJobId(null);
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    pollRef.current = window.setInterval(tick, 700);
-    void tick();
-    return () => {
-      if (pollRef.current) window.clearInterval(pollRef.current);
-    };
-  }, [jobId, onExpEvent, onPipelineDataChanged, pushLine]);
-
   const submitCorrection = async () => {
     if (!correcting?.text) return;
     const userText = correctionText.trim();
@@ -396,7 +332,7 @@ export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName
   );
 
   return (
-    <div className="flex h-full min-h-[480px] flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-plasma/15 to-black/40 p-0 shadow-2xl backdrop-blur-xl">
+    <div className="flex flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-plasma/15 to-black/40 p-0 shadow-2xl backdrop-blur-xl" style={{ maxHeight: "min(900px, 90vh)" }}>
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <DoudouPresence npcState={uiState} subtitle="Phase 6.3 · 复盘向导 + SQLite" />
         <div className="flex flex-col items-end gap-2">
@@ -540,15 +476,14 @@ export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName
 
       <div className="border-t border-white/10 px-5 py-3">
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <input ref={fileRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.webm" className="hidden" onChange={(e) => void onFileChange(e)} />
           <button
             type="button"
-            onClick={onPickFile}
+            onClick={() => onOpenWizard?.()}
             className="rounded-lg border border-ember/40 bg-ember/15 px-3 py-1.5 text-xs font-bold text-amber-100 hover:bg-ember/25"
+            title="打开复盘上传向导（填写机构名称、场景类型后上传录音）"
           >
             上传录音
           </button>
-          {jobStatus ? <span className="text-xs text-slate-400">{jobStatus}</span> : null}
         </div>
         <div className="flex gap-2">
           <input
