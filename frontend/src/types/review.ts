@@ -14,6 +14,10 @@ export interface SceneAnalysis {
 export interface RiskPoint {
   _rid?: string;
   risk_level: "严重" | "一般" | "轻微";
+  /** Coach 侧「本条事实摘要」，约 30 字内 */
+  problem_summary?: string;
+  /** 如：数据含糊、口径偏离 */
+  risk_type?: string;
   tier1_general_critique: string;
   tier2_qa_alignment: string;
   improvement_suggestion: string;
@@ -43,6 +47,9 @@ export interface PitchReviewResponse {
     total_words: number;
     duration_sec: number;
   };
+  audio_available?: boolean;
+  /** 上传向导中的被访谈人；简单上传无此项 */
+  interviewee?: string | null;
 }
 
 export interface PitchReviewCommitRequest {
@@ -52,11 +59,6 @@ export interface PitchReviewCommitRequest {
 export interface PitchReviewCommitResponse {
   job_id: string;
   committed_at: number;
-  diff_summary: {
-    risk_points_added: number;
-    risk_points_removed: number;
-    fields_changed: number;
-  };
 }
 
 export interface ReviewWorkbenchState {

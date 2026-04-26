@@ -4,11 +4,14 @@ import { AchievementFlash } from "./components/AchievementFlash";
 import { ExpHud } from "./components/ExpHud";
 import { NPCPanel } from "./components/NPCPanel";
 import { ScoreToastStack, type ScoreToastItem } from "./components/ScoreToast";
+import { AssetLibrary } from "./components/AssetLibrary";
+import { PitchJobHistory } from "./components/PitchJobHistory";
 import { InstitutionList } from "./components/InstitutionList";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { WarRoomMap } from "./components/WarRoomMap";
 import type { DashboardStatus } from "./types/dashboard";
 import type { InstitutionProfile } from "./types/institution";
+import type { ReadyPayload } from "./types/ready";
 
 const DEFAULT_TENANT = "demo-tenant";
 
@@ -23,6 +26,7 @@ export default function App() {
   const [institutions, setInstitutions] = useState<InstitutionProfile[]>([]);
   const [commanderName, setCommanderName] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
 
   useEffect(() => {
     try {
@@ -47,6 +51,19 @@ export default function App() {
     return q && q.length > 0 ? q : DEFAULT_TENANT;
   }, []);
 
+  const uploadBlockedReason = useMemo(() => {
+    if (ready === undefined) return "正在检查运行环境（/api/v1/ready）…";
+    if (ready === null) return "无法获取就绪状态，请确认后端已启动。";
+    if (!ready.pitch_coach_ok) {
+      const hit = ready.issues.find((i) => i.code === "E_PITCH_COACH_SRC_MISSING");
+      return hit?.fix_hint ?? "AI_Pitch_Coach 未正确放置，上传与豆区将不可用。";
+    }
+    if (!ready.api_keys_ok) {
+      return "API 密钥未配置完整，请通过「填写API密钥_双击我」配置 backend/.env。";
+    }
+    return null;
+  }, [ready]);
+
   const refreshWarData = useCallback(async () => {
     try {
       const [dash, inst] = await Promise.all([
@@ -66,6 +83,13 @@ export default function App() {
   useEffect(() => {
     void refreshWarData();
   }, [refreshWarData]);
+
+  useEffect(() => {
+    void api
+      .get<ReadyPayload>("/api/v1/ready")
+      .then((r) => setReady(r.data))
+      .catch(() => setReady(null));
+  }, []);
 
   useEffect(() => {
     if (!dashboard) return;
@@ -122,6 +146,25 @@ export default function App() {
 
   return (
     <div className="min-h-screen px-4 pb-10 pt-6 md:px-10">
+      {ready && !ready.ok ? (
+        <div
+          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+          role="status"
+        >
+          <p className="font-semibold text-amber-200">环境未完全就绪</p>
+          <ul className="mt-1 list-inside list-disc text-xs text-amber-100/90">
+            {ready.issues
+              .filter((i) => i.severity === "error" || i.code.startsWith("E_"))
+              .slice(0, 5)
+              .map((i) => (
+                <li key={i.code + i.message}>
+                  <span className="font-mono text-[10px] text-amber-300/90">{i.code}</span> — {i.message}
+                </li>
+              ))}
+          </ul>
+          <p className="mt-2 text-xs text-slate-400">详见仓库内 docs/RELEASE_CHECKLIST.md 或同事上手指南。</p>
+        </div>
+      ) : null}
       <AchievementFlash
         open={achOpen}
         title="资料健康度达标"
@@ -155,8 +198,10 @@ export default function App() {
           </label>
           <button
             type="button"
+            disabled={!!uploadBlockedReason}
+            title={uploadBlockedReason ?? undefined}
             onClick={() => setWizardOpen(true)}
-            className="rounded-xl border border-cyan/40 bg-cyan/10 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-cyan hover:bg-cyan/20"
+            className="rounded-xl border border-cyan/40 bg-cyan/10 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-cyan hover:bg-cyan/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             复盘上传向导
           </button>
@@ -170,6 +215,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => void demoDryRun()}
+            title="测试模式：不消耗 API，用固定数据验证系统链路是否正常"
             className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-slate-200 transition hover:border-cyan/50 hover:text-white"
           >
             Dry-run /api/pitch/run
@@ -190,15 +236,19 @@ export default function App() {
           onExpEvent={onExpEvent}
           onPipelineDataChanged={() => void refreshWarData()}
           userName={commanderName}
+          onOpenWizard={() => setWizardOpen(true)}
         />
       </div>
       <InstitutionList tenantId={tenant} items={institutions} />
+      <PitchJobHistory tenantId={tenant} />
+      <AssetLibrary />
       <PitchUploadWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
         tenantId={tenant}
         userName={commanderName}
         onPipelineDataChanged={() => void refreshWarData()}
+        uploadBlockedReason={uploadBlockedReason}
       />
     </div>
   );

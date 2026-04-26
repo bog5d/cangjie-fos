@@ -1,0 +1,21 @@
+---
+description: 对外发布 / 外发版压缩包必做项（与 packaging、build_release_zip 对齐）
+alwaysApply: true
+---
+
+# 外发 / 对同事交付 — 工作铁律
+
+只要任务涉及**对外发布、外发版、发压缩包给同事**，在宣称「可交付」之前，**必须**同时满足：
+
+1. **在发布机/本机真跑打包**（例如 `CangJie_FOS\tools\build_release_zip.ps1`，**默认** `-Profile Release` 为**纯净外发**；内部全量用 `-Profile Full`），产出**磁盘上存在**的 `.zip`，不得仅改脚本、不得仅写「有脚本即等于已交付」。
+2. **报告交付物三件套**：**zip 的完整绝对路径**、**SHA256**、**一级根目录/结构说明**（与 `packaging` 与历史 `CangJie_FOS_Release_*.zip` 习惯一致：双仓、`00_先看`、`使用指引` md、**`点击开始-仓颉FOS.bat`**、**`.fos_data\`+README** 等）。
+3. **打 zip 前条件**：`frontend\dist` 已存在（可 `-BuildFrontend`）；`AI_Pitch_Coach` 须含 `src\` 时用 `-ErrorIfNoCoach` 防半包。**默认外发包**中不得混入软著材料、与运行无关的交付/大样本文档树；以脚本 Release 模式实际行为为准，详见 `docs/RELEASE_CHECKLIST.md` 第 0 节。
+4. **最小自测**（在模拟路径下）：解压到英文路径，说明**点哪个文件启动**；能访问 `http://127.0.0.1:8000` 与 `GET /api/v1/ready`，能解释**缺 Key/缺索引**时的**预期**表现（不虚构「全绿」）。
+5. 若本机**缺** Node/ Python/ `uv` / 无 Coach 目录，**先写清缺什么、能否装、最小人工步**，**禁止**假称已生成 zip。
+6. 发版/大改相关任务前，宜运行 `& .\tools\ci_check.ps1` 并如实说明结果；细节见 `cangjie-fos-quality-gate.mdc` 与 `docs/RELEASE_CHECKLIST.md` 第 5 节。
+
+**发给同事时的固定一句**（可随说明微调，但需保留三要素：英文路径、先看指引、点 bat）：
+
+> 用英文路径完整解压（例如 `C:\FOS`），**不要改文件夹名**；**先看**同目录的 `00_先看这一行` 和《使用指引》md，再**双击** `点击开始-仓颉FOS.bat`；能打开后看 `http://127.0.0.1:8000` 和 `http://127.0.0.1:8000/api/v1/ready`。
+
+详细命令与树形约定见 `docs/RELEASE_CHECKLIST.md` 第 0 节。

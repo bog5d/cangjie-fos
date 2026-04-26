@@ -49,7 +49,7 @@ def test_get_review_returns_both_reports():
     assert data["original_report"] == {"score": 80, "notes": "original"}
     assert data["edited_report"] == {"score": 85, "notes": "edited"}
     assert data["job_id"] == _JOB_ID
-    assert data["words_total"] == 2
+    assert data["words_summary"]["total_words"] == 2
 
 
 def test_get_review_404_unknown_job():

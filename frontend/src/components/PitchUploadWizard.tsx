@@ -11,6 +11,8 @@ import {
 
 type Sniper = { quote: string; reason: string };
 
+const AUDIO_WARN_BYTES = 300 * 1024 * 1024; // 300 MB
+
 type LocalTrack = {
   id: string;
   audio: File | null;
@@ -26,6 +28,8 @@ export type PitchUploadWizardProps = {
   tenantId: string;
   userName: string;
   onPipelineDataChanged?: () => void;
+  /** 非空时禁止最终提交（环境未就绪时由 App 注入） */
+  uploadBlockedReason?: string | null;
 };
 
 const QA_WARN_CHARS = 28000;
@@ -85,6 +89,7 @@ export function PitchUploadWizard({
   tenantId,
   userName,
   onPipelineDataChanged,
+  uploadBlockedReason = null,
 }: PitchUploadWizardProps) {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -251,6 +256,15 @@ export function PitchUploadWizard({
       }
       const stem = stemFromAudioFilename(f.name);
       const [ivGuess, note] = guessBatchFieldsFromStem(stem);
+      if (f.size > AUDIO_WARN_BYTES) {
+        const mb = Math.round(f.size / (1024 * 1024));
+        setErr(
+          `⚠️ 音频文件 ${mb} MB，上传可能需要数分钟。` +
+          `建议提前压缩：手机上用「录音转文字」类 App 导出 MP3，` +
+          `电脑上用格式工厂或 Audacity 另存为 MP3（64kbps，语音清晰）。` +
+          `上传后系统会再次自动压缩。可直接提交，不影响复盘质量。`
+        );
+      }
       setFilenameMagic((m) => ({
         ...m,
         [cur.id]: { stem, intervieweeGuess: ivGuess, note },
@@ -402,6 +416,15 @@ export function PitchUploadWizard({
               role="alert"
             >
               {err}
+            </p>
+          ) : null}
+
+          {uploadBlockedReason ? (
+            <p
+              className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+              role="status"
+            >
+              {uploadBlockedReason}
             </p>
           ) : null}
 
@@ -774,7 +797,7 @@ export function PitchUploadWizard({
           ) : (
             <button
               type="button"
-              disabled={busy || qaHard}
+              disabled={busy || qaHard || !!uploadBlockedReason}
               onClick={() => void submitAll()}
               className="rounded-xl bg-gradient-to-r from-plasma/90 to-ember/80 px-5 py-2 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-plasma/25 disabled:opacity-40"
             >

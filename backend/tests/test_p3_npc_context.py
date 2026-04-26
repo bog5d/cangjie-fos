@@ -119,3 +119,124 @@ def test_pitch_chat_schema_has_active_job_id():
     # Accepts a value without validation error
     req_with_job = PitchChatRequest(tenant_id="t1", message="hello", active_job_id="abc")
     assert req_with_job.active_job_id == "abc"
+
+
+# ---------------------------------------------------------------------------
+# Test 7: _inject_system_health — readiness OK + no recent errors → OK line
+# ---------------------------------------------------------------------------
+
+def test_inject_system_health_ok_no_errors():
+    from unittest.mock import MagicMock
+    from cangjie_fos.services.npc_chat_graph import _inject_system_health
+
+    mock_readiness = MagicMock()
+    mock_readiness.ok = True
+    mock_readiness.issues = []
+    mock_readiness.job_queue_in_use = 0
+    mock_readiness.job_queue_capacity = 0
+
+    with (
+        patch("cangjie_fos.core.readiness.compute_readiness", return_value=mock_readiness),
+        patch("cangjie_fos.services.pitch_job_db.db_job_list_recent_errors", return_value=[]),
+    ):
+        result = _inject_system_health({"narrative": "base"})
+
+    assert "narrative" in result
+    assert "<<系统健康快照>>" in result["narrative"]
+    assert "OK" in result["narrative"]
+
+
+# ---------------------------------------------------------------------------
+# Test 8: _inject_system_health — readiness NOT ok → issues injected
+# ---------------------------------------------------------------------------
+
+def test_inject_system_health_with_issues():
+    from unittest.mock import MagicMock
+    from cangjie_fos.core.readiness import ReadinessIssue
+    from cangjie_fos.services.npc_chat_graph import _inject_system_health
+
+    issue = ReadinessIssue(
+        code="E_API_KEYS_INCOMPLETE",
+        message="SILICONFLOW_API_KEY 未配置",
+        fix_hint="请在 backend/.env 填写密钥",
+        severity="error",
+    )
+    mock_readiness = MagicMock()
+    mock_readiness.ok = False
+    mock_readiness.issues = [issue]
+    mock_readiness.job_queue_in_use = 0
+    mock_readiness.job_queue_capacity = 0
+
+    with (
+        patch("cangjie_fos.core.readiness.compute_readiness", return_value=mock_readiness),
+        patch("cangjie_fos.services.pitch_job_db.db_job_list_recent_errors", return_value=[]),
+    ):
+        result = _inject_system_health({"narrative": "base"})
+
+    narrative = result["narrative"]
+    assert "异常" in narrative
+    assert "E_API_KEYS_INCOMPLETE" in narrative
+    assert "请在 backend/.env 填写密钥" in narrative
+
+
+# ---------------------------------------------------------------------------
+# Test 9: _inject_system_health — recent failed jobs are included in snapshot
+# ---------------------------------------------------------------------------
+
+def test_inject_system_health_with_recent_errors():
+    from unittest.mock import MagicMock
+    from cangjie_fos.services.npc_chat_graph import _inject_system_health
+
+    mock_readiness = MagicMock()
+    mock_readiness.ok = True
+    mock_readiness.issues = []
+    mock_readiness.job_queue_in_use = 0
+    mock_readiness.job_queue_capacity = 0
+
+    recent_errors = [
+        {"job_id": "abcdef1234", "error_summary": "转写服务超时"},
+        {"job_id": "xyz9876543", "error_summary": "API 密钥无效"},
+    ]
+
+    with (
+        patch("cangjie_fos.core.readiness.compute_readiness", return_value=mock_readiness),
+        patch("cangjie_fos.services.pitch_job_db.db_job_list_recent_errors", return_value=recent_errors),
+    ):
+        result = _inject_system_health({"narrative": "base"})
+
+    narrative = result["narrative"]
+    assert "最近失败任务" in narrative
+    assert "abcdef12" in narrative   # first 8 chars of job_id
+    assert "转写服务超时" in narrative
+    assert "API 密钥无效" in narrative
+
+
+# ---------------------------------------------------------------------------
+# Test 10: _inject_system_health — compute_readiness raises → graceful fallback
+# ---------------------------------------------------------------------------
+
+def test_inject_system_health_exception_resilience():
+    from cangjie_fos.services.npc_chat_graph import _inject_system_health
+
+    with (
+        patch("cangjie_fos.core.readiness.compute_readiness", side_effect=RuntimeError("disk read failed")),
+        patch("cangjie_fos.services.pitch_job_db.db_job_list_recent_errors", return_value=[]),
+    ):
+        result = _inject_system_health({"narrative": "base"})
+
+    # Should not raise; should return fallback message
+    assert "narrative" in result
+    assert "系统状态读取失败" in result["narrative"]
+
+
+# ---------------------------------------------------------------------------
+# Test 11: _base_system contains diagnostic keywords
+# ---------------------------------------------------------------------------
+
+def test_base_system_contains_diagnostic_keywords():
+    from cangjie_fos.services.npc_chat_graph import _base_system
+
+    result = _base_system()
+    assert "健康监测员" in result
+    assert "<<系统健康快照>>" in result
+    assert "建议" in result

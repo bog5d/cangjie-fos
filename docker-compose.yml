@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  cangjie-fos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cangjie-fos
+    ports:
+      - "8000:8000"
+    volumes:
+      # 持久化 SQLite DB、音频文件、HTML 报告
+      - fos-data:/app/backend/data
+      # 挂载 .env（如存在）注入 API Keys
+      - ./backend/.env:/app/backend/.env:ro
+    environment:
+      - ENABLE_WATCHDOG=false
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  fos-data:
+    driver: local

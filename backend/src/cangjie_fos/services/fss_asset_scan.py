@@ -1,24 +1,23 @@
 """读取 FSS 桥接 asset_index.json（Phase 4 SPEC A2/A3）。"""
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 
 from cangjie_fos.core.paths import get_fos_bridge_data_dir
+from cangjie_fos.services.asset_index_io import load_asset_index_dict
 
 logger = logging.getLogger(__name__)
 
 
 def load_asset_index_assets(fos_data_dir: Path | None = None) -> list[dict]:
-    """等价于 FSS `load_asset_index_local`：返回 assets 列表。"""
+    """等价于 FSS `load_asset_index_local`：返回 assets 列表；校验失败时降级为空。"""
     base = fos_data_dir or get_fos_bridge_data_dir()
-    path = base / "asset_index.json"
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = load_asset_index_dict(base)
         return list(data.get("assets") or [])
-    except (FileNotFoundError, json.JSONDecodeError, OSError) as e:
-        logger.debug("asset_index_unavailable path=%s err=%s", path, e)
+    except (ValueError, OSError) as e:
+        logger.debug("asset_index_unavailable path=%s err=%s", base, e)
         return []
 
 

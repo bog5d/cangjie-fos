@@ -10,6 +10,12 @@ from cangjie_fos.core.config import settings
 
 def get_pitch_coach_root() -> Path:
     """定位 `AI_Pitch_Coach` 根目录（含 `src/`）。"""
+    # 须优先读当前 os.environ：`lifespan` 内 `hydrate_pitch_coach_env` 会合并
+    # backend/.env 到环境变量，但 `settings` 在 import 时已固化为旧值，仅靠 settings
+    # 会忽略 .env 中的 CANGJIE_PITCH_COACH_ROOT。
+    env = (os.getenv("CANGJIE_PITCH_COACH_ROOT") or "").strip()
+    if env:
+        return Path(env).resolve()
     if settings.pitch_coach_root:
         return Path(settings.pitch_coach_root).resolve()
     # backend/src/cangjie_fos/core/paths.py → parents[5] == AI_Workspaces

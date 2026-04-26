@@ -30,13 +30,40 @@ CREATE TABLE IF NOT EXISTS pitch_jobs (
     error_summary TEXT,
     error_detail  TEXT,
     error_code    TEXT,
-    html_report_path TEXT
+    html_report_path TEXT,
+    warnings         TEXT,
+    substatus        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_pitch_jobs_tenant ON pitch_jobs(tenant_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS review_diffs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id          TEXT NOT NULL,
+    tenant_id       TEXT NOT NULL,
+    committed_at    REAL NOT NULL,
+    original_report TEXT,
+    edited_report   TEXT,
+    diff_summary    TEXT,
+    pref_extracted  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_review_diffs_tenant ON review_diffs(tenant_id, committed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_review_diffs_pending ON review_diffs(pref_extracted) WHERE pref_extracted = 0;
+
+CREATE TABLE IF NOT EXISTS investor_prefs (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id      TEXT NOT NULL,
+    created_at     REAL NOT NULL,
+    pref_type      TEXT NOT NULL,
+    pref_key       TEXT NOT NULL,
+    pref_value     TEXT,
+    source_job_id  TEXT,
+    source_diff_id INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_investor_prefs_tenant ON investor_prefs(tenant_id, created_at DESC);
 """
 
 # Columns that store JSON-serialized Python objects.
-_JSON_COLS = {"original_report", "edited_report", "words_json"}
+_JSON_COLS = {"original_report", "edited_report", "words_json", "warnings"}
 
 # All writable columns (excludes job_id and created_at which are set at insert time).
 _WRITABLE_COLS = {
@@ -52,6 +79,9 @@ _WRITABLE_COLS = {
     "error_detail",
     "error_code",
     "html_report_path",
+    "interviewee",
+    "warnings",
+    "substatus",
 }
 
 
@@ -65,12 +95,18 @@ def _init_db(conn: sqlite3.Connection) -> None:
     """Initialize schema and run migrations on an open connection."""
     conn.executescript(_DDL)
     conn.commit()
-    # Migration: add html_report_path if this is an older DB
-    try:
-        conn.execute("ALTER TABLE pitch_jobs ADD COLUMN html_report_path TEXT")
-        conn.commit()
-    except Exception:
-        pass  # column already exists
+    # Migrations: add columns added after initial release
+    for migration in (
+        "ALTER TABLE pitch_jobs ADD COLUMN html_report_path TEXT",
+        "ALTER TABLE pitch_jobs ADD COLUMN interviewee TEXT",
+        "ALTER TABLE pitch_jobs ADD COLUMN warnings TEXT",
+        "ALTER TABLE pitch_jobs ADD COLUMN substatus TEXT",
+    ):
+        try:
+            conn.execute(migration)
+            conn.commit()
+        except Exception:
+            pass  # column already exists
 
 
 def _connect() -> sqlite3.Connection:
@@ -110,20 +146,23 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def db_job_create(job_id: str, tenant_id: str, **extra: Any) -> None:
-    """Insert a new job row. *extra* may contain: status, exp_delta, exp_reason."""
+    """Insert a new job row. *extra* may contain: status, exp_delta, exp_reason, interviewee."""
     now = time.time()
     status = extra.pop("status", "pending")
     exp_delta = extra.pop("exp_delta", 0)
     exp_reason = extra.pop("exp_reason", "")
+    interviewee = extra.pop("interviewee", None)
+    if interviewee is not None:
+        interviewee = str(interviewee).strip() or None
 
     with _write_lock:
         conn = _connect()
         try:
             conn.execute(
                 """INSERT INTO pitch_jobs
-                    (job_id, tenant_id, status, created_at, exp_delta, exp_reason)
-                VALUES (?, ?, ?, ?, ?, ?)""",
-                (job_id, tenant_id, str(status), now, exp_delta, exp_reason),
+                    (job_id, tenant_id, status, created_at, exp_delta, exp_reason, interviewee)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (job_id, tenant_id, str(status), now, exp_delta, exp_reason, interviewee),
             )
             conn.commit()
         finally:
@@ -194,3 +233,148 @@ def db_job_list_for_tenant(
         conn.close()
 
     return [(row["job_id"], _row_to_dict(row)) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# review_diffs — 进化飞轮：捕获 original vs edited diff
+# ---------------------------------------------------------------------------
+
+def db_diff_insert(
+    *,
+    job_id: str,
+    tenant_id: str,
+    committed_at: float,
+    original_report: dict | None,
+    edited_report: dict,
+    diff_summary: dict,
+) -> int:
+    """Insert a review diff record and return its id."""
+    with _write_lock:
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                """INSERT INTO review_diffs
+                    (job_id, tenant_id, committed_at, original_report, edited_report, diff_summary)
+                VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    job_id,
+                    tenant_id,
+                    committed_at,
+                    json.dumps(original_report, ensure_ascii=False) if original_report else None,
+                    json.dumps(edited_report, ensure_ascii=False),
+                    json.dumps(diff_summary, ensure_ascii=False),
+                ),
+            )
+            conn.commit()
+            return cur.lastrowid  # type: ignore[return-value]
+        finally:
+            conn.close()
+
+
+def db_diff_list_pending(*, limit: int = 50) -> list[dict[str, Any]]:
+    """Return review_diffs rows where pref_extracted = 0."""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM review_diffs WHERE pref_extracted = 0 ORDER BY committed_at ASC LIMIT ?",
+            (limit,),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        for col in ("original_report", "edited_report", "diff_summary"):
+            if isinstance(d.get(col), str):
+                try:
+                    d[col] = json.loads(d[col])
+                except Exception:
+                    pass
+        result.append(d)
+    return result
+
+
+def db_diff_mark_extracted(diff_id: int) -> None:
+    """Mark a review_diff row as processed."""
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                "UPDATE review_diffs SET pref_extracted = 1 WHERE id = ?", (diff_id,)
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# investor_prefs — 结构化投资人偏好
+# ---------------------------------------------------------------------------
+
+def db_pref_insert(
+    *,
+    tenant_id: str,
+    pref_type: str,
+    pref_key: str,
+    pref_value: Any,
+    source_job_id: str | None = None,
+    source_diff_id: int | None = None,
+) -> None:
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO investor_prefs
+                    (tenant_id, created_at, pref_type, pref_key, pref_value, source_job_id, source_diff_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    tenant_id,
+                    time.time(),
+                    pref_type,
+                    pref_key,
+                    json.dumps(pref_value, ensure_ascii=False) if not isinstance(pref_value, str) else pref_value,
+                    source_job_id,
+                    source_diff_id,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_job_list_recent_errors(*, limit: int = 5) -> list[dict[str, Any]]:
+    """Return recent failed jobs for system diagnostic context injection."""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT job_id, tenant_id, created_at, error_summary, error_code "
+            "FROM pitch_jobs WHERE status = 'failed' ORDER BY created_at DESC LIMIT ?",
+            (max(1, min(int(limit), 20)),),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    return [dict(row) for row in rows]
+
+
+def db_pref_list_for_tenant(tenant_id: str, *, limit: int = 100) -> list[dict[str, Any]]:
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM investor_prefs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?",
+            (tenant_id, limit),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        if isinstance(d.get("pref_value"), str):
+            try:
+                d["pref_value"] = json.loads(d["pref_value"])
+            except Exception:
+                pass
+        result.append(d)
+    return result

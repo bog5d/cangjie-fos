@@ -51,4 +51,10 @@ class PitchGraphService:
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("institution_intel_extract_skipped: %s", e)
+            if trace_id:
+                try:
+                    from cangjie_fos.services.pitch_job_db import db_job_update  # noqa: PLC0415
+                    db_job_update(trace_id, warnings={"institution_extract": str(e)})
+                except Exception:  # noqa: BLE001
+                    pass
         return report, excerpt

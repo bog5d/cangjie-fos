@@ -12,6 +12,13 @@ interface Props {
   onRequestRefresh?: () => void;
 }
 
+const STAGE_TOOLTIP: Record<string, string> = {
+  teaser: "Teaser：初步接触阶段，向投资机构发送初步材料并完成首次沟通",
+  dd: "DD（Due Diligence）：尽职调查，投资机构深度核查阶段，通常为签约前最后一步",
+  term_sheet: "Term Sheet：投资意向书，机构表达投资意向并协商条款",
+  closed: "Closed：已签约完成，资金到账",
+};
+
 export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefresh }: Props) {
   const [settleOpen, setSettleOpen] = useState(false);
   const [settleBusy, setSettleBusy] = useState(false);
@@ -68,7 +75,9 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="font-display text-xs uppercase tracking-[0.35em] text-cyan/90">
-            War Room Map · API
+            <span title="机构融资漏斗：追踪各投资机构从接触到签约的进展阶段">Pipeline</span>
+            {" · "}
+            <span title="War Room Map：融资作战全景看板，汇总机构漏斗与资料健康度">War Room</span>
           </p>
           <h1 className="mt-2 font-display text-2xl font-bold text-white md:text-3xl">
             {dashboard.headline || data.headline}
@@ -155,7 +164,12 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-display text-lg text-white">{s.title}</span>
+                  <span
+                    className="font-display text-lg text-white"
+                    title={STAGE_TOOLTIP[s.key]}
+                  >
+                    {s.title}
+                  </span>
                   <StatusPill status={s.status} />
                 </div>
                 <p className="mt-1 text-xs text-slate-400">{s.subtitle}</p>

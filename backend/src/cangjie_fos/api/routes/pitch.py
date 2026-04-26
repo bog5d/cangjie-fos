@@ -1,14 +1,17 @@
 """LangGraph 融资评估 REST 桥接（Phase 2 SPEC A5）+ Phase 3 对话/上传。"""
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 
+from cangjie_fos.api.upload_io import read_upload_limited
+from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
 from cangjie_fos.core.paths import ensure_pitch_coach_runtime
 from cangjie_fos.core.thread_sqlite import list_threads, upsert_thread
 from cangjie_fos.schemas.pitch_chat import (
@@ -27,15 +30,19 @@ from cangjie_fos.schemas.pitch_upload import (
     PitchReviewCommitResponse,
     PitchReviewResponse,
     PitchUploadAck,
+    WordsSummary,
 )
 from cangjie_fos.services.html_report_service import generate_job_html_report
 from cangjie_fos.services.npc_chat_graph import export_thread_messages, invoke_npc_chat
 from cangjie_fos.services.pitch_graph_service import PitchGraphService
 from cangjie_fos.services.pitch_failure_present import resolve_stored_job_errors
+from cangjie_fos.services.evolution_capture import capture_review_diff
+from cangjie_fos.services.evolution_extractor import run_preference_extraction
 from cangjie_fos.services.pitch_job_db import db_job_get, db_job_update
 from cangjie_fos.services.pitch_job_store import job_create, job_get, job_list_for_tenant
 from cangjie_fos.services.pitch_upload_pipeline import run_pitch_upload_job
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/pitch", tags=["pitch"])
 
 
@@ -128,22 +135,44 @@ def npc_thread_messages(thread_id: str) -> PitchThreadMessagesResponse:
 
 @router.post("/upload", response_model=PitchUploadAck)
 async def pitch_upload(
+    request: Request,
     background_tasks: BackgroundTasks,
     tenant_id: str = Form(...),
     file: UploadFile = File(...),
 ) -> PitchUploadAck:
-    raw = await file.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="empty file")
+    if not try_reserve_jobs(1):
+        raise HTTPException(
+            status_code=429,
+            detail={"code": "E_QUEUE_FULL", "message": "任务队列已满，请稍后再试"},
+        )
+    try:
+        raw = await read_upload_limited(file)
+        if not raw:
+            raise HTTPException(status_code=400, detail="empty file")
+    except HTTPException:
+        release_job_slot()
+        raise
     job_id = uuid.uuid4().hex
     job_create(job_id, tenant_id)
     fname = file.filename or "upload.bin"
-    background_tasks.add_task(
-        run_pitch_upload_job,
-        job_id=job_id,
-        raw_bytes=raw,
-        filename=fname,
-        tenant_id=tenant_id,
+
+    def _run() -> None:
+        try:
+            run_pitch_upload_job(
+                job_id=job_id,
+                raw_bytes=raw,
+                filename=fname,
+                tenant_id=tenant_id,
+            )
+        finally:
+            release_job_slot()
+
+    background_tasks.add_task(_run)
+    logger.info(
+        "pitch_upload_queued request_id=%s job_id=%s tenant_id=%s",
+        getattr(request.state, "request_id", ""),
+        job_id,
+        tenant_id,
     )
     return PitchUploadAck(job_id=job_id, status=PitchJobStatus.PENDING)
 
@@ -160,6 +189,9 @@ def pitch_job_list(
         errs = resolve_stored_job_errors(j, jid)
         # 仅 completed 且确有 report 才视为可消费，避免与转写中态竞态导致前端误显「查看报告」
         has_report = bool(rep is not None and st == PitchJobStatus.COMPLETED)
+        # substatus lives only in SQLite (not in-memory store)
+        db_row = db_job_get(jid)
+        substatus = db_row.get("substatus") if db_row else None
         out.append(
             PitchJobSummary(
                 job_id=jid,
@@ -173,6 +205,8 @@ def pitch_job_list(
                 error_code=errs["error_code"],
                 error=errs["error"],
                 has_report=has_report,
+                warnings=j.get("warnings"),
+                substatus=substatus,
             )
         )
     return out
@@ -184,6 +218,8 @@ def pitch_job_status(job_id: str) -> PitchJobStatusResponse:
     if not j:
         raise HTTPException(status_code=404, detail="unknown job")
     errs = resolve_stored_job_errors(j, job_id)
+    job_row = db_job_get(job_id)
+    warnings = job_row.get("warnings") if job_row else None
     return PitchJobStatusResponse(
         job_id=job_id,
         status=j["status"],
@@ -196,6 +232,7 @@ def pitch_job_status(job_id: str) -> PitchJobStatusResponse:
         error_detail=errs["error_detail"],
         error_code=errs["error_code"],
         error=errs["error"],
+        warnings=warnings,
     )
 
 
@@ -212,7 +249,12 @@ def pitch_job_review_get(job_id: str) -> PitchReviewResponse:
         raise HTTPException(status_code=404, detail="unknown job")
 
     words_json = job_row.get("words_json")
-    words_total = len(words_json) if isinstance(words_json, list) else 0
+    words_list = words_json if isinstance(words_json, list) else []
+    words_total = len(words_list)
+    duration_sec = 0.0
+    if words_list:
+        last = words_list[-1]
+        duration_sec = float(last.get("end_time", 0) or 0)
 
     audio_path = job_row.get("audio_path")
     audio_available = bool(audio_path and Path(audio_path).exists())
@@ -223,14 +265,17 @@ def pitch_job_review_get(job_id: str) -> PitchReviewResponse:
         original_report=job_row.get("original_report"),
         edited_report=job_row.get("edited_report"),
         committed_at=job_row.get("committed_at"),
-        words_total=words_total,
+        words_summary=WordsSummary(total_words=words_total, duration_sec=duration_sec),
         audio_available=audio_available,
+        interviewee=job_row.get("interviewee"),
     )
 
 
 @router.patch("/jobs/{job_id}/review", response_model=PitchReviewCommitResponse)
-def pitch_job_review_commit(job_id: str, body: PitchReviewCommitRequest) -> PitchReviewCommitResponse:
-    """Save human-edited report. Only writes edited_report — never touches original_report."""
+def pitch_job_review_commit(
+    job_id: str, body: PitchReviewCommitRequest, background_tasks: BackgroundTasks
+) -> PitchReviewCommitResponse:
+    """Save human-edited report and capture diff for self-evolution flywheel."""
     job_row = db_job_get(job_id)
     if job_row is None:
         raise HTTPException(status_code=404, detail="unknown job")
@@ -239,7 +284,20 @@ def pitch_job_review_commit(job_id: str, body: PitchReviewCommitRequest) -> Pitc
         raise HTTPException(status_code=422, detail="edited_report must be a non-empty dict")
 
     committed_at = time.time()
+    original_report: dict | None = job_row.get("original_report")
+    tenant_id: str = job_row.get("tenant_id", "unknown")
+
     db_job_update(job_id, edited_report=body.edited_report, committed_at=committed_at)
+
+    background_tasks.add_task(
+        capture_review_diff,
+        job_id=job_id,
+        tenant_id=tenant_id,
+        committed_at=committed_at,
+        original_report=original_report,
+        edited_report=body.edited_report,
+    )
+    background_tasks.add_task(run_preference_extraction, tenant_id=tenant_id)
 
     return PitchReviewCommitResponse(job_id=job_id, committed_at=committed_at)
 
@@ -263,6 +321,21 @@ def generate_html_report_endpoint(job_id: str) -> PitchHtmlReportResponse:
         job_id=job_id,
         html_path=str(result_path),
         generated_at=time.time(),
+    )
+
+
+@router.get("/jobs/{job_id}/html-report")
+def get_html_report_endpoint(job_id: str) -> FileResponse:
+    """Serve the generated HTML report file."""
+    from cangjie_fos.core.paths import get_backend_root  # noqa: PLC0415
+
+    report_path = get_backend_root() / "data" / "html_reports" / f"{job_id}.html"
+    if not report_path.exists():
+        raise HTTPException(status_code=404, detail="HTML report not yet generated")
+    return FileResponse(
+        path=str(report_path),
+        media_type="text/html",
+        filename=f"report_{job_id}.html",
     )
 
 
@@ -300,3 +373,55 @@ def pitch_job_audio(job_id: str) -> FileResponse:
         media_type=media_type,
         filename=f"pitch-{job_id}{suffix}",
     )
+
+
+@router.get("/health")
+def health_check() -> dict:
+    """系统健康检查：DB 连通性 + 目录 + 关键依赖。"""
+    from cangjie_fos.core.paths import get_backend_root  # noqa: PLC0415
+    from cangjie_fos.services.pitch_job_db import _connect  # noqa: PLC0415
+    import importlib
+
+    issues: list[str] = []
+
+    try:
+        conn = _connect()
+        conn.execute("SELECT 1")
+        conn.close()
+    except Exception as e:  # noqa: BLE001
+        issues.append(f"db: {e}")
+
+    root = get_backend_root()
+    for d in ["data/audio", "data/html_reports"]:
+        p = root / d
+        p.mkdir(parents=True, exist_ok=True)
+        if not p.is_dir():
+            issues.append(f"missing dir: {d}")
+
+    for pkg in ["pandas", "docx", "jinja2", "openai"]:
+        try:
+            importlib.import_module(pkg)
+        except ImportError:
+            issues.append(f"missing pkg: {pkg}")
+
+    status = "ok" if not issues else "degraded"
+    return {"status": status, "issues": issues}
+
+
+@router.get("/prefs")
+def get_investor_prefs(
+    tenant_id: str = Query(..., description="租户 ID"),
+    limit: int = Query(50, ge=1, le=200),
+) -> dict:
+    """返回该租户的历史投资人偏好列表及摘要。"""
+    from cangjie_fos.services.pitch_job_db import db_pref_list_for_tenant  # noqa: PLC0415
+    from cangjie_fos.services.evolution_injector import build_investor_context  # noqa: PLC0415
+
+    prefs = db_pref_list_for_tenant(tenant_id, limit=limit)
+    context = build_investor_context(tenant_id)
+    return {
+        "tenant_id": tenant_id,
+        "total": len(prefs),
+        "prefs": prefs,
+        "injected_context": context.get("investor_preferences", ""),
+    }

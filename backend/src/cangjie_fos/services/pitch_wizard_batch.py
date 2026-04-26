@@ -37,12 +37,19 @@ def build_session_notes(
     investor_name: str,
     interviewee: str,
     speaker_hint: str,
+    institution_name: str = "",
 ) -> str:
     parts: list[str] = []
+    inst = (institution_name or "").strip()
+    if inst:
+        # 明确标注：机构是"问方/访谈发起方"，防止 Coach 把机构名当被访公司
+        parts.append(f"【发起访谈的投资机构（问方）】{inst}")
     inv = (investor_name or "").strip()
     if inv:
-        parts.append(f"【接待投资人】{inv}")
+        parts.append(f"【接待投资人（具体负责人）】{inv}")
     sh = (speaker_hint or "").strip()
     if interviewee.strip() and sh:
-        parts.append(f"身份映射提示：被访谈人「{interviewee.strip()}」= {sh}。")
+        parts.append(f"身份映射提示：被访谈人「{interviewee.strip()}」= {sh}（答方）。")
+    elif interviewee.strip():
+        parts.append(f"被访谈人（答方）：{interviewee.strip()}")
     return "\n".join(parts).strip()

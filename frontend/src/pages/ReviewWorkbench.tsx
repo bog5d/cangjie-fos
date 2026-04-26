@@ -21,6 +21,13 @@ import type {
 
 const DEFAULT_TENANT = "demo-tenant";
 
+const PROCESSING_STATUSES = ["pending", "transcribing", "evaluating"];
+const STATUS_LABELS: Record<string, string> = {
+  pending: "排队等待中…",
+  transcribing: "语音转写中…",
+  evaluating: "LangGraph 评估中…",
+};
+
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
@@ -90,6 +97,23 @@ export default function ReviewWorkbench() {
       }
     })();
   }, [jobId]);
+
+  useEffect(() => {
+    if (!reviewData) return;
+    if (!PROCESSING_STATUSES.includes(reviewData.status)) return;
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await api.get<PitchReviewResponse>(`/api/pitch/jobs/${jobId}/review`);
+        setReviewData(data);
+        const base = data.edited_report ?? data.original_report;
+        if (base) {
+          originalRef.current = data.original_report;
+          setDraftReport(deepClone(base));
+        }
+      } catch { }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [reviewData?.status, jobId]);
 
   const updateDraft = useCallback((updater: (prev: AnalysisReport) => AnalysisReport) => {
     setDraftReport((prev) => {
@@ -182,10 +206,24 @@ export default function ReviewWorkbench() {
     );
   }
 
-  if (err || !draftReport || !reviewData) {
+  if (reviewData && PROCESSING_STATUSES.includes(reviewData.status)) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#0a0a14]">
-        <p className="text-rose-300 text-sm">{err ?? "数据异常"}</p>
+        <div className="w-8 h-8 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
+        <p className="text-slate-300 text-sm">{STATUS_LABELS[reviewData.status] ?? "处理中…"}</p>
+        <p className="text-slate-600 text-xs">每 5 秒自动刷新，完成后自动显示</p>
+        <button type="button" onClick={() => navigate(-1)} className="text-xs text-cyan-400 hover:text-cyan-300 mt-2">← 返回</button>
+      </div>
+    );
+  }
+
+  if (err || !draftReport || !reviewData) {
+    const isFailed = reviewData?.status === "failed";
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#0a0a14]">
+        <p className="text-rose-300 text-sm">
+          {isFailed ? "任务执行失败" : err ?? "数据异常"}
+        </p>
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -213,6 +251,7 @@ export default function ReviewWorkbench() {
         isReadonly={isCommitted}
         onChange={handleRiskChange}
         onDelete={handleRiskDelete}
+        intervieweeName={reviewData?.interviewee}
       />
       <AddRiskPointForm onAdd={handleAddRisk} disabled={isCommitted} />
     </div>
@@ -228,9 +267,10 @@ export default function ReviewWorkbench() {
         originalScore={reviewData.original_report.total_score}
         currentScore={draftReport.total_score}
         committedAt={reviewData.committed_at}
+        interviewee={reviewData.interviewee}
       />
       <WorkbenchNPCChat tenantId={tenantId} jobId={jobId} userName={userName} />
-      <HtmlReportPreview jobId={jobId} />
+      <HtmlReportPreview jobId={jobId} isDirty={isDirty} onCommitFirst={handleCommit} />
     </>
   );
 

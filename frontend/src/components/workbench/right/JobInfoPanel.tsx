@@ -9,6 +9,8 @@ interface JobInfoPanelProps {
   originalScore: number;
   currentScore: number;
   committedAt: number | null;
+  /** 上传向导填写的被访谈人 */
+  interviewee?: string | null;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -43,6 +45,7 @@ export default function JobInfoPanel({
   originalScore,
   currentScore,
   committedAt,
+  interviewee,
 }: JobInfoPanelProps) {
   const scoreModified = originalScore !== currentScore;
 
@@ -60,6 +63,12 @@ export default function JobInfoPanel({
         <Row label="状态">
           <StatusBadge status={status} />
         </Row>
+
+        {interviewee && interviewee.trim() ? (
+          <Row label="被访谈人">
+            <span className="text-cyan-200/90">{interviewee.trim()}</span>
+          </Row>
+        ) : null}
 
         {createdAt !== undefined && (
           <Row label="创建时间">

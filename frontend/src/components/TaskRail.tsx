@@ -14,6 +14,10 @@ export type PitchJobSummaryRow = {
   error_code?: string | null;
   /** 兼容旧 API；勿直接用于首屏展示 */
   error?: string | null;
+  /** 非致命告警，如机构情报抽取失败 */
+  warnings?: Record<string, string> | null;
+  /** 流水线子步骤进度文本（后端各阶段实时更新） */
+  substatus?: string | null;
 };
 
 export type TaskRailProps = {
@@ -104,11 +108,33 @@ function TaskFailSummaryChip({
   );
 }
 
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+function fmtElapsed(createdAt: number, nowMs: number): string {
+  const sec = Math.floor((nowMs / 1000) - createdAt);
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}m${s.toString().padStart(2, "0")}s`;
+}
+
 export function TaskRail({ tenantId, onJobCompleted, onOpenReport }: TaskRailProps) {
   const [rows, setRows] = useState<PitchJobSummaryRow[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const prevStatus = useRef<Map<string, string>>(new Map());
   const bootstrapped = useRef(false);
+  const hasActive = rows.some(
+    (r) => r.status === "pending" || r.status === "transcribing" || r.status === "evaluating",
+  );
+  const now = useNow(hasActive);
 
   const onJobCompletedRef = useRef(onJobCompleted);
   onJobCompletedRef.current = onJobCompleted;
@@ -196,14 +222,26 @@ export function TaskRail({ tenantId, onJobCompleted, onOpenReport }: TaskRailPro
               >
                 <div className="flex items-center justify-between gap-1">
                   <span className="font-mono text-[10px] text-slate-300">{shortId(r.job_id)}</span>
-                  <span
-                    className={`text-[9px] font-bold uppercase tracking-wider ${
-                      failed ? "text-rose-300" : done ? "text-emerald-300" : "text-cyan-200"
-                    }`}
-                  >
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {pulse && !failed && (
+                      <span className="text-[9px] tabular-nums text-slate-500">
+                        {fmtElapsed(r.created_at, now)}
+                      </span>
+                    )}
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider ${
+                        failed ? "text-rose-300" : done ? "text-emerald-300" : "text-cyan-200"
+                      }`}
+                    >
+                      {STATUS_LABEL[r.status] ?? r.status}
+                    </span>
+                  </div>
                 </div>
+                {pulse && !failed && r.substatus && (
+                  <p className="truncate text-[9px] leading-snug text-cyan-300/70" title={r.substatus}>
+                    {r.substatus.length > 38 ? `${r.substatus.slice(0, 36)}…` : r.substatus}
+                  </p>
+                )}
                 {canOpenReport ? (
                   <button
                     type="button"
@@ -216,6 +254,14 @@ export function TaskRail({ tenantId, onJobCompleted, onOpenReport }: TaskRailPro
                   <span className="text-[9px] text-slate-500">报告生成中…</span>
                 ) : null}
                 {failed ? <TaskFailSummaryChip jobId={r.job_id} row={r} /> : null}
+                {done && r.warnings?.institution_extract ? (
+                  <p
+                    className="rounded border border-amber-500/40 bg-amber-900/20 px-1.5 py-0.5 text-[9px] leading-snug text-amber-200"
+                    title={r.warnings.institution_extract}
+                  >
+                    ⚠️ 机构未自动抽取，可手动添加
+                  </p>
+                ) : null}
               </div>
             );
           })

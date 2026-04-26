@@ -10,10 +10,12 @@ type RiskLevel = RiskPoint["risk_level"];
 
 const DEFAULT_FORM: Omit<RiskPoint, "_rid"> = {
   risk_level: "一般",
+  problem_summary: "",
+  risk_type: "",
   tier1_general_critique: "",
   tier2_qa_alignment: "",
   improvement_suggestion: "",
-  original_text: "",
+  original_text: "",   // kept in data model; not displayed in UI
   start_word_index: 0,
   end_word_index: 0,
   score_deduction: 0,
@@ -78,19 +80,6 @@ export default function AddRiskPointForm({ onAdd, disabled }: AddRiskPointFormPr
               <option value="一般">一般</option>
               <option value="轻微">轻微</option>
             </select>
-          </div>
-
-          {/* 原文实录 */}
-          <div>
-            <label className="text-xs text-slate-400 block mb-1">原文实录</label>
-            <textarea
-              rows={2}
-              className={`${inputCls} resize-none`}
-              placeholder="粘贴或输入原文片段"
-              value={form.original_text}
-              disabled={disabled}
-              onChange={(e) => handleChange("original_text", e.target.value)}
-            />
           </div>
 
           {/* 改进建议 */}
