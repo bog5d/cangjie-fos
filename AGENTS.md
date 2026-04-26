@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本状态（最后更新：2026-04-26）
+## 当前版本状态（最后更新：2026-04-27）
 
 | 项目 | 状态 |
 |------|------|
@@ -118,12 +118,29 @@ git push origin <分支名>
 
 ---
 
-## 下一步开发（Phase 7.0，待认领）
+## 战略方向（已对齐，新 AI 必读）
 
-1. **R3 LLM 重试**：`pitch_graph_service.py` 加指数退避重试，新增 `POST /api/pitch/jobs/{id}/retry-eval`
-2. **WebSocket 实时推送**：替代 Task Rail 1 秒轮询
-3. **Doctor 模块强化**：自动修复常见环境问题（不只诊断）
-4. 详见 `CHANGELOG.md` [Unreleased] 节
+**FSS（AI Pitch Coach）将完全吸收进 FOS，不是外部依赖，是子模块。**
+
+五阶段合并计划：
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| 阶段0 | R3：LLM重试 + 重跑评估按钮 | ⏳ 待开始（优先） |
+| 阶段1 | FSS代码移入 `engine/` 子包，消灭 sys.path 注入 | ⏳ 待开始 |
+| 阶段2 | FSS JSON数据 → FOS SQLite统一（贡献度/素材匹配表） | ⏳ 待开始 |
+| 阶段3 | APScheduler夜间自动进化任务 | ⏳ 待开始 |
+| 阶段4 | 全数据关联（路演→素材→机构→贡献者） | ⏳ 待开始 |
+| 阶段5 | Doctor强化（外发版自愈） | ⏳ 待开始 |
+
+FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
+
+## 立即要做（阶段0 — R3）
+
+- **文件**：`pitch_graph_service.py`、`pitch.py`（新增路由）、`TaskRail.tsx`
+- LLM 调用加指数退避重试（ConnectionError/TimeoutError → 3次，间隔2/4/8s）
+- 新增 `POST /api/pitch/jobs/{job_id}/retry-eval`（读 words_json 重跑 LangGraph，不需重新上传音频）
+- 前端 Task Rail：failed 卡片加"重跑评估"按钮（条件：`has_words_json=true`）
+- 测试：mock ConnectionError → 验证3次重试后才 fail
 
 ---
 
