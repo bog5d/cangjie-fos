@@ -16,18 +16,23 @@
 - WebSocket 实时推送替代 Task Rail 轮询
 - 路演倒计时计时器（审查台）
 
-## [0.3.0] — 2026-04-27  Phase 7.0 阶段1 FSS 代码合并
+## [0.3.0] — 2026-04-28  Phase 7.0 阶段1 FSS 代码完全合并
 
 ### Changed
-- **FSS 核心模块迁入 `engine/` 子包**：`transcriber`、`memory_engine`、`asset_bridge`、`schema`、`retry_policy`、`language_detector`、`investor_matcher`、`growth_engine` 及 coach 流水线（`agent_nodes/workflow/runner/state/sanitize/tenant/llm_judge`）共 16 个模块从独立 FSS 仓库复制为 FOS 内部子模块
-- **消灭 sys.path 注入（主路径）**：`pitch_upload_pipeline` 和 `pitch_graph_service` 改为顶层 `from cangjie_fos.engine.*` 直接导入，不再调用 `ensure_pitch_coach_runtime()`
-- **删除 `adapters/coach_memory_bridge.py`**：逻辑内联到 `api/routes/feedback.py`，使用 `engine.memory_engine` + `engine.coach.agent_tenant`
-- **删除 `adapters/institution_coach_sync.py`**：移除对 FSS `institution_registry` 的依赖（功能留待 Phase 2 补全）
-- **`core/__init__.py` 导出精简**：移除 `ensure_pitch_coach_import_path`、`get_pitch_coach_root` 两个已无外部消费者的导出
+- **FSS 全部核心模块迁入 `engine/` 子包**（共 23 个模块）：
+  - 第一批：`transcriber`、`memory_engine`、`asset_bridge`、`schema`、`retry_policy`、`language_detector`、`investor_matcher`、`growth_engine`
+  - coach 流水线：`agent_nodes`、`agent_workflow`、`agent_runner`、`agent_state`、`agent_sanitize`、`agent_tenant`、`llm_judge`
+  - 第二批（2026-04-28补完）：`asr_polish`、`audio_preprocess`、`document_reader`、`job_pipeline`、`report_builder`、`runtime_paths`、`sensitive_words`
+- **全面消灭 `ensure_pitch_coach_runtime()` / `ensure_pitch_coach_import_path()` 调用**：`pitch_upload_pipeline`、`pitch_graph_service`、`audio_service`、`html_report_service`、`pitch_wizard_runner`、`tenant_context`、`api/routes/pitch.py`、`api/routes/pitch_wizard.py` 全部改为 `from cangjie_fos.engine.*` 直接导入
+- **engine/ 内部 import 修正**：`asr_polish`、`report_builder`、`job_pipeline` 内部引用改为 `cangjie_fos.engine.*`
+- **删除 `adapters/coach_memory_bridge.py`**：逻辑内联，使用 `engine.memory_engine` + `engine.coach.agent_tenant`
+- **删除 `adapters/institution_coach_sync.py`**：依赖清除
+- **测试全面更新**：`test_p0_retry_eval`、`test_p0_pipeline_persistence`、`test_p1b_html_report_service`（完全重写为 engine.* patch）、`test_pipeline_e2e`、`test_wizard_pipeline_e2e` 均更新 mock 路径
 
-### 注意（Phase 2 待处理）
-- `audio_service.py`、`html_report_service.py`、`pitch_wizard_runner.py` 仍依赖 `ensure_pitch_coach_runtime()`（对应 `audio_preprocess`、`schema/report_builder`、`job_pipeline` 链）
-- `core/paths.py` 中 `ensure_pitch_coach_import_path` 函数暂未删除
+### 结果
+- `ensure_pitch_coach_runtime()` 在 FOS 业务代码中**调用次数 = 0**（函数定义保留在 `core/paths.py` 以防万一）
+- 测试基线：**239 passed**，无需 `CANGJIE_PITCH_COACH_ROOT` 环境变量（mock 已内化）
+- FSS 仓库（`D:\AI_Workspaces\AI_Pitch_Coach`）可正式归档
 
 ---
 

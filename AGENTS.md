@@ -134,19 +134,30 @@ git push origin <分支名>
 
 FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
 
-## 立即要做（阶段1 — FSS 代码合并）
+## 立即要做（阶段2 — FSS JSON 数据迁移 → FOS SQLite）
 
-**核心目标**：消灭 `ensure_pitch_coach_import_path()` sys.path 注入，FSS 成为 FOS 子包
+**阶段1已完工（v0.3.0）**：`ensure_pitch_coach_runtime()` 在业务代码中调用次数 = 0，engine/ 含 23 个模块，239 passed。
 
-- 在 FOS 创建 `backend/src/cangjie_fos/engine/` 目录
-- 将 FSS 核心文件复制进来：`transcriber.py`、`agent_runner.py`、`agent_nodes.py`、`investor_matcher.py`、`growth_engine.py`、`memory_engine.py`、`asset_bridge.py`
-- 修改所有 FOS import：从动态 sys.path 注入改为直接 `from cangjie_fos.engine.xxx import yyy`
-- 删除 `core/paths.py` 中的 `ensure_pitch_coach_import_path`、`get_pitch_coach_root`
-- 更新测试：mock 路径从 FSS 改为 `cangjie_fos.engine.*`
-- **顺带完成（阶段1附加项）**：
-  - 文件上传 MIME 类型校验（`pitch.py` 上传路由加文件头字节校验，拒绝非音频文件）
-  - LLM 多模型 fallback（`pitch_graph_service.py` 支持 primary/fallback 两个模型，primary 失败自动切换）
-- CI 验证：239+ passed，无需 `CANGJIE_PITCH_COACH_ROOT` 环境变量
+**阶段2核心目标**：FSS JSON 文件存储 → FOS SQLite 统一，贡献度、素材匹配上线
+
+新增 SQLite 表（`pitch_job_db.py`）：
+- `executive_memories` — 高管错题本（从 FSS `.executive_memory/` 迁移）
+- `material_contributions` — 素材贡献度（从 asset_index.json metadata 提取）
+- `contribution_scores` — 贡献度汇总
+- `material_match_history` — 素材-机构匹配历史
+
+新增 API：
+- `GET /api/materials/health` — 素材健康度
+- `POST /api/materials/match` — 为机构生成素材清单
+- `GET /api/contributions` — 贡献度排行
+
+技术增强（同期完成）：
+- SQLite WAL 模式（`PRAGMA journal_mode=WAL`）
+- `/api/pitch/jobs` 分页（`?page=1&size=20`）
+- structlog 结构化日志
+- 前端懒加载（ReviewWorkbench / WarRoomMap / AssetLibrary）
+
+CI 验证：239+ passed，CHANGELOG 更新为 v0.3.x
 
 ---
 
