@@ -6,13 +6,28 @@
 
 ## [Unreleased] — 开发中
 
+### Phase 7.0 阶段2（2026-04-28 完成）
+
+#### Added
+- **`executive_memories` SQLite 表**：高管错题本迁移，含 UUID 幂等插入、按公司/标签查询、删除（`db_exec_memory_insert / list / delete`）
+- **`material_contributions` SQLite 表**：素材贡献度，ON CONFLICT 累加 `usage_count / contribution_score`（`db_material_contribution_upsert / list`）
+- **`contribution_scores` SQLite 表**：贡献者汇总，ON CONFLICT 累加（`db_contribution_score_upsert / list`）
+- **`material_match_history` SQLite 表**：素材-机构匹配历史（`db_material_match_insert / list`）
+- **`GET /api/materials/health`**：素材健康度列表（usage_count / contribution_score / tags）
+- **`POST /api/materials/match`**：为机构生成素材清单并记录匹配历史（tag/keyword 评分）
+- **`GET /api/contributions`**：贡献度排行（score DESC），支持 `?limit=N`
+- **分页参数**：`GET /api/pitch/jobs` 支持 `?page=1&size=20`（page>1 时走 SQLite OFFSET）
+- **structlog 25.5.0**：新增结构化日志依赖，应用于 `materials` 路由
+
+#### Changed
+- **前端懒加载**：`WarRoomMap` 和 `AssetLibrary` 改为 `React.lazy()` 按需加载，bundle 拆分为独立 chunk
+
 ### 战略规划更新（2026-04-27）
 - 战略计划文件已纳入 Kimi 外部评审建议：SQLite WAL 模式、LLM 多模型 fallback、文件 MIME 校验、前端懒加载、structlog、分页 API（见 `plans/adaptive-finding-valiant.md`）
 - 明确拒绝：Git Submodule、aiosqlite、Celery、Prometheus、K8s、PostgreSQL 迁移
 
 ### 待做（近期）
-- **阶段1（进行中）**：FSS 核心代码迁入 `engine/` 子包，消灭 sys.path 注入
-- **阶段1附加**：文件上传 MIME 校验 + LLM 多模型 fallback
+- **阶段3**：APScheduler 夜间自动进化任务
 - WebSocket 实时推送替代 Task Rail 轮询
 - 路演倒计时计时器（审查台）
 
