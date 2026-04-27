@@ -8,6 +8,7 @@ from cangjie_fos.api.routes import (
     dashboard,
     feedback,
     health,
+    materials,
     npc,
     pipeline,
     pitch,
@@ -33,3 +34,4 @@ api_router.include_router(pitch.router)
 api_router.include_router(pitch_wizard.router)
 api_router.include_router(npc.router)
 api_router.include_router(assets.router)
+api_router.include_router(materials.router)
