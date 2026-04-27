@@ -6,7 +6,13 @@
 
 ## [Unreleased] — 开发中
 
-### 待做
+### 战略规划更新（2026-04-27）
+- 战略计划文件已纳入 Kimi 外部评审建议：SQLite WAL 模式、LLM 多模型 fallback、文件 MIME 校验、前端懒加载、structlog、分页 API（见 `plans/adaptive-finding-valiant.md`）
+- 明确拒绝：Git Submodule、aiosqlite、Celery、Prometheus、K8s、PostgreSQL 迁移
+
+### 待做（近期）
+- **阶段1（进行中）**：FSS 核心代码迁入 `engine/` 子包，消灭 sys.path 注入
+- **阶段1附加**：文件上传 MIME 校验 + LLM 多模型 fallback
 - WebSocket 实时推送替代 Task Rail 轮询
 - 路演倒计时计时器（审查台）
 

@@ -136,12 +136,17 @@ FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
 
 ## 立即要做（阶段1 — FSS 代码合并）
 
+**核心目标**：消灭 `ensure_pitch_coach_import_path()` sys.path 注入，FSS 成为 FOS 子包
+
 - 在 FOS 创建 `backend/src/cangjie_fos/engine/` 目录
 - 将 FSS 核心文件复制进来：`transcriber.py`、`agent_runner.py`、`agent_nodes.py`、`investor_matcher.py`、`growth_engine.py`、`memory_engine.py`、`asset_bridge.py`
 - 修改所有 FOS import：从动态 sys.path 注入改为直接 `from cangjie_fos.engine.xxx import yyy`
 - 删除 `core/paths.py` 中的 `ensure_pitch_coach_import_path`、`get_pitch_coach_root`
 - 更新测试：mock 路径从 FSS 改为 `cangjie_fos.engine.*`
-- CI 验证：239+ passed，无需 PITCH_COACH_ROOT 环境变量
+- **顺带完成（阶段1附加项）**：
+  - 文件上传 MIME 类型校验（`pitch.py` 上传路由加文件头字节校验，拒绝非音频文件）
+  - LLM 多模型 fallback（`pitch_graph_service.py` 支持 primary/fallback 两个模型，primary 失败自动切换）
+- CI 验证：239+ passed，无需 `CANGJIE_PITCH_COACH_ROOT` 环境变量
 
 ---
 
