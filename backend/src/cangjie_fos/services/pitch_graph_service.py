@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from cangjie_fos.core.paths import ensure_pitch_coach_runtime
+from cangjie_fos.engine.coach.agent_runner import run_pitch_evaluation_via_langgraph_with_state
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,6 @@ class PitchGraphService:
         historical_memories: list[Any] | None = None,
         trace_id: str | None = None,
     ) -> tuple[Any, dict[str, Any]]:
-        ensure_pitch_coach_runtime()
-        from agent_runner import run_pitch_evaluation_via_langgraph_with_state
-
         last_exc: Exception | None = None
         for attempt in range(len(_RETRY_DELAYS) + 1):  # 0, 1, 2, 3
             if attempt > 0:

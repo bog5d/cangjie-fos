@@ -6,7 +6,6 @@ Phase 0 R3 — LLM 指数退避重试 + retry-eval 端点测试。
 """
 from __future__ import annotations
 
-import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
@@ -78,12 +77,9 @@ class TestLLMRetryLogic:
         mock_runner = MagicMock(side_effect=ConnectionError("mock connection error"))
 
         with (
-            patch("cangjie_fos.services.pitch_graph_service.ensure_pitch_coach_runtime"),
-            patch.dict(
-                sys.modules,
-                {"agent_runner": SimpleNamespace(
-                    run_pitch_evaluation_via_langgraph_with_state=mock_runner
-                )},
+            patch(
+                "cangjie_fos.services.pitch_graph_service.run_pitch_evaluation_via_langgraph_with_state",
+                mock_runner,
             ),
             patch("cangjie_fos.services.pitch_graph_service.time.sleep") as mock_sleep,
         ):
@@ -113,12 +109,9 @@ class TestLLMRetryLogic:
         )
 
         with (
-            patch("cangjie_fos.services.pitch_graph_service.ensure_pitch_coach_runtime"),
-            patch.dict(
-                sys.modules,
-                {"agent_runner": SimpleNamespace(
-                    run_pitch_evaluation_via_langgraph_with_state=mock_runner
-                )},
+            patch(
+                "cangjie_fos.services.pitch_graph_service.run_pitch_evaluation_via_langgraph_with_state",
+                mock_runner,
             ),
             patch("cangjie_fos.services.pitch_graph_service.time.sleep"),
         ):
@@ -136,12 +129,9 @@ class TestLLMRetryLogic:
         mock_runner = MagicMock(side_effect=ValueError("schema validation failed"))
 
         with (
-            patch("cangjie_fos.services.pitch_graph_service.ensure_pitch_coach_runtime"),
-            patch.dict(
-                sys.modules,
-                {"agent_runner": SimpleNamespace(
-                    run_pitch_evaluation_via_langgraph_with_state=mock_runner
-                )},
+            patch(
+                "cangjie_fos.services.pitch_graph_service.run_pitch_evaluation_via_langgraph_with_state",
+                mock_runner,
             ),
             patch("cangjie_fos.services.pitch_graph_service.time.sleep") as mock_sleep,
         ):
@@ -160,12 +150,9 @@ class TestLLMRetryLogic:
         mock_runner = MagicMock(side_effect=TimeoutError("mock timeout"))
 
         with (
-            patch("cangjie_fos.services.pitch_graph_service.ensure_pitch_coach_runtime"),
-            patch.dict(
-                sys.modules,
-                {"agent_runner": SimpleNamespace(
-                    run_pitch_evaluation_via_langgraph_with_state=mock_runner
-                )},
+            patch(
+                "cangjie_fos.services.pitch_graph_service.run_pitch_evaluation_via_langgraph_with_state",
+                mock_runner,
             ),
             patch("cangjie_fos.services.pitch_graph_service.time.sleep") as mock_sleep,
         ):
