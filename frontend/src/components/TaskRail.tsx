@@ -16,6 +16,8 @@ export type PitchJobSummaryRow = {
   error?: string | null;
   /** 非致命告警，如机构情报抽取失败 */
   warnings?: Record<string, string> | null;
+  /** 是否有 words_json，有则可重跑评估 */
+  has_words_json?: boolean;
   /** 流水线子步骤进度文本（后端各阶段实时更新） */
   substatus?: string | null;
 };
@@ -178,6 +180,15 @@ export function TaskRail({ tenantId, onJobCompleted, onOpenReport }: TaskRailPro
     }
   }, [tenantId]);
 
+  const handleRetryEval = useCallback(async (jobId: string) => {
+    try {
+      await api.post(`/api/pitch/jobs/${jobId}/retry-eval`);
+      await tick();
+    } catch {
+      // error visible on next tick via normal polling
+    }
+  }, [tick]);
+
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
@@ -253,7 +264,20 @@ export function TaskRail({ tenantId, onJobCompleted, onOpenReport }: TaskRailPro
                 ) : done && !r.has_report ? (
                   <span className="text-[9px] text-slate-500">报告生成中…</span>
                 ) : null}
-                {failed ? <TaskFailSummaryChip jobId={r.job_id} row={r} /> : null}
+                {failed ? (
+                  <>
+                    <TaskFailSummaryChip jobId={r.job_id} row={r} />
+                    {r.has_words_json ? (
+                      <button
+                        type="button"
+                        className="mt-0.5 rounded border border-cyan/30 bg-black/30 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200 hover:bg-cyan/10"
+                        onClick={() => void handleRetryEval(r.job_id)}
+                      >
+                        重跑评估
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
                 {done && r.warnings?.institution_extract ? (
                   <p
                     className="rounded border border-amber-500/40 bg-amber-900/20 px-1.5 py-0.5 text-[9px] leading-snug text-amber-200"
