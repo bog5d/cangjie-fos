@@ -1,14 +1,16 @@
-"""LangGraph 融资评估：薄封装 `agent_runner`（SPEC A4）。"""
+"""LangGraph 融资评估：薄封装 `agent_runner`（SPEC A4）+ 指数退避重试（R3）。"""
 from __future__ import annotations
 
+import logging
+import time
 from collections.abc import Callable
 from typing import Any
-
-import logging
 
 from cangjie_fos.core.paths import ensure_pitch_coach_runtime
 
 logger = logging.getLogger(__name__)
+
+_RETRY_DELAYS = [2, 4, 8]  # seconds between attempt 1→2, 2→3, 3→4
 
 
 class PitchGraphService:
@@ -28,17 +30,36 @@ class PitchGraphService:
         ensure_pitch_coach_runtime()
         from agent_runner import run_pitch_evaluation_via_langgraph_with_state
 
-        report, excerpt = run_pitch_evaluation_via_langgraph_with_state(
-            tenant_id=tenant_id,
-            words=words,
-            model_choice=model_choice,
-            explicit_context=explicit_context,
-            qa_text=qa_text,
-            company_background=company_background,
-            on_notice=on_notice,
-            historical_memories=historical_memories,
-            trace_id=trace_id,
-        )
+        last_exc: Exception | None = None
+        for attempt in range(len(_RETRY_DELAYS) + 1):  # 0, 1, 2, 3
+            if attempt > 0:
+                delay = _RETRY_DELAYS[attempt - 1]
+                logger.warning(
+                    "llm_retry attempt=%d/%d sleep=%ds reason=%s",
+                    attempt + 1,
+                    len(_RETRY_DELAYS) + 1,
+                    delay,
+                    last_exc,
+                )
+                time.sleep(delay)
+            try:
+                report, excerpt = run_pitch_evaluation_via_langgraph_with_state(
+                    tenant_id=tenant_id,
+                    words=words,
+                    model_choice=model_choice,
+                    explicit_context=explicit_context,
+                    qa_text=qa_text,
+                    company_background=company_background,
+                    on_notice=on_notice,
+                    historical_memories=historical_memories,
+                    trace_id=trace_id,
+                )
+                break  # success
+            except (ConnectionError, TimeoutError) as e:
+                last_exc = e
+        else:
+            raise last_exc  # type: ignore[misc]
+
         try:
             from cangjie_fos.services.institution_intel_extract import extract_and_persist_institution_intel
 
