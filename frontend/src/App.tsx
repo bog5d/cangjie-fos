@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api/client";
 import { AchievementFlash } from "./components/AchievementFlash";
 import { ExpHud } from "./components/ExpHud";
 import { NPCPanel } from "./components/NPCPanel";
 import { ScoreToastStack, type ScoreToastItem } from "./components/ScoreToast";
-import { AssetLibrary } from "./components/AssetLibrary";
 import { PitchJobHistory } from "./components/PitchJobHistory";
 import { InstitutionList } from "./components/InstitutionList";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
-import { WarRoomMap } from "./components/WarRoomMap";
+
+const AssetLibrary = lazy(() =>
+  import("./components/AssetLibrary").then((m) => ({ default: m.AssetLibrary }))
+);
+const WarRoomMap = lazy(() =>
+  import("./components/WarRoomMap").then((m) => ({ default: m.WarRoomMap }))
+);
 import type { DashboardStatus } from "./types/dashboard";
 import type { InstitutionProfile } from "./types/institution";
 import type { ReadyPayload } from "./types/ready";
@@ -224,13 +229,15 @@ export default function App() {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <WarRoomMap
-          dashboard={dashboard}
-          loading={loading}
-          error={err}
-          tenantId={tenant}
-          onRequestRefresh={() => void refreshWarData()}
-        />
+        <Suspense fallback={<div className="text-slate-500 text-xs p-2">加载地图…</div>}>
+          <WarRoomMap
+            dashboard={dashboard}
+            loading={loading}
+            error={err}
+            tenantId={tenant}
+            onRequestRefresh={() => void refreshWarData()}
+          />
+        </Suspense>
         <NPCPanel
           tenantId={tenant}
           onExpEvent={onExpEvent}
@@ -241,7 +248,9 @@ export default function App() {
       </div>
       <InstitutionList tenantId={tenant} items={institutions} />
       <PitchJobHistory tenantId={tenant} />
-      <AssetLibrary />
+      <Suspense fallback={<div className="text-slate-500 text-xs p-2">加载资料库…</div>}>
+        <AssetLibrary />
+      </Suspense>
       <PitchUploadWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
