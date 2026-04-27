@@ -76,6 +76,7 @@ def _run_retry_eval(*, job_id: str, tenant_id: str, words_json: list) -> None:
             report=report_dict,
             exp_delta=20,
             exp_reason="重跑 LangGraph 评估完成",
+            substatus=None,
         )
         db_job_update(
             job_id,
@@ -437,6 +438,8 @@ def retry_eval(job_id: str, background_tasks: BackgroundTasks) -> PitchUploadAck
         error_detail=None,
         error_code=None,
     )
+    from cangjie_fos.services.pitch_job_store import job_update as _job_update  # noqa: PLC0415
+    _job_update(job_id, status=PitchJobStatus.EVALUATING)
 
     background_tasks.add_task(
         _run_retry_eval,
