@@ -16,6 +16,19 @@
 - WebSocket 实时推送替代 Task Rail 轮询
 - 路演倒计时计时器（审查台）
 
+## [0.3.0] — 2026-04-27  Phase 7.0 阶段1 FSS 代码合并
+
+### Changed
+- **FSS 核心模块迁入 `engine/` 子包**：`transcriber`、`memory_engine`、`asset_bridge`、`schema`、`retry_policy`、`language_detector`、`investor_matcher`、`growth_engine` 及 coach 流水线（`agent_nodes/workflow/runner/state/sanitize/tenant/llm_judge`）共 16 个模块从独立 FSS 仓库复制为 FOS 内部子模块
+- **消灭 sys.path 注入（主路径）**：`pitch_upload_pipeline` 和 `pitch_graph_service` 改为顶层 `from cangjie_fos.engine.*` 直接导入，不再调用 `ensure_pitch_coach_runtime()`
+- **删除 `adapters/coach_memory_bridge.py`**：逻辑内联到 `api/routes/feedback.py`，使用 `engine.memory_engine` + `engine.coach.agent_tenant`
+- **删除 `adapters/institution_coach_sync.py`**：移除对 FSS `institution_registry` 的依赖（功能留待 Phase 2 补全）
+- **`core/__init__.py` 导出精简**：移除 `ensure_pitch_coach_import_path`、`get_pitch_coach_root` 两个已无外部消费者的导出
+
+### 注意（Phase 2 待处理）
+- `audio_service.py`、`html_report_service.py`、`pitch_wizard_runner.py` 仍依赖 `ensure_pitch_coach_runtime()`（对应 `audio_preprocess`、`schema/report_builder`、`job_pipeline` 链）
+- `core/paths.py` 中 `ensure_pitch_coach_import_path` 函数暂未删除
+
 ---
 
 ## [0.2.1] — 2026-04-27  Phase 7.0 R3 LLM 重试 + 重跑评估

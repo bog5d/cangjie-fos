@@ -9,10 +9,10 @@
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | v0.2.1 |
+| 版本 | v0.3.0 |
 | 测试基线 | **239 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
 | 前端构建 | **零错误**（`cd frontend && npm run build`） |
-| 当前 Phase | **Phase 7.0 R3 完工 → Phase 7.0 阶段1待开始** |
+| 当前 Phase | **Phase 7.0 阶段1完成（v0.3.0）→ Phase 7.0 阶段2待开始** |
 | 详细变更历史 | 见 `CHANGELOG.md` |
 
 ---
@@ -126,7 +126,7 @@ git push origin <分支名>
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | 阶段0 | R3：LLM重试 + 重跑评估按钮 | ✅ 完成（v0.2.1） |
-| 阶段1 | FSS代码移入 `engine/` 子包，消灭 sys.path 注入 | ⏳ 待开始（优先） |
+| 阶段1 | FSS代码移入 `engine/` 子包，消灭 sys.path 注入 | ✅ 完成（v0.3.0） |
 | 阶段2 | FSS JSON数据 → FOS SQLite统一（贡献度/素材匹配表） | ⏳ 待开始 |
 | 阶段3 | APScheduler夜间自动进化任务 | ⏳ 待开始 |
 | 阶段4 | 全数据关联（路演→素材→机构→贡献者） | ⏳ 待开始 |
