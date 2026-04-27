@@ -197,3 +197,72 @@ def test_update_ignores_unknown_kwargs():
     row = db_job_get("job-011")
     assert row is not None
     assert row["status"] == "completed"
+
+
+# ---------------------------------------------------------------------------
+# Task 1 — Phase 2 新表测试
+# ---------------------------------------------------------------------------
+
+from cangjie_fos.services.pitch_job_db import (  # noqa: E402
+    db_exec_memory_insert,
+    db_exec_memory_list,
+    db_exec_memory_delete,
+    db_material_contribution_upsert,
+    db_material_contributions_list,
+    db_material_match_insert,
+    db_material_matches_list,
+    db_contribution_score_upsert,
+    db_contribution_scores_list,
+)
+
+
+def test_exec_memory_insert_and_list():
+    db_exec_memory_insert(
+        company_id="co-A", tag="risk", uuid="uuid-1",
+        raw_text="内容A", refined_text="精炼A",
+    )
+    rows = db_exec_memory_list("co-A")
+    assert len(rows) == 1
+    assert rows[0]["uuid"] == "uuid-1"
+    assert rows[0]["refined_text"] == "精炼A"
+
+
+def test_exec_memory_delete():
+    db_exec_memory_insert(company_id="co-B", tag="risk", uuid="uuid-2", raw_text="X")
+    db_exec_memory_delete("uuid-2")
+    rows = db_exec_memory_list("co-B")
+    assert rows == []
+
+
+def test_exec_memory_idempotent_insert():
+    """同一 uuid 重复插入不抛异常（IGNORE）。"""
+    db_exec_memory_insert(company_id="co-C", tag="t", uuid="uuid-3", raw_text="Y")
+    db_exec_memory_insert(company_id="co-C", tag="t", uuid="uuid-3", raw_text="Y")
+    assert len(db_exec_memory_list("co-C")) == 1
+
+
+def test_material_contribution_upsert_and_list():
+    db_material_contribution_upsert("file.pptx", "docs/file.pptx", tags=["pitch"], usage_count_delta=1)
+    rows = db_material_contributions_list()
+    assert any(r["asset_filename"] == "file.pptx" for r in rows)
+    # 再次 upsert 累加
+    db_material_contribution_upsert("file.pptx", "docs/file.pptx", usage_count_delta=2)
+    rows2 = db_material_contributions_list()
+    match = next(r for r in rows2 if r["asset_filename"] == "file.pptx")
+    assert match["usage_count"] == 3
+
+
+def test_material_match_insert_and_list():
+    db_material_match_insert("inst-1", "file.pptx", "docs/file.pptx", score=0.9)
+    rows = db_material_matches_list("inst-1")
+    assert len(rows) == 1
+    assert rows[0]["score"] == pytest.approx(0.9)
+
+
+def test_contribution_score_upsert_and_list():
+    db_contribution_score_upsert("张三", score_delta=10.0)
+    db_contribution_score_upsert("张三", score_delta=5.0)
+    rows = db_contribution_scores_list()
+    match = next(r for r in rows if r["contributor"] == "张三")
+    assert match["score"] == pytest.approx(15.0)
+    assert match["job_count"] == 2

@@ -60,6 +60,51 @@ CREATE TABLE IF NOT EXISTS investor_prefs (
     source_diff_id INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_investor_prefs_tenant ON investor_prefs(tenant_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS executive_memories (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id    TEXT NOT NULL,
+    tag           TEXT NOT NULL,
+    uuid          TEXT NOT NULL,
+    raw_text      TEXT NOT NULL,
+    refined_text  TEXT,
+    weight        REAL NOT NULL DEFAULT 1.0,
+    created_at    REAL NOT NULL,
+    source_job_id TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_exec_mem_uuid ON executive_memories(uuid);
+CREATE INDEX IF NOT EXISTS idx_exec_mem_company ON executive_memories(company_id, tag, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS material_contributions (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_filename     TEXT NOT NULL,
+    relative_path      TEXT NOT NULL,
+    contribution_score REAL NOT NULL DEFAULT 0.0,
+    usage_count        INTEGER NOT NULL DEFAULT 0,
+    last_used_at       REAL,
+    tags               TEXT,
+    updated_at         REAL NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mat_contrib_path ON material_contributions(relative_path);
+
+CREATE TABLE IF NOT EXISTS contribution_scores (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    contributor TEXT NOT NULL,
+    score       REAL NOT NULL DEFAULT 0.0,
+    job_count   INTEGER NOT NULL DEFAULT 0,
+    updated_at  REAL NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_contrib_scores_contributor ON contribution_scores(contributor);
+
+CREATE TABLE IF NOT EXISTS material_match_history (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    institution_id TEXT NOT NULL,
+    asset_filename TEXT NOT NULL,
+    relative_path  TEXT NOT NULL,
+    matched_at     REAL NOT NULL,
+    score          REAL NOT NULL DEFAULT 0.0
+);
+CREATE INDEX IF NOT EXISTS idx_mat_match_inst ON material_match_history(institution_id, matched_at DESC);
 """
 
 # Columns that store JSON-serialized Python objects.
@@ -378,3 +423,208 @@ def db_pref_list_for_tenant(tenant_id: str, *, limit: int = 100) -> list[dict[st
                 pass
         result.append(d)
     return result
+
+
+# ---------------------------------------------------------------------------
+# executive_memories — Phase 2: 高管错题本 SQLite 化
+# ---------------------------------------------------------------------------
+
+
+def db_exec_memory_insert(
+    *,
+    company_id: str,
+    tag: str,
+    uuid: str,
+    raw_text: str,
+    refined_text: str | None = None,
+    weight: float = 1.0,
+    source_job_id: str | None = None,
+) -> None:
+    """Insert an executive memory entry (idempotent: ignore duplicate uuid)."""
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT OR IGNORE INTO executive_memories
+                    (company_id, tag, uuid, raw_text, refined_text, weight, created_at, source_job_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (company_id, tag, uuid, raw_text, refined_text, weight, time.time(), source_job_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_exec_memory_list(
+    company_id: str, *, tag: str | None = None, limit: int = 100
+) -> list[dict[str, Any]]:
+    """Return executive memories for a company, optionally filtered by tag."""
+    conn = _connect()
+    try:
+        if tag:
+            cur = conn.execute(
+                "SELECT * FROM executive_memories WHERE company_id = ? AND tag = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (company_id, tag, max(1, min(int(limit), 500))),
+            )
+        else:
+            cur = conn.execute(
+                "SELECT * FROM executive_memories WHERE company_id = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (company_id, max(1, min(int(limit), 500))),
+            )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def db_exec_memory_delete(uuid: str) -> None:
+    """Delete an executive memory entry by uuid."""
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute("DELETE FROM executive_memories WHERE uuid = ?", (uuid,))
+            conn.commit()
+        finally:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# material_contributions — Phase 2: 素材贡献度
+# ---------------------------------------------------------------------------
+
+
+def db_material_contribution_upsert(
+    asset_filename: str,
+    relative_path: str,
+    *,
+    tags: list[str] | None = None,
+    contribution_score_delta: float = 0.0,
+    usage_count_delta: int = 0,
+) -> None:
+    """Upsert a material contribution record (insert or accumulate counts)."""
+    now = time.time()
+    tags_json = json.dumps(tags or [], ensure_ascii=False)
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO material_contributions
+                    (asset_filename, relative_path, contribution_score, usage_count, last_used_at, tags, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(relative_path) DO UPDATE SET
+                    contribution_score = contribution_score + excluded.contribution_score,
+                    usage_count = usage_count + excluded.usage_count,
+                    last_used_at = excluded.last_used_at,
+                    tags = COALESCE(excluded.tags, tags),
+                    updated_at = excluded.updated_at""",
+                (asset_filename, relative_path, contribution_score_delta, usage_count_delta, now, tags_json, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_material_contributions_list(*, limit: int = 200) -> list[dict[str, Any]]:
+    """Return all material contributions sorted by usage_count DESC."""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM material_contributions ORDER BY usage_count DESC, contribution_score DESC LIMIT ?",
+            (max(1, min(int(limit), 1000)),),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        if isinstance(d.get("tags"), str):
+            try:
+                d["tags"] = json.loads(d["tags"])
+            except Exception:
+                d["tags"] = []
+        result.append(d)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# material_match_history — Phase 2: 素材-机构匹配历史
+# ---------------------------------------------------------------------------
+
+
+def db_material_match_insert(
+    institution_id: str,
+    asset_filename: str,
+    relative_path: str,
+    *,
+    score: float = 0.0,
+) -> None:
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO material_match_history
+                    (institution_id, asset_filename, relative_path, matched_at, score)
+                VALUES (?, ?, ?, ?, ?)""",
+                (institution_id, asset_filename, relative_path, time.time(), score),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_material_matches_list(institution_id: str, *, limit: int = 50) -> list[dict[str, Any]]:
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM material_match_history WHERE institution_id = ? "
+            "ORDER BY matched_at DESC LIMIT ?",
+            (institution_id, max(1, min(int(limit), 200))),
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# contribution_scores — Phase 2: 贡献度汇总
+# ---------------------------------------------------------------------------
+
+
+def db_contribution_score_upsert(
+    contributor: str,
+    *,
+    score_delta: float,
+    job_count_delta: int = 1,
+) -> None:
+    """Accumulate contribution score for a named contributor."""
+    now = time.time()
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO contribution_scores (contributor, score, job_count, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(contributor) DO UPDATE SET
+                    score = score + excluded.score,
+                    job_count = job_count + excluded.job_count,
+                    updated_at = excluded.updated_at""",
+                (contributor, score_delta, job_count_delta, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_contribution_scores_list(*, limit: int = 100) -> list[dict[str, Any]]:
+    """Return contribution scores sorted by score DESC."""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM contribution_scores ORDER BY score DESC LIMIT ?",
+            (max(1, min(int(limit), 500)),),
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
