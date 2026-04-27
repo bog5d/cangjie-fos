@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 
 from cangjie_fos.api.upload_io import read_upload_limited
 from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
-from cangjie_fos.core.paths import ensure_pitch_coach_runtime
+from cangjie_fos.engine.schema import TranscriptionWord as _TranscriptionWord
 from cangjie_fos.core.thread_sqlite import list_threads, upsert_thread
 from cangjie_fos.schemas.pitch_chat import (
     PitchChatRequest,
@@ -52,11 +52,9 @@ def _run_retry_eval(*, job_id: str, tenant_id: str, words_json: list) -> None:
     from cangjie_fos.services.report_post_process import expand_risk_original_text  # noqa: PLC0415
 
     try:
-        ensure_pitch_coach_runtime()
         try:
-            from schema import TranscriptionWord  # noqa: PLC0415
-            words: list = [TranscriptionWord(**w) for w in words_json]
-        except ImportError:
+            words: list = [_TranscriptionWord(**w) for w in words_json]
+        except Exception:  # noqa: BLE001
             words = words_json  # type: ignore[assignment]
         db_job_update(job_id, substatus="场景分析中（重跑）…")
 
@@ -118,11 +116,8 @@ def run_pitch_graph(body: PitchRunRequest) -> dict[str, Any]:
             "state_excerpt": {"dry_run": True},
         }
 
-    ensure_pitch_coach_runtime()
-    from schema import TranscriptionWord
-
     words = [
-        TranscriptionWord(
+        _TranscriptionWord(
             word_index=w.word_index,
             text=w.text,
             start_time=w.start_time,

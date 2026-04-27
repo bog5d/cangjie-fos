@@ -122,22 +122,19 @@ class TestPipelineE2E:
         fake_words = make_fake_words()
         wav_bytes = make_wav_bytes()
 
-        # transcribe_audio 是在 pipeline 函数内部 lazy import 的
-        # 必须在 sys.modules 里注入假模块，才能拦截到
-        mock_transcriber = MagicMock()
-        mock_transcriber.transcribe_audio = MagicMock(return_value=fake_words)
-
         with (
             patch(
                 "cangjie_fos.services.pitch_upload_pipeline.AudioService.smart_compress_media",
                 return_value=SimpleNamespace(data=wav_bytes),
             ),
-            patch("cangjie_fos.services.pitch_upload_pipeline.ensure_pitch_coach_runtime"),
+            patch(
+                "cangjie_fos.services.pitch_upload_pipeline.transcribe_audio",
+                return_value=fake_words,
+            ),
             patch(
                 "cangjie_fos.services.pitch_upload_pipeline.PitchGraphService.run_evaluation_with_state",
                 return_value=(FAKE_REPORT, {}),
             ),
-            patch.dict(sys.modules, {"transcriber": mock_transcriber}),
         ):
             from cangjie_fos.services.pitch_job_db import db_job_create, _connect
 

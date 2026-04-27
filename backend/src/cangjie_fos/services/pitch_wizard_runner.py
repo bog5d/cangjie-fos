@@ -7,7 +7,9 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from cangjie_fos.core.paths import ensure_pitch_coach_import_path, ensure_pitch_coach_runtime, get_backend_root
+from cangjie_fos.core.paths import get_backend_root
+from cangjie_fos.engine.job_pipeline import HtmlExportOptions, PitchFileJobParams, build_explicit_context, run_pitch_file_job
+from cangjie_fos.engine.document_reader import extract_text_from_files
 from cangjie_fos.schemas.pitch_upload import PitchJobStatus
 from cangjie_fos.services.evolution_injector import build_investor_context
 from cangjie_fos.services.pitch_failure_present import job_failure_update_kwargs
@@ -58,10 +60,6 @@ def run_pitch_wizard_track_job(
     try:
         job_update(job_id, status=PitchJobStatus.TRANSCRIBING)
         db_job_update(job_id, status=str(PitchJobStatus.TRANSCRIBING))
-        ensure_pitch_coach_runtime()
-        from job_pipeline import PitchFileJobParams, build_explicit_context, run_pitch_file_job
-        from report_builder import HtmlExportOptions
-
         explicit_context = build_explicit_context(
             category,
             project_name,
@@ -166,8 +164,6 @@ def merge_qa_text_from_paths(qa_items: list[dict[str, str]], *, max_chars: int =
     if not qa_items:
         return ""
     try:
-        ensure_pitch_coach_import_path()
-        from document_reader import extract_text_from_files  # noqa: PLC0415
         uploads: list[_BytesUpload] = []
         for it in qa_items:
             p = Path(it.get("path") or "")

@@ -1,9 +1,9 @@
-"""ASR 前置音频处理：薄封装 Pitch_Coach `audio_preprocess`（SPEC A4）。"""
+"""ASR 前置音频处理：薄封装 engine.audio_preprocess（Phase 1 迁移后）。"""
 from __future__ import annotations
 
 from typing import Any
 
-from cangjie_fos.core.paths import ensure_pitch_coach_import_path
+from cangjie_fos.engine.audio_preprocess import smart_compress_media as _smart_compress_media
 
 
 class AudioService:
@@ -11,7 +11,4 @@ class AudioService:
 
     @staticmethod
     def smart_compress_media(data: bytes, *, filename_hint: str = "audio.bin") -> Any:
-        ensure_pitch_coach_import_path()
-        from audio_preprocess import smart_compress_media
-
-        return smart_compress_media(data, filename_hint=filename_hint)
+        return _smart_compress_media(data, filename_hint=filename_hint)

@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cangjie_fos.core.paths import ensure_pitch_coach_runtime, get_backend_root
+from cangjie_fos.core.paths import get_backend_root
+from cangjie_fos.engine.report_builder import generate_html_report
+from cangjie_fos.engine.schema import AnalysisReport, TranscriptionWord
 from cangjie_fos.services.pitch_job_db import db_job_get, db_job_update
 
 
@@ -36,11 +38,6 @@ def generate_job_html_report(job_id: str) -> Path:
     audio_path = row.get("audio_path") or ""
     if not audio_path or not Path(audio_path).is_file():
         raise FileNotFoundError(f"Audio file not found for job {job_id}: {audio_path}")
-
-    # 3. Set up legacy imports — must happen before importing schema/report_builder
-    ensure_pitch_coach_runtime()
-    from schema import AnalysisReport, TranscriptionWord  # noqa: PLC0415
-    from report_builder import generate_html_report  # noqa: PLC0415
 
     # 4. Convert FOS data → legacy types
     words_list = [TranscriptionWord.model_validate(w) for w in words_raw]

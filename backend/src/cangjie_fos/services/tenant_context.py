@@ -1,7 +1,11 @@
 """租户级资料室摘要 + 错题本摘要（Phase 4 SPEC A3）。"""
 from __future__ import annotations
 
-from cangjie_fos.core.paths import ensure_pitch_coach_import_path
+from cangjie_fos.engine.coach.agent_tenant import resolve_memory_company_id
+from cangjie_fos.engine.memory_engine import (
+    list_all_executive_memories_for_company,
+    load_top_executive_memories_for_prompt,
+)
 from cangjie_fos.services.fss_asset_scan import count_data_room_files, load_asset_index_assets
 
 
@@ -23,9 +27,6 @@ def build_asset_inventory_summary(*, tenant_id: str, max_lines: int = 24) -> str
 
 def build_executive_memory_digest(*, tenant_id: str, max_items: int = 12) -> str:
     """company_id 使用 tenant_id 对齐 Pitch_Coach 存储桶。"""
-    ensure_pitch_coach_import_path()
-    from memory_engine import list_all_executive_memories_for_company
-
     pairs = list_all_executive_memories_for_company(tenant_id)
     if not pairs:
         return "[历史错题本] 当前 tenant 下暂无 Executive Memory 记录。"
@@ -47,10 +48,6 @@ def build_tenant_context_block(*, tenant_id: str) -> str:
 
 def build_episodic_memory_snippet_for_npc(*, tenant_id: str, tag: str, limit: int = 5) -> str:
     """与评估图 retrieve_memory 对齐：同一 company_id + tag 下 Top-N Executive Memory（控制 token）。"""
-    ensure_pitch_coach_import_path()
-    from agent_tenant import resolve_memory_company_id
-    from memory_engine import load_top_executive_memories_for_prompt
-
     cid = resolve_memory_company_id(tenant_id)
     if not cid:
         return ""

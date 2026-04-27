@@ -9,7 +9,6 @@ All external I/O is mocked. Tests verify:
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
@@ -38,21 +37,14 @@ def _make_report():
 
 
 # ---------------------------------------------------------------------------
-# Fixtures: mock sys.modules['transcriber'] before import
+# Fixtures
 # ---------------------------------------------------------------------------
 
+_DEFAULT_MOCK_WORDS = None  # populated lazily per test via helper
 
-@pytest.fixture(autouse=True)
-def _mock_transcriber_module():
-    """Inject a fake 'transcriber' module so the lazy import inside the pipeline succeeds."""
-    mock_words = [_make_word("hello"), _make_word("world")]
-    mock_transcribe = MagicMock(return_value=mock_words)
-    fake_module = MagicMock()
-    fake_module.transcribe_audio = mock_transcribe
-    sys.modules["transcriber"] = fake_module
-    yield fake_module
-    # Cleanup
-    sys.modules.pop("transcriber", None)
+
+def _make_default_words():
+    return [_make_word("hello"), _make_word("world")]
 
 
 # ---------------------------------------------------------------------------
@@ -60,13 +52,13 @@ def _mock_transcriber_module():
 # ---------------------------------------------------------------------------
 
 
-def test_audio_moved_to_permanent_location(_mock_transcriber_module):
+def test_audio_moved_to_permanent_location():
     """shutil.move must be called with the correct destination; tmp.unlink not called."""
     mock_report = _make_report()
 
     with (
         patch("cangjie_fos.services.pitch_upload_pipeline.AudioService") as mock_audio_svc,
-        patch("cangjie_fos.services.pitch_upload_pipeline.ensure_pitch_coach_runtime"),
+        patch("cangjie_fos.services.pitch_upload_pipeline.transcribe_audio", return_value=_make_default_words()),
         patch("cangjie_fos.services.pitch_upload_pipeline.PitchGraphService") as mock_graph_svc,
         patch("cangjie_fos.services.pitch_upload_pipeline.db_job_update"),
         patch("cangjie_fos.services.pitch_upload_pipeline.job_update"),
@@ -120,15 +112,14 @@ def test_audio_moved_to_permanent_location(_mock_transcriber_module):
 # ---------------------------------------------------------------------------
 
 
-def test_words_json_persisted_to_db(_mock_transcriber_module):
+def test_words_json_persisted_to_db():
     """db_job_update must be called with words_json list and audio_path containing job_id."""
     mock_report = _make_report()
     mock_words = [_make_word("test")]
-    _mock_transcriber_module.transcribe_audio.return_value = mock_words
 
     with (
         patch("cangjie_fos.services.pitch_upload_pipeline.AudioService") as mock_audio_svc,
-        patch("cangjie_fos.services.pitch_upload_pipeline.ensure_pitch_coach_runtime"),
+        patch("cangjie_fos.services.pitch_upload_pipeline.transcribe_audio", return_value=mock_words),
         patch("cangjie_fos.services.pitch_upload_pipeline.PitchGraphService") as mock_graph_svc,
         patch("cangjie_fos.services.pitch_upload_pipeline.db_job_update") as mock_db_update,
         patch("cangjie_fos.services.pitch_upload_pipeline.job_update"),
@@ -179,13 +170,13 @@ def test_words_json_persisted_to_db(_mock_transcriber_module):
 # ---------------------------------------------------------------------------
 
 
-def test_original_report_written_to_db(_mock_transcriber_module):
+def test_original_report_written_to_db():
     """db_job_update must be called with original_report dict on successful completion."""
     mock_report = _make_report()
 
     with (
         patch("cangjie_fos.services.pitch_upload_pipeline.AudioService") as mock_audio_svc,
-        patch("cangjie_fos.services.pitch_upload_pipeline.ensure_pitch_coach_runtime"),
+        patch("cangjie_fos.services.pitch_upload_pipeline.transcribe_audio", return_value=_make_default_words()),
         patch("cangjie_fos.services.pitch_upload_pipeline.PitchGraphService") as mock_graph_svc,
         patch("cangjie_fos.services.pitch_upload_pipeline.db_job_update") as mock_db_update,
         patch("cangjie_fos.services.pitch_upload_pipeline.job_update"),
@@ -232,13 +223,13 @@ def test_original_report_written_to_db(_mock_transcriber_module):
 # ---------------------------------------------------------------------------
 
 
-def test_in_memory_report_still_written(_mock_transcriber_module):
+def test_in_memory_report_still_written():
     """job_update (in-memory) must be called with 'report' key on success for backward compat."""
     mock_report = _make_report()
 
     with (
         patch("cangjie_fos.services.pitch_upload_pipeline.AudioService") as mock_audio_svc,
-        patch("cangjie_fos.services.pitch_upload_pipeline.ensure_pitch_coach_runtime"),
+        patch("cangjie_fos.services.pitch_upload_pipeline.transcribe_audio", return_value=_make_default_words()),
         patch("cangjie_fos.services.pitch_upload_pipeline.PitchGraphService") as mock_graph_svc,
         patch("cangjie_fos.services.pitch_upload_pipeline.db_job_update"),
         patch("cangjie_fos.services.pitch_upload_pipeline.job_update") as mock_mem_update,
@@ -283,13 +274,11 @@ def test_in_memory_report_still_written(_mock_transcriber_module):
 # ---------------------------------------------------------------------------
 
 
-def test_failure_updates_both_stores(_mock_transcriber_module):
+def test_failure_updates_both_stores():
     """On exception during transcription, both job_update and db_job_update called with FAILED."""
-    _mock_transcriber_module.transcribe_audio.side_effect = RuntimeError("ASR exploded")
-
     with (
         patch("cangjie_fos.services.pitch_upload_pipeline.AudioService") as mock_audio_svc,
-        patch("cangjie_fos.services.pitch_upload_pipeline.ensure_pitch_coach_runtime"),
+        patch("cangjie_fos.services.pitch_upload_pipeline.transcribe_audio", side_effect=RuntimeError("ASR exploded")),
         patch("cangjie_fos.services.pitch_upload_pipeline.PitchGraphService"),
         patch("cangjie_fos.services.pitch_upload_pipeline.db_job_update") as mock_db_update,
         patch("cangjie_fos.services.pitch_upload_pipeline.job_update") as mock_mem_update,

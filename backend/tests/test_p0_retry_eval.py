@@ -186,7 +186,6 @@ class TestRetryEvalEndpoint:
         fake_report = SimpleNamespace(model_dump=lambda: FAKE_REPORT_DICT)
 
         with (
-            patch("cangjie_fos.api.routes.pitch.ensure_pitch_coach_runtime"),
             patch(
                 "cangjie_fos.api.routes.pitch.PitchGraphService.run_evaluation_with_state",
                 return_value=(fake_report, {}),

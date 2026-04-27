@@ -6,7 +6,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from cangjie_fos.core.paths import ensure_pitch_coach_runtime, get_backend_root
+from cangjie_fos.core.paths import get_backend_root
+from cangjie_fos.engine.transcriber import transcribe_audio
 from cangjie_fos.schemas.pitch_upload import PitchJobStatus
 from cangjie_fos.services.audio_service import AudioService
 from cangjie_fos.services.evolution_injector import build_investor_context
@@ -73,9 +74,6 @@ def run_pitch_upload_job(*, job_id: str, raw_bytes: bytes, filename: str, tenant
 
         # ── 步骤 3：ASR 转写 ──────────────────────────────────────────────
         db_job_update(job_id, substatus="ASR 转写中，较长录音请耐心等待…")
-        ensure_pitch_coach_runtime()
-        from transcriber import transcribe_audio  # noqa: PLC0415
-
         words = transcribe_audio(audio_path)
         word_count = len(words)
 

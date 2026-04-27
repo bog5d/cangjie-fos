@@ -116,14 +116,11 @@ def run_wizard_job(tmp_path_factory):
     mock_report_builder.HtmlExportOptions = MagicMock(return_value=MagicMock())
 
     with (
-        patch("cangjie_fos.services.pitch_wizard_runner.ensure_pitch_coach_runtime"),
-        patch.dict(
-            sys.modules,
-            {
-                "job_pipeline": mock_job_pipeline,
-                "report_builder": mock_report_builder,
-            },
-        ),
+        # patch runner 模块命名空间内的符号（已在模块顶层 import，必须 patch 本地引用）
+        patch("cangjie_fos.services.pitch_wizard_runner.run_pitch_file_job", mock_run_pitch_file_job),
+        patch("cangjie_fos.services.pitch_wizard_runner.PitchFileJobParams", MagicMock(return_value=MagicMock())),
+        patch("cangjie_fos.services.pitch_wizard_runner.build_explicit_context", return_value={}),
+        patch("cangjie_fos.services.pitch_wizard_runner.HtmlExportOptions", MagicMock(return_value=MagicMock())),
         # institution_intel_extract 可选，直接让它静默跳过
         patch(
             "cangjie_fos.services.pitch_wizard_runner.extract_and_persist_institution_intel",

@@ -12,7 +12,8 @@ from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, Up
 
 from cangjie_fos.api.upload_io import read_upload_limited
 from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
-from cangjie_fos.core.paths import ensure_pitch_coach_import_path
+from cangjie_fos.engine.job_pipeline import OTHER_SCENE_KEY, SCENE_MAP
+from cangjie_fos.engine.sensitive_words import parse_sensitive_words
 from cangjie_fos.events.npc_ws_house import schedule_broadcast_to_tenant
 from cangjie_fos.schemas.pitch_upload_wizard import (
     UploadSessionCommitResponse,
@@ -43,9 +44,6 @@ router = APIRouter(prefix="/api/v1/pitch", tags=["pitch-wizard"])
 
 
 def _coach_scene_keys() -> tuple[dict[str, str], str]:
-    ensure_pitch_coach_import_path()
-    from job_pipeline import OTHER_SCENE_KEY, SCENE_MAP
-
     return SCENE_MAP, OTHER_SCENE_KEY
 
 
@@ -157,9 +155,6 @@ def commit_upload_session(
             status_code=429,
             detail={"code": "E_QUEUE_FULL", "message": "任务队列已满，请稍后或减少同时提交数"},
         )
-
-    ensure_pitch_coach_import_path()
-    from sensitive_words import parse_sensitive_words
 
     sensitive = parse_sensitive_words(payload.sensitive_words_raw or "")
     hw_raw = payload.hot_words_raw or ""
