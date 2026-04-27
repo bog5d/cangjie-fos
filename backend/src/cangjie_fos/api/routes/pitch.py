@@ -38,7 +38,7 @@ from cangjie_fos.services.pitch_graph_service import PitchGraphService
 from cangjie_fos.services.pitch_failure_present import resolve_stored_job_errors
 from cangjie_fos.services.evolution_capture import capture_review_diff
 from cangjie_fos.services.evolution_extractor import run_preference_extraction
-from cangjie_fos.services.pitch_job_db import db_job_get, db_job_update
+from cangjie_fos.services.pitch_job_db import db_job_get, db_job_update, db_job_list_for_tenant
 from cangjie_fos.services.pitch_job_store import job_create, job_get, job_list_for_tenant
 from cangjie_fos.services.pitch_upload_pipeline import run_pitch_upload_job
 
@@ -228,16 +228,36 @@ async def pitch_upload(
 def pitch_job_list(
     tenant_id: str = Query(..., min_length=1),
     limit: int = Query(30, ge=1, le=100),
+    page: int = Query(1, ge=1, description="页码（1-based），与 size 配合使用"),
+    size: int = Query(20, ge=1, le=100, description="每页条数"),
 ) -> list[PitchJobSummary]:
+    # page>1 时使用 SQLite 分页（支持 OFFSET）；page=1 保持原有行为（内存 store）
+    use_db_pagination = page > 1
+    effective_limit = size if use_db_pagination else limit
+    effective_offset = (page - 1) * size if use_db_pagination else 0
+
+    if use_db_pagination:
+        job_pairs: list[tuple[str, dict]] = db_job_list_for_tenant(
+            tenant_id, limit=effective_limit, offset=effective_offset
+        )
+    else:
+        job_pairs = list(job_list_for_tenant(tenant_id, limit=effective_limit))
+
     out: list[PitchJobSummary] = []
-    for jid, j in job_list_for_tenant(tenant_id, limit=limit):
-        rep = j.get("report")
+    for jid, j in job_pairs:
+        rep = j.get("report") or j.get("original_report")
         st = j.get("status")
         errs = resolve_stored_job_errors(j, jid)
-        # 仅 completed 且确有 report 才视为可消费，避免与转写中态竞态导致前端误显「查看报告」
-        has_report = bool(rep is not None and st == PitchJobStatus.COMPLETED)
-        # substatus lives only in SQLite (not in-memory store)
-        db_row = db_job_get(jid)
+        # 仅 completed 且确有 report 才视为可消费
+        has_report = bool(
+            rep is not None
+            and (st == PitchJobStatus.COMPLETED or st == "completed")
+        )
+        # substatus / words_json: SQLite 分页路径已有完整行，否则按需查
+        if use_db_pagination:
+            db_row = j
+        else:
+            db_row = db_job_get(jid)
         substatus = db_row.get("substatus") if db_row else None
         _words = db_row.get("words_json") if db_row else None
         has_words_json = isinstance(_words, list) and len(_words) > 0

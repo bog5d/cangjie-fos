@@ -263,15 +263,16 @@ def db_job_get(job_id: str) -> dict[str, Any] | None:
 
 
 def db_job_list_for_tenant(
-    tenant_id: str, *, limit: int = 50
+    tenant_id: str, *, limit: int = 50, offset: int = 0
 ) -> list[tuple[str, dict[str, Any]]]:
     """Return list of (job_id, row_dict) sorted by created_at DESC."""
     lim = max(1, min(int(limit), 200))
+    off = max(0, int(offset))
     conn = _connect()
     try:
         cur = conn.execute(
-            "SELECT * FROM pitch_jobs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?",
-            (tenant_id, lim),
+            "SELECT * FROM pitch_jobs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (tenant_id, lim, off),
         )
         rows = cur.fetchall()
     finally:
