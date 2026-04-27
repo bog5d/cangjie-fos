@@ -7,9 +7,19 @@
 ## [Unreleased] — 开发中
 
 ### 待做
-- R3: LLM 调用指数退避重试 + `POST /api/pitch/jobs/{id}/retry-eval` 重跑评估接口
 - WebSocket 实时推送替代 Task Rail 轮询
 - 路演倒计时计时器（审查台）
+
+---
+
+## [0.2.1] — 2026-04-27  Phase 7.0 R3 LLM 重试 + 重跑评估
+
+### Added
+- **`pitch_graph_service.py` 指数退避重试**：LLM 调用遇到 `ConnectionError` / `TimeoutError` 自动重试3次（4次总计），间隔 2/4/8s；其他异常立即抛出不重试
+- **`POST /api/pitch/jobs/{id}/retry-eval`**：读取 SQLite 中的 `words_json` 重跑 LangGraph 评估，无需重新上传音频；返回 404/409/422 校验 + 200 成功
+- **`PitchJobSummary.has_words_json`**：新增布尔字段，`GET /api/pitch/jobs` 返回每条任务是否可重跑
+- **TaskRail「重跑评估」按钮**：failed 卡片在 `has_words_json=true` 时显示按钮，点击调用 retry-eval 端点并刷新轨道
+- **测试覆盖**：新增 `tests/test_p0_retry_eval.py`（11 个测试），228 → 239 passed
 
 ---
 

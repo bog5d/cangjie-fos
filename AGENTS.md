@@ -9,10 +9,10 @@
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | v0.2.0 |
-| 测试基线 | **228 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
+| 版本 | v0.2.1 |
+| 测试基线 | **239 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
 | 前端构建 | **零错误**（`cd frontend && npm run build`） |
-| 当前 Phase | **Phase 6.4 完工 → Phase 7.0 待开始** |
+| 当前 Phase | **Phase 7.0 R3 完工 → Phase 7.0 阶段1待开始** |
 | 详细变更历史 | 见 `CHANGELOG.md` |
 
 ---
@@ -125,8 +125,8 @@ git push origin <分支名>
 五阶段合并计划：
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| 阶段0 | R3：LLM重试 + 重跑评估按钮 | ⏳ 待开始（优先） |
-| 阶段1 | FSS代码移入 `engine/` 子包，消灭 sys.path 注入 | ⏳ 待开始 |
+| 阶段0 | R3：LLM重试 + 重跑评估按钮 | ✅ 完成（v0.2.1） |
+| 阶段1 | FSS代码移入 `engine/` 子包，消灭 sys.path 注入 | ⏳ 待开始（优先） |
 | 阶段2 | FSS JSON数据 → FOS SQLite统一（贡献度/素材匹配表） | ⏳ 待开始 |
 | 阶段3 | APScheduler夜间自动进化任务 | ⏳ 待开始 |
 | 阶段4 | 全数据关联（路演→素材→机构→贡献者） | ⏳ 待开始 |
@@ -134,13 +134,14 @@ git push origin <分支名>
 
 FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
 
-## 立即要做（阶段0 — R3）
+## 立即要做（阶段1 — FSS 代码合并）
 
-- **文件**：`pitch_graph_service.py`、`pitch.py`（新增路由）、`TaskRail.tsx`
-- LLM 调用加指数退避重试（ConnectionError/TimeoutError → 3次，间隔2/4/8s）
-- 新增 `POST /api/pitch/jobs/{job_id}/retry-eval`（读 words_json 重跑 LangGraph，不需重新上传音频）
-- 前端 Task Rail：failed 卡片加"重跑评估"按钮（条件：`has_words_json=true`）
-- 测试：mock ConnectionError → 验证3次重试后才 fail
+- 在 FOS 创建 `backend/src/cangjie_fos/engine/` 目录
+- 将 FSS 核心文件复制进来：`transcriber.py`、`agent_runner.py`、`agent_nodes.py`、`investor_matcher.py`、`growth_engine.py`、`memory_engine.py`、`asset_bridge.py`
+- 修改所有 FOS import：从动态 sys.path 注入改为直接 `from cangjie_fos.engine.xxx import yyy`
+- 删除 `core/paths.py` 中的 `ensure_pitch_coach_import_path`、`get_pitch_coach_root`
+- 更新测试：mock 路径从 FSS 改为 `cangjie_fos.engine.*`
+- CI 验证：239+ passed，无需 PITCH_COACH_ROOT 环境变量
 
 ---
 
