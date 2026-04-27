@@ -429,7 +429,10 @@ def retry_eval(job_id: str, background_tasks: BackgroundTasks) -> PitchUploadAck
             detail="no words_json available; please re-upload the audio file",
         )
 
-    tenant_id: str = str(job_row.get("tenant_id") or "unknown")
+    tenant_id = job_row.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=500, detail="job record missing tenant_id")
+    tenant_id = str(tenant_id)
     db_job_update(
         job_id,
         status=str(PitchJobStatus.EVALUATING),
@@ -439,7 +442,7 @@ def retry_eval(job_id: str, background_tasks: BackgroundTasks) -> PitchUploadAck
         error_code=None,
     )
     from cangjie_fos.services.pitch_job_store import job_update as _job_update  # noqa: PLC0415
-    _job_update(job_id, status=PitchJobStatus.EVALUATING)
+    _job_update(job_id, status=PitchJobStatus.EVALUATING, error_summary=None, error_detail=None, error_code=None)
 
     background_tasks.add_task(
         _run_retry_eval,
