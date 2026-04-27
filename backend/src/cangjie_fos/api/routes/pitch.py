@@ -43,6 +43,57 @@ from cangjie_fos.services.pitch_job_store import job_create, job_get, job_list_f
 from cangjie_fos.services.pitch_upload_pipeline import run_pitch_upload_job
 
 logger = logging.getLogger(__name__)
+
+
+def _run_retry_eval(*, job_id: str, tenant_id: str, words_json: list) -> None:
+    """Background task: re-run LangGraph eval using stored words_json."""
+    from cangjie_fos.services.pitch_failure_present import job_failure_update_kwargs  # noqa: PLC0415
+    from cangjie_fos.services.pitch_job_store import job_update  # noqa: PLC0415
+    from cangjie_fos.services.report_post_process import expand_risk_original_text  # noqa: PLC0415
+
+    try:
+        ensure_pitch_coach_runtime()
+        try:
+            from schema import TranscriptionWord  # noqa: PLC0415
+            words: list = [TranscriptionWord(**w) for w in words_json]
+        except ImportError:
+            words = words_json  # type: ignore[assignment]
+        db_job_update(job_id, substatus="场景分析中（重跑）…")
+
+        report, _excerpt = PitchGraphService.run_evaluation_with_state(
+            tenant_id=tenant_id,
+            words=words,
+            model_choice="deepseek",
+            trace_id=job_id,
+        )
+
+        report_dict = report.model_dump()
+        expand_risk_original_text(report_dict, words_json)
+
+        job_update(
+            job_id,
+            status=PitchJobStatus.COMPLETED,
+            report=report_dict,
+            exp_delta=20,
+            exp_reason="重跑 LangGraph 评估完成",
+        )
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.COMPLETED),
+            original_report=report_dict,
+            exp_delta=20,
+            exp_reason="重跑 LangGraph 评估完成",
+            substatus=None,
+        )
+        logger.info("retry_eval_done job_id=%s tenant_id=%s", job_id, tenant_id)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("retry_eval_failed job_id=%s", job_id)
+        failure_kwargs = job_failure_update_kwargs(e, job_id=job_id)
+        job_update(job_id, status=PitchJobStatus.FAILED, **failure_kwargs)
+        db_update_kwargs = {k: v for k, v in failure_kwargs.items() if k != "status"}
+        db_job_update(job_id, status=str(PitchJobStatus.FAILED), substatus=None, **db_update_kwargs)
+
+
 router = APIRouter(prefix="/api/pitch", tags=["pitch"])
 
 
@@ -350,6 +401,51 @@ def pitch_job_words(job_id: str) -> list[dict]:
         raise HTTPException(status_code=404, detail="unknown job")
 
     return job_row.get("words_json") or []
+
+
+@router.post("/jobs/{job_id}/retry-eval", response_model=PitchUploadAck)
+def retry_eval(job_id: str, background_tasks: BackgroundTasks) -> PitchUploadAck:
+    """重跑 LangGraph 评估（无需重新上传音频，从 words_json 恢复）。
+
+    条件：job 存在 + words_json 非空 + 当前不在 active 状态。
+    """
+    job_row = db_job_get(job_id)
+    if job_row is None:
+        raise HTTPException(status_code=404, detail="unknown job")
+
+    active_statuses = {
+        str(PitchJobStatus.PENDING),
+        str(PitchJobStatus.TRANSCRIBING),
+        str(PitchJobStatus.EVALUATING),
+    }
+    if str(job_row.get("status")) in active_statuses:
+        raise HTTPException(status_code=409, detail="job is already active; wait for it to finish")
+
+    words_json = job_row.get("words_json")
+    if not isinstance(words_json, list) or not words_json:
+        raise HTTPException(
+            status_code=422,
+            detail="no words_json available; please re-upload the audio file",
+        )
+
+    tenant_id: str = str(job_row.get("tenant_id") or "unknown")
+    db_job_update(
+        job_id,
+        status=str(PitchJobStatus.EVALUATING),
+        substatus="准备重跑评估…",
+        error_summary=None,
+        error_detail=None,
+        error_code=None,
+    )
+
+    background_tasks.add_task(
+        _run_retry_eval,
+        job_id=job_id,
+        tenant_id=tenant_id,
+        words_json=words_json,
+    )
+    logger.info("retry_eval_queued job_id=%s tenant_id=%s", job_id, tenant_id)
+    return PitchUploadAck(job_id=job_id, status=PitchJobStatus.EVALUATING)
 
 
 @router.get("/jobs/{job_id}/audio")
