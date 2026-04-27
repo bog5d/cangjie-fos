@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from cangjie_fos.adapters.institution_coach_sync import project_institution_to_coach_registry
 from cangjie_fos.schemas.institution import InstitutionProfile, InstitutionProfileCreate, PipelineCountsResponse
 from cangjie_fos.services.institution_store import (
     count_by_stage,
@@ -24,7 +23,6 @@ def get_institutions(tenant_id: str = Query(..., min_length=1)) -> list[Institut
 @router.post("/institutions", response_model=InstitutionProfile)
 def post_institution(body: InstitutionProfileCreate) -> InstitutionProfile:
     prof = create_institution(body)
-    project_institution_to_coach_registry(name=prof.name, tenant_id=prof.tenant_id)
     return prof
 
 

@@ -9,7 +9,6 @@ import time
 import uuid
 from typing import Any
 
-from cangjie_fos.adapters.institution_coach_sync import project_institution_to_coach_registry
 from cangjie_fos.schemas.institution import InstitutionProfile, InstitutionThermal, PipelineStage
 from cangjie_fos.services.institution_store import get_by_name, upsert_institution
 
@@ -194,4 +193,3 @@ def extract_and_persist_institution_intel(
             )
         )
         logger.info("institution_intel_upserted name=%s tenant_id=%s trace=%s", name, tenant_id, trace_id)
-        project_institution_to_coach_registry(name=name, tenant_id=tenant_id)
