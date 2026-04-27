@@ -192,6 +192,8 @@ def pitch_job_list(
         # substatus lives only in SQLite (not in-memory store)
         db_row = db_job_get(jid)
         substatus = db_row.get("substatus") if db_row else None
+        _words = db_row.get("words_json") if db_row else None
+        has_words_json = isinstance(_words, list) and len(_words) > 0
         out.append(
             PitchJobSummary(
                 job_id=jid,
@@ -205,6 +207,7 @@ def pitch_job_list(
                 error_code=errs["error_code"],
                 error=errs["error"],
                 has_report=has_report,
+                has_words_json=has_words_json,
                 warnings=j.get("warnings"),
                 substatus=substatus,
             )

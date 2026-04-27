@@ -56,6 +56,7 @@ class PitchJobSummary(BaseModel):
     error_code: str | None = None
     error: str | None = Field(default=None, description="兼容字段，同 error_summary")
     has_report: bool = False
+    has_words_json: bool = Field(default=False, description="SQLite 中有 words_json，可重跑评估")
     warnings: dict | None = None
     substatus: str | None = Field(default=None, description="流水线子步骤进度文本，active 状态时展示")
 
