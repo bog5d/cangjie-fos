@@ -58,7 +58,8 @@ class PitchGraphService:
             except (ConnectionError, TimeoutError) as e:
                 last_exc = e
         else:
-            raise last_exc  # type: ignore[misc]
+            assert last_exc is not None
+            raise last_exc
 
         try:
             from cangjie_fos.services.institution_intel_extract import extract_and_persist_institution_intel
