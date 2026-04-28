@@ -9,10 +9,10 @@
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | v0.5.1 |
-| 测试基线 | **278 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
+| 版本 | v1.0.0 |
+| 测试基线 | **289 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
 | 前端构建 | **零错误**（`cd frontend && npm run build`） |
-| 当前 Phase | **Phase 7.0 阶段4完成（v0.5.1）→ Phase 7.0 阶段5待开始** |
+| 当前 Phase | **✅ 五阶段合并计划全部完工 — 进入稳定维护期** |
 | 详细变更历史 | 见 `CHANGELOG.md` |
 
 ---
@@ -130,118 +130,33 @@ git push origin <分支名>
 | 阶段2 | FSS JSON数据 → FOS SQLite统一（贡献度/素材匹配表） | ✅ 完成（v0.4.0，258 passed） |
 | 阶段3 | APScheduler夜间自动进化任务 | ✅ 完成（v0.5.0，266 passed） |
 | 阶段4 | 全数据关联（路演→素材→机构→贡献者） | ✅ 完成（v0.5.1，278 passed） |
-| 阶段5 | Doctor强化（外发版自愈） | ⏳ 待开始 |
+| 阶段5 | Doctor强化（外发版自愈） | ✅ 完成（v1.0.0，289 passed） |
 
 FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
 
-## 立即要做（阶段5 — Doctor 强化，外发版自愈）
+## 当前维护事项（五阶段计划已全部完工）
 
-**阶段4已完工（v0.5.1）**：全数据关联链路打通，278 passed。
+**五阶段合并计划已于 2026-04-28 全部完工（v1.0.0，289 passed）。**
 
-**阶段5核心目标**：同事/投资机构收到 zip 包解压后，常见问题**自动诊断+一键修复**，不需要来找王波。
+当前进入稳定维护期，后续工作参考 CHANGELOG.md [Unreleased] 章节。
 
-### 背景（必读）
-现有诊断工具：
-- `backend/src/cangjie_fos/core/readiness.py` — 系统就绪检查，返回 JSON 探针结果
-- `backend/src/cangjie_fos/core/preflight.py` — 启动时检查必选依赖（缺失则阻断）
-- `诊断_打不开请运行我.bat` — Windows 批处理，调用 uvicorn 启动并输出错误
-- `GET /api/v1/ready` — HTTP 探针，已有 `pitch_coach_ok`、`issues` 字段
+### 已落地能力清单
+- `tools/doctor.py` — 跨平台诊断修复（`python tools/doctor.py --fix`）
+- `诊断_打不开请运行我.bat` — Windows 一键启动+自动修复
+- `GET /api/v1/doctor` — HTTP 健康探针（前端 DoctorPanel 使用）
+- `GET /api/v1/ready` — 简版就绪检查
+- APScheduler 每晚 2 点自动进化（nightly_settle）
+- 全数据关联链路（路演→素材→机构→贡献者）
+- 23 个 engine/ 模块，FSS 完全内化，无外部依赖
 
-缺失的：没有**自动修复**能力，诊断后只告诉用户"有问题"，不帮解决。
-
----
-
-### Task 1 — tools/doctor.py（跨平台诊断修复脚本）
-新建文件：`tools/doctor.py`（项目根目录）
-
-```python
-#!/usr/bin/env python3
-"""
-仓颉 FOS 一键诊断修复脚本。
-用法：python tools/doctor.py [--fix]
-不带 --fix：只诊断，输出报告
-带 --fix：自动修复可修复项
-"""
+### 外发版生成方法
+```bash
+# 在项目根目录执行
+git archive --format=zip --prefix=cangjie-fos/ HEAD -o cangjie-fos-v1.0.0.zip
+# 解压后收件人只需运行：
+python tools/doctor.py --fix   # 自动修环境
+诊断_打不开请运行我.bat        # Windows 启动
 ```
-
-诊断项（按严重程度排序）：
-| 检查项 | 诊断方法 | 自动修复 |
-|--------|----------|---------|
-| Python 版本 ≥ 3.10 | `sys.version_info` | ❌ 提示手动安装 |
-| uv 已安装 | `shutil.which("uv")` | ❌ 输出安装命令 |
-| 依赖已安装 | `import cangjie_fos` | ✅ 运行 `uv sync --extra dev` |
-| 8000 端口空闲 | `socket.connect` | ✅ Windows: `netstat+taskkill`，Linux: `lsof+kill` |
-| data/ 目录存在 | `Path.exists()` | ✅ `mkdir -p backend/data/audio backend/data/html_reports` |
-| FFmpeg 可用 | `shutil.which("ffmpeg")` | ❌ 输出下载链接（Windows/Mac/Linux 分支） |
-| SQLite 可写 | 创建临时 DB 文件 | ✅ 检查磁盘空间，输出 `df -h` |
-| .env 文件存在 | `Path(".env").exists()` | ✅ 从 `.env.example` 复制（如有） |
-| 前端 node_modules | `Path("frontend/node_modules").exists()` | ✅ 运行 `npm ci` |
-
-输出格式：
-```
-[✅] Python 3.12.3 — OK
-[✅] uv 0.4.2 — OK
-[❌] 依赖未安装 — 正在修复...
-    → 运行: uv sync --extra dev
-    → 完成
-[⚠️] FFmpeg 未找到 — 无法自动安装
-    → 请下载：https://ffmpeg.org/download.html
-    → Windows 推荐：winget install ffmpeg
-```
-
-### Task 2 — 诊断_打不开请运行我.bat 增强版
-更新现有 `.bat` 文件（保持原位置）：
-1. 调用 `python tools/doctor.py --fix` 先自动修复
-2. 修复完成后再启动 uvicorn
-3. 启动失败时输出**中文错误说明**（端口占用/依赖缺失/权限不足 分情况处理）
-4. 新增：启动成功后自动打开浏览器 `start http://localhost:8000`
-
-### Task 3 — GET /api/v1/doctor（HTTP 版诊断）
-文件：`backend/src/cangjie_fos/api/routes/admin.py`（追加到现有 admin 路由）
-
-```python
-@router.get("/api/v1/doctor")
-def run_doctor_probe() -> dict:
-    """返回详细诊断报告，供前端"系统诊断"面板使用。"""
-    return {
-        "python_version": sys.version,
-        "ffmpeg_available": bool(shutil.which("ffmpeg")),
-        "data_dir_writable": _check_data_dir(),
-        "port_8000_self": True,  # 能响应说明端口OK
-        "db_writable": _check_db_writable(),
-        "issues": [...],  # 汇总问题列表
-        "fix_suggestions": [...]  # 每个问题的修复建议（中文）
-    }
-```
-
-### Task 4 — 前端：Doctor 面板（轻量弹窗）
-文件：`frontend/src/components/DoctorPanel.tsx`（新建）
-- 调用 `GET /api/v1/doctor`
-- 显示：各项状态图标（✅/❌/⚠️）+ 问题说明 + 修复建议
-- 入口：导航栏右上角"系统诊断"按钮（小图标，不占空间）
-- 用 `Dialog` 组件弹出（使用已有的 Radix UI 组件库）
-
-### Task 5 — README.md 快速启动章节
-更新项目根目录 `README.md`（如无则新建）：
-- 快速启动：3步（解压 → 运行 doctor.py --fix → 访问 localhost:8000）
-- 遇到问题：运行 `python tools/doctor.py` 查看诊断报告
-- 系统需求表格（Python/Node/FFmpeg/OS）
-- 不要写超过50行，保持简洁
-
-### Task 6 — 测试（≥8个）
-`tests/test_doctor_probe.py`：
-- `GET /api/v1/doctor` 返回 200 + 所有必需字段
-- `python_version` 字段非空
-- `ffmpeg_available` 是 bool
-- `db_writable` 为 True（测试环境可写）
-- `issues` 是 list
-- `fix_suggestions` 是 list
-
-`tests/test_doctor_script.py`（subprocess 测试）：
-- `python tools/doctor.py` 退出码 0（不带 --fix，只读）
-- 输出包含 "Python" 字样
-
-**CI 验证：278+ passed，npm build 零错误，commit + push，CHANGELOG 更新**
 
 ---
 
