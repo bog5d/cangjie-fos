@@ -702,3 +702,121 @@ def db_nightly_suggestion_mark_consumed(suggestion_id: str) -> None:
             conn.commit()
         finally:
             conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: 全数据关联查询函数
+# ---------------------------------------------------------------------------
+
+
+def db_job_list_risk_keywords(tenant_id: str, limit: int = 10) -> list[dict[str, Any]]:
+    """查询某租户最近N条已完成路演的风险点列表（用于素材匹配分析）。
+
+    返回格式: [{"job_id": str, "risk_points": list, "created_at": float}, ...]
+    """
+    lim = max(1, min(int(limit), 50))
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT job_id, original_report, edited_report, created_at "
+            "FROM pitch_jobs WHERE tenant_id = ? AND status = 'completed' "
+            "ORDER BY created_at DESC LIMIT ?",
+            (tenant_id, lim),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    result = []
+    for row in rows:
+        d = dict(row)
+        # Prefer edited_report, fall back to original_report
+        report_raw = d.get("edited_report") or d.get("original_report")
+        report: dict = {}
+        if isinstance(report_raw, str):
+            try:
+                report = json.loads(report_raw)
+            except Exception:
+                pass
+        elif isinstance(report_raw, dict):
+            report = report_raw
+
+        risk_points = report.get("risk_points") or []
+        result.append({
+            "job_id": d["job_id"],
+            "risk_points": risk_points,
+            "created_at": d["created_at"],
+        })
+    return result
+
+
+def db_assets_search_by_keywords(tenant_id: str, keywords: list[str]) -> list[dict[str, Any]]:
+    """查询素材库中与关键词匹配的素材（基于 material_contributions 表 tags/asset_filename 字段）。
+
+    返回格式: [{"asset_filename": str, "relative_path": str, "tags": list, "usage_count": int, ...}, ...]
+    tenant_id 参数保留扩展用（当前表不含 tenant_id，返回全局数据）。
+    """
+    if not keywords:
+        return []
+
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT asset_filename, relative_path, tags, usage_count, contribution_score, last_used_at "
+            "FROM material_contributions ORDER BY usage_count DESC LIMIT 500"
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    matched = []
+    kw_lower = [kw.casefold() for kw in keywords if kw.strip()]
+    for row in rows:
+        d = dict(row)
+        tags: list[str] = []
+        if isinstance(d.get("tags"), str):
+            try:
+                tags = json.loads(d["tags"])
+            except Exception:
+                tags = []
+        elif isinstance(d.get("tags"), list):
+            tags = d["tags"]
+        d["tags"] = tags
+
+        filename_lower = (d.get("asset_filename") or "").casefold()
+        tags_lower = [t.casefold() for t in tags]
+        for kw in kw_lower:
+            if kw in filename_lower or any(kw in t for t in tags_lower):
+                matched.append(d)
+                break  # avoid duplicate entries per asset
+
+    return matched
+
+
+def db_material_contribution_bulk_upsert(
+    tenant_id: str, asset_ids: list[str], action: str
+) -> None:
+    """批量 upsert 素材贡献度（路演用到了哪些素材 → 增加 usage_count）。
+
+    asset_ids: asset_filename 列表
+    action: 操作类型标注（用于日志，不影响 DB 写入逻辑）
+    tenant_id 参数保留扩展用。
+    """
+    now = time.time()
+    with _write_lock:
+        conn = _connect()
+        try:
+            for asset_id in asset_ids:
+                conn.execute(
+                    """INSERT INTO material_contributions
+                        (asset_filename, relative_path, contribution_score, usage_count, last_used_at, tags, updated_at)
+                    VALUES (?, ?, 0.0, 1, ?, '[]', ?)
+                    ON CONFLICT(relative_path) DO UPDATE SET
+                        usage_count = usage_count + 1,
+                        last_used_at = excluded.last_used_at,
+                        updated_at = excluded.updated_at""",
+                    (asset_id, asset_id, now, now),
+                )
+            conn.commit()
+        finally:
+            conn.close()
