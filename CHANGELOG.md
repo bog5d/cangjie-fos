@@ -6,6 +6,16 @@
 
 ## [Unreleased] — 开发中
 
+### 生产热修复（2026-04-28）
+
+#### Fixed
+- **`request_context.py`：413 大文件上传失败** — `RequestContextMiddleware` 对 `multipart/form-data` 请求错误地应用了 JSON 8MB body 上限，导致 172MB+ 音频无法上传。修复：检测 content-type，文件上传跳过 body size 检查。
+- **`asr_polish.py` / `memory_engine.py`：`No module named 'llm_judge'`** — Phase 1 engine/ 迁移遗漏函数体内懒导入（`from llm_judge` / `from retry_policy`），测试因 mock 层次较高未发现。修复：改为 `cangjie_fos.engine.*` 完整路径。
+- **`安装并启动.ps1`：FFmpeg 首次下载失败** — `imageio_ffmpeg` 首次调用时联网下载二进制，慢网/断网机器无提示失败。修复：启动脚本新增 `[3/4]` 预下载步骤（`imageio_ffmpeg.get_ffmpeg_exe()`），失败时打印警告而非阻断启动。
+- **测试基线**：289 passed（不变，修复不影响测试覆盖层）
+
+---
+
 ### Phase 7.0 阶段5（2026-04-28 完成）
 
 #### Added
