@@ -15,7 +15,9 @@ diff_summary 结构（稳定契约，extractor 依赖此格式）：
 """
 from __future__ import annotations
 
+import json
 import logging
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,17 @@ logger = logging.getLogger(__name__)
 def _risk_key(rp: dict) -> str:
     """稳定 key：用 original_text 或 start/end word_index 标识同一条风险点。"""
     return rp.get("original_text", "") or f"{rp.get('start_word_index')}_{rp.get('end_word_index')}"
+
+
+def _extract_risk_keywords(report: dict[str, Any]) -> list[str]:
+    """从报告的 risk_points 提取关键词（original_text / category / type）。"""
+    keywords: list[str] = []
+    for rp in report.get("risk_points") or []:
+        for field in ("original_text", "category", "type", "description"):
+            val = rp.get(field)
+            if val and isinstance(val, str) and val.strip():
+                keywords.append(val.strip())
+    return keywords
 
 
 def compute_diff_summary(
@@ -80,8 +93,19 @@ def capture_review_diff(
     original_report: dict[str, Any] | None,
     edited_report: dict[str, Any],
 ) -> int:
-    """计算 diff 并持久化到 review_diffs 表。返回 diff id。"""
-    from cangjie_fos.services.pitch_job_db import db_diff_insert  # noqa: PLC0415
+    """计算 diff 并持久化到 review_diffs 表。返回 diff id。
+
+    同时触发全链路数据关联：
+    1. 提取 edited 报告中的风险点关键词 → 找相关素材
+    2. 记录素材使用（material_contributions usage_count +1）
+    3. 将匹配结果写入 material_match_history
+    """
+    from cangjie_fos.services.pitch_job_db import (  # noqa: PLC0415
+        db_diff_insert,
+        db_assets_search_by_keywords,
+        db_material_contribution_bulk_upsert,
+        db_material_match_insert,
+    )
 
     diff_summary = compute_diff_summary(original_report, edited_report)
     diff_id = db_diff_insert(
@@ -98,4 +122,28 @@ def capture_review_diff(
         diff_id,
         diff_summary["score_delta"],
     )
+
+    # Phase 4: 全链路数据关联
+    try:
+        keywords = _extract_risk_keywords(edited_report)
+        if keywords:
+            matched_assets = db_assets_search_by_keywords(tenant_id, keywords)
+            if matched_assets:
+                asset_ids = [a["asset_filename"] for a in matched_assets]
+                db_material_contribution_bulk_upsert(tenant_id, asset_ids, action="review_use")
+                for asset in matched_assets:
+                    db_material_match_insert(
+                        tenant_id,  # institution_id = tenant_id
+                        asset["asset_filename"],
+                        asset["relative_path"],
+                        score=1.0,
+                    )
+                logger.info(
+                    "phase4_association_triggered job_id=%s matched_assets=%d",
+                    job_id,
+                    len(matched_assets),
+                )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("phase4_association_failed job_id=%s error=%s", job_id, exc)
+
     return diff_id
