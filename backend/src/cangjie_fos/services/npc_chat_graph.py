@@ -162,6 +162,21 @@ def _inject_system_health(state: NpcGraphState) -> dict[str, str]:
     except Exception:  # noqa: BLE001
         pass
 
+    try:
+        from cangjie_fos.services.pitch_job_db import (  # noqa: PLC0415
+            db_nightly_suggestion_list_pending,
+            db_nightly_suggestion_mark_consumed,
+        )
+        _tid = (state.get("tenant_id") or "default")
+        nightly = db_nightly_suggestion_list_pending(_tid, limit=3, max_priority=5)
+        if nightly:
+            lines.append("夜间进化建议:")
+            for s in nightly:
+                lines.append(f"  - [{s['type']}] {s['content']}")
+                db_nightly_suggestion_mark_consumed(s["id"])
+    except Exception:  # noqa: BLE001
+        pass
+
     if not lines:
         return {}
 
