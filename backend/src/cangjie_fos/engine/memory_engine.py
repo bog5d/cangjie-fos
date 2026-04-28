@@ -302,7 +302,7 @@ def capture_and_distill_diff(
     if not memory_diff_noise_gate_passes(original, refined):
         return None
     try:
-        from llm_judge import distill_executive_memory_from_diff
+        from cangjie_fos.engine.coach.llm_judge import distill_executive_memory_from_diff
 
         mem = distill_executive_memory_from_diff(original, refined, tg)
         rt = (risk_type or "").strip()

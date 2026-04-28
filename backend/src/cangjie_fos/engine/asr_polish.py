@@ -75,8 +75,8 @@ def polish_transcription_text(
     if not words:
         return []
 
-    from llm_judge import MAX_COMPLETION_TOKENS_BY_MODEL, _make_client
-    from retry_policy import run_with_backoff
+    from cangjie_fos.engine.coach.llm_judge import MAX_COMPLETION_TOKENS_BY_MODEL, _make_client
+    from cangjie_fos.engine.retry_policy import run_with_backoff
 
     hot = industry_hot_words or []
     hot_line = "、".join(str(h).strip() for h in hot if str(h).strip()) or "（无）"

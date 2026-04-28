@@ -61,7 +61,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 headers={"X-Request-ID": rid, "Retry-After": "60"},
             )
 
-        if self._check and request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        # 文件上传（multipart/form-data）由 read_upload_limited 单独限制，不受 JSON 限制
+        _ct = request.headers.get("content-type", "")
+        _is_upload = "multipart/form-data" in _ct or "application/octet-stream" in _ct
+        if self._check and not _is_upload and request.method in ("POST", "PUT", "PATCH", "DELETE"):
             cl = request.headers.get("content-length")
             if cl:
                 try:
