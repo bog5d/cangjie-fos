@@ -118,7 +118,14 @@ try {
     } else {
       $xd = $baseXd
       if ($Profile -eq "Release") {
-        $xd += @("软著申请材料", "html_reports", ".pytest_cache", ".cursor")
+        # 用全路径确保中文目录名被 robocopy 正确匹配
+        $xd += @(
+          (Join-Path $root "软著申请材料"),
+          "软著申请材料",
+          "html_reports",
+          ".pytest_cache",
+          ".cursor"
+        )
       }
     }
     $xdArg = $xd | ForEach-Object { "/XD", $_ }
