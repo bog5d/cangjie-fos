@@ -9,10 +9,10 @@
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | v0.3.0 |
-| 测试基线 | **239 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
+| 版本 | v0.4.0 |
+| 测试基线 | **258 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
 | 前端构建 | **零错误**（`cd frontend && npm run build`） |
-| 当前 Phase | **Phase 7.0 阶段1完成（v0.3.0）→ Phase 7.0 阶段2待开始** |
+| 当前 Phase | **Phase 7.0 阶段2完成（v0.4.0）→ Phase 7.0 阶段3待开始** |
 | 详细变更历史 | 见 `CHANGELOG.md` |
 
 ---
@@ -127,37 +127,67 @@ git push origin <分支名>
 |------|------|------|
 | 阶段0 | R3：LLM重试 + 重跑评估按钮 | ✅ 完成（v0.2.1） |
 | 阶段1 | FSS代码移入 `engine/` 子包，消灭 sys.path 注入 | ✅ 完成（v0.3.0） |
-| 阶段2 | FSS JSON数据 → FOS SQLite统一（贡献度/素材匹配表） | ⏳ 待开始 |
+| 阶段2 | FSS JSON数据 → FOS SQLite统一（贡献度/素材匹配表） | ✅ 完成（v0.4.0，258 passed） |
 | 阶段3 | APScheduler夜间自动进化任务 | ⏳ 待开始 |
 | 阶段4 | 全数据关联（路演→素材→机构→贡献者） | ⏳ 待开始 |
 | 阶段5 | Doctor强化（外发版自愈） | ⏳ 待开始 |
 
 FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
 
-## 立即要做（阶段2 — FSS JSON 数据迁移 → FOS SQLite）
+## 立即要做（阶段3 — APScheduler 夜间自动进化）
 
-**阶段1已完工（v0.3.0）**：`ensure_pitch_coach_runtime()` 在业务代码中调用次数 = 0，engine/ 含 23 个模块，239 passed。
+**阶段2已完工（v0.4.0）**：4张新表 + 3个新API + 分页 + structlog + 前端懒加载，258 passed。
 
-**阶段2核心目标**：FSS JSON 文件存储 → FOS SQLite 统一，贡献度、素材匹配上线
+**阶段3核心目标**：系统每晚自动消化数据，次日早晨向豆豆注入更新建议
 
-新增 SQLite 表（`pitch_job_db.py`）：
-- `executive_memories` — 高管错题本（从 FSS `.executive_memory/` 迁移）
-- `material_contributions` — 素材贡献度（从 asset_index.json metadata 提取）
-- `contribution_scores` — 贡献度汇总
-- `material_match_history` — 素材-机构匹配历史
+### Task 1 — APScheduler 接入 FastAPI lifespan
+文件：`backend/src/cangjie_fos/main.py`
+```python
+# pyproject.toml 新增：apscheduler>=3.10
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+# lifespan 内：scheduler.add_job(nightly_settle_all_tenants, "cron", hour=2, minute=0)
+```
 
-新增 API：
-- `GET /api/materials/health` — 素材健康度
-- `POST /api/materials/match` — 为机构生成素材清单
-- `GET /api/contributions` — 贡献度排行
+### Task 2 — nightly_settle.py（夜间结算服务）
+文件：`backend/src/cangjie_fos/services/nightly_settle.py`
+- `nightly_settle_all_tenants()` — 从 DB 查所有活跃 tenant_id，逐个调用
+- `nightly_settle_for_tenant(tenant_id)` — 执行3步：
+  1. 提取 pending review_diffs → 写入 investor_prefs（调用已有 `run_preference_extraction`）
+  2. 分析近期 pitch + 素材库 → 生成建议（`_generate_material_suggestions`）
+  3. 写入 `nightly_suggestions` 表
 
-技术增强（同期完成）：
-- SQLite WAL 模式（`PRAGMA journal_mode=WAL`）
-- `/api/pitch/jobs` 分页（`?page=1&size=20`）
-- structlog 结构化日志
-- 前端懒加载（ReviewWorkbench / WarRoomMap / AssetLibrary）
+### Task 3 — nightly_suggestions 表
+文件：`backend/src/cangjie_fos/services/pitch_job_db.py`
+```sql
+CREATE TABLE IF NOT EXISTS nightly_suggestions (
+    id          TEXT PRIMARY KEY,
+    tenant_id   TEXT NOT NULL,
+    created_at  REAL NOT NULL,
+    consumed_at REAL,
+    type        TEXT NOT NULL,  -- "material_update" | "risk_pattern" | "institution_insight"
+    content     TEXT NOT NULL,  -- 自然语言建议
+    asset_id    TEXT,
+    priority    INTEGER DEFAULT 5
+);
+```
+CRUD：`db_nightly_suggestion_insert / list_pending / mark_consumed`
 
-CI 验证：239+ passed，CHANGELOG 更新为 v0.3.x
+### Task 4 — 豆豆注入建议
+文件：`backend/src/cangjie_fos/services/npc_chat_graph.py`（`inject_system_health` 节点）
+- 在现有 readiness + 失败任务注入之后，追加：读取未消费的 `nightly_suggestions`（priority≤5，最多3条），格式化后拼入系统提示
+- 豆豆回答后调用 `db_nightly_suggestion_mark_consumed`
+
+### Task 5 — 手动触发端点（调试用）
+`POST /api/v1/admin/nightly-settle?tenant_id=X` — 立即执行单租户结算，返回生成的建议数量
+
+### Task 6 — 测试
+`tests/test_nightly_settle.py`（≥8个测试）：
+- 表创建验证
+- CRUD 基础操作
+- nightly_settle_for_tenant mock 调用链
+- 手动触发端点 200/422
+
+**CI 验证：258+ passed（当前基线），无需环境变量，commit + push**
 
 ---
 
