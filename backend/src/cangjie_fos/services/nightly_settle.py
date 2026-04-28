@@ -18,6 +18,8 @@ from cangjie_fos.services.pitch_job_db import (
     _connect,
     _write_lock,
     db_nightly_suggestion_insert,
+    db_job_list_risk_keywords,
+    db_material_contributions_list,
 )
 
 log = structlog.get_logger(__name__)
@@ -35,44 +37,74 @@ def _list_active_tenant_ids() -> list[str]:
         conn.close()
 
 
-def _generate_material_suggestions(tenant_id: str) -> list[dict[str, Any]]:
-    """规则性生成素材建议，不调用 LLM。"""
-    conn = _connect()
-    try:
-        # 近30天 completed 任务数
-        cutoff = time.time() - 30 * 86400
-        cur = conn.execute(
-            "SELECT COUNT(*) FROM pitch_jobs WHERE tenant_id = ? AND status = 'completed' AND created_at >= ?",
-            (tenant_id, cutoff),
-        )
-        recent_count: int = cur.fetchone()[0]
+def _simple_tfidf_score(keyword: str, asset_filename: str, asset_tags: list[str]) -> float:
+    """纯 Python TF-IDF 简化打分：keyword 在 asset 标签/文件名中命中得分。"""
+    kw = keyword.casefold()
+    score = 0.0
+    filename_lower = asset_filename.casefold()
+    if kw in filename_lower:
+        score += 2.0
+    for tag in asset_tags:
+        if kw in tag.casefold():
+            score += 1.5
+    return score
 
-        # 高使用率素材 top-3
-        cur2 = conn.execute(
-            "SELECT asset_filename, usage_count, contribution_score FROM material_contributions "
-            "ORDER BY usage_count DESC LIMIT 3"
-        )
-        top_materials = [dict(zip(["asset_filename", "usage_count", "contribution_score"], row)) for row in cur2.fetchall()]
-    finally:
-        conn.close()
+
+def _generate_material_suggestions(tenant_id: str) -> list[dict[str, Any]]:
+    """真实素材建议计算（Phase 4 — 基于 TF-IDF 风险覆盖率分析）。"""
+    # Step 1: 读取最近10条已完成路演的风险关键词
+    job_risks = db_job_list_risk_keywords(tenant_id, limit=10)
+    all_keywords: list[str] = []
+    for job in job_risks:
+        for rp in job.get("risk_points") or []:
+            for field in ("original_text", "category", "type"):
+                val = rp.get(field)
+                if val and isinstance(val, str) and val.strip():
+                    all_keywords.append(val.strip().casefold())
+
+    # Step 2: 读取素材库数据
+    all_assets = db_material_contributions_list(limit=200)
 
     suggestions: list[dict[str, Any]] = []
 
-    if recent_count > 0:
-        suggestions.append({
-            "type": "material_update",
-            "content": f"过去30天完成 {recent_count} 次路演评估，建议复盘高频风险点并更新对应素材。",
-            "priority": 5,
-        })
+    # Step 3a: 找出覆盖率低于30%的风险点类型 → 生成 "material_update" 建议
+    if all_keywords and all_assets:
+        unique_kws = list(dict.fromkeys(all_keywords))  # 保留顺序去重
+        uncovered: list[str] = []
+        for kw in unique_kws:
+            covered = any(
+                _simple_tfidf_score(kw, a["asset_filename"], a.get("tags") or []) > 0
+                for a in all_assets
+            )
+            if not covered:
+                uncovered.append(kw)
 
-    for mat in top_materials:
-        if mat["usage_count"] >= 3 and mat["contribution_score"] < 1.0:
+        coverage_rate = 1.0 - len(uncovered) / len(unique_kws) if unique_kws else 1.0
+        if coverage_rate < 0.30 and uncovered:
+            top_uncovered = uncovered[:3]
             suggestions.append({
                 "type": "material_update",
-                "content": f"素材「{mat['asset_filename']}」已被引用 {mat['usage_count']} 次但贡献分偏低（{mat['contribution_score']:.1f}），建议更新内容。",
-                "asset_id": mat["asset_filename"],
+                "content": f"风险点素材覆盖率仅 {coverage_rate:.0%}，高频未覆盖风险：{', '.join(top_uncovered)}，建议补充对应素材。",
+                "priority": 4,
+            })
+
+    # Step 3b: 找出 contribution_score 为0但被多次引用的素材 → 生成 "institution_insight" 建议
+    for asset in all_assets:
+        if int(asset.get("usage_count") or 0) >= 3 and float(asset.get("contribution_score") or 0.0) == 0.0:
+            suggestions.append({
+                "type": "institution_insight",
+                "content": f"素材「{asset['asset_filename']}」已被引用 {asset['usage_count']} 次但贡献分为零，建议评估其实际价值并更新贡献评分。",
+                "asset_id": asset["asset_filename"],
                 "priority": 5,
             })
+
+    # Step 3c: 兜底：近期活跃但无素材库数据时，给出基础建议
+    if not suggestions and job_risks:
+        suggestions.append({
+            "type": "material_update",
+            "content": f"已完成 {len(job_risks)} 次路演评估，素材库暂无匹配数据，建议运行「向上扫描」同步素材索引。",
+            "priority": 5,
+        })
 
     return suggestions
 
