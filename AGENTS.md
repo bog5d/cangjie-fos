@@ -134,66 +134,114 @@ git push origin <分支名>
 
 FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
 
-## 立即要做（阶段4 — 全数据关联）
+## 立即要做（阶段5 — Doctor 强化，外发版自愈）
 
-**阶段3已完工（v0.5.0）**：APScheduler每晚2点运行，nightly_suggestions表，豆豆注入，266 passed。
+**阶段4已完工（v0.5.1）**：全数据关联链路打通，278 passed。
 
-**阶段4核心目标**：一次路演结束后，自动触发全链路数据关联——路演→素材→机构→贡献者→进化记忆，形成完整数据图。
+**阶段5核心目标**：同事/投资机构收到 zip 包解压后，常见问题**自动诊断+一键修复**，不需要来找王波。
 
 ### 背景（必读）
-现有数据孤岛：
-- `pitch_jobs` 记录路演，但风险点不关联素材
-- `material_contributions` 有贡献度表，但没人往里写数据
-- `nightly_suggestions` 有建议表，但 `nightly_settle` 只生成文字，没有真实计算
-- `evolution_capture.py` 骨架已落地，但 `capture_review_diff` 只记录 diff，不触发下游
+现有诊断工具：
+- `backend/src/cangjie_fos/core/readiness.py` — 系统就绪检查，返回 JSON 探针结果
+- `backend/src/cangjie_fos/core/preflight.py` — 启动时检查必选依赖（缺失则阻断）
+- `诊断_打不开请运行我.bat` — Windows 批处理，调用 uvicorn 启动并输出错误
+- `GET /api/v1/ready` — HTTP 探针，已有 `pitch_coach_ok`、`issues` 字段
 
-目标：路演 commit（审查员提交修改）→ 自动触发4条关联链路
+缺失的：没有**自动修复**能力，诊断后只告诉用户"有问题"，不帮解决。
 
-### Task 1 — pitch_job_db.py：新增关联查询函数
+---
+
+### Task 1 — tools/doctor.py（跨平台诊断修复脚本）
+新建文件：`tools/doctor.py`（项目根目录）
+
 ```python
-# 查询某租户最近N条已完成路演的风险点列表（用于素材匹配分析）
-def db_job_list_risk_keywords(tenant_id: str, limit: int = 10) -> list[dict]
-# 查询素材库中与关键词匹配的素材（基于 assets 表 tags/title 字段）
-def db_assets_search_by_keywords(tenant_id: str, keywords: list[str]) -> list[dict]
-# 批量 upsert 素材贡献度（路演用到了哪些素材 → 增加 usage_count）
-def db_material_contribution_bulk_upsert(tenant_id: str, asset_ids: list[str], action: str) -> None
+#!/usr/bin/env python3
+"""
+仓颉 FOS 一键诊断修复脚本。
+用法：python tools/doctor.py [--fix]
+不带 --fix：只诊断，输出报告
+带 --fix：自动修复可修复项
+"""
 ```
 
-### Task 2 — evolution_capture.py：扩展 capture_review_diff
-文件：`backend/src/cangjie_fos/services/evolution_capture.py`
-在现有 `capture_review_diff(job_id, tenant_id, original, edited)` 函数末尾追加：
-1. 提取 edited 报告中的风险点关键词 → 调用 `db_assets_search_by_keywords` 找相关素材
-2. 调用 `db_material_contribution_bulk_upsert`，action="review_use"，记录本次用到的素材
-3. 将匹配到的素材写入 `material_match_history`（institution_id 取 job 的 tenant_id，matched_assets 为 JSON）
+诊断项（按严重程度排序）：
+| 检查项 | 诊断方法 | 自动修复 |
+|--------|----------|---------|
+| Python 版本 ≥ 3.10 | `sys.version_info` | ❌ 提示手动安装 |
+| uv 已安装 | `shutil.which("uv")` | ❌ 输出安装命令 |
+| 依赖已安装 | `import cangjie_fos` | ✅ 运行 `uv sync --extra dev` |
+| 8000 端口空闲 | `socket.connect` | ✅ Windows: `netstat+taskkill`，Linux: `lsof+kill` |
+| data/ 目录存在 | `Path.exists()` | ✅ `mkdir -p backend/data/audio backend/data/html_reports` |
+| FFmpeg 可用 | `shutil.which("ffmpeg")` | ❌ 输出下载链接（Windows/Mac/Linux 分支） |
+| SQLite 可写 | 创建临时 DB 文件 | ✅ 检查磁盘空间，输出 `df -h` |
+| .env 文件存在 | `Path(".env").exists()` | ✅ 从 `.env.example` 复制（如有） |
+| 前端 node_modules | `Path("frontend/node_modules").exists()` | ✅ 运行 `npm ci` |
 
-### Task 3 — nightly_settle.py：真实素材建议计算
-替换 `_generate_material_suggestions` 的占位实现：
-- 读取最近10条已完成路演的风险关键词（`db_job_list_risk_keywords`）
-- 与素材库做 TF-IDF 简单相似度（纯 Python，不引入 sklearn）
-- 找出覆盖率低于30%的风险点类型 → 生成 "material_update" 建议
-- 找出 contribution_score 为0但被多次引用的素材 → 生成 "institution_insight" 建议
+输出格式：
+```
+[✅] Python 3.12.3 — OK
+[✅] uv 0.4.2 — OK
+[❌] 依赖未安装 — 正在修复...
+    → 运行: uv sync --extra dev
+    → 完成
+[⚠️] FFmpeg 未找到 — 无法自动安装
+    → 请下载：https://ffmpeg.org/download.html
+    → Windows 推荐：winget install ffmpeg
+```
 
-### Task 4 — 前端：贡献度排行榜组件（轻量）
-文件：`frontend/src/components/ContributionBoard.tsx`（新建）
-- 调用 `GET /api/contributions?tenant_id=X&limit=10`
-- 显示排行：名次 + 贡献者名 + 得分 + 素材数
-- 在 `AssetLibrary` 页底部嵌入（不新建页面）
+### Task 2 — 诊断_打不开请运行我.bat 增强版
+更新现有 `.bat` 文件（保持原位置）：
+1. 调用 `python tools/doctor.py --fix` 先自动修复
+2. 修复完成后再启动 uvicorn
+3. 启动失败时输出**中文错误说明**（端口占用/依赖缺失/权限不足 分情况处理）
+4. 新增：启动成功后自动打开浏览器 `start http://localhost:8000`
 
-### Task 5 — API 端点：关联触发日志
-`GET /api/v1/admin/association-log?tenant_id=X&limit=20`
-- 返回最近的 `material_match_history` 记录，字段：institution_id, matched_count, created_at
-- 用于调试：确认关联链路真实触发
+### Task 3 — GET /api/v1/doctor（HTTP 版诊断）
+文件：`backend/src/cangjie_fos/api/routes/admin.py`（追加到现有 admin 路由）
 
-### Task 6 — 测试（≥10个）
-`tests/test_phase4_association.py`：
-- `db_job_list_risk_keywords` 返回正确格式
-- `db_assets_search_by_keywords` 关键词匹配
-- `db_material_contribution_bulk_upsert` ON CONFLICT 累加
-- `capture_review_diff` 触发后 `material_contributions` 有新记录
-- `nightly_settle_for_tenant` 真实素材建议计算（mock assets 数据）
-- `/api/v1/admin/association-log` 200 + 字段结构
+```python
+@router.get("/api/v1/doctor")
+def run_doctor_probe() -> dict:
+    """返回详细诊断报告，供前端"系统诊断"面板使用。"""
+    return {
+        "python_version": sys.version,
+        "ffmpeg_available": bool(shutil.which("ffmpeg")),
+        "data_dir_writable": _check_data_dir(),
+        "port_8000_self": True,  # 能响应说明端口OK
+        "db_writable": _check_db_writable(),
+        "issues": [...],  # 汇总问题列表
+        "fix_suggestions": [...]  # 每个问题的修复建议（中文）
+    }
+```
 
-**CI 验证：266+ passed，npm build 零错误，commit + push**
+### Task 4 — 前端：Doctor 面板（轻量弹窗）
+文件：`frontend/src/components/DoctorPanel.tsx`（新建）
+- 调用 `GET /api/v1/doctor`
+- 显示：各项状态图标（✅/❌/⚠️）+ 问题说明 + 修复建议
+- 入口：导航栏右上角"系统诊断"按钮（小图标，不占空间）
+- 用 `Dialog` 组件弹出（使用已有的 Radix UI 组件库）
+
+### Task 5 — README.md 快速启动章节
+更新项目根目录 `README.md`（如无则新建）：
+- 快速启动：3步（解压 → 运行 doctor.py --fix → 访问 localhost:8000）
+- 遇到问题：运行 `python tools/doctor.py` 查看诊断报告
+- 系统需求表格（Python/Node/FFmpeg/OS）
+- 不要写超过50行，保持简洁
+
+### Task 6 — 测试（≥8个）
+`tests/test_doctor_probe.py`：
+- `GET /api/v1/doctor` 返回 200 + 所有必需字段
+- `python_version` 字段非空
+- `ffmpeg_available` 是 bool
+- `db_writable` 为 True（测试环境可写）
+- `issues` 是 list
+- `fix_suggestions` 是 list
+
+`tests/test_doctor_script.py`（subprocess 测试）：
+- `python tools/doctor.py` 退出码 0（不带 --fix，只读）
+- 输出包含 "Python" 字样
+
+**CI 验证：278+ passed，npm build 零错误，commit + push，CHANGELOG 更新**
 
 ---
 
