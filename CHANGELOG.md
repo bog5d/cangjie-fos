@@ -6,7 +6,20 @@
 
 ## [Unreleased] — 开发中
 
-### Phase 7.0 阶段4（2026-04-28 进行中）
+### Phase 7.0 阶段5（2026-04-28 完成）
+
+#### Added
+- **`tools/doctor.py`**：跨平台诊断修复脚本，9 项检查（Python/uv/依赖/端口/data目录/FFmpeg/SQLite/env/node_modules），`--fix` 模式自动修复可修复项，Windows UTF-8 输出
+- **`GET /api/v1/doctor`**：HTTP 版诊断探针，返回 `python_version/ffmpeg_available/data_dir_writable/db_writable/env_exists/issues/fix_suggestions`，供前端「系统诊断」面板使用
+- **`DoctorPanel.tsx`**：前端系统诊断弹窗，调用 `/api/v1/doctor`，展示各项状态（✅/❌）、问题列表及修复建议，导航栏右上角「🔧 系统诊断」入口
+- **`诊断_打不开请运行我.bat` 增强**：调用 `doctor.py --fix` 自动诊断修复后再启动 uvicorn，启动失败分情况输出中文错误说明
+- **README.md 快速启动更新**：3步启动指引、系统需求表格、遇到问题诊断入口
+- **测试覆盖**：新增 `tests/test_doctor_probe.py`（9个测试）和 `tests/test_doctor_script.py`（2个测试）
+
+#### Changed
+- **测试基线**：278 → **289 passed**
+
+### Phase 7.0 阶段4（2026-04-28 完成）
 
 #### Added
 - **`db_job_list_risk_keywords(tenant_id, limit)`**：查询某租户最近N条已完成路演的风险点列表，用于素材匹配分析
