@@ -6,6 +6,21 @@
 
 ## [Unreleased] — 开发中
 
+### Phase 7.0 阶段4（2026-04-28 进行中）
+
+#### Added
+- **`db_job_list_risk_keywords(tenant_id, limit)`**：查询某租户最近N条已完成路演的风险点列表，用于素材匹配分析
+- **`db_assets_search_by_keywords(tenant_id, keywords)`**：基于 material_contributions 表 tags/filename 字段做关键词匹配
+- **`db_material_contribution_bulk_upsert(tenant_id, asset_ids, action)`**：批量 upsert 素材贡献度（ON CONFLICT 累加 usage_count）
+- **`capture_review_diff` 全链路数据关联**：审查员提交修改后自动触发 → 提取风险关键词 → 匹配素材 → 更新 material_contributions + 写入 material_match_history
+- **`_generate_material_suggestions` 真实 TF-IDF 计算**：替换占位实现，基于最近10条路演风险关键词计算素材覆盖率（<30%触发 material_update 建议）+ 识别零贡献高引用素材（institution_insight 建议）
+- **`ContributionBoard.tsx` 前端组件**：调用 `GET /api/contributions` 显示贡献度排行榜（名次/贡献者/得分/路演数），嵌入 AssetLibrary 页底部
+- **`GET /api/v1/admin/association-log?tenant_id=X&limit=N`**：返回 material_match_history 按机构聚合记录，用于调试确认关联链路真实触发
+- **测试覆盖**：新增 `tests/test_phase4_association.py`（12个测试）：DB查询格式/过滤、关键词匹配、bulk_upsert累加、capture_review_diff关联触发、nightly_settle真实计算、API端点200/422
+
+#### Changed
+- **测试基线**：266 → **278 passed**
+
 ### Phase 7.0 阶段3（2026-04-28 完成）
 
 #### Added

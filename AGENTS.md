@@ -5,14 +5,14 @@
 
 ---
 
-## 当前版本状态（最后更新：2026-04-27）
+## 当前版本状态（最后更新：2026-04-28）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | v0.5.0 |
-| 测试基线 | **266 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
+| 版本 | v0.5.1 |
+| 测试基线 | **278 passed**（`cd backend && uv run --extra dev pytest tests/ -q`） |
 | 前端构建 | **零错误**（`cd frontend && npm run build`） |
-| 当前 Phase | **Phase 7.0 阶段3完成（v0.5.0）→ Phase 7.0 阶段4待开始** |
+| 当前 Phase | **Phase 7.0 阶段4完成（v0.5.1）→ Phase 7.0 阶段5待开始** |
 | 详细变更历史 | 见 `CHANGELOG.md` |
 
 ---
@@ -129,7 +129,7 @@ git push origin <分支名>
 | 阶段1 | FSS代码移入 `engine/` 子包，消灭 sys.path 注入 | ✅ 完成（v0.3.0） |
 | 阶段2 | FSS JSON数据 → FOS SQLite统一（贡献度/素材匹配表） | ✅ 完成（v0.4.0，258 passed） |
 | 阶段3 | APScheduler夜间自动进化任务 | ✅ 完成（v0.5.0，266 passed） |
-| 阶段4 | 全数据关联（路演→素材→机构→贡献者） | ⏳ 待开始 |
+| 阶段4 | 全数据关联（路演→素材→机构→贡献者） | ✅ 完成（v0.5.1，278 passed） |
 | 阶段5 | Doctor强化（外发版自愈） | ⏳ 待开始 |
 
 FSS 路径：`D:\AI_Workspaces\AI_Pitch_Coach`（阶段1完成后归档）
