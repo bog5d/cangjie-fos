@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api/client";
 import { AchievementFlash } from "./components/AchievementFlash";
+import { DoctorPanel } from "./components/DoctorPanel";
 import { ExpHud } from "./components/ExpHud";
 import { NPCPanel } from "./components/NPCPanel";
 import { ScoreToastStack, type ScoreToastItem } from "./components/ScoreToast";
@@ -31,6 +32,7 @@ export default function App() {
   const [institutions, setInstitutions] = useState<InstitutionProfile[]>([]);
   const [commanderName, setCommanderName] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [doctorOpen, setDoctorOpen] = useState(false);
   const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
 
   useEffect(() => {
@@ -225,6 +227,14 @@ export default function App() {
           >
             Dry-run /api/pitch/run
           </button>
+          <button
+            type="button"
+            onClick={() => setDoctorOpen(true)}
+            title="系统诊断"
+            className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-400 transition hover:border-cyan/40 hover:text-cyan-300"
+          >
+            🔧 系统诊断
+          </button>
         </div>
       </header>
 
@@ -259,6 +269,7 @@ export default function App() {
         onPipelineDataChanged={() => void refreshWarData()}
         uploadBlockedReason={uploadBlockedReason}
       />
+      <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
     </div>
   );
 }
