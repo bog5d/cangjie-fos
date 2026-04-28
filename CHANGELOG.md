@@ -6,6 +6,19 @@
 
 ## [Unreleased] — 开发中
 
+### Phase 7.0 阶段3（2026-04-28 完成）
+
+#### Added
+- **`nightly_suggestions` SQLite 表**：夜间进化建议持久化，含 `id/tenant_id/type/content/asset_id/priority/consumed_at`（`db_nightly_suggestion_insert / list_pending / mark_consumed`）
+- **`nightly_settle.py` 夜间结算服务**：`nightly_settle_all_tenants()` / `nightly_settle_for_tenant(tenant_id)`，3步流水线：偏好提取 → 素材建议生成 → 写入 nightly_suggestions
+- **APScheduler 3.11.2 接入 FastAPI lifespan**：每晚2:00自动触发 `nightly_settle_all_tenants`，lifespan 启动/关闭生命周期管理
+- **`POST /api/v1/admin/nightly-settle?tenant_id=X`**：调试用手动触发端点，返回 `{tenant_id, suggested}`
+- **豆豆 NPC 夜间建议注入**：`_inject_system_health` 节点追加读取未消费 `nightly_suggestions`（priority≤5，最多3条），注入后标记已消费
+- **测试覆盖**：新增 `tests/test_nightly_settle.py`（8个测试）：表创建、CRUD、优先级过滤、limit、mock调用链、端点200/422
+
+#### Changed
+- **测试基线**：258 → **266 passed**
+
 ### Phase 7.0 阶段2（2026-04-28 完成）
 
 #### Added
