@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from cangjie_fos.api.routes import (
+    admin,
     assets,
     dashboard,
     feedback,
@@ -35,3 +36,4 @@ api_router.include_router(pitch_wizard.router)
 api_router.include_router(npc.router)
 api_router.include_router(assets.router)
 api_router.include_router(materials.router)
+api_router.include_router(admin.router)
