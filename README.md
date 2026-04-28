@@ -35,39 +35,44 @@ Python 3.12 + uv
 
 ## 快速开始
 
-### 前置要求
-- Python 3.12+（推荐用 [uv](https://github.com/astral-sh/uv) 管理）
-- Node.js 18+
-- FFmpeg（音频压缩，可选）
+### 系统要求
 
-### 1. 配置 API Key
+| 依赖 | 最低版本 | 说明 |
+|------|---------|------|
+| Python | 3.10+ | 推荐 3.12 |
+| uv | 任意 | Python 包管理器 |
+| Node.js | 18+ | 仅构建前端需要 |
+| FFmpeg | 任意 | 可选，语音转写功能需要 |
+| OS | Windows 10 / macOS 12+ / Ubuntu 20.04+ | 跨平台支持 |
 
+### 3 步启动
+
+**Step 1：** 解压 zip 包到纯英文路径（如 `C:\FOS`）
+
+**Step 2：** 一键诊断与修复
 ```bash
-cp backend/.env.example backend/.env
-# 编辑 backend/.env，填入以下 Key：
-# SILICONFLOW_API_KEY=   # 硅基流动 LLM（必填）
-# DASHSCOPE_API_KEY=     # 阿里云 ASR 转写（必填）
+python tools/doctor.py --fix
 ```
+脚本会自动检查并修复：依赖缺失、data/ 目录、.env 配置、端口占用等问题。
 
-或直接双击 `填写API密钥_双击我.bat`（Windows）
-
-### 2. 启动系统
-
-**Python 版（推荐开发环境）：**
+**Step 3：** 启动系统并访问
 ```bash
 # Windows
-一键启动_Python版.bat
+诊断_打不开请运行我.bat
 
 # macOS / Linux
 ./start.sh
 ```
+浏览器访问：`http://localhost:8000`
 
-**Docker 版（推荐生产/分发）：**
+### 遇到问题？
+
 ```bash
-docker compose up
+python tools/doctor.py        # 查看诊断报告
+python tools/doctor.py --fix  # 自动修复可修复项
 ```
 
-系统启动后访问：`http://localhost:8000`
+或在系统界面右上角点击 **🔧 系统诊断** 查看实时状态。
 
 ---
 
