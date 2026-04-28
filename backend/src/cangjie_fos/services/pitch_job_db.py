@@ -105,6 +105,19 @@ CREATE TABLE IF NOT EXISTS material_match_history (
     score          REAL NOT NULL DEFAULT 0.0
 );
 CREATE INDEX IF NOT EXISTS idx_mat_match_inst ON material_match_history(institution_id, matched_at DESC);
+
+CREATE TABLE IF NOT EXISTS nightly_suggestions (
+    id          TEXT PRIMARY KEY,
+    tenant_id   TEXT NOT NULL,
+    created_at  REAL NOT NULL,
+    consumed_at REAL,
+    type        TEXT NOT NULL,
+    content     TEXT NOT NULL,
+    asset_id    TEXT,
+    priority    INTEGER DEFAULT 5
+);
+CREATE INDEX IF NOT EXISTS idx_nightly_suggestions_pending
+    ON nightly_suggestions(tenant_id, consumed_at) WHERE consumed_at IS NULL;
 """
 
 # Columns that store JSON-serialized Python objects.
@@ -629,3 +642,63 @@ def db_contribution_scores_list(*, limit: int = 100) -> list[dict[str, Any]]:
         return [dict(row) for row in cur.fetchall()]
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# nightly_suggestions — Phase 3: 夜间自动进化建议
+# ---------------------------------------------------------------------------
+
+
+def db_nightly_suggestion_insert(
+    *,
+    id: str,
+    tenant_id: str,
+    type: str,
+    content: str,
+    asset_id: str | None = None,
+    priority: int = 5,
+) -> None:
+    """Insert a nightly suggestion record."""
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO nightly_suggestions
+                    (id, tenant_id, created_at, type, content, asset_id, priority)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (id, tenant_id, time.time(), type, content, asset_id, priority),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_nightly_suggestion_list_pending(
+    tenant_id: str, *, limit: int = 3, max_priority: int = 5
+) -> list[dict[str, Any]]:
+    """Return unconsumed suggestions for a tenant with priority <= max_priority."""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            """SELECT * FROM nightly_suggestions
+               WHERE tenant_id = ? AND consumed_at IS NULL AND priority <= ?
+               ORDER BY priority ASC, created_at ASC LIMIT ?""",
+            (tenant_id, max_priority, max(1, min(int(limit), 20))),
+        )
+        return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def db_nightly_suggestion_mark_consumed(suggestion_id: str) -> None:
+    """Mark a nightly suggestion as consumed."""
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                "UPDATE nightly_suggestions SET consumed_at = ? WHERE id = ?",
+                (time.time(), suggestion_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
