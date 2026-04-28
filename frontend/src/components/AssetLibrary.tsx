@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { AssetIndexResponse, AssetItem } from "../types/assets";
+import { ContributionBoard } from "./ContributionBoard";
 
 function TagBadge({ tag }: { tag: string }) {
   return (
@@ -177,6 +178,8 @@ export function AssetLibrary() {
           </table>
         </div>
       )}
+
+      <ContributionBoard limit={10} />
     </section>
   );
 }
