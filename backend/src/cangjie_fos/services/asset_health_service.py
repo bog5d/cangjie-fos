@@ -32,13 +32,16 @@ _SLEEP_DAYS  = 30   # 超过此天数未更新 → 休眠
 
 
 def _detect_cat(assets: list[dict[str, Any]], cat: dict[str, Any]) -> bool:
-    """判断资产列表中是否存在覆盖该分类的文件。"""
+    """判断资产列表中是否存在覆盖该分类的文件。
+    检查范围：文件名、relative_path（目录名含业务关键词）、tags、summary。
+    """
     kws = [k.casefold() for k in cat["keywords"]]
     for a in assets:
         name = (a.get("filename") or "").casefold()
+        rel_path = (a.get("relative_path") or "").casefold()
         tags_str = " ".join(a.get("tags") or []).casefold()
         summary = (a.get("summary") or "").casefold()
-        text = f"{name} {tags_str} {summary}"
+        text = f"{name} {rel_path} {tags_str} {summary}"
         if any(kw in text for kw in kws):
             return True
     return False
