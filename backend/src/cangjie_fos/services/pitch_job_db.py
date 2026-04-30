@@ -118,6 +118,50 @@ CREATE TABLE IF NOT EXISTS nightly_suggestions (
 );
 CREATE INDEX IF NOT EXISTS idx_nightly_suggestions_pending
     ON nightly_suggestions(tenant_id, consumed_at) WHERE consumed_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS assets (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename        TEXT NOT NULL,
+    relative_path   TEXT NOT NULL,
+    full_path       TEXT,
+    last_modified   TEXT,
+    summary         TEXT DEFAULT '',
+    tags            TEXT DEFAULT '[]',
+    scan_dir        TEXT,
+    indexed_at      REAL NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_path ON assets(relative_path);
+
+CREATE TABLE IF NOT EXISTS asset_scan_config (
+    id          INTEGER PRIMARY KEY,
+    scan_dir    TEXT NOT NULL DEFAULT '',
+    auto_scan   INTEGER NOT NULL DEFAULT 0,
+    updated_at  REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS asset_health_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_at     REAL NOT NULL,
+    score           INTEGER NOT NULL DEFAULT 0,
+    total_files     INTEGER NOT NULL DEFAULT 0,
+    indexed_files   INTEGER NOT NULL DEFAULT 0,
+    missing_cats    TEXT DEFAULT '[]',
+    scan_dir        TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_asset_health_snapshot ON asset_health_history(snapshot_at DESC);
+
+CREATE TABLE IF NOT EXISTS match_sessions (
+    id               TEXT PRIMARY KEY,
+    created_at       REAL NOT NULL,
+    institution      TEXT NOT NULL DEFAULT '',
+    req_text         TEXT NOT NULL DEFAULT '',
+    requirements     TEXT NOT NULL DEFAULT '[]',
+    results          TEXT NOT NULL DEFAULT '[]',
+    status           TEXT NOT NULL DEFAULT 'draft',
+    confirmed_files  TEXT DEFAULT '[]',
+    output_dir       TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_match_sessions_created ON match_sessions(created_at DESC);
 """
 
 # Columns that store JSON-serialized Python objects.
@@ -817,6 +861,273 @@ def db_material_contribution_bulk_upsert(
                         updated_at = excluded.updated_at""",
                     (asset_id, asset_id, now, now),
                 )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# assets — 向上扫描结果持久化
+# ---------------------------------------------------------------------------
+
+
+def db_asset_upsert(
+    filename: str,
+    relative_path: str,
+    full_path: str = "",
+    last_modified: str = "",
+    summary: str = "",
+    tags: list[str] | None = None,
+    scan_dir: str = "",
+) -> None:
+    """Upsert 单条资产记录（相对路径作唯一键）。"""
+    now = time.time()
+    tags_json = json.dumps(tags or [], ensure_ascii=False)
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO assets
+                    (filename, relative_path, full_path, last_modified, summary, tags, scan_dir, indexed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(relative_path) DO UPDATE SET
+                    filename      = excluded.filename,
+                    full_path     = excluded.full_path,
+                    last_modified = excluded.last_modified,
+                    summary       = excluded.summary,
+                    tags          = excluded.tags,
+                    scan_dir      = excluded.scan_dir,
+                    indexed_at    = excluded.indexed_at""",
+                (filename, relative_path, full_path, last_modified, summary, tags_json, scan_dir, now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_assets_list(limit: int = 500) -> list[dict[str, Any]]:
+    """返回资产列表，按 indexed_at 倒序。"""
+    lim = max(1, min(int(limit), 2000))
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM assets ORDER BY indexed_at DESC LIMIT ?", (lim,)
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        try:
+            d["tags"] = json.loads(d.get("tags") or "[]")
+        except (json.JSONDecodeError, ValueError):
+            d["tags"] = []
+        result.append(d)
+    return result
+
+
+def db_assets_clear() -> int:
+    """删除全部资产记录，返回删除行数。"""
+    with _write_lock:
+        conn = _connect()
+        try:
+            cur = conn.execute("DELETE FROM assets")
+            conn.commit()
+            return cur.rowcount
+        finally:
+            conn.close()
+
+
+def db_scan_config_get() -> dict[str, Any] | None:
+    """返回扫描配置（单行），无配置时返回 None。"""
+    conn = _connect()
+    try:
+        cur = conn.execute("SELECT * FROM asset_scan_config WHERE id = 1")
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return None
+    d = dict(row)
+    d["auto_scan"] = bool(d.get("auto_scan", 0))
+    return d
+
+
+def db_scan_config_set(scan_dir: str, auto_scan: bool = False) -> None:
+    """写入（或覆盖）扫描配置。"""
+    now = time.time()
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO asset_scan_config (id, scan_dir, auto_scan, updated_at)
+                VALUES (1, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    scan_dir   = excluded.scan_dir,
+                    auto_scan  = excluded.auto_scan,
+                    updated_at = excluded.updated_at""",
+                (str(scan_dir), int(auto_scan), now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# asset_health_history — 资产活力雷达快照
+# ---------------------------------------------------------------------------
+
+
+def db_health_snapshot_insert(
+    score: int,
+    total_files: int,
+    indexed_files: int,
+    missing_cats: list[str] | None = None,
+    scan_dir: str = "",
+) -> int:
+    """插入一条健康度快照，返回 rowid。"""
+    now = time.time()
+    cats_json = json.dumps(missing_cats or [], ensure_ascii=False)
+    with _write_lock:
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                """INSERT INTO asset_health_history
+                    (snapshot_at, score, total_files, indexed_files, missing_cats, scan_dir)
+                VALUES (?, ?, ?, ?, ?, ?)""",
+                (now, int(score), int(total_files), int(indexed_files), cats_json, str(scan_dir)),
+            )
+            conn.commit()
+            return cur.lastrowid or 0
+        finally:
+            conn.close()
+
+
+def db_health_snapshot_list(limit: int = 30) -> list[dict[str, Any]]:
+    """返回最近 N 条快照，按 snapshot_at 倒序。"""
+    lim = max(1, min(int(limit), 365))
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM asset_health_history ORDER BY snapshot_at DESC LIMIT ?", (lim,)
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        try:
+            d["missing_cats"] = json.loads(d.get("missing_cats") or "[]")
+        except (json.JSONDecodeError, ValueError):
+            d["missing_cats"] = []
+        result.append(d)
+    return result
+
+
+def db_health_snapshot_latest() -> dict[str, Any] | None:
+    """返回最新一条快照，若无则返回 None。"""
+    snaps = db_health_snapshot_list(limit=1)
+    return snaps[0] if snaps else None
+
+
+# ---------------------------------------------------------------------------
+# match_sessions — 尽调响应台会话持久化
+# ---------------------------------------------------------------------------
+
+_MATCH_JSON_COLS = {"requirements", "results", "confirmed_files"}
+
+
+def _match_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    d: dict[str, Any] = dict(row)
+    for col in _MATCH_JSON_COLS:
+        raw = d.get(col)
+        if isinstance(raw, str):
+            try:
+                d[col] = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                d[col] = []
+    return d
+
+
+def db_match_session_create(
+    session_id: str,
+    institution: str,
+    req_text: str,
+    requirements: list[dict],
+    results: list[dict],
+) -> None:
+    """插入新匹配会话记录。"""
+    now = time.time()
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """INSERT INTO match_sessions
+                    (id, created_at, institution, req_text, requirements, results, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'draft')""",
+                (
+                    session_id,
+                    now,
+                    str(institution),
+                    str(req_text),
+                    json.dumps(requirements, ensure_ascii=False),
+                    json.dumps(results, ensure_ascii=False),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_match_session_get(session_id: str) -> dict[str, Any] | None:
+    """按 ID 取会话，不存在返回 None。"""
+    conn = _connect()
+    try:
+        cur = conn.execute("SELECT * FROM match_sessions WHERE id = ?", (session_id,))
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    return _match_row_to_dict(row) if row else None
+
+
+def db_match_session_list(limit: int = 50) -> list[dict[str, Any]]:
+    """返回最近 N 条会话，按 created_at 倒序。"""
+    lim = max(1, min(int(limit), 200))
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM match_sessions ORDER BY created_at DESC LIMIT ?", (lim,)
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    return [_match_row_to_dict(r) for r in rows]
+
+
+def db_match_session_update(session_id: str, **kwargs: Any) -> None:
+    """更新会话字段（status / confirmed_files / output_dir）。"""
+    _allowed = {"status", "confirmed_files", "output_dir"}
+    updates: dict[str, Any] = {}
+    for k, v in kwargs.items():
+        if k not in _allowed:
+            continue
+        if k in _MATCH_JSON_COLS and isinstance(v, (list, dict)):
+            updates[k] = json.dumps(v, ensure_ascii=False)
+        else:
+            updates[k] = v
+    if not updates:
+        return
+    set_clause = ", ".join(f"{col} = ?" for col in updates)
+    values = list(updates.values()) + [session_id]
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                f"UPDATE match_sessions SET {set_clause} WHERE id = ?",  # noqa: S608
+                values,
+            )
             conn.commit()
         finally:
             conn.close()

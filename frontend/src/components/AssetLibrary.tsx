@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { AssetIndexResponse, AssetItem } from "../types/assets";
-import { ContributionBoard } from "./ContributionBoard";
+import { AssetHealthPanel } from "./AssetHealthPanel";
+import { AssetScanConfigModal } from "./AssetScanConfigModal";
+import { MatchMakerPanel } from "./MatchMakerPanel";
 
 function TagBadge({ tag }: { tag: string }) {
   return (
@@ -42,6 +44,9 @@ export function AssetLibrary() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
 
   const fetchAssets = useCallback(async (q: string) => {
     setLoading(true);
@@ -80,6 +85,23 @@ export function AssetLibrary() {
     });
   }, [bridge]);
 
+  const triggerScan = useCallback(async (scanDir?: string) => {
+    setScanning(true);
+    setScanStatus(null);
+    try {
+      const url = scanDir
+        ? `/api/v1/assets/scan?scan_dir=${encodeURIComponent(scanDir)}`
+        : "/api/v1/assets/scan";
+      const res = await api.post<{ indexed: number; scanned_at: string }>(url);
+      setScanStatus(`扫描完成，已索引 ${res.data.indexed} 个文件`);
+      void fetchAssets(query);
+    } catch {
+      setScanStatus("扫描失败，请检查目录配置");
+    } finally {
+      setScanning(false);
+    }
+  }, [fetchAssets, query]);
+
   return (
     <section className="mt-8 rounded-2xl border border-white/10 bg-white/3 p-6">
       <div className="mb-4 flex flex-col gap-3">
@@ -107,6 +129,14 @@ export function AssetLibrary() {
           >
             刷新列表
           </button>
+          <button
+            type="button"
+            onClick={() => setScanModalOpen(true)}
+            disabled={scanning}
+            className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-3 py-1.5 text-cyan-300 hover:border-cyan-400/60 disabled:opacity-50"
+          >
+            {scanning ? "扫描中…" : "配置并扫描"}
+          </button>
           {bridge ? (
             <button
               type="button"
@@ -122,16 +152,9 @@ export function AssetLibrary() {
             </span>
           ) : null}
         </div>
-      </div>
-
-      <div className="mb-4 rounded-xl border border-cyan-500/20 bg-cyan-950/20 px-4 py-3 text-xs text-cyan-100/90">
-        <p className="font-medium text-cyan-200/95 mb-1">资料管理（FSS）与本页的关系</p>
-        <p className="text-slate-400/95 leading-relaxed">
-          本页只读 FSS 在桥目录下生成的 <code className="text-cyan-300/90">asset_index.json</code>。
-          解压外发包后，可双击同目录的 <code className="text-cyan-300/90">Open-CangJie-FSS.bat</code>（在{" "}
-          <code>fss_path.txt</code> 中配置 FSS.exe 路径）打开 FSS 与 <code>.fos_data</code> 文件夹，在
-          FSS 内完成「向上扫描」后，回到这里点 <strong>刷新列表</strong>。
-        </p>
+        {scanStatus && (
+          <p className="text-xs text-cyan-400/80">{scanStatus}</p>
+        )}
       </div>
 
       {loading && (
@@ -146,7 +169,7 @@ export function AssetLibrary() {
         <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-5 py-6 text-center">
           <p className="text-sm text-yellow-300">尚未找到资产数据</p>
           <p className="mt-1 text-xs text-slate-500">
-            在解压根目录运行 Open-CangJie-FSS.bat 打开资料工具 →「向上扫描」→ 本页点「刷新列表」
+            点击「配置并扫描」设置素材目录，FOS 将自动索引所有文件。
           </p>
         </div>
       )}
@@ -179,7 +202,17 @@ export function AssetLibrary() {
         </div>
       )}
 
-      <ContributionBoard limit={10} />
+      <AssetHealthPanel />
+      <MatchMakerPanel />
+
+      <AssetScanConfigModal
+        open={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        onScan={(dir) => {
+          setScanModalOpen(false);
+          void triggerScan(dir);
+        }}
+      />
     </section>
   );
 }
