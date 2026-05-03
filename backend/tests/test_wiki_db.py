@@ -169,3 +169,30 @@ def test_episode_insert_no_source_id():
         entity_names=[],
     )
     assert episode_id is not None
+
+
+# ── wiki_consolidator 测试 ─────────────────────────────────────────────────
+
+from cangjie_fos.services.wiki_consolidator import consolidate_wiki
+
+
+def test_consolidate_empty_wiki_returns_report():
+    """空 wiki 时整合不报错，返回报告。"""
+    report = consolidate_wiki()
+    assert "total_entities" in report
+    assert report["total_entities"] == 0
+    assert report["stale_count"] == 0
+
+
+def test_consolidate_updates_empty_summary_from_timeline():
+    """有时间线但 summary 为空的实体，整合后 summary 被填充。"""
+    db_wiki_entity_upsert(
+        name="测试整合实体",
+        entity_type="institution",
+        summary="",  # 刻意留空
+        timeline_event={"date": "2026-04-01", "event": "首次接触，表示感兴趣"},
+    )
+    consolidate_wiki()
+    entity = db_wiki_entity_get("测试整合实体")
+    assert entity["summary"] != ""  # summary 已被填充
+    assert "感兴趣" in entity["summary"] or "首次接触" in entity["summary"]

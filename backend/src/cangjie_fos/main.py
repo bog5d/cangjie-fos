@@ -53,6 +53,13 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
     _scheduler = AsyncIOScheduler()
     _scheduler.add_job(nightly_settle_all_tenants, "cron", hour=2, minute=0)
+    try:
+        import logging as _logging  # noqa: PLC0415
+        from cangjie_fos.services.wiki_consolidator import consolidate_wiki  # noqa: PLC0415
+        _scheduler.add_job(consolidate_wiki, "cron", hour=2, minute=30)
+        _logging.getLogger(__name__).info("wiki_consolidator 已注册，每晚 02:30 执行")
+    except Exception as _e:  # noqa: BLE001
+        _logging.getLogger(__name__).warning("wiki_consolidator 注册失败（非致命）: %s", _e)
     _scheduler.start()
     yield
     _scheduler.shutdown(wait=False)
