@@ -90,6 +90,8 @@ def test_assets_200_even_when_file_missing(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "cangjie_fos.core.paths.get_fos_bridge_data_dir", lambda: tmp_path
     )
+    # 强制 SQLite 返回空，走桥接文件回退分支
+    monkeypatch.setattr("cangjie_fos.api.routes.assets.db_assets_list", lambda **_: [])
     r = CLIENT.get("/api/v1/assets")
     assert r.status_code == 200
     data = r.json()
@@ -111,6 +113,8 @@ def test_assets_search_200(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "cangjie_fos.core.paths.get_fos_bridge_data_dir", lambda: tmp_path
     )
+    # 强制 SQLite 返回空，走桥接文件回退分支
+    monkeypatch.setattr("cangjie_fos.api.routes.assets.db_assets_list", lambda **_: [])
     r = CLIENT.get("/api/v1/assets/search", params={"q": "BP"})
     assert r.status_code == 200
     assert r.json()["total_files"] == 1

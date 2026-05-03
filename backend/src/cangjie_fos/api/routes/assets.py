@@ -93,8 +93,40 @@ def _load_safe() -> dict:
 
 @router.get("/api/v1/assets", response_model=AssetIndexResponse, tags=["assets"])
 def get_assets() -> AssetIndexResponse:
-    """返回完整 asset_index（generated_at / total_files / assets / source_dir）。"""
-    data = _load_safe()
+    """返回完整资产列表（优先读 FOS 内建扫描的 SQLite；若 SQLite 为空则回退到 FSS 桥接文件）。"""
+    db_rows = db_assets_list(limit=2000)
+    if db_rows:
+        cfg = get_scan_config()
+        # 取最新一条的 indexed_at 作为 generated_at
+        latest_ts = db_rows[0].get("indexed_at")
+        try:
+            from datetime import datetime, timezone  # noqa: PLC0415
+            generated_at = datetime.fromtimestamp(latest_ts, tz=timezone.utc).isoformat() if latest_ts else None
+        except Exception:  # noqa: BLE001
+            generated_at = None
+        assets = [
+            AssetItem(
+                filename=r.get("filename", ""),
+                relative_path=r.get("relative_path", ""),
+                full_path=r.get("full_path", "") or "",
+                last_modified=r.get("last_modified", "") or "",
+                summary=r.get("summary", "") or "",
+                tags=r.get("tags") or [],
+            )
+            for r in db_rows
+        ]
+        return AssetIndexResponse(
+            generated_at=generated_at,
+            total_files=len(assets),
+            assets=assets,
+            source_dir=cfg.get("scan_dir", ""),
+            bridge_dir=str(get_fos_bridge_data_dir().resolve()),
+        )
+    # 回退：SQLite 为空时读 FSS 桥接文件
+    try:
+        data = _load_safe()
+    except Exception:  # noqa: BLE001
+        data = _EMPTY_RESPONSE
     assets = [AssetItem(**a) for a in data.get("assets", [])]
     return AssetIndexResponse(
         generated_at=data.get("generated_at"),
@@ -111,24 +143,49 @@ def search_assets(
 ) -> AssetIndexResponse:
     if not q.strip():
         return get_assets()
-    data = _load_safe()
     sub = q.strip().casefold()
-    raw_assets = data.get("assets", [])
-    filtered = []
-    for a in raw_assets:
-        if sub in (a.get("filename") or "").casefold():
-            filtered.append(a)
-            continue
-        if sub in (a.get("summary") or "").casefold():
-            filtered.append(a)
-            continue
-        tags = a.get("tags") or []
-        if any(sub in (t or "").casefold() for t in tags):
-            filtered.append(a)
+
+    def _matches(filename: str, summary: str, tags: list) -> bool:
+        if sub in (filename or "").casefold():
+            return True
+        if sub in (summary or "").casefold():
+            return True
+        return any(sub in (t or "").casefold() for t in tags)
+
+    # 优先从 SQLite 搜索
+    db_rows = db_assets_list(limit=2000)
+    if db_rows:
+        filtered = [
+            r for r in db_rows
+            if _matches(r.get("filename", ""), r.get("summary", ""), r.get("tags") or [])
+        ]
+        cfg = get_scan_config()
+        assets = [AssetItem(
+            filename=r.get("filename", ""), relative_path=r.get("relative_path", ""),
+            full_path=r.get("full_path", "") or "", last_modified=r.get("last_modified", "") or "",
+            summary=r.get("summary", "") or "", tags=r.get("tags") or [],
+        ) for r in filtered]
+        return AssetIndexResponse(
+            generated_at=None, total_files=len(assets), assets=assets,
+            source_dir=cfg.get("scan_dir", ""),
+            bridge_dir=str(get_fos_bridge_data_dir().resolve()),
+        )
+
+    # 回退：SQLite 为空时搜索 FSS 桥接文件
+    try:
+        data = _load_safe()
+    except Exception:  # noqa: BLE001
+        data = _EMPTY_RESPONSE
+    all_raw = data.get("assets", [])
+    filtered_raw = [
+        a for a in all_raw
+        if _matches(a.get("filename", ""), a.get("summary", ""), a.get("tags") or [])
+    ]
+    assets = [AssetItem(**a) for a in filtered_raw]
     return AssetIndexResponse(
         generated_at=data.get("generated_at"),
-        total_files=len(filtered),
-        assets=[AssetItem(**a) for a in filtered],
+        total_files=len(assets),
+        assets=assets,
         source_dir=str(data.get("source_dir", "")),
         bridge_dir=str(get_fos_bridge_data_dir().resolve()),
     )
@@ -188,6 +245,45 @@ def post_health_snapshot_route() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # 尽调响应台 MatchMaker V5.0
 # ---------------------------------------------------------------------------
+
+
+class BundleIn(BaseModel):
+    institution: str = ""
+    files: list[dict]  # [{"filename": ..., "full_path": ..., "relative_path": ...}]
+
+
+@router.post("/api/v1/assets/bundle", tags=["assets"])
+def post_bundle_route(body: BundleIn) -> dict[str, Any]:
+    """直接打包选中文件为已确认的尽调包（跳过 BM25 匹配）。"""
+    if not body.files:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "E_EMPTY_FILES", "message": "请至少选择一个文件"},
+        )
+    session_id = str(uuid.uuid4())
+    req_text = f"直接打包 {len(body.files)} 个文件"
+    req_dicts = [
+        {"description": f.get("filename", ""), "scene_type": "", "time_range": ""}
+        for f in body.files
+    ]
+    db_match_session_create(
+        session_id=session_id,
+        institution=body.institution,
+        req_text=req_text,
+        requirements=req_dicts,
+        results=[],
+    )
+    db_match_session_update(
+        session_id=session_id,
+        status="confirmed",
+        confirmed_files=body.files,
+    )
+    return {
+        "session_id": session_id,
+        "status": "confirmed",
+        "file_count": len(body.files),
+        "institution": body.institution,
+    }
 
 
 class MatchSessionIn(BaseModel):

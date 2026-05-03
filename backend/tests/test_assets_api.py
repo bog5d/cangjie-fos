@@ -36,7 +36,7 @@ _SAMPLE = {
 
 @pytest.fixture()
 def mock_asset_dir(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
-    """重定向桥目录到临时目录：API 的 bridge_dir 与 asset_index 读取需分别 patch（import 方式不同）。"""
+    """重定向桥目录到临时目录，同时让 SQLite 返回空（强制走桥接文件回退）。"""
 
     def _tmp() -> pathlib.Path:
         return tmp_path
@@ -45,6 +45,11 @@ def mock_asset_dir(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "cangjie_fos.services.asset_index_io._fos_paths.get_fos_bridge_data_dir",
         _tmp,
+    )
+    # 让 db_assets_list 返回空，强制走 FSS 桥接文件回退分支
+    monkeypatch.setattr(
+        "cangjie_fos.api.routes.assets.db_assets_list",
+        lambda **_: [],
     )
     return tmp_path
 
@@ -142,3 +147,37 @@ def test_search_case_insensitive(mock_asset_dir):
     r = c.get("/api/v1/assets/search?q=bp")  # lowercase
     assert r.status_code == 200
     assert r.json()["total_files"] == 1
+
+
+# --- POST /api/v1/assets/bundle ---
+
+def test_bundle_creates_confirmed_session():
+    """直接打包接口：返回 confirmed 状态和 file_count。"""
+    c = TestClient(global_app)
+    files = [
+        {"filename": "BP.pdf", "full_path": "D:\\test\\BP.pdf", "relative_path": ""},
+        {"filename": "财务模型.xlsx", "full_path": "D:\\test\\财务模型.xlsx", "relative_path": "财务"},
+    ]
+    r = c.post("/api/v1/assets/bundle", json={"institution": "红杉资本", "files": files})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "confirmed"
+    assert data["file_count"] == 2
+    assert data["institution"] == "红杉资本"
+    assert "session_id" in data
+
+
+def test_bundle_empty_files_returns_422():
+    """空文件列表应返回 422。"""
+    c = TestClient(global_app)
+    r = c.post("/api/v1/assets/bundle", json={"institution": "", "files": []})
+    assert r.status_code == 422
+
+
+def test_bundle_no_institution():
+    """机构名称可为空。"""
+    c = TestClient(global_app)
+    files = [{"filename": "BP.pdf", "full_path": "", "relative_path": ""}]
+    r = c.post("/api/v1/assets/bundle", json={"institution": "", "files": files})
+    assert r.status_code == 200
+    assert r.json()["status"] == "confirmed"

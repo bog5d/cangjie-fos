@@ -1,52 +1,532 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { AssetIndexResponse, AssetItem } from "../types/assets";
 import { AssetHealthPanel } from "./AssetHealthPanel";
 import { AssetScanConfigModal } from "./AssetScanConfigModal";
 import { MatchMakerPanel } from "./MatchMakerPanel";
 
+// ─── 常量 ─────────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 50;
+
+// ─── 文件类型分组定义 ─────────────────────────────────────────────────────────
+// 关键词顺序即权重：靠前的更特异（"营业执照" > "执照" > "证书"）
+
+const CATEGORY_DEFS = [
+  {
+    key: "bp",
+    label: "📋 BP / 商业计划",
+    keywords: ["bp", "商业计划", "business plan", "pitch", "路演", "融资计划", "项目介绍", "一页纸"],
+  },
+  {
+    key: "finance",
+    label: "📊 财务报表",
+    keywords: ["财务", "资产负债", "利润", "现金流", "审计", "financial", "财报", "资金",
+               "收入", "报表", "核算", "月报", "季报", "年报", "损益"],
+  },
+  {
+    key: "equity",
+    label: "🏛 股权结构",
+    keywords: ["股权", "股东", "cap table", "持股", "投资协议", "期权", "vesting",
+               "shareholding", "equity", "股权激励", "架构"],
+  },
+  {
+    key: "team",
+    label: "👥 核心团队",
+    keywords: ["简历", "团队", "创始人", "合伙人", "联创", "biography", "resume", "cv",
+               "个人介绍", "background", "人员"],
+  },
+  {
+    key: "product",
+    label: "🚀 产品 / 技术",
+    keywords: ["产品", "技术", "架构", "白皮书", "roadmap", "需求", "功能", "原型",
+               "prototype", "product", "demo", "方案", "解决方案"],
+  },
+  {
+    key: "market",
+    label: "📈 市场分析",
+    keywords: ["市场", "竞品", "竞争", "行业", "分析", "research", "survey", "调研",
+               "用户研究", "市调", "赛道", "趋势"],
+  },
+  {
+    key: "legal",
+    label: "⚖️ 法律合规",
+    keywords: ["协议", "合同", "保密", "nda", "章程", "公司章程", "资质", "认证",
+               "专利", "证书", "备案", "合规", "legal"],
+  },
+  {
+    key: "license",
+    label: "📜 营业执照",
+    keywords: ["营业执照", "business license", "执照"],
+  },
+  {
+    key: "other",
+    label: "📁 其他文件",
+    keywords: [],
+  },
+] as const;
+
+type CatKey = (typeof CATEGORY_DEFS)[number]["key"];
+
+/**
+ * 多信号优先级分类：tags > 目录路径 > 文件名 > 摘要
+ * 每层独立判断，靠前层命中即返回，防止低质信号污染高质信号。
+ */
+function categorizeAsset(a: AssetItem): CatKey {
+  const cats = CATEGORY_DEFS.slice(0, -1);
+
+  const matchAny = (text: string) => {
+    const t = text.toLowerCase();
+    for (const cat of cats) {
+      if (cat.keywords.some((k) => t.includes(k))) return cat.key;
+    }
+    return null;
+  };
+
+  // 1. Tags（扫描引擎语义标注，置信度最高）
+  for (const tag of a.tags) {
+    const hit = matchAny(tag);
+    if (hit) return hit;
+  }
+  // 2. 目录路径各段（用户自己组织的文件夹结构）
+  const pathParts = a.relative_path.split(/[/\\]/).filter(Boolean);
+  for (const part of pathParts) {
+    const hit = matchAny(part);
+    if (hit) return hit;
+  }
+  // 3. 文件名
+  const fnHit = matchAny(a.filename);
+  if (fnHit) return fnHit;
+  // 4. 摘要（最后兜底）
+  const sumHit = matchAny(a.summary);
+  if (sumHit) return sumHit;
+
+  return "other";
+}
+
+// ─── 目录分组（按顶层文件夹名，0误判） ───────────────────────────────────────
+
+function topDir(a: AssetItem): string {
+  const parts = a.relative_path.split(/[/\\]/).filter(Boolean);
+  return parts[0] || "（根目录）";
+}
+
+// ─── 工具函数 ─────────────────────────────────────────────────────────────────
+
+function daysSince(s: string): number {
+  if (!s) return 9999;
+  try { return (Date.now() - new Date(s.replace(" ", "T")).getTime()) / 86_400_000; }
+  catch { return 9999; }
+}
+
+type FreshLevel = "active" | "sleeping" | "zombie";
+function freshLevel(a: AssetItem): FreshLevel {
+  const d = daysSince(a.last_modified);
+  if (d <= 30) return "active";
+  if (d <= 90) return "sleeping";
+  return "zombie";
+}
+function needsAttention(a: AssetItem) {
+  return daysSince(a.last_modified) > 90 || !a.summary.trim();
+}
+const FRESH_DOT: Record<FreshLevel, string> = {
+  active: "bg-emerald-400", sleeping: "bg-amber-400", zombie: "bg-red-400/70",
+};
+const FRESH_LABEL: Record<FreshLevel, string> = {
+  active: "近期活跃", sleeping: "待更新", zombie: "已超期",
+};
+const FRESH_COLOR: Record<FreshLevel, string> = {
+  active: "text-emerald-400", sleeping: "text-amber-400", zombie: "text-red-400",
+};
+
+// ─── TagBadge ─────────────────────────────────────────────────────────────────
+
 function TagBadge({ tag }: { tag: string }) {
   return (
-    <span className="rounded-full border border-cyan/30 bg-cyan/10 px-2 py-0.5 text-[11px] text-cyan">
+    <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] text-cyan-400">
       {tag}
     </span>
   );
 }
 
-function AssetRow({ asset }: { asset: AssetItem }) {
-  const dir = asset.relative_path || "根目录";
+// ─── 侧滑详情面板 ─────────────────────────────────────────────────────────────
+
+function AssetDetailPanel({ asset, onClose }: { asset: AssetItem; onClose: () => void }) {
+  const level = freshLevel(asset);
   return (
-    <tr className="border-b border-white/5 transition hover:bg-white/5">
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-[26rem] max-w-[92vw] flex-col border-l border-white/10 bg-gray-950 shadow-2xl">
+        <div className="flex items-start justify-between border-b border-white/10 px-5 py-4">
+          <div className="min-w-0 flex-1 pr-3">
+            <p className="break-words text-base font-semibold leading-snug text-white">{asset.filename}</p>
+            <p className={`mt-1 text-xs ${FRESH_COLOR[level]}`}>
+              {FRESH_LABEL[level]}&ensp;·&ensp;{asset.last_modified?.slice(0, 10) || "—"}
+            </p>
+          </div>
+          <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-slate-500 hover:bg-white/10 hover:text-white">
+            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+          <PanelSection label="路径">
+            <p className="break-all text-xs leading-relaxed text-slate-300">{asset.full_path || asset.relative_path || "—"}</p>
+          </PanelSection>
+          <PanelSection label="摘要">
+            {asset.summary
+              ? <p className="text-sm leading-relaxed text-slate-200">{asset.summary}</p>
+              : <p className="text-xs italic text-slate-600">暂无摘要</p>}
+          </PanelSection>
+          {asset.tags.length > 0 && (
+            <PanelSection label="场景标签">
+              <div className="flex flex-wrap gap-1.5">{asset.tags.map(t => <TagBadge key={t} tag={t} />)}</div>
+            </PanelSection>
+          )}
+        </div>
+        <div className="border-t border-white/10 px-5 py-4">
+          <p className="text-[11px] text-slate-600">点击背景关闭</p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PanelSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+// ─── Tab 按钮 ─────────────────────────────────────────────────────────────────
+
+type TabKey = "active" | "attention" | "all";
+
+function TabBtn({ label, count, active, dot, onClick }: {
+  label: string; count: number; active: boolean; dot?: string; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
+        active ? "border border-cyan-500/40 bg-cyan-500/15 text-cyan-300"
+               : "border border-transparent text-slate-400 hover:text-white"
+      }`}
+    >
+      {dot && <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />}
+      {label}
+      <span className={`rounded-full px-1.5 py-px text-[10px] font-mono ${
+        active ? "bg-cyan-500/25 text-cyan-200" : "bg-white/8 text-slate-600"
+      }`}>{count}</span>
+    </button>
+  );
+}
+
+// ─── 资产行（共用） ───────────────────────────────────────────────────────────
+
+function AssetRow({ asset, selected, onSelect, onClick }: {
+  asset: AssetItem; selected: boolean;
+  onSelect: (c: boolean) => void; onClick: () => void;
+}) {
+  const level = freshLevel(asset);
+  return (
+    <tr className={`group cursor-pointer border-b border-white/5 transition-colors ${selected ? "bg-cyan-950/30" : "hover:bg-white/5"}`} onClick={onClick}>
+      <td className="w-8 py-2.5 pl-3 align-middle" onClick={e => { e.stopPropagation(); onSelect(!selected); }}>
+        <input type="checkbox" checked={selected} onChange={e => onSelect(e.target.checked)}
+          className={`h-3.5 w-3.5 cursor-pointer rounded transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+        />
+      </td>
+      <td className="w-4 py-2.5 pr-2 align-middle">
+        <span className={`inline-block h-1.5 w-1.5 rounded-full ${FRESH_DOT[level]}`} title={FRESH_LABEL[level]} />
+      </td>
       <td className="py-2.5 pr-4 align-top">
         <p className="text-sm font-medium text-white">{asset.filename}</p>
-        <p className="mt-0.5 text-xs text-slate-500">{dir}</p>
+        <p className="mt-0.5 max-w-[220px] truncate text-xs text-slate-500">{asset.relative_path || "根目录"}</p>
       </td>
-      <td className="py-2.5 pr-4 align-top text-xs text-slate-400">
-        {asset.summary || <span className="text-slate-600">—</span>}
+      <td className="max-w-sm py-2.5 pr-4 align-top text-xs text-slate-400">
+        {asset.summary
+          ? <span style={{ display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{asset.summary}</span>
+          : <span className="text-slate-600">—</span>}
       </td>
       <td className="py-2.5 pr-4 align-top">
         <div className="flex flex-wrap gap-1">
-          {asset.tags.length > 0
-            ? asset.tags.map((t) => <TagBadge key={t} tag={t} />)
-            : <span className="text-xs text-slate-600">—</span>}
+          {asset.tags.slice(0, 3).map(t => <TagBadge key={t} tag={t} />)}
+          {asset.tags.length > 3 && <span className="text-[11px] text-slate-600">+{asset.tags.length - 3}</span>}
         </div>
       </td>
-      <td className="py-2.5 align-top text-xs text-slate-500 tabular-nums">
-        {asset.last_modified}
+      <td className="py-2.5 pr-3 align-top text-xs tabular-nums text-slate-500 whitespace-nowrap">
+        {asset.last_modified?.slice(0, 10) || "—"}
       </td>
     </tr>
   );
 }
+
+function TableHeader() {
+  return (
+    <thead>
+      <tr className="border-b border-white/10 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <th className="w-8 pb-2 pl-3" />
+        <th className="w-4 pb-2 pr-2" />
+        <th className="pb-2 pr-4">文件名称</th>
+        <th className="pb-2 pr-4">摘要</th>
+        <th className="pb-2 pr-4">标签</th>
+        <th className="pb-2 pr-3">更新日期</th>
+      </tr>
+    </thead>
+  );
+}
+
+// ─── 折叠分组通用组件 ─────────────────────────────────────────────────────────
+
+interface GroupDef {
+  key: string;
+  label: string;
+  items: AssetItem[];
+}
+
+function CollapsibleGroups({ groups, selectedKeys, onSelect, onClickRow, defaultCollapseThreshold = 15 }: {
+  groups: GroupDef[];
+  selectedKeys: Set<string>;
+  onSelect: (key: string, checked: boolean) => void;
+  onClickRow: (a: AssetItem) => void;
+  defaultCollapseThreshold?: number;
+}) {
+  const assetKey = (a: AssetItem) => `${a.relative_path}||${a.filename}`;
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set(groups.filter(g => g.items.length > defaultCollapseThreshold).map(g => g.key))
+  );
+  const [showAll, setShowAll] = useState<Set<string>>(new Set());
+
+  const toggle = (key: string) => setCollapsed(prev => {
+    const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next;
+  });
+
+  return (
+    <div className="space-y-2">
+      {groups.map(group => {
+        const isCollapsed = collapsed.has(group.key);
+        const expanded = showAll.has(group.key);
+        const visible = expanded ? group.items.length : Math.min(defaultCollapseThreshold, group.items.length);
+        return (
+          <div key={group.key} className="overflow-hidden rounded-xl border border-white/8">
+            <button type="button" onClick={() => toggle(group.key)}
+              className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-white/5">
+              <span className="text-sm font-medium text-white">{group.label}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500">{group.items.length} 个</span>
+                <svg className={`h-4 w-4 text-slate-500 transition-transform ${isCollapsed ? "" : "rotate-180"}`}
+                  viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clipRule="evenodd"/>
+                </svg>
+              </div>
+            </button>
+            {!isCollapsed && (
+              <div className="border-t border-white/8">
+                <table className="w-full text-left">
+                  <TableHeader />
+                  <tbody>
+                    {group.items.slice(0, visible).map(a => {
+                      const key = assetKey(a);
+                      return (
+                        <AssetRow key={key} asset={a}
+                          selected={selectedKeys.has(key)}
+                          onSelect={checked => onSelect(key, checked)}
+                          onClick={() => onClickRow(a)}
+                        />
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {!expanded && group.items.length > defaultCollapseThreshold && (
+                  <button type="button"
+                    onClick={() => setShowAll(prev => new Set(prev).add(group.key))}
+                    className="w-full py-2.5 text-center text-xs text-slate-500 hover:text-cyan-400 transition">
+                    查看剩余 {group.items.length - defaultCollapseThreshold} 个 ▼
+                  </button>
+                )}
+                {expanded && group.items.length > defaultCollapseThreshold && (
+                  <button type="button"
+                    onClick={() => setShowAll(prev => { const s = new Set(prev); s.delete(group.key); return s; })}
+                    className="w-full py-2.5 text-center text-xs text-slate-600 hover:text-slate-400 transition">
+                    收起 ▲
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── 语义分组视图（按文件类型） ────────────────────────────────────────────────
+
+function SemanticGroupedView({ assets, selectedKeys, onSelect, onClickRow }: {
+  assets: AssetItem[]; selectedKeys: Set<string>;
+  onSelect: (key: string, checked: boolean) => void; onClickRow: (a: AssetItem) => void;
+}) {
+  const groups = useMemo<GroupDef[]>(() => {
+    const map = new Map<CatKey, AssetItem[]>(CATEGORY_DEFS.map(c => [c.key, []]));
+    for (const a of assets) map.get(categorizeAsset(a))!.push(a);
+    return CATEGORY_DEFS
+      .map(def => ({ key: def.key, label: def.label, items: map.get(def.key)! }))
+      .filter(g => g.items.length > 0);
+  }, [assets]);
+
+  return <CollapsibleGroups groups={groups} selectedKeys={selectedKeys} onSelect={onSelect} onClickRow={onClickRow} />;
+}
+
+// ─── 目录分组视图（按顶层文件夹，0误判） ─────────────────────────────────────
+
+function DirGroupedView({ assets, selectedKeys, onSelect, onClickRow }: {
+  assets: AssetItem[]; selectedKeys: Set<string>;
+  onSelect: (key: string, checked: boolean) => void; onClickRow: (a: AssetItem) => void;
+}) {
+  const groups = useMemo<GroupDef[]>(() => {
+    const map = new Map<string, AssetItem[]>();
+    for (const a of assets) {
+      const dir = topDir(a);
+      if (!map.has(dir)) map.set(dir, []);
+      map.get(dir)!.push(a);
+    }
+    // 按文件数量降序排列
+    return [...map.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([dir, items]) => ({ key: dir, label: `📂 ${dir}`, items }));
+  }, [assets]);
+
+  return (
+    <>
+      <p className="mb-3 text-[11px] text-slate-600">
+        按顶层文件夹分组 · 共 {groups.length} 个目录
+      </p>
+      <CollapsibleGroups groups={groups} selectedKeys={selectedKeys} onSelect={onSelect} onClickRow={onClickRow} />
+    </>
+  );
+}
+
+// ─── 分页控件 ─────────────────────────────────────────────────────────────────
+
+function Pagination({ page, totalPages, totalItems, onChange }: {
+  page: number; totalPages: number; totalItems: number; onChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  const start = page * PAGE_SIZE + 1;
+  const end = Math.min((page + 1) * PAGE_SIZE, totalItems);
+  return (
+    <div className="flex items-center justify-between border-t border-white/10 px-1 pt-3 text-xs text-slate-500">
+      <button type="button" disabled={page === 0} onClick={() => onChange(page - 1)}
+        className="rounded-lg border border-white/15 px-3 py-1.5 hover:text-white disabled:opacity-30">
+        ← 上一页
+      </button>
+      <span>{start}–{end} / 共 {totalItems} 个&ensp;·&ensp;第 {page + 1}/{totalPages} 页</span>
+      <button type="button" disabled={page >= totalPages - 1} onClick={() => onChange(page + 1)}
+        className="rounded-lg border border-white/15 px-3 py-1.5 hover:text-white disabled:opacity-30">
+        下一页 →
+      </button>
+    </div>
+  );
+}
+
+// ─── 加入尽调包内联表单 ───────────────────────────────────────────────────────
+
+function BundleForm({ files, onDone, onCancel }: {
+  files: AssetItem[];
+  onDone: (msg: string) => void;
+  onCancel: () => void;
+}) {
+  const [institution, setInstitution] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const submit = async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const payload = {
+        institution: institution.trim(),
+        files: files.map(f => ({
+          filename: f.filename,
+          full_path: f.full_path,
+          relative_path: f.relative_path,
+        })),
+      };
+      await api.post("/api/v1/assets/bundle", payload);
+      onDone(`已打包 ${files.length} 个文件${institution.trim() ? `（${institution.trim()}）` : ""}`);
+    } catch {
+      setErr("提交失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/20 px-4 py-4 space-y-3">
+      <p className="text-sm font-medium text-cyan-300">
+        加入尽调包 — 已选 {files.length} 个文件
+      </p>
+      <div className="flex flex-wrap gap-2 items-center">
+        <input
+          ref={inputRef}
+          value={institution}
+          onChange={e => setInstitution(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && void submit()}
+          placeholder="机构名称（可选，如：红杉资本）"
+          className="flex-1 min-w-[200px] rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-sm text-white placeholder:text-slate-600"
+        />
+        <button type="button" onClick={() => void submit()} disabled={loading}
+          className="rounded-lg bg-cyan-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50">
+          {loading ? "提交中…" : "确认打包"}
+        </button>
+        <button type="button" onClick={onCancel}
+          className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-slate-400 hover:text-white">
+          取消
+        </button>
+      </div>
+      {err && <p className="text-xs text-red-400">{err}</p>}
+      <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+        {files.map(f => (
+          <span key={`${f.relative_path}||${f.filename}`}
+            className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-300">
+            {f.filename}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── 主组件 ───────────────────────────────────────────────────────────────────
+
+type ViewMode = "list" | "semantic" | "dir";
 
 export function AssetLibrary() {
   const [data, setData] = useState<AssetIndexResponse | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [page, setPage] = useState(0);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [detailAsset, setDetailAsset] = useState<AssetItem | null>(null);
+  const [bundleOpen, setBundleOpen] = useState(false);
+  const [bundleMsg, setBundleMsg] = useState<string | null>(null);
+
+  const assetKey = (a: AssetItem) => `${a.relative_path}||${a.filename}`;
+
+  // ── 数据加载 ─────────────────────────────────────────────────────────────
 
   const fetchAssets = useCallback(async (q: string) => {
     setLoading(true);
@@ -57,6 +537,8 @@ export function AssetLibrary() {
         : "/api/v1/assets";
       const res = await api.get<AssetIndexResponse>(url);
       setData(res.data);
+      setPage(0);
+      setSelectedKeys(new Set());
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
     } finally {
@@ -64,155 +546,256 @@ export function AssetLibrary() {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchAssets("");
-  }, [fetchAssets]);
-
-  // debounce search
+  useEffect(() => { void fetchAssets(""); }, [fetchAssets]);
   useEffect(() => {
     const t = setTimeout(() => void fetchAssets(query), 300);
     return () => clearTimeout(t);
   }, [query, fetchAssets]);
 
-  const notSynced = !data?.generated_at;
-  const bridge = (data?.bridge_dir || "").trim();
+  // ── 派生数据 ─────────────────────────────────────────────────────────────
 
-  const copyBridge = useCallback(() => {
-    if (!bridge) return;
-    void navigator.clipboard.writeText(bridge).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }, [bridge]);
+  const allAssets = data?.assets ?? [];
+  const activeAssets = useMemo(() => allAssets.filter(a => freshLevel(a) === "active"), [allAssets]);
+  const attentionAssets = useMemo(() => allAssets.filter(needsAttention), [allAssets]);
+
+  const tabAssets = useMemo(() => {
+    if (activeTab === "active") return activeAssets;
+    if (activeTab === "attention") return attentionAssets;
+    return allAssets;
+  }, [activeTab, allAssets, activeAssets, attentionAssets]);
+
+  const totalPages = Math.ceil(tabAssets.length / PAGE_SIZE);
+  const pageAssets = useMemo(
+    () => tabAssets.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [tabAssets, page],
+  );
+
+  useEffect(() => { setPage(0); setSelectedKeys(new Set()); }, [activeTab, query]);
+
+  // ── 操作 ─────────────────────────────────────────────────────────────────
+
+  const handleTabChange = (tab: TabKey) => { setActiveTab(tab); setDetailAsset(null); };
 
   const triggerScan = useCallback(async (scanDir?: string) => {
-    setScanning(true);
-    setScanStatus(null);
+    setScanning(true); setScanStatus(null);
     try {
       const url = scanDir
         ? `/api/v1/assets/scan?scan_dir=${encodeURIComponent(scanDir)}`
         : "/api/v1/assets/scan";
-      const res = await api.post<{ indexed: number; scanned_at: string }>(url);
+      const res = await api.post<{ indexed: number }>(url);
       setScanStatus(`扫描完成，已索引 ${res.data.indexed} 个文件`);
       void fetchAssets(query);
-    } catch {
-      setScanStatus("扫描失败，请检查目录配置");
-    } finally {
-      setScanning(false);
-    }
+    } catch { setScanStatus("扫描失败，请检查目录配置"); }
+    finally { setScanning(false); }
   }, [fetchAssets, query]);
 
+  const toggleSelect = (key: string, checked: boolean) =>
+    setSelectedKeys(prev => { const n = new Set(prev); checked ? n.add(key) : n.delete(key); return n; });
+
+  const selectAllPage = () => setSelectedKeys(new Set(pageAssets.map(assetKey)));
+  const selectAllTab  = () => setSelectedKeys(new Set(tabAssets.map(assetKey)));
+  const clearSelect   = () => setSelectedKeys(new Set());
+
+  // 从 selectedKeys 还原 AssetItem 列表
+  const selectedAssets = useMemo(
+    () => allAssets.filter(a => selectedKeys.has(assetKey(a))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allAssets, selectedKeys],
+  );
+
+  const notSynced = !data?.generated_at;
+
+  // ── 渲染 ─────────────────────────────────────────────────────────────────
+
   return (
-    <section className="mt-8 rounded-2xl border border-white/10 bg-white/3 p-6">
-      <div className="mb-4 flex flex-col gap-3">
+    <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      {/* 头部 */}
+      <div className="mb-5 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-display text-lg font-bold text-white">资产台账</h2>
             <p className="text-xs text-slate-500">
               {data?.generated_at
-                ? `FSS 同步于 ${data.generated_at.replace("T", " ")}　共 ${data.total_files} 个文件`
-                : "暂无数据 — 请先在仓颉资产台账（FSS）中运行「向上扫描」"}
+                ? `共 ${data.total_files} 个文件 · 上次扫描 ${data.generated_at.slice(0, 10)}`
+                : "暂无数据 — 请先配置并扫描素材目录"}
             </p>
           </div>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索文件名 / 摘要 / 标签…"
-            className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-600 sm:max-w-xs"
-          />
+          {/* 搜索框 */}
+          <div className="relative">
+            <svg className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+              viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd"/>
+            </svg>
+            <input value={query} onChange={e => setQuery(e.target.value)}
+              placeholder="搜索文件名 / 摘要 / 标签…"
+              className="w-full rounded-xl border border-white/15 bg-black/40 py-2 pl-9 pr-8 text-sm text-white placeholder:text-slate-600 sm:w-72"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                ✕
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2 items-center text-xs">
-          <button
-            type="button"
-            onClick={() => void fetchAssets(query)}
-            className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-cyan-200 hover:border-cyan-500/40"
-          >
-            刷新列表
+
+        {/* 操作按钮行 */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <button type="button" onClick={() => void fetchAssets(query)}
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-cyan-200 hover:border-cyan-500/40">
+            刷新
           </button>
-          <button
-            type="button"
-            onClick={() => setScanModalOpen(true)}
-            disabled={scanning}
-            className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-3 py-1.5 text-cyan-300 hover:border-cyan-400/60 disabled:opacity-50"
-          >
+          <button type="button" onClick={() => setScanModalOpen(true)} disabled={scanning}
+            className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-3 py-1.5 text-cyan-300 hover:border-cyan-400/60 disabled:opacity-50">
             {scanning ? "扫描中…" : "配置并扫描"}
           </button>
-          {bridge ? (
-            <button
-              type="button"
-              onClick={copyBridge}
-              className="rounded-lg border border-white/15 px-3 py-1.5 text-slate-300 hover:border-white/30"
-            >
-              {copied ? "已复制路径" : "复制桥目录路径"}
-            </button>
-          ) : null}
-          {bridge ? (
-            <span className="text-[10px] text-slate-600 break-all max-w-full sm:max-w-xl">
-              桥：{bridge}
-            </span>
-          ) : null}
+          {scanStatus && <span className="text-cyan-400/80">{scanStatus}</span>}
         </div>
-        {scanStatus && (
-          <p className="text-xs text-cyan-400/80">{scanStatus}</p>
-        )}
       </div>
 
-      {loading && (
-        <p className="py-10 text-center text-sm text-slate-500">加载中…</p>
-      )}
-
-      {error && (
-        <p className="py-6 text-center text-sm text-red-400">{error}</p>
-      )}
+      {/* 状态 */}
+      {loading && <p className="py-10 text-center text-sm text-slate-500">加载中…</p>}
+      {error && <p className="py-6 text-center text-sm text-red-400">{error}</p>}
 
       {!loading && !error && notSynced && (
         <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-5 py-6 text-center">
           <p className="text-sm text-yellow-300">尚未找到资产数据</p>
-          <p className="mt-1 text-xs text-slate-500">
-            点击「配置并扫描」设置素材目录，FOS 将自动索引所有文件。
-          </p>
+          <p className="mt-1 text-xs text-slate-500">点击「配置并扫描」设置素材目录，FOS 将自动索引所有文件。</p>
         </div>
       )}
 
       {!loading && !error && !notSynced && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-white/10 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <th className="pb-2 pr-4">文件名称</th>
-                <th className="pb-2 pr-4">摘要</th>
-                <th className="pb-2 pr-4">场景标签</th>
-                <th className="pb-2">更新日期</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data!.assets.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-sm text-slate-500">
-                    没有匹配的文件
-                  </td>
-                </tr>
-              ) : (
-                data!.assets.map((a) => (
-                  <AssetRow key={`${a.relative_path}/${a.filename}`} asset={a} />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Tabs + 视图切换 */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              <TabBtn label="近期活跃" count={activeAssets.length} active={activeTab === "active"}
+                dot="bg-emerald-400" onClick={() => handleTabChange("active")} />
+              <TabBtn label="需关注" count={attentionAssets.length} active={activeTab === "attention"}
+                dot={attentionAssets.length > 0 ? "bg-amber-400" : undefined} onClick={() => handleTabChange("attention")} />
+              <TabBtn label="全部文件" count={allAssets.length} active={activeTab === "all"}
+                onClick={() => handleTabChange("all")} />
+            </div>
+            {/* 视图模式切换 */}
+            <div className="flex rounded-lg border border-white/15 overflow-hidden text-xs">
+              {([ ["list", "≡ 列表"], ["semantic", "⊞ 按类型"], ["dir", "📂 按目录"] ] as [ViewMode, string][]).map(([mode, label], i) => (
+                <button key={mode} type="button" onClick={() => setViewMode(mode)}
+                  className={`px-3 py-1.5 transition ${i > 0 ? "border-l border-white/15" : ""} ${viewMode === mode ? "bg-white/10 text-white" : "text-slate-500 hover:text-white"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 批量操作栏 */}
+          {selectedKeys.size > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-cyan-500/30 bg-cyan-950/25 px-4 py-2.5 text-sm">
+              <span className="font-medium text-cyan-300">已选 {selectedKeys.size} 个</span>
+              <button type="button" onClick={selectAllPage} className="text-slate-400 hover:text-white">
+                全选本页（{pageAssets.length}）
+              </button>
+              <button type="button" onClick={selectAllTab} className="text-slate-400 hover:text-white">
+                全选此 Tab（{tabAssets.length}）
+              </button>
+              <span className="text-slate-700">|</span>
+              <button type="button" onClick={() => { setBundleOpen(true); setBundleMsg(null); }}
+                className="rounded-lg bg-cyan-600/80 px-3 py-1 text-white hover:bg-cyan-500 text-xs font-medium">
+                📦 加入尽调包
+              </button>
+              <button type="button" onClick={clearSelect} className="text-slate-500 hover:text-white">
+                取消选择
+              </button>
+            </div>
+          )}
+
+          {/* 打包成功提示 */}
+          {bundleMsg && !bundleOpen && (
+            <div className="mb-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-2.5 text-sm text-emerald-300">
+              ✅ {bundleMsg}
+            </div>
+          )}
+
+          {/* 加入尽调包表单 */}
+          {bundleOpen && selectedAssets.length > 0 && (
+            <div className="mb-4">
+              <BundleForm
+                files={selectedAssets}
+                onDone={msg => { setBundleMsg(msg); setBundleOpen(false); clearSelect(); }}
+                onCancel={() => setBundleOpen(false)}
+              />
+            </div>
+          )}
+
+          {/* 列表视图 */}
+          {viewMode === "list" && (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <TableHeader />
+                  <tbody>
+                    {pageAssets.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-sm text-slate-500">
+                          {activeTab === "active" ? "暂无近 30 天内更新的文件"
+                            : activeTab === "attention" ? "没有需要关注的文件 🎉"
+                            : "没有匹配的文件"}
+                        </td>
+                      </tr>
+                    ) : (
+                      pageAssets.map(a => {
+                        const key = assetKey(a);
+                        return (
+                          <AssetRow key={key} asset={a}
+                            selected={selectedKeys.has(key)}
+                            onSelect={checked => toggleSelect(key, checked)}
+                            onClick={() => setDetailAsset(a)}
+                          />
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={page} totalPages={totalPages} totalItems={tabAssets.length} onChange={setPage} />
+            </>
+          )}
+
+          {/* 语义分组（按文件类型关键词） */}
+          {viewMode === "semantic" && (
+            <SemanticGroupedView
+              assets={tabAssets}
+              selectedKeys={selectedKeys}
+              onSelect={toggleSelect}
+              onClickRow={setDetailAsset}
+            />
+          )}
+
+          {/* 目录分组（按顶层文件夹，0误判） */}
+          {viewMode === "dir" && (
+            <DirGroupedView
+              assets={tabAssets}
+              selectedKeys={selectedKeys}
+              onSelect={toggleSelect}
+              onClickRow={setDetailAsset}
+            />
+          )}
+        </>
       )}
 
+      {/* 子面板 */}
       <AssetHealthPanel />
       <MatchMakerPanel />
 
       <AssetScanConfigModal
         open={scanModalOpen}
         onClose={() => setScanModalOpen(false)}
-        onScan={(dir) => {
-          setScanModalOpen(false);
-          void triggerScan(dir);
-        }}
+        onScan={dir => { setScanModalOpen(false); void triggerScan(dir); }}
       />
+
+      {/* 详情侧滑面板 */}
+      {detailAsset && (
+        <AssetDetailPanel asset={detailAsset} onClose={() => setDetailAsset(null)} />
+      )}
     </section>
   );
 }
