@@ -181,3 +181,139 @@ def test_bundle_no_institution():
     r = c.post("/api/v1/assets/bundle", json={"institution": "", "files": files})
     assert r.status_code == 200
     assert r.json()["status"] == "confirmed"
+
+
+# --- asset_status CRUD ---
+
+def test_db_asset_status_update_changes_status():
+    """db_asset_status_update 能更新已扫描文件的状态。"""
+    import time
+    from cangjie_fos.services.pitch_job_db import (
+        db_asset_upsert, db_asset_status_update, db_assets_list,
+    )
+    db_asset_upsert(
+        filename="test_status.pdf",
+        relative_path="_test_status_path",
+        full_path="",
+        last_modified="2026-01-01",
+    )
+    updated = db_asset_status_update(["_test_status_path"], "draft")
+    assert updated == 1
+    rows = db_assets_list(limit=2000)
+    row = next((r for r in rows if r["relative_path"] == "_test_status_path"), None)
+    assert row is not None
+    assert row["asset_status"] == "draft"
+    # 清理
+    db_asset_status_update(["_test_status_path"], "archived")
+
+
+def test_db_asset_status_update_invalid_raises():
+    from cangjie_fos.services.pitch_job_db import db_asset_status_update
+    with pytest.raises(ValueError, match="无效状态"):
+        db_asset_status_update(["some_path"], "unknown_status")
+
+
+def test_db_institutions_list_empty():
+    from cangjie_fos.services.pitch_job_db import db_institutions_list
+    # 即使没有数据也不报错
+    result = db_institutions_list()
+    assert isinstance(result, list)
+
+
+def test_db_institution_archive_get_structure():
+    from cangjie_fos.services.pitch_job_db import db_institution_archive_get
+    result = db_institution_archive_get("不存在的机构XYZ")
+    assert result["institution"] == "不存在的机构XYZ"
+    assert result["bundle_count"] == 0
+    assert result["bundles"] == []
+
+
+# --- PUT /api/v1/assets/status ---
+
+def test_put_asset_status_valid():
+    c = TestClient(global_app)
+    r = c.put("/api/v1/assets/status", json={
+        "relative_paths": ["nonexistent/path.pdf"],
+        "status": "draft",
+    })
+    assert r.status_code == 200
+    assert r.json()["status"] == "draft"
+    assert "updated" in r.json()
+
+
+def test_put_asset_status_invalid_status():
+    c = TestClient(global_app)
+    r = c.put("/api/v1/assets/status", json={
+        "relative_paths": ["some.pdf"],
+        "status": "invalid_value",
+    })
+    assert r.status_code == 422
+
+
+def test_put_asset_status_empty_paths():
+    c = TestClient(global_app)
+    r = c.put("/api/v1/assets/status", json={"relative_paths": [], "status": "draft"})
+    assert r.status_code == 422
+
+
+# --- GET /api/v1/institutions ---
+
+def test_get_institutions_returns_list():
+    c = TestClient(global_app)
+    r = c.get("/api/v1/institutions")
+    assert r.status_code == 200
+    data = r.json()
+    assert "institutions" in data
+    assert "total" in data
+    assert isinstance(data["institutions"], list)
+
+
+# --- GET /api/v1/institutions/{name} ---
+
+def test_get_institution_archive_not_found_returns_empty():
+    c = TestClient(global_app)
+    r = c.get("/api/v1/institutions/完全不存在的机构XYZ123")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["bundle_count"] == 0
+    assert data["bundles"] == []
+
+
+def test_get_institution_archive_after_bundle():
+    """bundle 后机构档案能查到对应打包记录。"""
+    c = TestClient(global_app)
+    files = [{"filename": "BP.pdf", "full_path": "", "relative_path": ""}]
+    bundle_r = c.post("/api/v1/assets/bundle", json={
+        "institution": "测试机构_Archive_Test",
+        "files": files,
+    })
+    assert bundle_r.status_code == 200
+    archive_r = c.get("/api/v1/institutions/测试机构_Archive_Test")
+    assert archive_r.status_code == 200
+    data = archive_r.json()
+    assert data["bundle_count"] >= 1
+    assert data["total_sent_files"] >= 1
+
+
+def test_bundle_marks_files_as_sent():
+    """bundle 后，文件状态应自动变为 sent。"""
+    import time
+    from cangjie_fos.services.pitch_job_db import (
+        db_asset_upsert, db_assets_list,
+    )
+    db_asset_upsert(
+        filename="auto_sent_test.pdf",
+        relative_path="_auto_sent_test",
+        full_path="",
+        last_modified="2026-01-01",
+    )
+    c = TestClient(global_app)
+    r = c.post("/api/v1/assets/bundle", json={
+        "institution": "测试机构_AutoSent",
+        "files": [{"filename": "auto_sent_test.pdf", "relative_path": "_auto_sent_test", "full_path": ""}],
+    })
+    assert r.status_code == 200
+    rows = db_assets_list(limit=2000)
+    row = next((row for row in rows if row["relative_path"] == "_auto_sent_test"), None)
+    assert row is not None
+    assert row["asset_status"] == "sent"

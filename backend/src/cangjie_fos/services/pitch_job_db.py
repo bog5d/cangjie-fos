@@ -242,6 +242,7 @@ def _init_db(conn: sqlite3.Connection) -> None:
         "ALTER TABLE pitch_jobs ADD COLUMN interviewee TEXT",
         "ALTER TABLE pitch_jobs ADD COLUMN warnings TEXT",
         "ALTER TABLE pitch_jobs ADD COLUMN substatus TEXT",
+        "ALTER TABLE assets ADD COLUMN asset_status TEXT NOT NULL DEFAULT 'approved'",
     ):
         try:
             conn.execute(migration)
@@ -1420,3 +1421,97 @@ def db_wiki_episodes_for_source(source_id: str) -> list[dict[str, Any]]:
                 d["entity_names"] = []
         result.append(d)
     return result
+
+
+# ---------------------------------------------------------------------------
+# 资产状态管理
+# ---------------------------------------------------------------------------
+
+_VALID_ASSET_STATUSES = frozenset({"draft", "approved", "sent", "archived"})
+
+
+def db_asset_status_update(relative_paths: list[str], status: str) -> int:
+    """批量更新文件状态，返回实际更新行数。"""
+    if status not in _VALID_ASSET_STATUSES:
+        raise ValueError(f"无效状态: {status!r}，允许值: {_VALID_ASSET_STATUSES}")
+    if not relative_paths:
+        return 0
+    with _write_lock:
+        conn = _connect()
+        try:
+            placeholders = ",".join("?" * len(relative_paths))
+            cur = conn.execute(
+                f"UPDATE assets SET asset_status=? WHERE relative_path IN ({placeholders})",
+                [status, *relative_paths],
+            )
+            conn.commit()
+            return cur.rowcount
+        finally:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# 机构档案查询
+# ---------------------------------------------------------------------------
+
+
+def db_institutions_list() -> list[dict[str, Any]]:
+    """返回所有有已确认 bundle 的机构名称列表，按最近活动倒序。"""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            """
+            SELECT institution,
+                   COUNT(*) AS bundle_count,
+                   MAX(created_at) AS last_activity
+            FROM match_sessions
+            WHERE status = 'confirmed' AND institution != ''
+            GROUP BY institution
+            ORDER BY last_activity DESC
+            """,
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def db_institution_archive_get(institution: str) -> dict[str, Any]:
+    """返回指定机构的完整档案：已发文件列表 + 打包历史。"""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            """
+            SELECT id, created_at, req_text, confirmed_files
+            FROM match_sessions
+            WHERE status = 'confirmed' AND institution = ?
+            ORDER BY created_at DESC
+            """,
+            (institution,),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    import json as _json  # noqa: PLC0415
+
+    bundles = []
+    all_sent_paths: set[str] = set()
+    for row in rows:
+        files = _json.loads(row["confirmed_files"] or "[]")
+        bundles.append({
+            "session_id": row["id"],
+            "created_at": row["created_at"],
+            "req_text": row["req_text"],
+            "files": files,
+        })
+        for f in files:
+            path = f.get("relative_path") or f.get("filename", "")
+            if path:
+                all_sent_paths.add(path)
+
+    return {
+        "institution": institution,
+        "bundle_count": len(bundles),
+        "total_sent_files": len(all_sent_paths),
+        "bundles": bundles,
+    }
