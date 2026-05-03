@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { AssetIndexResponse, AssetItem } from "../types/assets";
 import { AssetHealthPanel } from "./AssetHealthPanel";
 import { AssetScanConfigModal } from "./AssetScanConfigModal";
+import { InstitutionArchivePanel } from "./InstitutionArchivePanel";
 import { MatchMakerPanel } from "./MatchMakerPanel";
 
 // ─── 常量 ─────────────────────────────────────────────────────────────────────
@@ -139,6 +140,43 @@ const FRESH_COLOR: Record<FreshLevel, string> = {
   active: "text-emerald-400", sleeping: "text-amber-400", zombie: "text-red-400",
 };
 
+// ─── 文件状态 ─────────────────────────────────────────────────────────────────
+
+const STATUS_LABEL: Record<string, string> = {
+  draft:    "草稿",
+  approved: "定稿",
+  sent:     "已发出",
+  archived: "已归档",
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  draft:    "border-slate-600 bg-slate-800/50 text-slate-400",
+  approved: "border-emerald-500/40 bg-emerald-950/40 text-emerald-400",
+  sent:     "border-cyan-500/40 bg-cyan-950/40 text-cyan-400",
+  archived: "border-white/10 bg-white/5 text-slate-600",
+};
+
+function StatusBadge({
+  status,
+  onClick,
+}: {
+  status: string | undefined;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
+  const s = status ?? "approved";
+  return (
+    <span
+      onClick={onClick}
+      title={onClick ? "点击修改状态" : undefined}
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium transition
+        ${STATUS_COLOR[s] ?? STATUS_COLOR.approved}
+        ${onClick ? "cursor-pointer hover:opacity-80" : ""}`}
+    >
+      {STATUS_LABEL[s] ?? s}
+    </span>
+  );
+}
+
 // ─── TagBadge ─────────────────────────────────────────────────────────────────
 
 function TagBadge({ tag }: { tag: string }) {
@@ -227,11 +265,22 @@ function TabBtn({ label, count, active, dot, onClick }: {
 
 // ─── 资产行（共用） ───────────────────────────────────────────────────────────
 
-function AssetRow({ asset, selected, onSelect, onClick }: {
+function AssetRow({ asset, selected, onSelect, onClick, onStatusChange }: {
   asset: AssetItem; selected: boolean;
   onSelect: (c: boolean) => void; onClick: () => void;
+  onStatusChange?: (status: string) => void;
 }) {
   const level = freshLevel(asset);
+
+  const cycleStatus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onStatusChange) return;
+    const cycle: Record<string, string> = {
+      draft: "approved", approved: "sent", sent: "archived", archived: "draft",
+    };
+    onStatusChange(cycle[asset.asset_status ?? "approved"] ?? "approved");
+  };
+
   return (
     <tr className={`group cursor-pointer border-b border-white/5 transition-colors ${selected ? "bg-cyan-950/30" : "hover:bg-white/5"}`} onClick={onClick}>
       <td className="w-8 py-2.5 pl-3 align-middle" onClick={e => { e.stopPropagation(); onSelect(!selected); }}>
@@ -260,6 +309,9 @@ function AssetRow({ asset, selected, onSelect, onClick }: {
       <td className="py-2.5 pr-3 align-top text-xs tabular-nums text-slate-500 whitespace-nowrap">
         {asset.last_modified?.slice(0, 10) || "—"}
       </td>
+      <td className="py-2.5 pr-3 align-top" onClick={e => e.stopPropagation()}>
+        <StatusBadge status={asset.asset_status} onClick={onStatusChange ? cycleStatus : undefined} />
+      </td>
     </tr>
   );
 }
@@ -274,6 +326,7 @@ function TableHeader() {
         <th className="pb-2 pr-4">摘要</th>
         <th className="pb-2 pr-4">标签</th>
         <th className="pb-2 pr-3">更新日期</th>
+        <th className="pb-2 pr-3">状态</th>
       </tr>
     </thead>
   );
@@ -287,11 +340,12 @@ interface GroupDef {
   items: AssetItem[];
 }
 
-function CollapsibleGroups({ groups, selectedKeys, onSelect, onClickRow, defaultCollapseThreshold = 15 }: {
+function CollapsibleGroups({ groups, selectedKeys, onSelect, onClickRow, onStatusChange, defaultCollapseThreshold = 15 }: {
   groups: GroupDef[];
   selectedKeys: Set<string>;
   onSelect: (key: string, checked: boolean) => void;
   onClickRow: (a: AssetItem) => void;
+  onStatusChange?: (path: string, status: string) => void;
   defaultCollapseThreshold?: number;
 }) {
   const assetKey = (a: AssetItem) => `${a.relative_path}||${a.filename}`;
@@ -336,6 +390,7 @@ function CollapsibleGroups({ groups, selectedKeys, onSelect, onClickRow, default
                           selected={selectedKeys.has(key)}
                           onSelect={checked => onSelect(key, checked)}
                           onClick={() => onClickRow(a)}
+                          onStatusChange={onStatusChange ? (s) => onStatusChange(a.relative_path, s) : undefined}
                         />
                       );
                     })}
@@ -366,9 +421,10 @@ function CollapsibleGroups({ groups, selectedKeys, onSelect, onClickRow, default
 
 // ─── 语义分组视图（按文件类型） ────────────────────────────────────────────────
 
-function SemanticGroupedView({ assets, selectedKeys, onSelect, onClickRow }: {
+function SemanticGroupedView({ assets, selectedKeys, onSelect, onClickRow, onStatusChange }: {
   assets: AssetItem[]; selectedKeys: Set<string>;
   onSelect: (key: string, checked: boolean) => void; onClickRow: (a: AssetItem) => void;
+  onStatusChange?: (path: string, status: string) => void;
 }) {
   const groups = useMemo<GroupDef[]>(() => {
     const map = new Map<CatKey, AssetItem[]>(CATEGORY_DEFS.map(c => [c.key, []]));
@@ -378,14 +434,15 @@ function SemanticGroupedView({ assets, selectedKeys, onSelect, onClickRow }: {
       .filter(g => g.items.length > 0);
   }, [assets]);
 
-  return <CollapsibleGroups groups={groups} selectedKeys={selectedKeys} onSelect={onSelect} onClickRow={onClickRow} />;
+  return <CollapsibleGroups groups={groups} selectedKeys={selectedKeys} onSelect={onSelect} onClickRow={onClickRow} onStatusChange={onStatusChange} />;
 }
 
 // ─── 目录分组视图（按顶层文件夹，0误判） ─────────────────────────────────────
 
-function DirGroupedView({ assets, selectedKeys, onSelect, onClickRow }: {
+function DirGroupedView({ assets, selectedKeys, onSelect, onClickRow, onStatusChange }: {
   assets: AssetItem[]; selectedKeys: Set<string>;
   onSelect: (key: string, checked: boolean) => void; onClickRow: (a: AssetItem) => void;
+  onStatusChange?: (path: string, status: string) => void;
 }) {
   const groups = useMemo<GroupDef[]>(() => {
     const map = new Map<string, AssetItem[]>();
@@ -405,7 +462,7 @@ function DirGroupedView({ assets, selectedKeys, onSelect, onClickRow }: {
       <p className="mb-3 text-[11px] text-slate-600">
         按顶层文件夹分组 · 共 {groups.length} 个目录
       </p>
-      <CollapsibleGroups groups={groups} selectedKeys={selectedKeys} onSelect={onSelect} onClickRow={onClickRow} />
+      <CollapsibleGroups groups={groups} selectedKeys={selectedKeys} onSelect={onSelect} onClickRow={onClickRow} onStatusChange={onStatusChange} />
     </>
   );
 }
@@ -523,6 +580,7 @@ export function AssetLibrary() {
   const [detailAsset, setDetailAsset] = useState<AssetItem | null>(null);
   const [bundleOpen, setBundleOpen] = useState(false);
   const [bundleMsg, setBundleMsg] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("active"); // "active" = approved+sent
 
   const assetKey = (a: AssetItem) => `${a.relative_path}||${a.filename}`;
 
@@ -564,13 +622,21 @@ export function AssetLibrary() {
     return allAssets;
   }, [activeTab, allAssets, activeAssets, attentionAssets]);
 
-  const totalPages = Math.ceil(tabAssets.length / PAGE_SIZE);
+  const displayAssets = useMemo(() => {
+    if (statusFilter === "active") {
+      return tabAssets.filter(a => !a.asset_status || a.asset_status === "approved" || a.asset_status === "sent");
+    }
+    if (statusFilter === "all") return tabAssets;
+    return tabAssets.filter(a => (a.asset_status ?? "approved") === statusFilter);
+  }, [tabAssets, statusFilter]);
+
+  const totalPages = Math.ceil(displayAssets.length / PAGE_SIZE);
   const pageAssets = useMemo(
-    () => tabAssets.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-    [tabAssets, page],
+    () => displayAssets.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [displayAssets, page],
   );
 
-  useEffect(() => { setPage(0); setSelectedKeys(new Set()); }, [activeTab, query]);
+  useEffect(() => { setPage(0); setSelectedKeys(new Set()); }, [activeTab, query, statusFilter]);
 
   // ── 操作 ─────────────────────────────────────────────────────────────────
 
@@ -589,11 +655,28 @@ export function AssetLibrary() {
     finally { setScanning(false); }
   }, [fetchAssets, query]);
 
+  const updateFileStatus = useCallback(async (relativePath: string, status: string) => {
+    try {
+      await api.put("/api/v1/assets/status", { relative_paths: [relativePath], status });
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          assets: prev.assets.map(a =>
+            a.relative_path === relativePath ? { ...a, asset_status: status as AssetItem["asset_status"] } : a
+          ),
+        };
+      });
+    } catch {
+      // 静默失败，不打断用户操作
+    }
+  }, []);
+
   const toggleSelect = (key: string, checked: boolean) =>
     setSelectedKeys(prev => { const n = new Set(prev); checked ? n.add(key) : n.delete(key); return n; });
 
   const selectAllPage = () => setSelectedKeys(new Set(pageAssets.map(assetKey)));
-  const selectAllTab  = () => setSelectedKeys(new Set(tabAssets.map(assetKey)));
+  const selectAllTab  = () => setSelectedKeys(new Set(displayAssets.map(assetKey)));
   const clearSelect   = () => setSelectedKeys(new Set());
 
   // 从 selectedKeys 还原 AssetItem 列表
@@ -687,6 +770,32 @@ export function AssetLibrary() {
             </div>
           </div>
 
+          {/* 状态筛选器 */}
+          <div className="mb-3 flex flex-wrap gap-1.5 text-xs">
+            {([
+              ["active",   "定稿 + 已发出"],
+              ["all",      "全部"],
+              ["draft",    "草稿"],
+              ["archived", "已归档"],
+            ] as [string, string][]).map(([val, label]) => (
+              <button key={val} type="button" onClick={() => setStatusFilter(val)}
+                className={`rounded-lg border px-2.5 py-1 transition ${
+                  statusFilter === val
+                    ? "border-cyan-500/40 bg-cyan-950/30 text-cyan-300"
+                    : "border-white/10 text-slate-500 hover:text-slate-300"
+                }`}>
+                {label}
+                <span className="ml-1.5 text-[10px] text-slate-600">
+                  {val === "active"
+                    ? tabAssets.filter(a => !a.asset_status || a.asset_status === "approved" || a.asset_status === "sent").length
+                    : val === "all"
+                    ? tabAssets.length
+                    : tabAssets.filter(a => (a.asset_status ?? "approved") === val).length}
+                </span>
+              </button>
+            ))}
+          </div>
+
           {/* 批量操作栏 */}
           {selectedKeys.size > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-cyan-500/30 bg-cyan-950/25 px-4 py-2.5 text-sm">
@@ -695,7 +804,7 @@ export function AssetLibrary() {
                 全选本页（{pageAssets.length}）
               </button>
               <button type="button" onClick={selectAllTab} className="text-slate-400 hover:text-white">
-                全选此 Tab（{tabAssets.length}）
+                全选当前视图（{displayAssets.length}）
               </button>
               <span className="text-slate-700">|</span>
               <button type="button" onClick={() => { setBundleOpen(true); setBundleMsg(null); }}
@@ -735,7 +844,7 @@ export function AssetLibrary() {
                   <tbody>
                     {pageAssets.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="py-8 text-center text-sm text-slate-500">
                           {activeTab === "active" ? "暂无近 30 天内更新的文件"
                             : activeTab === "attention" ? "没有需要关注的文件 🎉"
                             : "没有匹配的文件"}
@@ -749,6 +858,7 @@ export function AssetLibrary() {
                             selected={selectedKeys.has(key)}
                             onSelect={checked => toggleSelect(key, checked)}
                             onClick={() => setDetailAsset(a)}
+                            onStatusChange={(s) => void updateFileStatus(a.relative_path, s)}
                           />
                         );
                       })
@@ -756,27 +866,29 @@ export function AssetLibrary() {
                   </tbody>
                 </table>
               </div>
-              <Pagination page={page} totalPages={totalPages} totalItems={tabAssets.length} onChange={setPage} />
+              <Pagination page={page} totalPages={totalPages} totalItems={displayAssets.length} onChange={setPage} />
             </>
           )}
 
           {/* 语义分组（按文件类型关键词） */}
           {viewMode === "semantic" && (
             <SemanticGroupedView
-              assets={tabAssets}
+              assets={displayAssets}
               selectedKeys={selectedKeys}
               onSelect={toggleSelect}
               onClickRow={setDetailAsset}
+              onStatusChange={(path, s) => void updateFileStatus(path, s)}
             />
           )}
 
           {/* 目录分组（按顶层文件夹，0误判） */}
           {viewMode === "dir" && (
             <DirGroupedView
-              assets={tabAssets}
+              assets={displayAssets}
               selectedKeys={selectedKeys}
               onSelect={toggleSelect}
               onClickRow={setDetailAsset}
+              onStatusChange={(path, s) => void updateFileStatus(path, s)}
             />
           )}
         </>
@@ -785,6 +897,7 @@ export function AssetLibrary() {
       {/* 子面板 */}
       <AssetHealthPanel />
       <MatchMakerPanel />
+      <InstitutionArchivePanel />
 
       <AssetScanConfigModal
         open={scanModalOpen}

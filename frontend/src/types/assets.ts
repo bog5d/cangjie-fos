@@ -5,6 +5,7 @@ export interface AssetItem {
   last_modified: string;
   summary: string;
   tags: string[];
+  asset_status?: "draft" | "approved" | "sent" | "archived";
 }
 
 export interface AssetIndexResponse {
