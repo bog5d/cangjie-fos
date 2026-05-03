@@ -8,6 +8,7 @@ import json
 import sqlite3
 import threading
 import time
+import uuid as _uuid
 from typing import Any
 
 from cangjie_fos.core import paths as fos_paths
@@ -1187,57 +1188,58 @@ def db_wiki_entity_upsert(
 ) -> None:
     """插入或更新实体页面。timeline_event 会追加到时间线，而非覆盖。"""
     now = time.time()
-    conn = _connect()
-    try:
-        # 读取现有时间线
-        cur = conn.execute(
-            "SELECT timeline_json FROM wiki_entities WHERE name = ?", (name,)
-        )
-        row = cur.fetchone()
-        if row:
-            try:
-                existing_timeline: list[dict[str, Any]] = json.loads(row["timeline_json"])
-            except (json.JSONDecodeError, TypeError):
+    with _write_lock:
+        conn = _connect()
+        try:
+            # 读取现有时间线
+            cur = conn.execute(
+                "SELECT timeline_json FROM wiki_entities WHERE name = ?", (name,)
+            )
+            row = cur.fetchone()
+            if row:
+                try:
+                    existing_timeline: list[dict[str, Any]] = json.loads(row["timeline_json"])
+                except (json.JSONDecodeError, TypeError):
+                    existing_timeline = []
+            else:
                 existing_timeline = []
-        else:
-            existing_timeline = []
 
-        if timeline_event:
-            existing_timeline.append({
-                "date": timeline_event.get("date") or "",
-                "event": timeline_event.get("event") or "",
-                "recorded_at": now,
-            })
+            if timeline_event:
+                existing_timeline.append({
+                    "date": timeline_event.get("date") or "",
+                    "event": timeline_event.get("event") or "",
+                    "recorded_at": now,
+                })
 
-        conn.execute(
-            """
-            INSERT INTO wiki_entities
-                (name, entity_type, aliases, profile_json, timeline_json, summary, confidence, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(name) DO UPDATE SET
-                entity_type  = excluded.entity_type,
-                aliases      = excluded.aliases,
-                profile_json = excluded.profile_json,
-                timeline_json = excluded.timeline_json,
-                summary      = CASE WHEN excluded.summary != '' THEN excluded.summary ELSE wiki_entities.summary END,
-                confidence   = excluded.confidence,
-                updated_at   = excluded.updated_at
-            """,
-            (
-                name,
-                entity_type,
-                json.dumps(aliases or [], ensure_ascii=False),
-                json.dumps(profile_json or {}, ensure_ascii=False),
-                json.dumps(existing_timeline, ensure_ascii=False),
-                summary,
-                confidence,
-                now,
-                now,
-            ),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+            conn.execute(
+                """
+                INSERT INTO wiki_entities
+                    (name, entity_type, aliases, profile_json, timeline_json, summary, confidence, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    entity_type  = excluded.entity_type,
+                    aliases      = excluded.aliases,
+                    profile_json = excluded.profile_json,
+                    timeline_json = excluded.timeline_json,
+                    summary      = CASE WHEN excluded.summary != '' THEN excluded.summary ELSE wiki_entities.summary END,
+                    confidence   = excluded.confidence,
+                    updated_at   = excluded.updated_at
+                """,
+                (
+                    name,
+                    entity_type,
+                    json.dumps(aliases or [], ensure_ascii=False),
+                    json.dumps(profile_json or {}, ensure_ascii=False),
+                    json.dumps(existing_timeline, ensure_ascii=False),
+                    summary,
+                    confidence,
+                    now,
+                    now,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
 
 def db_wiki_entity_get(name: str) -> dict[str, Any] | None:
@@ -1310,37 +1312,37 @@ def db_wiki_link_upsert(
     invalidate: bool = False,
 ) -> None:
     """建立或更新双向链接。invalidate=True 时标记该链接为失效（Zep 模式）。"""
-    import uuid as _uuid
     now = time.time()
-    conn = _connect()
-    try:
-        if invalidate:
-            conn.execute(
-                """
-                UPDATE wiki_links SET invalid_at = ?
-                WHERE source_name = ? AND target_name = ? AND relationship = ?
-                  AND invalid_at IS NULL
-                """,
-                (now, source_name, target_name, relationship),
-            )
-        else:
-            link_id = str(_uuid.uuid4())
-            conn.execute(
-                """
-                INSERT INTO wiki_links
-                    (id, source_name, target_name, relationship, context, strength, source_doc, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source_name, target_name, relationship) DO UPDATE SET
-                    context    = excluded.context,
-                    strength   = excluded.strength,
-                    source_doc = excluded.source_doc,
-                    invalid_at = NULL
-                """,
-                (link_id, source_name, target_name, relationship, context, strength, source_doc, now),
-            )
-        conn.commit()
-    finally:
-        conn.close()
+    with _write_lock:
+        conn = _connect()
+        try:
+            if invalidate:
+                conn.execute(
+                    """
+                    UPDATE wiki_links SET invalid_at = ?
+                    WHERE source_name = ? AND target_name = ? AND relationship = ?
+                      AND invalid_at IS NULL
+                    """,
+                    (now, source_name, target_name, relationship),
+                )
+            else:
+                link_id = str(_uuid.uuid4())
+                conn.execute(
+                    """
+                    INSERT INTO wiki_links
+                        (id, source_name, target_name, relationship, context, strength, source_doc, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(source_name, target_name, relationship) DO UPDATE SET
+                        context    = excluded.context,
+                        strength   = excluded.strength,
+                        source_doc = excluded.source_doc,
+                        invalid_at = NULL
+                    """,
+                    (link_id, source_name, target_name, relationship, context, strength, source_doc, now),
+                )
+            conn.commit()
+        finally:
+            conn.close()
 
 
 def db_wiki_links_for(
@@ -1377,21 +1379,21 @@ def db_wiki_episode_insert(
     entity_names: list[str],
 ) -> str:
     """记录一次摄入事件，返回新建的 episode id。"""
-    import uuid as _uuid
     episode_id = str(_uuid.uuid4())
     now = time.time()
-    conn = _connect()
-    try:
-        conn.execute(
-            """
-            INSERT INTO wiki_episodes (id, source_type, source_id, raw_text, entity_names, extracted_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (episode_id, source_type, source_id, raw_text, json.dumps(entity_names, ensure_ascii=False), now),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO wiki_episodes (id, source_type, source_id, raw_text, entity_names, extracted_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (episode_id, source_type, source_id, raw_text, json.dumps(entity_names, ensure_ascii=False), now),
+            )
+            conn.commit()
+        finally:
+            conn.close()
     return episode_id
 
 
