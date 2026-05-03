@@ -19,6 +19,7 @@ from cangjie_fos.api.routes import (
     war_room,
     watch,
     webhooks,
+    wiki,
 )
 
 api_router = APIRouter()
@@ -38,3 +39,4 @@ api_router.include_router(assets.router)
 api_router.include_router(materials.router)
 api_router.include_router(admin.router)
 api_router.include_router(admin.doctor_router)
+api_router.include_router(wiki.router)
