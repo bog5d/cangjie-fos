@@ -27,6 +27,9 @@ from cangjie_fos.services.asset_scan_service import (
 )
 from cangjie_fos.services.pitch_job_db import (
     db_assets_list,
+    db_asset_status_update,
+    db_institution_archive_get,
+    db_institutions_list,
     db_match_session_create,
     db_match_session_get,
     db_match_session_update,
@@ -243,6 +246,53 @@ def post_health_snapshot_route() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# 文件状态管理
+# ---------------------------------------------------------------------------
+
+_VALID_STATUSES = frozenset({"draft", "approved", "sent", "archived"})
+
+
+class AssetStatusIn(BaseModel):
+    relative_paths: list[str]
+    status: str  # "draft" | "approved" | "sent" | "archived"
+
+
+@router.put("/api/v1/assets/status", tags=["assets"])
+def put_asset_status_route(body: AssetStatusIn) -> dict[str, Any]:
+    """批量更新文件状态。"""
+    if body.status not in _VALID_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "E_INVALID_STATUS", "message": f"状态必须是 {sorted(_VALID_STATUSES)} 之一"},
+        )
+    if not body.relative_paths:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "E_EMPTY_PATHS", "message": "至少提供一个文件路径"},
+        )
+    updated = db_asset_status_update(body.relative_paths, body.status)
+    return {"updated": updated, "status": body.status}
+
+
+# ---------------------------------------------------------------------------
+# 机构档案
+# ---------------------------------------------------------------------------
+
+
+@router.get("/api/v1/institutions", tags=["assets"])
+def get_institutions_route() -> dict[str, Any]:
+    """返回所有有已确认 bundle 的机构列表。"""
+    institutions = db_institutions_list()
+    return {"institutions": institutions, "total": len(institutions)}
+
+
+@router.get("/api/v1/institutions/{institution_name}", tags=["assets"])
+def get_institution_archive_route(institution_name: str) -> dict[str, Any]:
+    """返回指定机构的档案（已发文件、打包历史）。"""
+    return db_institution_archive_get(institution_name)
+
+
+# ---------------------------------------------------------------------------
 # 尽调响应台 MatchMaker V5.0
 # ---------------------------------------------------------------------------
 
@@ -278,6 +328,13 @@ def post_bundle_route(body: BundleIn) -> dict[str, Any]:
         status="confirmed",
         confirmed_files=body.files,
     )
+    # 自动将打包文件标记为 "sent"
+    paths = [f.get("relative_path") or f.get("filename", "") for f in body.files if f.get("relative_path") or f.get("filename")]
+    if paths:
+        try:
+            db_asset_status_update(paths, "sent")
+        except Exception:  # noqa: BLE001
+            pass  # 状态更新失败不应阻断打包流程
     return {
         "session_id": session_id,
         "status": "confirmed",
