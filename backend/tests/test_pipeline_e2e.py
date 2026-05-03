@@ -192,6 +192,15 @@ class TestPipelineE2E:
         assert data["original_report"]["total_score"] == 80
         assert data["edited_report"] is None
 
+    # ── Wiki 摄入验证 ──────────────────────────
+    def test_wiki_episode_created_for_job(self):
+        """pipeline 完成后 wiki episode 应已创建（即使 LLM 返回空也会创建）。"""
+        from cangjie_fos.services.pitch_job_db import db_wiki_episodes_for_source
+        episodes = db_wiki_episodes_for_source(JOB_ID)
+        assert isinstance(episodes, list), "wiki episodes 查询应返回 list"
+        # wiki 摄入是非阻塞的；若 LLM mock 返回空，episode 仍会被创建
+        assert len(episodes) >= 1, "pipeline 完成后应有至少一条 wiki episode 记录"
+
     def test_review_api_audio_available(self, client):
         data = client.get(f"/api/pitch/jobs/{JOB_ID}/review").json()
         assert data["audio_available"] is True

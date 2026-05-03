@@ -132,6 +132,26 @@ def run_pitch_upload_job(*, job_id: str, raw_bytes: bytes, filename: str, tenant
             exp_reason="录音解析并完成 LangGraph 复盘",
             substatus=None,
         )
+        # ── wiki 摄入（非阻塞，失败不影响主流程）────────────────────────────
+        try:
+            from cangjie_fos.services.wiki_service import ingest_text_to_wiki  # noqa: PLC0415
+            words_text = " ".join(w.text for w in (words or []) if w.text)
+            if words_text.strip():
+                wiki_result = ingest_text_to_wiki(
+                    text=words_text,
+                    source_type="pitch_recording",
+                    source_id=job_id,
+                )
+                logger.info(
+                    "wiki_ingest job_id=%s entities=%d links=%d",
+                    job_id,
+                    wiki_result.get("entities_updated", 0),
+                    wiki_result.get("links_updated", 0),
+                )
+        except Exception as wiki_exc:  # noqa: BLE001
+            logger.warning("wiki_ingest 失败（非致命）job_id=%s exc=%s", job_id, wiki_exc)
+        # ── wiki 摄入 END ─────────────────────────────────────────────────
+
         logger.info("pitch_upload_job_done job_id=%s tenant_id=%s", job_id, tenant_id)
     except Exception as e:  # noqa: BLE001
         logger.exception("pitch_upload_job_failed job_id=%s", job_id)
