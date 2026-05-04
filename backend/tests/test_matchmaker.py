@@ -174,3 +174,151 @@ def test_api_match_confirm(isolated_db, monkeypatch: pytest.MonkeyPatch):
     body = confirm_resp.json()
     assert body["status"] == "confirmed"
     assert body["confirmed_count"] == 1
+
+
+# ─── 5. MatcherSkill 协议 ─────────────────────────────────────────────────────
+
+def test_matcher_skill_protocol():
+    """BM25MatcherSkill 实现了 MatcherSkill 协议。"""
+    from cangjie_fos.engine.matchmaker import (
+        BM25MatcherSkill, MatcherSkill, RequirementItem, get_default_matcher,
+    )
+    matcher = get_default_matcher()
+    assert isinstance(matcher, BM25MatcherSkill)
+    assert isinstance(matcher, MatcherSkill)
+
+
+def test_bm25_skill_returns_results():
+    """BM25MatcherSkill.match() 接口与旧 run_matching() 等价。"""
+    from cangjie_fos.engine.matchmaker import BM25MatcherSkill, RequirementItem
+
+    assets = [
+        {"filename": "财务报表.xlsx", "summary": "年度财务", "tags": ["财务"], "relative_path": "财务/财务报表.xlsx"},
+        {"filename": "BP.pdf", "summary": "商业计划书", "tags": ["BP"], "relative_path": "BP.pdf"},
+    ]
+    reqs = [RequirementItem(description="财务报表", scene_type="财务审计")]
+    results = BM25MatcherSkill().match(reqs, assets, top_n=3)
+    assert len(results) == 1
+    assert results[0].candidates[0].asset["filename"] == "财务报表.xlsx"
+
+
+def test_bm25_skill_with_institution_profile_boosts_preferred():
+    """institution_profile 历史偏好加权：偏好文件得分提升 1.3x 并附加标记。
+
+    验证两个核心行为：
+      1. 偏好文件的 matched_fields 中出现 "[机构历史偏好↑]"
+      2. 偏好文件的 score 比不带 profile 时高（×1.3）
+
+    注：BM25 对 ASCII 关键词要求 ≥3 个字符；中文关键词要求 2-6 个汉字。
+    这里用中文关键词"审计"（2字）保证可靠命中。
+    """
+    from cangjie_fos.engine.matchmaker import BM25MatcherSkill, RequirementItem
+
+    assets = [
+        # 两个资产都含"审计"，audit_v1 是被偏好的资产
+        {"filename": "审计报告.pdf", "summary": "年度审计报告",
+         "tags": ["审计", "财务"], "relative_path": "审计报告.pdf"},
+        {"filename": "股权结构.docx", "summary": "股权架构说明",
+         "tags": ["股权"], "relative_path": "股权结构.docx"},
+    ]
+    reqs = [RequirementItem(description="审计", scene_type="财务审计")]
+
+    # 无 profile：审计报告.pdf 应命中，且无偏好标记
+    without_profile = BM25MatcherSkill().match(reqs, assets, top_n=2)
+    base_cand = next(
+        (c for c in without_profile[0].candidates if c.asset["filename"] == "审计报告.pdf"), None
+    )
+    assert base_cand is not None, "审计报告.pdf 应命中查询"
+    base_score = base_cand.score
+    assert "[机构历史偏好↑]" not in base_cand.matched_fields
+
+    # 注入历史偏好（审计报告.pdf 历史上被机构选过）
+    profile = {
+        "preferred_paths": ["审计报告.pdf"],
+        "preferred_tags": ["审计"],
+        "total_sessions": 3,
+    }
+    with_profile = BM25MatcherSkill().match(reqs, assets, institution_profile=profile, top_n=2)
+    boosted_cand = next(
+        (c for c in with_profile[0].candidates if c.asset["filename"] == "审计报告.pdf"), None
+    )
+    assert boosted_cand is not None
+    assert "[机构历史偏好↑]" in boosted_cand.matched_fields
+    # 加权后得分 ≥ 基础分（×1.3，min(1.0, ...) 截断前必然提升）
+    assert boosted_cand.score >= base_score
+
+
+# ─── 6. match_outcomes 记忆飞轮 ───────────────────────────────────────────────
+
+def test_match_outcome_batch_save_and_profile(isolated_db):
+    """confirm → match_outcomes 写入 → db_institution_match_profile 正确聚合。"""
+    from cangjie_fos.services.pitch_job_db import (
+        db_match_outcome_batch_save,
+        db_institution_match_profile,
+    )
+
+    # 模拟 3 次匹配，同一机构选了不同文件
+    db_match_outcome_batch_save(
+        session_id="sess-a",
+        institution="红杉资本",
+        selected_paths=["财务/报表.xlsx", "BP.pdf"],
+        candidate_paths=["财务/报表.xlsx", "BP.pdf", "团队/简历.docx"],
+    )
+    db_match_outcome_batch_save(
+        session_id="sess-b",
+        institution="红杉资本",
+        selected_paths=["BP.pdf"],
+        candidate_paths=["BP.pdf", "产品/白皮书.pdf"],
+    )
+
+    profile = db_institution_match_profile("红杉资本")
+    assert profile["institution"] == "红杉资本"
+    assert profile["total_sessions"] == 2
+    assert profile["total_selected"] == 3
+    # BP.pdf 被选了 2 次，应排在 preferred_paths 第一位
+    assert profile["preferred_paths"][0] == "BP.pdf"
+    assert "财务/报表.xlsx" in profile["preferred_paths"]
+
+
+def test_match_outcome_empty_institution(isolated_db):
+    """无历史数据时 db_institution_match_profile 返回空画像，不报错。"""
+    from cangjie_fos.services.pitch_job_db import db_institution_match_profile
+
+    profile = db_institution_match_profile("完全陌生的机构XYZ")
+    assert profile["total_sessions"] == 0
+    assert profile["preferred_paths"] == []
+
+
+def test_confirm_api_writes_outcomes(isolated_db, monkeypatch: pytest.MonkeyPatch):
+    """API confirm 后，match_outcomes 表有对应记录，下次匹配时 profile_injected=True。"""
+    from cangjie_fos.services.pitch_job_db import db_institution_match_profile
+
+    # 第一次匹配：无历史，profile_injected=False
+    monkeypatch.setattr(
+        "cangjie_fos.api.routes.assets.db_assets_list",
+        lambda limit=2000: [
+            {"filename": "BP.pdf", "summary": "商业计划书", "tags": ["BP"], "relative_path": "BP.pdf"},
+            {"filename": "财务.xlsx", "summary": "财务模型", "tags": ["财务"], "relative_path": "财务.xlsx"},
+        ],
+    )
+    with TestClient(global_app) as client:
+        match_resp = client.post(
+            "/api/v1/assets/match",
+            json={"institution": "测试机构_Profile", "req_text": "1. BP"},
+        )
+        assert match_resp.status_code == 200
+        assert match_resp.json().get("profile_injected") is False
+
+        session_id = match_resp.json()["session_id"]
+
+        # confirm，选 BP.pdf
+        confirm_resp = client.post(
+            f"/api/v1/assets/match/{session_id}/confirm",
+            json={"confirmed_files": [{"filename": "BP.pdf", "relative_path": "BP.pdf", "full_path": ""}]},
+        )
+        assert confirm_resp.status_code == 200
+
+    # 验证 match_outcomes 已写入
+    profile = db_institution_match_profile("测试机构_Profile")
+    assert profile["total_sessions"] == 1
+    assert "BP.pdf" in profile["preferred_paths"]
