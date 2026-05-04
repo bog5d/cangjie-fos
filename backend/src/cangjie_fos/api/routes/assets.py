@@ -295,6 +295,22 @@ def get_institution_archive_route(institution_name: str) -> dict[str, Any]:
     return db_institution_archive_get(institution_name)
 
 
+@router.get("/api/v1/institutions/{institution_name}/profile", tags=["assets"])
+def get_institution_profile_route(institution_name: str) -> dict[str, Any]:
+    """返回指定机构的匹配偏好画像（用于诊断学习飞轮效果）。
+
+    响应字段：
+      - institution: 机构名称
+      - total_sessions: 历史匹配次数
+      - total_selected: 累计选中文件数
+      - avg_selected_per_session: 平均每次选中数
+      - preferred_paths: 偏好文件列表（按选中频率降序）
+      - preferred_tags: 偏好标签聚合（从偏好文件 join assets 表）
+      - last_contact: 最近一次匹配的时间戳
+    """
+    return db_institution_match_profile(institution_name)
+
+
 # ---------------------------------------------------------------------------
 # 尽调响应台 MatchMaker V5.0
 # ---------------------------------------------------------------------------
@@ -338,6 +354,23 @@ def post_bundle_route(body: BundleIn) -> dict[str, Any]:
             db_asset_status_update(paths, "sent")
         except Exception:  # noqa: BLE001
             pass  # 状态更新失败不应阻断打包流程
+
+    # 写入匹配结果记忆（学习飞轮）—— bundle 直接打包等同于"全部选中"
+    try:
+        selected_paths = [f.get("relative_path", "") for f in body.files if f.get("relative_path")]
+        selected_names = [f.get("filename", "") for f in body.files]
+        if selected_paths:
+            db_match_outcome_batch_save(
+                session_id=session_id,
+                institution=body.institution,
+                selected_paths=selected_paths,
+                candidate_paths=selected_paths,   # bundle 中全选，候选即选中
+                selected_names=selected_names,
+                candidate_names=selected_names,
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning("bundle match_outcomes 写入失败，不阻断打包流程", exc_info=True)
+
     return {
         "session_id": session_id,
         "status": "confirmed",

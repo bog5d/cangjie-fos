@@ -322,3 +322,188 @@ def test_confirm_api_writes_outcomes(isolated_db, monkeypatch: pytest.MonkeyPatc
     profile = db_institution_match_profile("测试机构_Profile")
     assert profile["total_sessions"] == 1
     assert "BP.pdf" in profile["preferred_paths"]
+
+
+# ─── 7. BM25 关键词提取增强（2字母ASCII + 动态boost）──────────────────────────
+
+def test_extract_keywords_recognizes_two_letter_ascii():
+    """修复：_extract_keywords 现在能识别2字母ASCII词（BP/VC/PE等）。"""
+    from cangjie_fos.engine.matchmaker import _extract_keywords
+
+    kws = _extract_keywords("BP商业计划书 VC投资 PE基金")
+    assert "bp" in kws, "BP 应被识别为关键词"
+    assert "vc" in kws, "VC 应被识别为关键词"
+    assert "pe" in kws, "PE 应被识别为关键词"
+
+
+def test_bm25_matches_two_letter_query():
+    """修复验证：查询词"BP"现在能正确命中含"BP"标签的文件。"""
+    from cangjie_fos.engine.matchmaker import BM25MatcherSkill, RequirementItem
+
+    assets = [
+        {"filename": "BP.pdf", "summary": "商业计划书", "tags": ["BP"], "relative_path": "BP.pdf"},
+        {"filename": "财务报表.xlsx", "summary": "年度财务", "tags": ["财务"], "relative_path": "财务.xlsx"},
+    ]
+    reqs = [RequirementItem(description="BP商业计划书")]
+    results = BM25MatcherSkill().match(reqs, assets, top_n=2)
+    assert len(results) == 1
+    assert results[0].candidates, "BP查询应有命中结果"
+    assert results[0].candidates[0].asset["filename"] == "BP.pdf", "BP.pdf 应排第一"
+
+
+def test_compute_boost_factor_dynamic():
+    """动态boost_factor：根据total_sessions返回正确的档位值。"""
+    from cangjie_fos.engine.matchmaker import _compute_boost_factor
+
+    assert _compute_boost_factor(None) == 1.0,           "无画像 → 1.0"
+    assert _compute_boost_factor({}) == 1.0,              "空画像 → 1.0"
+    assert _compute_boost_factor({"total_sessions": 0}) == 1.0,  "0次 → 1.0"
+    assert _compute_boost_factor({"total_sessions": 3}) == 1.0,  "3次 → 1.0（数据不足）"
+    assert _compute_boost_factor({"total_sessions": 4}) == 1.2,  "4次 → 1.2"
+    assert _compute_boost_factor({"total_sessions": 10}) == 1.2, "10次 → 1.2"
+    assert _compute_boost_factor({"total_sessions": 11}) == 1.3, "11次 → 1.3"
+    assert _compute_boost_factor({"total_sessions": 30}) == 1.3, "30次 → 1.3"
+    assert _compute_boost_factor({"total_sessions": 31}) == 1.5, "31次 → 1.5"
+
+
+def test_boost_not_applied_below_threshold():
+    """total_sessions ≤ 3 时，boost_factor=1.0，偏好文件仍有[机构历史偏好↑]标记但得分不变。"""
+    from cangjie_fos.engine.matchmaker import BM25MatcherSkill, RequirementItem
+
+    assets = [
+        {"filename": "审计报告.pdf", "summary": "年度审计", "tags": ["审计"], "relative_path": "审计报告.pdf"},
+    ]
+    reqs = [RequirementItem(description="审计")]
+
+    # 无 profile
+    base_results = BM25MatcherSkill().match(reqs, assets, top_n=1)
+    base_score = base_results[0].candidates[0].score
+
+    # total_sessions=2 < 4 → boost_factor=1.0
+    profile_low = {"preferred_paths": ["审计报告.pdf"], "preferred_tags": [], "total_sessions": 2}
+    low_results = BM25MatcherSkill().match(reqs, assets, institution_profile=profile_low, top_n=1)
+    # 标记仍然存在（路径在preferred_paths中）
+    assert "[机构历史偏好↑]" in low_results[0].candidates[0].matched_fields
+    # 但分数不变（×1.0不产生变化，min(1.0, score*1.0) == score）
+    assert low_results[0].candidates[0].score == pytest.approx(base_score)
+
+
+# ─── 8. preferred_tags join assets 表 ────────────────────────────────────────
+
+def test_preferred_tags_populated_from_assets_table(isolated_db):
+    """db_institution_match_profile 现在从 assets 表 join 出偏好文件的 tags。"""
+    from cangjie_fos.services.pitch_job_db import (
+        db_asset_upsert,
+        db_match_outcome_batch_save,
+        db_institution_match_profile,
+    )
+
+    # 先写入资产（带 tags）
+    db_asset_upsert(
+        filename="审计报告.pdf",
+        relative_path="审计报告.pdf",
+        full_path="/data/审计报告.pdf",
+        last_modified="2025-01-01",
+        summary="年度审计报告",
+        tags=["审计", "财务", "合规"],
+        scan_dir="/data",
+    )
+
+    # 机构选中了这个文件
+    db_match_outcome_batch_save(
+        session_id="sess-tags-001",
+        institution="测试机构_Tags",
+        selected_paths=["审计报告.pdf"],
+        candidate_paths=["审计报告.pdf"],
+    )
+
+    profile = db_institution_match_profile("测试机构_Tags")
+    # preferred_tags 应从 assets 表 join 出来
+    assert "审计" in profile["preferred_tags"], f"审计 应在 preferred_tags，实际: {profile['preferred_tags']}"
+    assert "财务" in profile["preferred_tags"]
+    assert "合规" in profile["preferred_tags"]
+
+
+def test_preferred_tags_empty_when_no_assets_in_db(isolated_db):
+    """preferred_paths 存在但 assets 表里没有对应记录时，preferred_tags 返回空列表（不报错）。"""
+    from cangjie_fos.services.pitch_job_db import (
+        db_match_outcome_batch_save,
+        db_institution_match_profile,
+    )
+
+    # 只有 match_outcomes，assets 表里没有对应文件
+    db_match_outcome_batch_save(
+        session_id="sess-no-asset",
+        institution="无资产机构",
+        selected_paths=["不存在的文件.pdf"],
+        candidate_paths=["不存在的文件.pdf"],
+    )
+
+    profile = db_institution_match_profile("无资产机构")
+    assert profile["preferred_paths"] == ["不存在的文件.pdf"]
+    assert profile["preferred_tags"] == []  # join 结果为空，不报错
+
+
+# ─── 9. bundle 路由写 match_outcomes ────────────────────────────────────────
+
+def test_bundle_route_writes_match_outcomes(isolated_db, monkeypatch: pytest.MonkeyPatch):
+    """POST /api/v1/assets/bundle 完成后，match_outcomes 表有对应记录。"""
+    from cangjie_fos.services.pitch_job_db import db_institution_match_profile
+
+    with TestClient(global_app) as client:
+        resp = client.post(
+            "/api/v1/assets/bundle",
+            json={
+                "institution": "机构_Bundle飞轮",
+                "files": [
+                    {"filename": "BP.pdf", "relative_path": "BP.pdf", "full_path": ""},
+                    {"filename": "财务.xlsx", "relative_path": "财务.xlsx", "full_path": ""},
+                ],
+            },
+        )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "confirmed"
+
+    # 验证 match_outcomes 写入
+    profile = db_institution_match_profile("机构_Bundle飞轮")
+    assert profile["total_sessions"] == 1
+    assert "BP.pdf" in profile["preferred_paths"]
+    assert "财务.xlsx" in profile["preferred_paths"]
+
+
+# ─── 10. GET /api/v1/institutions/{name}/profile ────────────────────────────
+
+def test_institution_profile_api(isolated_db, monkeypatch: pytest.MonkeyPatch):
+    """GET /api/v1/institutions/{name}/profile 返回正确的偏好画像。"""
+    from cangjie_fos.services.pitch_job_db import db_match_outcome_batch_save
+
+    # 写入历史记录
+    db_match_outcome_batch_save(
+        session_id="sess-profile-api",
+        institution="机构_ProfileAPI",
+        selected_paths=["BP.pdf", "财务.xlsx"],
+        candidate_paths=["BP.pdf", "财务.xlsx", "其他.docx"],
+    )
+
+    with TestClient(global_app) as client:
+        resp = client.get("/api/v1/institutions/机构_ProfileAPI/profile")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["institution"] == "机构_ProfileAPI"
+    assert body["total_sessions"] == 1
+    assert body["total_selected"] == 2
+    assert "BP.pdf" in body["preferred_paths"]
+    assert isinstance(body["preferred_tags"], list)
+
+
+def test_institution_profile_api_empty(isolated_db):
+    """无历史数据时 GET /api/v1/institutions/{name}/profile 返回空画像（不报错）。"""
+    with TestClient(global_app) as client:
+        resp = client.get("/api/v1/institutions/完全陌生的机构ABC/profile")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total_sessions"] == 0
+    assert body["preferred_paths"] == []
+    assert body["preferred_tags"] == []

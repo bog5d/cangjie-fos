@@ -230,7 +230,7 @@ def _extract_keywords(text: str) -> list[str]:
     for seg in re.split(r'\d+', text):
         for phrase in re.findall(r'[一-鿿]{2,6}', seg):
             keywords.add(phrase)
-    for word in re.findall(r'[a-zA-Z]{3,}', text):
+    for word in re.findall(r'[a-zA-Z]{2,}', text):
         keywords.add(word.lower())
     return [k for k in keywords if len(k) >= 2]
 
@@ -353,6 +353,32 @@ def run_matching(
 
 # ─── 机构历史偏好加权（Step 2.5）──────────────────────────────────────────────
 
+def _compute_boost_factor(institution_profile: dict | None) -> float:
+    """根据机构历史匹配次数动态计算 boost_factor。
+
+    数据量越多，历史偏好越可信，加权越大：
+
+    ==================  ================  =============================
+    历史匹配次数        boost_factor      说明
+    ==================  ================  =============================
+    0-3 次              1.0               数据太少，偏好不可信，不加权
+    4-10 次             1.2               轻微偏好，保留探索空间
+    11-30 次            1.3               偏好稳定，信任历史（原固定值）
+    30+ 次              1.5               高度稳定，大力加权
+    ==================  ================  =============================
+    """
+    if not institution_profile:
+        return 1.0
+    sessions = institution_profile.get("total_sessions", 0) or 0
+    if sessions <= 3:
+        return 1.0
+    if sessions <= 10:
+        return 1.2
+    if sessions <= 30:
+        return 1.3
+    return 1.5
+
+
 def _apply_institution_boost(
     scored: list[tuple[float, dict, list[str]]],
     institution_profile: dict | None,
@@ -437,8 +463,9 @@ class BM25MatcherSkill:
             if score > 0:
                 scored.append((score, asset, fields))
 
-        # Step 2.5：机构历史偏好加权
-        scored = _apply_institution_boost(scored, institution_profile)
+        # Step 2.5：机构历史偏好加权（boost_factor 根据历史数据量动态调整）
+        boost = _compute_boost_factor(institution_profile)
+        scored = _apply_institution_boost(scored, institution_profile, boost_factor=boost)
 
         candidates: list[MatchCandidate] = []
         for score, asset, fields in scored[:top_n]:

@@ -1651,10 +1651,31 @@ def db_institution_match_profile(institution: str) -> dict[str, Any]:
             (institution,),
         )
         stats = dict(cur2.fetchone() or {})
+
+        preferred_paths = [row["asset_path"] for row in selected_rows]
+
+        # 从 assets 表 join 出偏好文件的 tags（按频率聚合，取 Top-20）
+        preferred_tags: list[str] = []
+        if preferred_paths:
+            placeholders = ",".join("?" * len(preferred_paths))
+            cur3 = conn.execute(
+                f"SELECT tags FROM assets WHERE relative_path IN ({placeholders})",
+                preferred_paths,
+            )
+            tags_counter: dict[str, int] = {}
+            for row in cur3.fetchall():
+                try:
+                    tags_list = json.loads(row["tags"] or "[]")
+                except (json.JSONDecodeError, TypeError):
+                    tags_list = []
+                for tag in tags_list:
+                    tag_str = str(tag).strip()
+                    if tag_str:
+                        tags_counter[tag_str] = tags_counter.get(tag_str, 0) + 1
+            preferred_tags = [t for t, _ in sorted(tags_counter.items(), key=lambda x: -x[1])[:20]]
     finally:
         conn.close()
 
-    preferred_paths = [row["asset_path"] for row in selected_rows]
     total_sessions = int(stats.get("total_sessions") or 0)
     total_selected = int(stats.get("total_selected") or 0)
 
@@ -1664,6 +1685,6 @@ def db_institution_match_profile(institution: str) -> dict[str, Any]:
         "total_selected": total_selected,
         "avg_selected_per_session": round(total_selected / total_sessions, 1) if total_sessions > 0 else 0.0,
         "preferred_paths": preferred_paths,
-        "preferred_tags": [],   # 由调用方从 assets 表二次 join 后填充（可选）
+        "preferred_tags": preferred_tags,
         "last_contact": stats.get("last_contact"),
     }
