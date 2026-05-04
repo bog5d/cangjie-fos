@@ -164,6 +164,18 @@ CREATE TABLE IF NOT EXISTS match_sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_match_sessions_created ON match_sessions(created_at DESC);
 
+CREATE TABLE IF NOT EXISTS match_outcomes (
+    id           TEXT PRIMARY KEY,
+    session_id   TEXT NOT NULL,
+    institution  TEXT NOT NULL DEFAULT '',
+    asset_path   TEXT NOT NULL,
+    asset_name   TEXT NOT NULL DEFAULT '',
+    was_selected INTEGER NOT NULL DEFAULT 0,
+    created_at   REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_match_outcomes_institution ON match_outcomes(institution);
+CREATE INDEX IF NOT EXISTS idx_match_outcomes_session ON match_outcomes(session_id);
+
 CREATE TABLE IF NOT EXISTS wiki_entities (
     name            TEXT PRIMARY KEY,
     entity_type     TEXT NOT NULL DEFAULT 'concept',
@@ -1514,4 +1526,144 @@ def db_institution_archive_get(institution: str) -> dict[str, Any]:
         "bundle_count": len(bundles),
         "total_sent_files": len(all_sent_paths),
         "bundles": bundles,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 匹配结果记忆（match_outcomes）— 智能体学习飞轮的数据基础
+# ---------------------------------------------------------------------------
+
+
+def db_match_outcome_batch_save(
+    session_id: str,
+    institution: str,
+    selected_paths: list[str],
+    candidate_paths: list[str],
+    selected_names: list[str] | None = None,
+    candidate_names: list[str] | None = None,
+) -> None:
+    """批量写入一次匹配会话的结果记忆。
+
+    每次人工 confirm 后调用，记录：
+      - 哪些候选文件被选中（was_selected=1）
+      - 哪些候选文件被放弃（was_selected=0）
+
+    这份数据是机构偏好画像（db_institution_match_profile）的原始材料，
+    积累后可驱动 BM25MatcherSkill 的历史偏好加权，让匹配越来越准。
+
+    Args:
+        session_id: 关联的 match_sessions.id
+        institution: 机构名称
+        selected_paths: 被人工选中的文件 relative_path 列表
+        candidate_paths: 所有候选文件的 relative_path 列表（包含未被选中的）
+        selected_names: 被选中文件的 filename 列表（可选，仅供展示）
+        candidate_names: 所有候选文件的 filename 列表（可选）
+    """
+    if not selected_paths and not candidate_paths:
+        return
+    now = time.time()
+    selected_set = set(selected_paths)
+    # 合并所有涉及文件（避免重复）
+    all_paths = list(dict.fromkeys(list(candidate_paths) + list(selected_paths)))
+
+    # 构建 path → name 映射
+    name_map: dict[str, str] = {}
+    if candidate_names:
+        for p, n in zip(candidate_paths, candidate_names):
+            name_map[p] = n
+    if selected_names:
+        for p, n in zip(selected_paths, selected_names):
+            name_map[p] = n
+
+    with _write_lock:
+        conn = _connect()
+        try:
+            for path in all_paths:
+                if not path:
+                    continue
+                conn.execute(
+                    """INSERT OR IGNORE INTO match_outcomes
+                       (id, session_id, institution, asset_path, asset_name, was_selected, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        f"{session_id}::{path}",
+                        session_id,
+                        institution or "",
+                        path,
+                        name_map.get(path, ""),
+                        1 if path in selected_set else 0,
+                        now,
+                    ),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_institution_match_profile(institution: str) -> dict[str, Any]:
+    """从历史 match_outcomes 计算机构偏好画像。
+
+    返回结构（供 BM25MatcherSkill 的 institution_profile 参数使用）::
+
+        {
+            "institution": "红杉资本",
+            "total_sessions": 5,           # 历史匹配次数
+            "total_selected": 23,          # 历史累计选中文件数
+            "avg_selected_per_session": 4.6,
+            "preferred_paths": [...],      # 被选中 ≥1 次的 relative_path，按频率降序
+            "preferred_tags": [...],       # 从 assets 表 join 出的标签（需调用方提供资产列表）
+            "last_contact": 1714000000.0,  # 最近一次匹配的时间戳
+        }
+
+    注意：preferred_tags 需要调用方在资产列表中二次 join，此处只返回 preferred_paths。
+    上层（post_match_route）负责将 preferred_paths 和资产库 tags 做联合，
+    或直接将整个资产库传给 _apply_institution_boost 做路径匹配即可。
+    """
+    if not institution:
+        return {"institution": "", "total_sessions": 0, "preferred_paths": [], "preferred_tags": []}
+
+    conn = _connect()
+    try:
+        # 被选中的文件（按选中次数降序）
+        cur = conn.execute(
+            """
+            SELECT asset_path, asset_name, COUNT(*) AS select_count
+            FROM match_outcomes
+            WHERE institution = ? AND was_selected = 1
+            GROUP BY asset_path
+            ORDER BY select_count DESC
+            LIMIT 50
+            """,
+            (institution,),
+        )
+        selected_rows = cur.fetchall()
+
+        # 总体统计
+        cur2 = conn.execute(
+            """
+            SELECT
+                COUNT(DISTINCT session_id) AS total_sessions,
+                SUM(was_selected)          AS total_selected,
+                MAX(created_at)            AS last_contact
+            FROM match_outcomes
+            WHERE institution = ?
+            """,
+            (institution,),
+        )
+        stats = dict(cur2.fetchone() or {})
+    finally:
+        conn.close()
+
+    preferred_paths = [row["asset_path"] for row in selected_rows]
+    total_sessions = int(stats.get("total_sessions") or 0)
+    total_selected = int(stats.get("total_selected") or 0)
+
+    return {
+        "institution": institution,
+        "total_sessions": total_sessions,
+        "total_selected": total_selected,
+        "avg_selected_per_session": round(total_selected / total_sessions, 1) if total_sessions > 0 else 0.0,
+        "preferred_paths": preferred_paths,
+        "preferred_tags": [],   # 由调用方从 assets 表二次 join 后填充（可选）
+        "last_contact": stats.get("last_contact"),
     }
