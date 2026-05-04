@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from cangjie_fos.core.paths import get_fos_bridge_data_dir
 from cangjie_fos.services.asset_index_io import load_asset_index_dict
 from cangjie_fos.engine.matchmaker import (
+    get_default_matcher,
     parse_requirements_from_text,
     result_to_dict,
     run_matching,
@@ -29,7 +30,9 @@ from cangjie_fos.services.pitch_job_db import (
     db_assets_list,
     db_asset_status_update,
     db_institution_archive_get,
+    db_institution_match_profile,
     db_institutions_list,
+    db_match_outcome_batch_save,
     db_match_session_create,
     db_match_session_get,
     db_match_session_update,
@@ -356,7 +359,14 @@ class ConfirmIn(BaseModel):
 
 @router.post("/api/v1/assets/match", tags=["assets"])
 def post_match_route(body: MatchSessionIn) -> dict[str, Any]:
-    """解析尽调需求文本 → BM25 匹配 → 持久化会话，返回 session_id + 结果。"""
+    """解析尽调需求文本 → MatcherSkill 匹配（含机构历史偏好加权）→ 持久化会话。
+
+    匹配流程：
+      1. 解析需求文本（LLM 或启发式）
+      2. 从 match_outcomes 表加载机构历史偏好画像（无历史时跳过）
+      3. BM25MatcherSkill 执行匹配 + 历史偏好加权
+      4. 持久化 session，返回结果
+    """
     if not body.req_text.strip():
         raise HTTPException(status_code=422, detail={"code": "E_EMPTY_REQ", "message": "需求文本不能为空"})
 
@@ -365,7 +375,31 @@ def post_match_route(body: MatchSessionIn) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail={"code": "E_NO_REQ", "message": "未能解析出任何需求条目"})
 
     assets = db_assets_list(limit=2000)
-    results = run_matching(requirements, assets, top_n=body.top_n)
+
+    # 注入机构历史偏好画像（有历史数据时加权，无历史时退化为纯 BM25）
+    institution_profile: dict | None = None
+    if body.institution:
+        try:
+            profile = db_institution_match_profile(body.institution)
+            if profile.get("total_sessions", 0) > 0:
+                institution_profile = profile
+                logger.info(
+                    "机构 %s 历史画像注入：%d 次匹配，%d 个偏好文件",
+                    body.institution,
+                    profile["total_sessions"],
+                    len(profile.get("preferred_paths", [])),
+                )
+        except Exception:  # noqa: BLE001
+            pass  # 画像加载失败不阻断匹配
+
+    matcher = get_default_matcher()
+    results = matcher.match(
+        requirements,
+        assets,
+        institution=body.institution,
+        institution_profile=institution_profile,
+        top_n=body.top_n,
+    )
 
     session_id = str(uuid.uuid4())
     req_dicts = [{"description": r.description, "scene_type": r.scene_type, "time_range": r.time_range}
@@ -383,6 +417,7 @@ def post_match_route(body: MatchSessionIn) -> dict[str, Any]:
         "institution": body.institution,
         "req_count": len(requirements),
         "results": res_dicts,
+        "profile_injected": institution_profile is not None,
     }
 
 
@@ -397,7 +432,11 @@ def get_match_session_route(session_id: str) -> dict[str, Any]:
 
 @router.post("/api/v1/assets/match/{session_id}/confirm", tags=["assets"])
 def post_match_confirm_route(session_id: str, body: ConfirmIn) -> dict[str, Any]:
-    """提交人工确认的文件列表，将会话标记为 confirmed。"""
+    """提交人工确认的文件列表，将会话标记为 confirmed，并写入 match_outcomes 记忆。
+
+    每次 confirm 都是飞轮的一圈：
+      人工选择 → match_outcomes 记录 → 下次匹配时偏好加权 → 结果更准
+    """
     session = db_match_session_get(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail={"code": "E_SESSION_NOT_FOUND", "message": "会话不存在"})
@@ -406,4 +445,32 @@ def post_match_confirm_route(session_id: str, body: ConfirmIn) -> dict[str, Any]
         status="confirmed",
         confirmed_files=body.confirmed_files,
     )
+
+    # 写入匹配结果记忆（学习飞轮）
+    try:
+        institution = session.get("institution", "")
+        # 从 session results 中提取所有候选文件路径
+        candidate_paths: list[str] = []
+        candidate_names: list[str] = []
+        for result in (session.get("results") or []):
+            for c in (result.get("candidates") or []):
+                path = (c.get("asset") or {}).get("relative_path", "")
+                name = (c.get("asset") or {}).get("filename", "")
+                if path and path not in candidate_paths:
+                    candidate_paths.append(path)
+                    candidate_names.append(name)
+        # 被选中的文件
+        selected_paths = [f.get("relative_path", "") for f in body.confirmed_files if f.get("relative_path")]
+        selected_names = [f.get("filename", "") for f in body.confirmed_files]
+        db_match_outcome_batch_save(
+            session_id=session_id,
+            institution=institution,
+            selected_paths=selected_paths,
+            candidate_paths=candidate_paths,
+            selected_names=selected_names,
+            candidate_names=candidate_names,
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("match_outcomes 写入失败，不阻断确认流程", exc_info=True)
+
     return {"session_id": session_id, "status": "confirmed", "confirmed_count": len(body.confirmed_files)}
