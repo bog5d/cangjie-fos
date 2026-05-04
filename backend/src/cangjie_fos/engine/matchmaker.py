@@ -1,9 +1,10 @@
 """
-MatchMaker V5.0 — 尽调响应台匹配引擎（迁自 AI_CangJie_FSS/src/matchmaker_v5.py）。
+MatchMaker V5.1 — 尽调响应台匹配引擎（Skill 协议版）。
 
 核心流程：
   Step 1：解析机构尽调需求清单（LLM 一次调用，或启发式降级）
   Step 2：本地 BM25 关键词检索 asset 列表（零 LLM 成本，零延迟）
+  Step 2.5：机构历史偏好加权（来自 match_outcomes 表的真实反馈）
   Step 3：绿/黄/红/灰 四色匹配结果
 
 颜色语义：
@@ -11,6 +12,12 @@ MatchMaker V5.0 — 尽调响应台匹配引擎（迁自 AI_CangJie_FSS/src/matc
   黄（yellow）：置信度 0.40~0.70，建议人工确认
   红（red）：置信度 < 0.40，匹配度低，建议人工指定
   灰（gray）：完全没有匹配，触发资产缺失预警
+
+Skill 协议设计（MatcherSkill Protocol）：
+  - 所有匹配实现遵循统一接口，调用方无需感知底层算法
+  - 当前实现：BM25MatcherSkill（纯标准库，零延迟）
+  - 未来可无缝替换：BM25+LLM重排序 → 全LLM推理
+  - 通过 get_default_matcher() 工厂获取当前最优实现
 
 设计原则：
   - 纯标准库，零额外依赖（os / json / re / math / collections）
@@ -26,7 +33,7 @@ import os
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +82,52 @@ class MatchResult:
     @property
     def best_candidate(self) -> Optional[MatchCandidate]:
         return self.candidates[0] if self.candidates else None
+
+
+# ─── MatcherSkill 协议（所有匹配实现必须遵循此接口）────────────────────────────
+
+@runtime_checkable
+class MatcherSkill(Protocol):
+    """匹配器技能协议。
+
+    遵循此接口可让底层匹配算法无缝替换，调用方代码永远不变。
+
+    进化路径::
+
+        BM25MatcherSkill（现在）
+            ↓ 积累 match_outcomes 数据
+        BM25 + 机构历史偏好加权（V5.1，当前）
+            ↓ 数据量够时接 LLM 重排序层
+        BM25 召回 + LLM 精排（V5.2，下一步）
+            ↓ 路演结束后自动触发
+        全自动主动匹配（V6.0，最终形态）
+    """
+
+    def match(
+        self,
+        requirements: list[RequirementItem],
+        assets: list[dict],
+        institution: str = "",
+        institution_profile: dict | None = None,
+        top_n: int = 5,
+    ) -> list[MatchResult]:
+        """执行匹配，返回有序结果列表。
+
+        Args:
+            requirements: 解析后的需求条目列表
+            assets: 候选资产列表（来自 db_assets_list）
+            institution: 机构名称（仅用于日志，实际加权由 institution_profile 驱动）
+            institution_profile: 机构历史偏好画像（由调用方从 DB 注入）。
+                期望结构：{
+                    "preferred_paths": list[str],   # 历史被选中文件的 relative_path
+                    "preferred_tags": list[str],    # 历史被选中文件的 tags 聚合
+                    "total_sessions": int,
+                }
+            top_n: 每条需求最多返回几个候选
+        Returns:
+            MatchResult 列表，与 requirements 一一对应
+        """
+        ...
 
 
 # ─── LLM 需求解析（Step 1）────────────────────────────────────────────────────
@@ -296,6 +349,118 @@ def run_matching(
         )
         for req in requirements
     ]
+
+
+# ─── 机构历史偏好加权（Step 2.5）──────────────────────────────────────────────
+
+def _apply_institution_boost(
+    scored: list[tuple[float, dict, list[str]]],
+    institution_profile: dict | None,
+    boost_factor: float = 1.3,
+) -> list[tuple[float, dict, list[str]]]:
+    """根据机构历史 match_outcomes 数据，对候选文件做偏好加权。
+
+    加权逻辑：
+      - 文件 relative_path 出现在历史 preferred_paths → ×boost_factor
+      - 文件 tags 与历史 preferred_tags 有交集 → ×boost_factor
+      - 两者都满足也只加一次（避免双倍膨胀）
+
+    boost_factor 默认 1.3（保守）：既能让历史偏好文件排名靠前，
+    又不会因一两次历史记录完全压制新文件。数据积累到 10+ 次后可调高到 1.5。
+    """
+    if not institution_profile:
+        return scored
+    preferred_paths = set(institution_profile.get("preferred_paths") or [])
+    preferred_tags = set(institution_profile.get("preferred_tags") or [])
+    if not preferred_paths and not preferred_tags:
+        return scored
+
+    result: list[tuple[float, dict, list[str]]] = []
+    for score, asset, fields in scored:
+        path = asset.get("relative_path", "")
+        tags = set(asset.get("tags") or [])
+        if path in preferred_paths or (tags & preferred_tags):
+            result.append((score * boost_factor, asset, fields + ["[机构历史偏好↑]"]))
+        else:
+            result.append((score, asset, fields))
+    result.sort(key=lambda x: x[0], reverse=True)
+    return result
+
+
+# ─── BM25MatcherSkill（当前默认实现）──────────────────────────────────────────
+
+class BM25MatcherSkill:
+    """基于 BM25 + 机构历史偏好加权的匹配器。
+
+    实现 MatcherSkill 协议。可通过 get_default_matcher() 获取实例。
+
+    内部流程：
+      1. 为每条需求对所有资产做 BM25 评分
+      2. 如果传入 institution_profile，对历史偏好文件做加权
+      3. 取 Top-N，分配颜色
+    """
+
+    def match(
+        self,
+        requirements: list[RequirementItem],
+        assets: list[dict],
+        institution: str = "",
+        institution_profile: dict | None = None,
+        top_n: int = 5,
+    ) -> list[MatchResult]:
+        return [
+            MatchResult(
+                requirement=req,
+                candidates=self._match_one(req, assets, institution_profile, top_n),
+            )
+            for req in requirements
+        ]
+
+    def _match_one(
+        self,
+        req: RequirementItem,
+        assets: list[dict],
+        institution_profile: dict | None,
+        top_n: int,
+    ) -> list[MatchCandidate]:
+        if not assets:
+            return []
+        all_lengths = [
+            len(_tokenize(str(a.get("summary") or "") + " " + str(a.get("filename") or "")))
+            for a in assets
+        ]
+        avg_len = sum(all_lengths) / len(all_lengths) if all_lengths else 20.0
+
+        scored: list[tuple[float, dict, list[str]]] = []
+        for asset in assets:
+            score, fields = _score_asset_for_requirement(req, asset, avg_doc_len=avg_len)
+            if score > 0:
+                scored.append((score, asset, fields))
+
+        # Step 2.5：机构历史偏好加权
+        scored = _apply_institution_boost(scored, institution_profile)
+
+        candidates: list[MatchCandidate] = []
+        for score, asset, fields in scored[:top_n]:
+            capped = min(1.0, score)  # boost 后分数可能超过 1.0，截断
+            if capped >= THRESHOLD_GREEN:
+                color = COLOR_GREEN
+            elif capped >= THRESHOLD_YELLOW:
+                color = COLOR_YELLOW
+            else:
+                color = COLOR_RED
+            candidates.append(
+                MatchCandidate(asset=asset, score=capped, color=color, matched_fields=fields)
+            )
+        return candidates
+
+
+def get_default_matcher() -> BM25MatcherSkill:
+    """获取当前默认匹配器实例。
+
+    工厂函数，隔离调用方与具体实现。未来升级到 LLMMatcherSkill 只需改这里。
+    """
+    return BM25MatcherSkill()
 
 
 # ─── 序列化辅助（供 DB / API 使用）──────────────────────────────────────────
