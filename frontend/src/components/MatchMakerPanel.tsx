@@ -8,6 +8,7 @@ interface MatchCandidate {
   score: number;
   color: "green" | "yellow" | "red" | "gray";
   matched_fields: string[];
+  reason: string;
 }
 
 interface MatchResultRow {
@@ -21,6 +22,16 @@ interface MatchSessionResponse {
   institution: string;
   req_count: number;
   results: MatchResultRow[];
+  gap_hints: string[];
+}
+
+interface InstitutionBriefing {
+  institution: string;
+  has_history: boolean;
+  total_sessions: number;
+  last_contact: number | null;
+  preferred_tags: string[];
+  gap_hints: string[];
 }
 
 // ─── 子组件 ──────────────────────────────────────────────────────────────────
@@ -41,6 +52,67 @@ function ColorBadge({ color }: { color: string }) {
     <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${COLOR_BADGE[color] ?? COLOR_BADGE.gray}`}>
       {COLOR_LABEL[color] ?? color}
     </span>
+  );
+}
+
+/** 机构历史简报卡（匹配前展示） */
+function InstitutionBriefingCard({ briefing }: { briefing: InstitutionBriefing }) {
+  if (!briefing.has_history) return null;
+
+  function fmtDate(ts: number | null) {
+    if (!ts) return "—";
+    try { return new Date(ts * 1000).toISOString().slice(0, 10); } catch { return "—"; }
+  }
+
+  return (
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-950/20 p-3 text-xs">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="font-semibold text-cyan-300">📋 {briefing.institution}</span>
+        <span className="text-slate-500">历史 {briefing.total_sessions} 次 DD · 最近 {fmtDate(briefing.last_contact)}</span>
+      </div>
+      {briefing.preferred_tags.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          <span className="mr-1 text-slate-500">偏好：</span>
+          {briefing.preferred_tags.slice(0, 6).map(t => (
+            <span key={t} className="rounded border border-cyan-500/30 bg-cyan-950/30 px-1.5 py-0.5 text-cyan-400">{t}</span>
+          ))}
+        </div>
+      )}
+      {briefing.gap_hints.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          <span className="mr-1 text-amber-500/80">⚠️ 历史缺口：</span>
+          {briefing.gap_hints.map(g => (
+            <span key={g} className="rounded border border-amber-500/30 bg-amber-950/30 px-1.5 py-0.5 text-amber-400">{g}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 缺口告警横幅（匹配后，如有 gap_hints） */
+function GapAlertBanner({ gaps }: { gaps: string[] }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (!gaps.length || dismissed) return null;
+  return (
+    <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-950/20 px-4 py-3">
+      <span className="mt-0.5 text-amber-400">⚠️</span>
+      <div className="flex-1">
+        <p className="text-xs font-semibold text-amber-300">
+          发现 {gaps.length} 个历史缺口——该机构曾要求过以下材料，当前素材库无法匹配：
+        </p>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {gaps.map(g => (
+            <span key={g} className="rounded border border-amber-500/30 bg-amber-950/40 px-2 py-0.5 text-[11px] text-amber-300">{g}</span>
+          ))}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        className="text-xs text-slate-600 hover:text-slate-400"
+      >✕</button>
+    </div>
   );
 }
 
@@ -74,10 +146,17 @@ function ResultRow({
       <td className="py-2.5 pr-4 align-top">
         <ColorBadge color={row.color} />
       </td>
-      <td className="py-2.5 pr-4 align-top text-sm text-slate-300">
-        {best ? best.asset.filename : <span className="text-slate-600">——</span>}
+      <td className="py-2.5 pr-4 align-top text-sm">
+        {best ? (
+          <>
+            <p className="text-slate-300">{best.asset.filename}</p>
+            <p className="mt-0.5 text-[11px] text-slate-600">{best.reason}</p>
+          </>
+        ) : (
+          <span className="text-slate-600">——</span>
+        )}
       </td>
-      <td className="py-2.5 align-top text-xs text-slate-500 tabular-nums">
+      <td className="py-2.5 align-top text-xs tabular-nums text-slate-500">
         {best ? `${Math.round(best.score * 100)}%` : "—"}
       </td>
     </tr>
@@ -95,12 +174,22 @@ export function MatchMakerPanel() {
   const [error, setError] = useState<string | null>(null);
   const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
   const [checkedRows, setCheckedRows] = useState<boolean[]>([]);
+  const [briefing, setBriefing] = useState<InstitutionBriefing | null>(null);
+
+  // 机构名失焦后加载简报
+  const loadBriefing = useCallback(async () => {
+    const name = institution.trim();
+    if (!name) { setBriefing(null); return; }
+    try {
+      const res = await api.get<InstitutionBriefing>(
+        `/api/v1/institutions/${encodeURIComponent(name)}/briefing`
+      );
+      setBriefing(res.data);
+    } catch { /* 简报加载失败不影响主流程 */ }
+  }, [institution]);
 
   const handleMatch = useCallback(async () => {
-    if (!reqText.trim()) {
-      setError("请粘贴尽调需求文本");
-      return;
-    }
+    if (!reqText.trim()) { setError("请粘贴尽调需求文本"); return; }
     setMatching(true);
     setError(null);
     setConfirmMsg(null);
@@ -113,12 +202,9 @@ export function MatchMakerPanel() {
         top_n: 3,
       });
       setSession(res.data);
-      setCheckedRows(
-        res.data.results.map((r) => r.color === "green")
-      );
+      setCheckedRows(res.data.results.map((r) => r.color === "green"));
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "匹配失败";
-      setError(msg);
+      setError(e instanceof Error ? e.message : "匹配失败");
     } finally {
       setMatching(false);
     }
@@ -129,7 +215,6 @@ export function MatchMakerPanel() {
     const confirmed = session.results
       .filter((_, i) => checkedRows[i])
       .flatMap((r) => r.candidates.slice(0, 1).map((c) => c.asset));
-
     setConfirming(true);
     setConfirmMsg(null);
     try {
@@ -149,9 +234,10 @@ export function MatchMakerPanel() {
   }, []);
 
   const checkedCount = checkedRows.filter(Boolean).length;
+  const gapHints = session?.gap_hints ?? [];
 
   return (
-    <section className="mt-8 rounded-2xl border border-white/10 bg-white/3 p-6">
+    <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
       <div className="mb-5">
         <h2 className="font-display text-lg font-bold text-white">尽调响应台</h2>
         <p className="mt-0.5 text-xs text-slate-500">
@@ -164,15 +250,19 @@ export function MatchMakerPanel() {
         <input
           value={institution}
           onChange={(e) => setInstitution(e.target.value)}
-          placeholder="机构名称（可选）"
+          onBlur={() => void loadBriefing()}
+          placeholder="机构名称（可选，填写后展示历史简报）"
           className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-600 sm:max-w-xs"
         />
+        {/* 机构历史简报卡 */}
+        {briefing && <InstitutionBriefingCard briefing={briefing} />}
+
         <textarea
           value={reqText}
           onChange={(e) => setReqText(e.target.value)}
           placeholder={"粘贴尽调需求清单，每行一条，例如：\n1. 近三年审计报告\n2. 股权结构图\n3. 核心团队简历"}
           rows={6}
-          className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-cyan/40 focus:outline-none"
+          className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-cyan-400/40 focus:outline-none"
         />
         <div className="flex flex-wrap gap-2">
           <button
@@ -188,7 +278,7 @@ export function MatchMakerPanel() {
               type="button"
               onClick={() => void handleConfirm()}
               disabled={confirming || checkedCount === 0}
-              className="rounded-xl border border-cyan/40 px-5 py-2 text-sm text-cyan-300 hover:border-cyan-400 disabled:opacity-40"
+              className="rounded-xl border border-cyan-400/40 px-5 py-2 text-sm text-cyan-300 hover:border-cyan-400 disabled:opacity-40"
             >
               {confirming ? "提交中…" : `提交确认（${checkedCount}）`}
             </button>
@@ -198,45 +288,42 @@ export function MatchMakerPanel() {
         {confirmMsg && <p className="text-xs text-cyan-400/90">{confirmMsg}</p>}
       </div>
 
-      {/* 结果表 */}
+      {/* 结果区 */}
       {session && session.results.length > 0 && (
-        <div className="mt-6 overflow-x-auto">
+        <div className="mt-6">
+          {/* 缺口告警 */}
+          <GapAlertBanner gaps={gapHints} />
+
           <div className="mb-2 flex gap-4 text-xs text-slate-500">
             <span>共 {session.req_count} 条需求</span>
-            <span className="text-emerald-400/80">
-              ✅ 绿 {session.results.filter((r) => r.color === "green").length}
-            </span>
-            <span className="text-yellow-400/80">
-              ⚠️ 黄 {session.results.filter((r) => r.color === "yellow").length}
-            </span>
-            <span className="text-red-400/80">
-              🔴 红 {session.results.filter((r) => r.color === "red").length}
-            </span>
-            <span className="text-slate-600">
-              ⬜ 灰 {session.results.filter((r) => r.color === "gray").length}
-            </span>
+            <span className="text-emerald-400/80">✅ 绿 {session.results.filter((r) => r.color === "green").length}</span>
+            <span className="text-yellow-400/80">⚠️ 黄 {session.results.filter((r) => r.color === "yellow").length}</span>
+            <span className="text-red-400/80">🔴 红 {session.results.filter((r) => r.color === "red").length}</span>
+            <span className="text-slate-600">⬜ 灰 {session.results.filter((r) => r.color === "gray").length}</span>
           </div>
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-500">
-                <th className="pb-2 pr-3 w-8" />
-                <th className="pb-2 pr-4">需求描述</th>
-                <th className="pb-2 pr-4">状态</th>
-                <th className="pb-2 pr-4">最佳匹配</th>
-                <th className="pb-2">分数</th>
-              </tr>
-            </thead>
-            <tbody>
-              {session.results.map((row, i) => (
-                <ResultRow
-                  key={i}
-                  row={row}
-                  checked={checkedRows[i] ?? false}
-                  onToggle={() => toggleRow(i)}
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-500">
+                  <th className="w-8 pb-2 pr-3" />
+                  <th className="pb-2 pr-4">需求描述</th>
+                  <th className="pb-2 pr-4">状态</th>
+                  <th className="pb-2 pr-4">最佳匹配</th>
+                  <th className="pb-2">分数</th>
+                </tr>
+              </thead>
+              <tbody>
+                {session.results.map((row, i) => (
+                  <ResultRow
+                    key={i}
+                    row={row}
+                    checked={checkedRows[i] ?? false}
+                    onToggle={() => toggleRow(i)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>
