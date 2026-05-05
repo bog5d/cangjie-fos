@@ -1688,3 +1688,143 @@ def db_institution_match_profile(institution: str) -> dict[str, Any]:
         "preferred_tags": preferred_tags,
         "last_contact": stats.get("last_contact"),
     }
+
+
+def db_institution_briefing(institution: str) -> dict[str, Any]:
+    """机构智慧简报：历史画像摘要 + 缺口检测。
+
+    缺口 = 历史已确认 session 中 color 为 gray/red 的需求条目。
+    这些需求当时没有可用文件满足，代表素材库已知短板。
+
+    注意：session 计数从 match_sessions 表读取（而非 match_outcomes），
+    因为 match_sessions 记录了每次匹配行为，match_outcomes 只记录飞轮确认后的文件。
+    """
+    if not institution:
+        return {
+            "institution": "",
+            "has_history": False,
+            "total_sessions": 0,
+            "last_contact": None,
+            "preferred_paths": [],
+            "preferred_tags": [],
+            "gap_hints": [],
+        }
+
+    conn = _connect()
+    try:
+        # 从 match_sessions 查全部 confirmed session
+        cur = conn.execute(
+            """
+            SELECT results, created_at
+            FROM match_sessions
+            WHERE institution = ? AND status = 'confirmed'
+            ORDER BY created_at DESC
+            LIMIT 20
+            """,
+            (institution,),
+        )
+        confirmed_sessions = cur.fetchall()
+
+        # 总 session 数（包含非 confirmed）
+        cur2 = conn.execute(
+            "SELECT COUNT(*) AS n, MAX(created_at) AS last_contact FROM match_sessions"
+            " WHERE institution = ?",
+            (institution,),
+        )
+        stats = dict(cur2.fetchone() or {})
+    finally:
+        conn.close()
+
+    total_sessions = int(stats.get("n") or 0)
+    if not total_sessions:
+        return {
+            "institution": institution,
+            "has_history": False,
+            "total_sessions": 0,
+            "last_contact": None,
+            "preferred_paths": [],
+            "preferred_tags": [],
+            "gap_hints": [],
+        }
+
+    # 缺口检测
+    gap_hints: list[str] = []
+    seen: set[str] = set()
+    for sess in confirmed_sessions:
+        try:
+            results = json.loads(sess["results"] or "[]")
+        except (json.JSONDecodeError, TypeError):
+            continue
+        for result in results:
+            if result.get("color") in ("gray", "red"):
+                desc = (result.get("requirement") or {}).get("description", "").strip()
+                if desc and desc not in seen and len(gap_hints) < 5:
+                    gap_hints.append(desc)
+                    seen.add(desc)
+
+    # 偏好路径/标签从 match_outcomes（飞轮数据）读取，可能为空（新机构正常）
+    profile = db_institution_match_profile(institution)
+
+    return {
+        "institution": institution,
+        "has_history": True,
+        "total_sessions": total_sessions,
+        "last_contact": stats.get("last_contact"),
+        "preferred_paths": profile["preferred_paths"][:5],
+        "preferred_tags": profile["preferred_tags"][:10],
+        "gap_hints": gap_hints,
+    }
+
+
+def db_asset_wiki_summary(relative_path: str) -> dict[str, Any]:
+    """资产 Wiki 摘要：从 match_outcomes 聚合选用历史。
+
+    返回:
+        total_selected: 被选中的总次数
+        total_shown:    出现在候选列表的总次数
+        selection_rate: 选中率 (0.0~1.0)
+        institutions:   [{institution, times}] 按频率降序
+        last_selected:  最近一次被选中的时间戳
+    """
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            """
+            SELECT institution, COUNT(*) AS times
+            FROM match_outcomes
+            WHERE asset_path = ? AND was_selected = 1
+            GROUP BY institution
+            ORDER BY times DESC
+            LIMIT 5
+            """,
+            (relative_path,),
+        )
+        institutions = [{"institution": r["institution"], "times": r["times"]}
+                        for r in cur.fetchall()]
+
+        cur2 = conn.execute(
+            "SELECT MAX(created_at) AS last_selected FROM match_outcomes"
+            " WHERE asset_path = ? AND was_selected = 1",
+            (relative_path,),
+        )
+        row2 = cur2.fetchone()
+        last_selected = dict(row2).get("last_selected") if row2 else None
+
+        cur3 = conn.execute(
+            "SELECT COUNT(*) AS n FROM match_outcomes WHERE asset_path = ?",
+            (relative_path,),
+        )
+        row3 = cur3.fetchone()
+        total_shown = int(dict(row3).get("n") or 0) if row3 else 0
+    finally:
+        conn.close()
+
+    total_selected = sum(i["times"] for i in institutions)
+    return {
+        "relative_path": relative_path,
+        "total_selected": total_selected,
+        "total_shown": total_shown,
+        "selection_rate": round(total_selected / total_shown, 2) if total_shown > 0 else 0.0,
+        "institutions": institutions,
+        "last_selected": last_selected,
+    }

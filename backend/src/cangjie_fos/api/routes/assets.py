@@ -29,13 +29,17 @@ from cangjie_fos.services.asset_scan_service import (
 from cangjie_fos.services.pitch_job_db import (
     db_assets_list,
     db_asset_status_update,
+    db_asset_wiki_summary,
     db_institution_archive_get,
+    db_institution_briefing,
     db_institution_match_profile,
     db_institutions_list,
     db_match_outcome_batch_save,
     db_match_session_create,
     db_match_session_get,
     db_match_session_update,
+    db_nightly_suggestion_list_pending,
+    db_nightly_suggestion_mark_consumed,
 )
 
 logger = logging.getLogger(__name__)
@@ -311,6 +315,44 @@ def get_institution_profile_route(institution_name: str) -> dict[str, Any]:
     return db_institution_match_profile(institution_name)
 
 
+@router.get("/api/v1/institutions/{institution_name}/briefing", tags=["assets"])
+def get_institution_briefing_route(institution_name: str) -> dict[str, Any]:
+    """返回机构智慧简报：历史画像摘要 + 缺口检测。
+
+    比 /profile 多返回 gap_hints（历史上要过但无法满足的材料清单）。
+    设计用于匹配前展示给用户，帮助提前了解该机构的已知缺口。
+    """
+    return db_institution_briefing(institution_name)
+
+
+@router.get("/api/v1/assets/wiki/{relative_path:path}", tags=["assets"])
+def get_asset_wiki_route(relative_path: str) -> dict[str, Any]:
+    """返回指定资产的 wiki 摘要：选用历史、关联机构、选中率。
+
+    `relative_path` 使用路径参数（支持含 `/` 的多级路径）。
+    数据来源：match_outcomes 表聚合，零延迟。
+    """
+    return db_asset_wiki_summary(relative_path)
+
+
+@router.get("/api/v1/digest/pending", tags=["assets"])
+def get_digest_pending_route() -> dict[str, Any]:
+    """返回未读晨报建议（来自 nightly_suggestions 表）。
+
+    供前端 DigestBanner 组件读取，展示给用户后调用
+    POST /api/v1/digest/{id}/consume 标记为已读。
+    """
+    suggestions = db_nightly_suggestion_list_pending(tenant_id="default", limit=5)
+    return {"suggestions": [dict(s) for s in suggestions], "count": len(suggestions)}
+
+
+@router.post("/api/v1/digest/{suggestion_id}/consume", tags=["assets"])
+def post_digest_consume_route(suggestion_id: str) -> dict[str, Any]:
+    """将晨报建议标记为已读（consumed_at 设为当前时间）。"""
+    db_nightly_suggestion_mark_consumed(suggestion_id)
+    return {"ok": True}
+
+
 # ---------------------------------------------------------------------------
 # 尽调响应台 MatchMaker V5.0
 # ---------------------------------------------------------------------------
@@ -445,12 +487,22 @@ def post_match_route(body: MatchSessionIn) -> dict[str, Any]:
         requirements=req_dicts,
         results=res_dicts,
     )
+    # 缺口检测（异步计算不影响主流程）
+    gap_hints: list[str] = []
+    if body.institution:
+        try:
+            briefing = db_institution_briefing(body.institution)
+            gap_hints = briefing.get("gap_hints", [])
+        except Exception:  # noqa: BLE001
+            pass
+
     return {
         "session_id": session_id,
         "institution": body.institution,
         "req_count": len(requirements),
         "results": res_dicts,
         "profile_injected": institution_profile is not None,
+        "gap_hints": gap_hints,
     }
 
 

@@ -497,11 +497,25 @@ def requirement_to_dict(r: RequirementItem) -> dict:
 
 
 def candidate_to_dict(c: MatchCandidate) -> dict:
+    """序列化 MatchCandidate，附带人类可读的 reason 字段。"""
+    fields = c.matched_fields
+    reason_parts: list[str] = []
+    if "tags" in fields:
+        reason_parts.append("标签命中")
+    if "filename" in fields:
+        reason_parts.append("文件名匹配")
+    if "summary" in fields:
+        reason_parts.append("摘要相关")
+    if "[机构历史偏好↑]" in fields:
+        reason_parts.append("机构历史首选")
+    reason = "、".join(reason_parts) if reason_parts else "综合相关"
+
     return {
         "asset": c.asset,
         "score": round(c.score, 4),
         "color": c.color,
         "matched_fields": c.matched_fields,
+        "reason": reason,
     }
 
 
