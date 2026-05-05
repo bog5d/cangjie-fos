@@ -263,6 +263,71 @@ function TabBtn({ label, count, active, dot, onClick }: {
   );
 }
 
+// ─── 资产 Wiki 浮层 ──────────────────────────────────────────────────────────
+
+interface AssetWikiData {
+  total_selected: number;
+  total_shown: number;
+  selection_rate: number;
+  institutions: { institution: string; times: number }[];
+  last_selected: number | null;
+}
+
+function AssetWikiPanel({ path, onClose }: { path: string; onClose: () => void }) {
+  const [data, setData] = useState<AssetWikiData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void api.get<AssetWikiData>(`/api/v1/assets/wiki/${encodeURIComponent(path)}`)
+      .then(r => setData(r.data))
+      .finally(() => setLoading(false));
+  }, [path]);
+
+  function fmtDate(ts: number | null) {
+    if (!ts) return "—";
+    try { return new Date(ts * 1000).toISOString().slice(0, 10); } catch { return "—"; }
+  }
+
+  return (
+    <tr className="bg-slate-900/60">
+      <td colSpan={7} className="px-4 pb-3 pt-0">
+        <div className="rounded-xl border border-white/8 bg-black/30 p-3 text-xs">
+          {loading ? (
+            <p className="text-slate-500">加载历史…</p>
+          ) : data && data.total_shown > 0 ? (
+            <div className="space-y-1.5">
+              <div className="flex gap-4 text-slate-400">
+                <span>📤 被选中 <strong className="text-white">{data.total_selected}</strong> 次</span>
+                <span>出现 <strong className="text-white">{data.total_shown}</strong> 次</span>
+                <span>选中率 <strong className="text-white">{Math.round(data.selection_rate * 100)}%</strong></span>
+                <span>最近选中 <strong className="text-white">{fmtDate(data.last_selected)}</strong></span>
+              </div>
+              {data.institutions.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {data.institutions.map(i => (
+                    <span key={i.institution} className="rounded border border-cyan-500/20 bg-cyan-950/20 px-1.5 py-0.5 text-[10px] text-cyan-400">
+                      {i.institution} ×{i.times}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-slate-600">暂无匹配历史</p>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-2 text-slate-600 hover:text-slate-400"
+          >
+            收起 ↑
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 // ─── 资产行（共用） ───────────────────────────────────────────────────────────
 
 function AssetRow({ asset, selected, onSelect, onClick, onStatusChange }: {
@@ -271,6 +336,7 @@ function AssetRow({ asset, selected, onSelect, onClick, onStatusChange }: {
   onStatusChange?: (status: string) => void;
 }) {
   const level = freshLevel(asset);
+  const [wikiOpen, setWikiOpen] = useState(false);
 
   const cycleStatus = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -282,37 +348,57 @@ function AssetRow({ asset, selected, onSelect, onClick, onStatusChange }: {
   };
 
   return (
-    <tr className={`group cursor-pointer border-b border-white/5 transition-colors ${selected ? "bg-cyan-950/30" : "hover:bg-white/5"}`} onClick={onClick}>
-      <td className="w-8 py-2.5 pl-3 align-middle" onClick={e => { e.stopPropagation(); onSelect(!selected); }}>
-        <input type="checkbox" checked={selected} onChange={e => onSelect(e.target.checked)}
-          className={`h-3.5 w-3.5 cursor-pointer rounded transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+    <>
+      <tr className={`group cursor-pointer border-b border-white/5 transition-colors ${selected ? "bg-cyan-950/30" : "hover:bg-white/5"}`} onClick={onClick}>
+        <td className="w-8 py-2.5 pl-3 align-middle" onClick={e => { e.stopPropagation(); onSelect(!selected); }}>
+          <input type="checkbox" checked={selected} onChange={e => onSelect(e.target.checked)}
+            className={`h-3.5 w-3.5 cursor-pointer rounded transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          />
+        </td>
+        <td className="w-4 py-2.5 pr-2 align-middle">
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${FRESH_DOT[level]}`} title={FRESH_LABEL[level]} />
+        </td>
+        <td className="py-2.5 pr-4 align-top">
+          <p className="text-sm font-medium text-white">{asset.filename}</p>
+          <p className="mt-0.5 max-w-[220px] truncate text-xs text-slate-500">{asset.relative_path || "根目录"}</p>
+        </td>
+        <td className="max-w-sm py-2.5 pr-4 align-top text-xs text-slate-400">
+          {asset.summary
+            ? <span style={{ display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{asset.summary}</span>
+            : <span className="text-slate-600">—</span>}
+        </td>
+        <td className="py-2.5 pr-4 align-top">
+          <div className="flex flex-wrap gap-1">
+            {asset.tags.slice(0, 3).map(t => <TagBadge key={t} tag={t} />)}
+            {asset.tags.length > 3 && <span className="text-[11px] text-slate-600">+{asset.tags.length - 3}</span>}
+          </div>
+        </td>
+        <td className="py-2.5 pr-3 align-top text-xs tabular-nums text-slate-500 whitespace-nowrap">
+          {asset.last_modified?.slice(0, 10) || "—"}
+        </td>
+        <td className="py-2.5 pr-3 align-top" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5">
+            <StatusBadge status={asset.asset_status} onClick={onStatusChange ? cycleStatus : undefined} />
+            <button
+              type="button"
+              title="查看匹配历史"
+              onClick={e => { e.stopPropagation(); setWikiOpen(v => !v); }}
+              className={`rounded px-1 py-0.5 text-[10px] transition ${
+                wikiOpen ? "bg-cyan-950/40 text-cyan-400" : "text-slate-600 hover:text-slate-400"
+              }`}
+            >
+              📊
+            </button>
+          </div>
+        </td>
+      </tr>
+      {wikiOpen && (
+        <AssetWikiPanel
+          path={asset.relative_path}
+          onClose={() => setWikiOpen(false)}
         />
-      </td>
-      <td className="w-4 py-2.5 pr-2 align-middle">
-        <span className={`inline-block h-1.5 w-1.5 rounded-full ${FRESH_DOT[level]}`} title={FRESH_LABEL[level]} />
-      </td>
-      <td className="py-2.5 pr-4 align-top">
-        <p className="text-sm font-medium text-white">{asset.filename}</p>
-        <p className="mt-0.5 max-w-[220px] truncate text-xs text-slate-500">{asset.relative_path || "根目录"}</p>
-      </td>
-      <td className="max-w-sm py-2.5 pr-4 align-top text-xs text-slate-400">
-        {asset.summary
-          ? <span style={{ display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{asset.summary}</span>
-          : <span className="text-slate-600">—</span>}
-      </td>
-      <td className="py-2.5 pr-4 align-top">
-        <div className="flex flex-wrap gap-1">
-          {asset.tags.slice(0, 3).map(t => <TagBadge key={t} tag={t} />)}
-          {asset.tags.length > 3 && <span className="text-[11px] text-slate-600">+{asset.tags.length - 3}</span>}
-        </div>
-      </td>
-      <td className="py-2.5 pr-3 align-top text-xs tabular-nums text-slate-500 whitespace-nowrap">
-        {asset.last_modified?.slice(0, 10) || "—"}
-      </td>
-      <td className="py-2.5 pr-3 align-top" onClick={e => e.stopPropagation()}>
-        <StatusBadge status={asset.asset_status} onClick={onStatusChange ? cycleStatus : undefined} />
-      </td>
-    </tr>
+      )}
+    </>
   );
 }
 
