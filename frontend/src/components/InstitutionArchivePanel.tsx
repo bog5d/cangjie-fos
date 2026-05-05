@@ -23,15 +23,71 @@ interface InstitutionArchive {
   bundles: BundleRecord[];
 }
 
+interface InstitutionBriefing {
+  institution: string;
+  has_history: boolean;
+  total_sessions: number;
+  last_contact: number | null;
+  preferred_tags: string[];
+  gap_hints: string[];
+}
+
 // ─── 工具 ─────────────────────────────────────────────────────────────────────
 
 function formatTs(ts: number): string {
   if (!ts) return "—";
-  try { return new Date(ts * 1000).toISOString().slice(0, 10); }
-  catch { return "—"; }
+  try { return new Date(ts * 1000).toISOString().slice(0, 10); } catch { return "—"; }
 }
 
-// ─── 机构卡片详情 ─────────────────────────────────────────────────────────────
+// ─── Wiki 预览区块 ────────────────────────────────────────────────────────────
+
+function WikiPreview({ name }: { name: string }) {
+  const [briefing, setBriefing] = useState<InstitutionBriefing | null>(null);
+
+  useEffect(() => {
+    void api.get<InstitutionBriefing>(
+      `/api/v1/institutions/${encodeURIComponent(name)}/briefing`
+    ).then(r => setBriefing(r.data)).catch(() => {/* 静默 */});
+  }, [name]);
+
+  if (!briefing?.has_history) return null;
+
+  return (
+    <div className="mb-4 rounded-xl border border-white/8 bg-white/[0.03] p-4">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        知识画像
+      </p>
+      <div className="space-y-2 text-xs">
+        <div className="flex items-center gap-2 text-slate-400">
+          <span>📊</span>
+          <span>历史 {briefing.total_sessions} 次 DD · 最近接触 {formatTs(briefing.last_contact ?? 0)}</span>
+        </div>
+        {briefing.preferred_tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-0.5 text-slate-500">偏好：</span>
+            {briefing.preferred_tags.map(t => (
+              <span key={t} className="rounded border border-cyan-500/30 bg-cyan-950/20 px-1.5 py-0.5 text-[10px] text-cyan-400">
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+        {briefing.gap_hints.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="mr-0.5 text-amber-500/70">⚠️ 缺口：</span>
+            {briefing.gap_hints.map(g => (
+              <span key={g} className="rounded border border-amber-500/30 bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-400">
+                {g}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── 机构详情面板 ─────────────────────────────────────────────────────────────
 
 function InstitutionDetail({ name, onClose }: { name: string; onClose: () => void }) {
   const [archive, setArchive] = useState<InstitutionArchive | null>(null);
@@ -64,6 +120,9 @@ function InstitutionDetail({ name, onClose }: { name: string; onClose: () => voi
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          {/* Wiki 预览区块 */}
+          <WikiPreview name={name} />
+
           {loading && <p className="text-center text-sm text-slate-500">加载中…</p>}
           {!loading && archive && archive.bundles.length === 0 && (
             <p className="text-center text-sm text-slate-600">暂无打包记录</p>
@@ -77,7 +136,7 @@ function InstitutionDetail({ name, onClose }: { name: string; onClose: () => voi
                 </span>
               </div>
               {bundle.req_text && !bundle.req_text.startsWith("直接打包") && (
-                <p className="mb-2 text-[11px] leading-relaxed text-slate-500 line-clamp-2">{bundle.req_text}</p>
+                <p className="mb-2 line-clamp-2 text-[11px] leading-relaxed text-slate-500">{bundle.req_text}</p>
               )}
               <div className="space-y-1">
                 {bundle.files.map((f, i) => (
@@ -123,7 +182,7 @@ export function InstitutionArchivePanel() {
       <div className="mb-5">
         <h2 className="font-display text-lg font-bold text-white">机构档案</h2>
         <p className="mt-0.5 text-xs text-slate-500">
-          {institutions.length} 个机构 · 点击查看已发文件和打包历史
+          {institutions.length} 个机构 · 点击查看知识画像和打包历史
         </p>
       </div>
 
@@ -133,7 +192,7 @@ export function InstitutionArchivePanel() {
             key={inst.institution}
             type="button"
             onClick={() => setSelected(inst.institution)}
-            className="rounded-xl border border-white/8 bg-white/3 p-4 text-left transition hover:border-cyan-500/30 hover:bg-cyan-950/20"
+            className="rounded-xl border border-white/8 bg-white/[0.03] p-4 text-left transition hover:border-cyan-500/30 hover:bg-cyan-950/20"
           >
             <p className="truncate font-medium text-white">{inst.institution}</p>
             <p className="mt-1 text-xs text-slate-500">
