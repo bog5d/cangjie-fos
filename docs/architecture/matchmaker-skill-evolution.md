@@ -223,3 +223,78 @@ tests/test_matchmaker.py（15 个用例）
   ├── 空机构画像不报错
   └── confirm API 端到端（写 outcomes → profile 可查）
 ```
+
+---
+
+## 九、Wiki 知识展示层（V5.2 知识注入点）
+
+> 更新日期：2026-05-05
+
+### 架构定位
+
+Wiki 不是独立页面，而是在 6 个行动点自动浮现的上下文知识。
+
+```
+行动点                  知识来源                    组件
+─────────────────────────────────────────────────────────────
+匹配前（填机构名）      db_institution_briefing()   InstitutionBriefingCard
+匹配结果每一行         candidate_to_dict().reason   ResultRow（reason 小字）
+匹配完成后             session.gap_hints            GapAlertBanner
+机构档案详情            db_institution_briefing()   WikiPreview
+资产行 📊 按钮         db_asset_wiki_summary()      AssetWikiPanel
+晨报横幅               nightly_suggestions 表       DigestBanner
+```
+
+### 新增 API 端点
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/v1/institutions/{name}/briefing` | GET | 机构简报 + 缺口检测 |
+| `/api/v1/assets/wiki/{path:path}` | GET | 资产选用历史摘要 |
+| `/api/v1/digest/pending` | GET | 未读晨报建议 |
+| `/api/v1/digest/{id}/consume` | POST | 标记晨报已读 |
+
+### 缺口检测算法
+
+查询机构历史已确认 session 的 `results` JSON，提取 `color` 为 `gray`/`red` 的
+`requirement.description`，去重后最多返回 5 条。代表"素材库已知短板"。
+
+### candidate reason 字段
+
+`candidate_to_dict()` 根据 `matched_fields` 内容生成人类可读说明：
+
+| matched_fields 值 | reason 片段 |
+|-------------------|-------------|
+| `"tags"` | 标签命中 |
+| `"filename"` | 文件名匹配 |
+| `"summary"` | 摘要相关 |
+| `"[机构历史偏好↑]"` | 机构历史首选 |
+| 无以上字段 | 综合相关 |
+
+### 数据流
+
+```
+每次 confirm → match_outcomes 写入
+               ↓
+    db_institution_briefing() 从 match_sessions 聚合缺口
+    db_asset_wiki_summary()   从 match_outcomes 聚合选用历史
+               ↓
+    前端注入点自动展示（无需用户主动查询）
+```
+
+### 测试覆盖（V5.2 新增）
+
+```
+tests/test_wiki_display.py（11 个用例，371 → 382 passed）
+  ├── db_institution_briefing 无历史时返回空
+  ├── db_institution_briefing 从 confirmed session 检测 gray/red 缺口
+  ├── db_institution_briefing 同一缺口多次出现只记录一次
+  ├── db_asset_wiki_summary 无历史时返回零值
+  ├── db_asset_wiki_summary 有 match_outcomes 时正确聚合
+  ├── candidate_to_dict 包含 reason 字段
+  ├── reason 包含"机构历史首选"（当 preferred_paths 命中时）
+  ├── GET /briefing API（无历史返回 has_history=False）
+  ├── GET /assets/wiki/{path} API（返回正确结构）
+  ├── GET /digest/pending API（返回 suggestions 列表）
+  └── POST /assets/match API（返回值含 gap_hints 字段）
+```

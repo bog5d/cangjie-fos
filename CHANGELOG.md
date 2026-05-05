@@ -6,6 +6,31 @@
 
 ## [Unreleased] — 开发中
 
+### V5.2 Wiki 知识展示层（2026-05-05）Phase 5.2
+
+#### Added
+- **`db_institution_briefing()`**（`pitch_job_db.py`）：机构智慧简报，从 `match_sessions` 查缺口（confirmed session 中 color=gray/red 的需求，去重最多5条），代表"素材库已知短板"
+- **`db_asset_wiki_summary()`**（`pitch_job_db.py`）：资产选用历史摘要，从 `match_outcomes` 聚合选中次数、出现次数、选中率、关联机构
+- **`candidate_to_dict()` reason 字段**（`matchmaker.py`）：每个匹配候选附带人类可读说明（标签命中/文件名匹配/摘要相关/机构历史首选）
+- **`GET /api/v1/institutions/{name}/briefing`**：机构简报端点，返回历史次数、偏好标签、已知缺口
+- **`GET /api/v1/assets/wiki/{path:path}`**：资产选用历史摘要端点
+- **`GET /api/v1/digest/pending`**：未读晨报建议端点（读 `nightly_suggestions` 表）
+- **`POST /api/v1/digest/{id}/consume`**：标记晨报已读
+- **`POST /api/v1/assets/match` 返回值新增 `gap_hints`**：匹配完成后注入历史缺口列表
+- **`InstitutionBriefingCard`**（`MatchMakerPanel.tsx`）：机构名 onBlur 后自动加载简报，展示历史次数/偏好标签/缺口
+- **`GapAlertBanner`**（`MatchMakerPanel.tsx`）：匹配完成后若有缺口，显示橙色告警条（可关闭）
+- **ResultRow reason 列**（`MatchMakerPanel.tsx`）：最佳匹配文件下方显示 reason 小字
+- **`WikiPreview`**（`InstitutionArchivePanel.tsx`）：机构详情面板顶部自动展示知识画像
+- **`AssetWikiPanel`**（`AssetLibrary.tsx`）：资产行 📊 按钮，点击展开匹配历史浮层（懒加载）
+- **`DigestBanner.tsx`**（新组件）：晨报推送横幅，展示未读 nightly_suggestions，支持逐条/全部已读
+- **测试：`test_wiki_display.py`**：11 个新测试，覆盖 DB 函数 + API 端点
+- **架构文档**（`matchmaker-skill-evolution.md`）：新增"九、Wiki 知识展示层"章节
+
+#### Changed
+- **测试基线**：371 → **382 passed**（+11 wiki_display 测试）
+
+---
+
 ### 生产热修复（2026-04-28）
 
 #### Fixed
