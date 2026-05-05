@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { AssetIndexResponse, AssetItem } from "../types/assets";
 import { AssetHealthPanel } from "./AssetHealthPanel";
 import { AssetScanConfigModal } from "./AssetScanConfigModal";
+import { DigestBanner } from "./DigestBanner";
 import { InstitutionArchivePanel } from "./InstitutionArchivePanel";
 import { MatchMakerPanel } from "./MatchMakerPanel";
 
@@ -778,6 +779,8 @@ export function AssetLibrary() {
 
   return (
     <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      {/* 晨报推送横幅 */}
+      <DigestBanner />
       {/* 头部 */}
       <div className="mb-5 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
