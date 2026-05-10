@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "./api/client";
+import { api, getSession, clearSession, type FosSession } from "./api/client";
+import { LoginPage } from "./components/LoginPage";
 import { AchievementFlash } from "./components/AchievementFlash";
 import { DoctorPanel } from "./components/DoctorPanel";
 import { ExpHud } from "./components/ExpHud";
@@ -22,6 +23,28 @@ import type { ReadyPayload } from "./types/ready";
 const DEFAULT_TENANT = "demo-tenant";
 
 export default function App() {
+  // ── 登录门控 ──────────────────────────────────────────────────────────────
+  const [session, setSession] = useState<FosSession | null>(() => getSession());
+  const [accountsConfigured, setAccountsConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void api.get<{ configured: boolean }>("/api/auth/accounts-configured")
+      .then(r => setAccountsConfigured(r.data.configured))
+      .catch(() => setAccountsConfigured(false));
+  }, []);
+
+  const handleLogin = (s: FosSession) => setSession(s);
+  const handleLogout = () => {
+    void api.post("/api/auth/logout", {}, { params: { token: session?.token } }).catch(() => {});
+    clearSession();
+    setSession(null);
+  };
+
+  // 如果账号系统已配置且未登录，显示登录页
+  if (accountsConfigured && !session) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   const [dashboard, setDashboard] = useState<DashboardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -235,6 +258,20 @@ export default function App() {
           >
             🔧 系统诊断
           </button>
+          {session && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">
+                👤 {session.username}
+              </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-slate-600 hover:text-slate-300"
+              >
+                退出
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
