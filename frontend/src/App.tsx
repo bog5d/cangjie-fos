@@ -22,6 +22,57 @@ import type { ReadyPayload } from "./types/ready";
 
 const DEFAULT_TENANT = "demo-tenant";
 
+// ── 同步数据按钮 ──────────────────────────────────────────────────────────────
+function SyncButton() {
+  const [state, setState] = useState<"idle" | "syncing" | "done" | "err">("idle");
+  const [msg, setMsg] = useState("");
+
+  const handleSync = async () => {
+    setState("syncing");
+    try {
+      const r = await api.post<{ ok: boolean; message: string; pitch_imported: number; match_imported: number }>(
+        "/api/sync/pull"
+      );
+      const d = r.data;
+      if (d.ok) {
+        const added = d.pitch_imported + d.match_imported;
+        setMsg(added > 0 ? `新增 ${added} 条` : "已是最新");
+      } else {
+        setMsg(d.message || "失败");
+      }
+      setState("done");
+    } catch {
+      setMsg("网络错误");
+      setState("err");
+    } finally {
+      setTimeout(() => setState("idle"), 3000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      disabled={state === "syncing"}
+      onClick={() => void handleSync()}
+      title="从 GitHub 拉取团队最新数据"
+      className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-[11px] transition hover:border-cyan-500/30 hover:text-cyan-300 disabled:opacity-50"
+    >
+      {state === "syncing" ? (
+        <span className="animate-spin">🔄</span>
+      ) : state === "done" ? (
+        <span className="text-emerald-400">✓</span>
+      ) : state === "err" ? (
+        <span className="text-red-400">✗</span>
+      ) : (
+        <span>☁️</span>
+      )}
+      <span className={state === "done" ? "text-emerald-400" : state === "err" ? "text-red-400" : "text-slate-400"}>
+        {state === "syncing" ? "同步中…" : state === "done" || state === "err" ? msg : "同步数据"}
+      </span>
+    </button>
+  );
+}
+
 export default function App() {
   // ── 登录门控 ──────────────────────────────────────────────────────────────
   const [session, setSession] = useState<FosSession | null>(() => getSession());
@@ -263,6 +314,7 @@ export default function App() {
               <span className="text-xs text-slate-500">
                 👤 {session.username}
               </span>
+              <SyncButton />
               <button
                 type="button"
                 onClick={handleLogout}

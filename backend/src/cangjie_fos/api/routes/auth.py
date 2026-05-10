@@ -149,6 +149,30 @@ def accounts_configured_route() -> dict[str, bool]:
     return {"configured": bool(_load_accounts())}
 
 
+@router.post("/api/sync/pull", tags=["auth"])
+def sync_pull_route(request: Request) -> dict[str, Any]:
+    """手动触发 GitHub 数据同步（同步调用，完成后返回结果）。"""
+    token = request.headers.get("X-FOS-Token") or request.query_params.get("token", "")
+    sess = require_session(token or None)
+    tenant_id = sess["tenant_id"]
+
+    import os as _os  # noqa: PLC0415
+    original = _os.environ.get("COACH_DATA_TENANT_ID", "")
+    _os.environ["COACH_DATA_TENANT_ID"] = tenant_id
+    try:
+        from cangjie_fos.services.github_sync import pull_latest, is_configured  # noqa: PLC0415
+        if not is_configured():
+            return {"ok": False, "message": "GitHub 同步未配置（COACH_DATA_GITHUB_TOKEN 未设置）", "pitch_imported": 0, "match_imported": 0}
+        result = pull_latest()
+        logger.info("手动 sync pull tenant=%s: %s", tenant_id, result)
+        return {"ok": True, "message": "同步完成", **result}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("手动 sync pull 失败: %s", e)
+        return {"ok": False, "message": f"同步失败: {e}", "pitch_imported": 0, "match_imported": 0}
+    finally:
+        _os.environ["COACH_DATA_TENANT_ID"] = original
+
+
 # ─── 内部辅助 ─────────────────────────────────────────────────────────────────
 
 def _pull_for_tenant(tenant_id: str) -> None:
