@@ -84,7 +84,7 @@ export default function App() {
       .catch(() => setAccountsConfigured(false));
   }, []);
 
-  const handleLogin = (s: FosSession) => setSession(s);
+  const handleLogin = (s: FosSession, _commanderName: string) => setSession(s);
   const handleLogout = () => {
     void api.post("/api/auth/logout").catch(() => {});
     clearSession();

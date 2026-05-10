@@ -9,12 +9,13 @@ interface LoginResponse {
 }
 
 interface Props {
-  onLogin: (session: FosSession) => void;
+  onLogin: (session: FosSession, commanderName: string) => void;
 }
 
 export function LoginPage({ onLogin }: Props) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [commanderName, setCommanderName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pulling, setPulling] = useState(false);
@@ -23,6 +24,10 @@ export function LoginPage({ onLogin }: Props) {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError("请输入账号和密码");
+      return;
+    }
+    if (!commanderName.trim()) {
+      setError("请填写您的姓名或称呼");
       return;
     }
     setLoading(true);
@@ -38,10 +43,11 @@ export function LoginPage({ onLogin }: Props) {
         tenant_id: res.data.tenant_id,
       };
       saveSession(session);
+      // 把指挥官名字存入 localStorage，供豆豆和操作记录使用
+      try { localStorage.setItem("fos_commander_name", commanderName.trim()); } catch { /* ignore */ }
       setPulling(true);
-      // 等待 2 秒让后台 pull 启动（友好提示）
       await new Promise((r) => setTimeout(r, 2000));
-      onLogin(session);
+      onLogin(session, commanderName.trim());
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
@@ -76,37 +82,52 @@ export function LoginPage({ onLogin }: Props) {
               <p className="text-sm font-semibold text-white">正在同步最新数据…</p>
               <p className="mt-1 text-xs text-slate-400">从 GitHub 拉取团队历史数据</p>
               <div className="mt-4 h-1 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full rounded-full bg-cyan-500 animate-[progress_2s_linear_forwards]" style={{width: "100%", transformOrigin: "left"}} />
+                <div className="h-full rounded-full bg-cyan-500" style={{width: "100%"}} />
               </div>
             </div>
           ) : (
-            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-slate-400">
-                  账号
+                  您的姓名 / 称呼 <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="例：zt001"
-                  autoComplete="username"
+                  value={commanderName}
+                  onChange={(e) => setCommanderName(e.target.value)}
+                  placeholder="例：王总、小李、赛男"
                   autoFocus
                   className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
                 />
               </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-400">
-                  密码
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••"
-                  autoComplete="current-password"
-                  className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
-                />
+
+              <div className="border-t border-white/8 pt-4">
+                <div className="mb-3">
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    账号
+                  </label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="例：zt001"
+                    autoComplete="username"
+                    className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-slate-400">
+                    密码
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••"
+                    autoComplete="current-password"
+                    className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/30"
+                  />
+                </div>
               </div>
 
               {error && (
