@@ -61,6 +61,14 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as _e:  # noqa: BLE001
         _logging.getLogger(__name__).warning("wiki_consolidator 注册失败（非致命）: %s", _e)
     _scheduler.start()
+    # GitHub 同步：启动时拉取最新数据（后台线程，不阻塞启动）
+    try:
+        import threading as _threading  # noqa: PLC0415
+        from cangjie_fos.services.github_sync import pull_latest  # noqa: PLC0415
+        _threading.Thread(target=pull_latest, daemon=True, name="github-pull").start()
+    except Exception as _e:  # noqa: BLE001
+        import logging as _log  # noqa: PLC0415
+        _log.getLogger(__name__).warning("GitHub pull 启动失败（非致命）: %s", _e)
     yield
     _scheduler.shutdown(wait=False)
     from cangjie_fos.services.npc_chat_graph import reset_compiled_npc_graph_for_tests

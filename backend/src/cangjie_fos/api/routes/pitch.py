@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 
 from cangjie_fos.api.upload_io import read_upload_limited
 from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
+from cangjie_fos.services import github_sync
 from cangjie_fos.engine.schema import TranscriptionWord as _TranscriptionWord
 from cangjie_fos.core.thread_sqlite import list_threads, upsert_thread
 from cangjie_fos.schemas.pitch_chat import (
@@ -368,6 +369,8 @@ def pitch_job_review_commit(
         edited_report=body.edited_report,
     )
     background_tasks.add_task(run_preference_extraction, tenant_id=tenant_id)
+    # GitHub 同步：把路演报告 push 到 coach_data 仓库
+    background_tasks.add_task(github_sync.push_pitch_job, job_id)
 
     return PitchReviewCommitResponse(job_id=job_id, committed_at=committed_at)
 

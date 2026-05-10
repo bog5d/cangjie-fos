@@ -5,7 +5,7 @@ import logging
 import uuid
 from typing import Any, List
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 
 from cangjie_fos.core.paths import get_fos_bridge_data_dir
@@ -41,6 +41,8 @@ from cangjie_fos.services.pitch_job_db import (
     db_nightly_suggestion_list_pending,
     db_nightly_suggestion_mark_consumed,
 )
+
+from cangjie_fos.services import github_sync
 
 logger = logging.getLogger(__name__)
 
@@ -516,7 +518,7 @@ def get_match_session_route(session_id: str) -> dict[str, Any]:
 
 
 @router.post("/api/v1/assets/match/{session_id}/confirm", tags=["assets"])
-def post_match_confirm_route(session_id: str, body: ConfirmIn) -> dict[str, Any]:
+def post_match_confirm_route(session_id: str, body: ConfirmIn, background_tasks: BackgroundTasks) -> dict[str, Any]:
     """提交人工确认的文件列表，将会话标记为 confirmed，并写入 match_outcomes 记忆。
 
     每次 confirm 都是飞轮的一圈：
@@ -557,5 +559,8 @@ def post_match_confirm_route(session_id: str, body: ConfirmIn) -> dict[str, Any]
         )
     except Exception:  # noqa: BLE001
         logger.warning("match_outcomes 写入失败，不阻断确认流程", exc_info=True)
+
+    # GitHub 同步：把匹配记录 push 到 coach_data 仓库
+    background_tasks.add_task(github_sync.push_match_session, session_id)
 
     return {"session_id": session_id, "status": "confirmed", "confirmed_count": len(body.confirmed_files)}
