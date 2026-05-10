@@ -73,8 +73,8 @@ function SyncButton() {
   );
 }
 
+// ── 顶层入口：只负责登录门控，不包含任何业务 hooks ─────────────────────────
 export default function App() {
-  // ── 登录门控 ──────────────────────────────────────────────────────────────
   const [session, setSession] = useState<FosSession | null>(() => getSession());
   const [accountsConfigured, setAccountsConfigured] = useState<boolean | null>(null);
 
@@ -86,16 +86,24 @@ export default function App() {
 
   const handleLogin = (s: FosSession) => setSession(s);
   const handleLogout = () => {
-    void api.post("/api/auth/logout", {}, { params: { token: session?.token } }).catch(() => {});
+    void api.post("/api/auth/logout").catch(() => {});
     clearSession();
     setSession(null);
   };
 
-  // 如果账号系统已配置且未登录，显示登录页
+  // 账号系统已配置且未登录 → 显示登录页
   if (accountsConfigured && !session) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
+  // 等待配置检查完成（短暂空白过渡）
+  if (accountsConfigured === null) return null;
+
+  return <MainApp session={session} onLogout={handleLogout} />;
+}
+
+// ── 主应用：所有业务 hooks 都在这里，永远不会有条件返回在 hooks 之前 ──────────
+function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: () => void }) {
   const [dashboard, setDashboard] = useState<DashboardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -317,7 +325,7 @@ export default function App() {
               <SyncButton />
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={onLogout}
                 className="rounded-lg border border-white/10 px-2 py-1 text-[11px] text-slate-600 hover:text-slate-300"
               >
                 退出
