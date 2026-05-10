@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from cangjie_fos.services.pitch_job_db import (
     db_job_get,
+    db_job_bind_institution,
     db_participants_get,
     db_participants_save,
     db_speaker_summary,
@@ -92,11 +93,32 @@ def confirm_participants(
         participants=participants,
         confirmed_by=confirmed_by,
     )
+
+    # 从参与人中提取投资方机构名，绑定到 pitch_jobs + follow_up_items
+    _investor_roles = {"GP执行", "LP投资方", "政府招商"}
+    institution_name = ""
+    for p in body.participants:
+        if p.role in _investor_roles and p.institution.strip():
+            institution_name = p.institution.strip()
+            break
+    # 兜底：取任意有机构名的参与人
+    if not institution_name:
+        for p in body.participants:
+            if p.institution.strip():
+                institution_name = p.institution.strip()
+                break
+    if institution_name:
+        try:
+            db_job_bind_institution(job_id, institution_name)
+            logger.info("institution_bound job_id=%s institution=%s", job_id, institution_name)
+        except Exception as _exc:  # noqa: BLE001
+            logger.warning("institution_bind_failed job_id=%s: %s", job_id, _exc)
+
     logger.info(
         "participants_confirmed job_id=%s count=%d by=%s",
         job_id, len(participants), confirmed_by,
     )
-    return {"ok": True, "confirmed": len(participants)}
+    return {"ok": True, "confirmed": len(participants), "institution": institution_name}
 
 
 @router.get(

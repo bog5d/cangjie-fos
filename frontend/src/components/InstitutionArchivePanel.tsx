@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 
 // ─── 类型 ─────────────────────────────────────────────────────────────────────
@@ -87,6 +88,68 @@ function WikiPreview({ name }: { name: string }) {
   );
 }
 
+// ─── 路演时间线 ──────────────────────────────────────────────────────────────
+
+interface RoadshowJobRow {
+  job_id: string;
+  category: string;
+  status: string;
+  created_at: number;
+  interviewee: string | null;
+  institution_id: string;
+}
+
+const CATEGORY_LABEL: Record<string, string> = {
+  "01_机构路演": "路演",
+  "02_尽调": "尽调",
+  "03_高管访谈": "高管访谈",
+};
+
+function InteractionTimeline({ name }: { name: string }) {
+  const [jobs, setJobs] = useState<RoadshowJobRow[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    void api.get<RoadshowJobRow[]>(`/api/v1/institutions/${encodeURIComponent(name)}/jobs`)
+      .then(r => setJobs(r.data))
+      .catch(() => {/* 静默 */});
+  }, [name]);
+
+  if (jobs.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        路演时间线 ({jobs.length})
+      </p>
+      <div className="space-y-1.5">
+        {jobs.map((j) => (
+          <button
+            key={j.job_id}
+            type="button"
+            onClick={() => navigate(`/review/${j.job_id}`)}
+            className="flex w-full items-center gap-2 rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-left transition hover:border-cyan-500/20 hover:bg-cyan-950/10"
+          >
+            <span className="shrink-0 text-[9px] font-mono text-slate-600">{formatTs(j.created_at)}</span>
+            <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[9px] font-bold ${
+              j.status === "completed"
+                ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
+                : j.status === "failed"
+                ? "border-rose-500/30 bg-rose-950/20 text-rose-400"
+                : "border-slate-600/30 text-slate-500"
+            }`}>
+              {CATEGORY_LABEL[j.category] ?? (j.category || "未知")}
+            </span>
+            <span className="flex-1 truncate text-xs text-slate-300">
+              {j.interviewee || j.job_id.slice(0, 12)}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── 机构详情面板 ─────────────────────────────────────────────────────────────
 
 function InstitutionDetail({ name, onClose }: { name: string; onClose: () => void }) {
@@ -122,6 +185,8 @@ function InstitutionDetail({ name, onClose }: { name: string; onClose: () => voi
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
           {/* Wiki 预览区块 */}
           <WikiPreview name={name} />
+          {/* 路演时间线 */}
+          <InteractionTimeline name={name} />
 
           {loading && <p className="text-center text-sm text-slate-500">加载中…</p>}
           {!loading && archive && archive.bundles.length === 0 && (

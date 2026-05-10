@@ -228,6 +228,22 @@ CREATE TABLE IF NOT EXISTS job_participants (
 );
 CREATE INDEX IF NOT EXISTS idx_job_participants_job ON job_participants(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_participants_tenant ON job_participants(tenant_id);
+
+CREATE TABLE IF NOT EXISTS follow_up_items (
+    id              TEXT PRIMARY KEY,
+    tenant_id       TEXT NOT NULL,
+    job_id          TEXT NOT NULL,
+    institution_id  TEXT NOT NULL DEFAULT '',
+    actor           TEXT NOT NULL DEFAULT '我方',
+    action          TEXT NOT NULL,
+    priority        TEXT NOT NULL DEFAULT 'normal',
+    source          TEXT NOT NULL DEFAULT 'commitment',
+    done            INTEGER NOT NULL DEFAULT 0,
+    created_at      REAL NOT NULL,
+    done_at         REAL
+);
+CREATE INDEX IF NOT EXISTS idx_follow_up_tenant ON follow_up_items(tenant_id, done, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_follow_up_job ON follow_up_items(job_id);
 """
 
 # Columns that store JSON-serialized Python objects.
@@ -238,6 +254,7 @@ _WRITABLE_COLS = {
     "status",
     "participants_confirmed",
     "category",
+    "institution_id",
     "original_report",
     "edited_report",
     "words_json",
@@ -274,6 +291,7 @@ def _init_db(conn: sqlite3.Connection) -> None:
         "ALTER TABLE assets ADD COLUMN asset_status TEXT NOT NULL DEFAULT 'approved'",
         "ALTER TABLE pitch_jobs ADD COLUMN participants_confirmed INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE pitch_jobs ADD COLUMN category TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE pitch_jobs ADD COLUMN institution_id TEXT NOT NULL DEFAULT ''",
     ):
         try:
             conn.execute(migration)
@@ -1949,3 +1967,109 @@ def db_asset_wiki_summary(relative_path: str) -> dict[str, Any]:
         "institutions": institutions,
         "last_selected": last_selected,
     }
+
+
+# ---------------------------------------------------------------------------
+# follow_up_items — 路演后续行动项（来自 RoadshowIntelReport.next_actions）
+# ---------------------------------------------------------------------------
+
+def db_follow_up_insert(
+    *,
+    tenant_id: str,
+    job_id: str,
+    institution_id: str = "",
+    actor: str = "我方",
+    action: str,
+    priority: str = "normal",
+    source: str = "commitment",
+) -> str:
+    """插入一条待跟进行动项，返回新生成的 id。"""
+    import time as _time
+    import uuid as _uuid
+    item_id = str(_uuid.uuid4())
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                """
+                INSERT INTO follow_up_items
+                    (id, tenant_id, job_id, institution_id, actor, action, priority, source, done, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+                """,
+                (item_id, tenant_id, job_id, institution_id, actor, action, priority, source, _time.time()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    return item_id
+
+
+def db_follow_up_list(
+    tenant_id: str,
+    *,
+    limit: int = 50,
+    include_done: bool = False,
+) -> list[dict]:
+    """列出租户的待跟进行动项（默认只返回未完成的）。"""
+    conn = _connect()
+    try:
+        where = "tenant_id = ?"
+        params: list = [tenant_id]
+        if not include_done:
+            where += " AND done = 0"
+        cur = conn.execute(
+            f"SELECT * FROM follow_up_items WHERE {where} ORDER BY created_at DESC LIMIT ?",
+            (*params, limit),
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def db_follow_up_mark_done(item_id: str) -> bool:
+    """将指定行动项标记为已完成，返回是否找到该记录。"""
+    import time as _time
+    with _write_lock:
+        conn = _connect()
+        try:
+            cur = conn.execute(
+                "UPDATE follow_up_items SET done = 1, done_at = ? WHERE id = ?",
+                (_time.time(), item_id),
+            )
+            conn.commit()
+            return (cur.rowcount or 0) > 0
+        finally:
+            conn.close()
+
+
+def db_follow_up_list_by_job(job_id: str) -> list[dict]:
+    """返回指定 job 的所有行动项（含已完成）。"""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM follow_up_items WHERE job_id = ? ORDER BY created_at ASC",
+            (job_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def db_job_bind_institution(job_id: str, institution_name: str) -> None:
+    """将机构名称写入 pitch_jobs.institution_id，同步回填该 job 的 follow_up_items。"""
+    if not institution_name:
+        return
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                "UPDATE pitch_jobs SET institution_id = ? WHERE job_id = ?",
+                (institution_name, job_id),
+            )
+            conn.execute(
+                "UPDATE follow_up_items SET institution_id = ? WHERE job_id = ? AND institution_id = ''",
+                (institution_name, job_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()

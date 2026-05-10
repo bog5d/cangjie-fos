@@ -9,6 +9,7 @@ from cangjie_fos.api.routes import (
     auth,
     dashboard,
     feedback,
+    follow_ups,
     health,
     materials,
     npc,
@@ -44,3 +45,4 @@ api_router.include_router(materials.router)
 api_router.include_router(admin.router)
 api_router.include_router(admin.doctor_router)
 api_router.include_router(wiki.router)
+api_router.include_router(follow_ups.router)

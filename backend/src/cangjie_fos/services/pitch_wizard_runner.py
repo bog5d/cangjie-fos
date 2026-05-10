@@ -102,7 +102,7 @@ def run_pitch_wizard_track_job(
     permanent_audio_path: Path | None = None
     try:
         job_update(job_id, status=PitchJobStatus.TRANSCRIBING)
-        db_job_update(job_id, status=str(PitchJobStatus.TRANSCRIBING))
+        db_job_update(job_id, status=str(PitchJobStatus.TRANSCRIBING), category=category)
         explicit_context = build_explicit_context(
             category,
             project_name,
@@ -196,6 +196,34 @@ def run_pitch_wizard_track_job(
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("institution_intel_extract_skipped wizard: %s", e)
+
+        # ── 路演情报：将 next_actions 持久化到 follow_up_items ───────────────
+        try:
+            from cangjie_fos.engine.schema import RoadshowIntelReport
+            from cangjie_fos.services.pitch_job_db import db_follow_up_insert
+
+            if isinstance(report, RoadshowIntelReport) and report.next_actions:
+                # 从 DB 查一次 institution_id（participants 确认后会写入）
+                from cangjie_fos.services.pitch_job_db import db_job_get
+                job_row = db_job_get(job_id) or {}
+                inst_id = job_row.get("institution_id") or ""
+                for act in report.next_actions:
+                    db_follow_up_insert(
+                        tenant_id=tenant_id,
+                        job_id=job_id,
+                        institution_id=inst_id,
+                        actor=act.actor or "我方",
+                        action=act.action,
+                        priority=act.priority or "normal",
+                        source=act.source or "suggestion",
+                    )
+                logger.info(
+                    "follow_up_items_written job_id=%s count=%d",
+                    job_id,
+                    len(report.next_actions),
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("follow_up_persist_skipped job_id=%s: %s", job_id, e)
 
         report_dict = report.model_dump()
         words_list = [w.model_dump() if hasattr(w, "model_dump") else w for w in words]

@@ -8,6 +8,7 @@ import { NPCPanel } from "./components/NPCPanel";
 import { ScoreToastStack, type ScoreToastItem } from "./components/ScoreToast";
 import { PitchJobHistory, type JobRow } from "./components/PitchJobHistory";
 import { InstitutionList } from "./components/InstitutionList";
+import { FollowUpWidget } from "./components/FollowUpWidget";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { ParticipantConfirmModal } from "./components/ParticipantConfirmModal";
 
@@ -393,6 +394,7 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
         tenantId={tenant}
         onPendingConfirm={(jobId, interviewee) => setConfirmJob({ jobId, interviewee })}
       />
+      <FollowUpWidget tenantId={tenant} />
       <Suspense fallback={<div className="text-slate-500 text-xs p-2">加载资料库…</div>}>
         <AssetLibrary />
       </Suspense>
