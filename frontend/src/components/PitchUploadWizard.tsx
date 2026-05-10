@@ -108,6 +108,10 @@ export function PitchUploadWizard({
   const [enableAsrPolish, setEnableAsrPolish] = useState(true);
   const [useLanggraphV1, setUseLanggraphV1] = useState(false);
   const [tracks, setTracks] = useState<LocalTrack[]>(() => [newTrack()]);
+  // ── 机构路演快速模式 ──────────────────────────────────────────────────────────
+  const [roadshowDate, setRoadshowDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [transcriptTab, setTranscriptTab] = useState<"audio" | "text">("audio");
+  const [transcriptText, setTranscriptText] = useState("");
   /** BUG-C：与旧版一致，用 ref 避免连续选文件时闭包读到过期的「上次自动填充」 */
   const lastAutofilledIvRef = useRef<Record<string, string | null>>({});
   const [filenameMagic, setFilenameMagic] = useState<
@@ -134,6 +138,9 @@ export function PitchUploadWizard({
     setTracks([newTrack()]);
     lastAutofilledIvRef.current = {};
     setFilenameMagic({});
+    setRoadshowDate(new Date().toISOString().slice(0, 10));
+    setTranscriptTab("audio");
+    setTranscriptText("");
   }, []);
 
   const close = () => {
@@ -158,6 +165,8 @@ export function PitchUploadWizard({
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
+  const isRoadshow = category === "01_机构路演";
+
   const validateStep0 = useCallback((): FieldErr | null => {
     const e: FieldErr = {};
     if (category === COACH_SCENE_PLACEHOLDER) {
@@ -166,13 +175,18 @@ export function PitchUploadWizard({
     if (category === COACH_OTHER_SCENE && !customRoles.trim()) {
       e.customRoles = true;
     }
-    if (!institutionName.trim()) {
+    // 机构路演模式：机构名自动填充，不校验
+    if (!isRoadshow && !institutionName.trim()) {
       e.institution = true;
     }
     return Object.keys(e).length ? e : null;
-  }, [category, customRoles, institutionName]);
+  }, [category, customRoles, institutionName, isRoadshow]);
 
   const validateStep1 = useCallback((): FieldErr | null => {
+    // 机构路演文字稿模式：只校验文字稿非空
+    if (isRoadshow && transcriptTab === "text") {
+      return transcriptText.trim() ? null : { tracks: { 0: { audio: true } } };
+    }
     const te: Record<number, { audio?: boolean; interviewee?: boolean }> = {};
     for (let i = 0; i < tracks.length; i++) {
       const t = tracks[i];
@@ -180,7 +194,8 @@ export function PitchUploadWizard({
       if (!t.audio) {
         row.audio = true;
       }
-      if (!t.interviewee.trim()) {
+      // 机构路演模式：被访谈人自动填充，不校验
+      if (!isRoadshow && !t.interviewee.trim()) {
         row.interviewee = true;
       }
       if (row.audio || row.interviewee) {
@@ -188,7 +203,7 @@ export function PitchUploadWizard({
       }
     }
     return Object.keys(te).length ? { tracks: te } : null;
-  }, [tracks]);
+  }, [tracks, isRoadshow, transcriptTab, transcriptText]);
 
   const validateAll = useCallback((): string | null => {
     const a = validateStep0();
@@ -295,13 +310,22 @@ export function PitchUploadWizard({
     setBusy(true);
     setErr(null);
     try {
+      // 机构路演自动填充
+      const autoInstitution = isRoadshow ? `待确认_${roadshowDate}` : institutionName.trim();
+      const autoInterviewee = isRoadshow ? `路演_${roadshowDate}` : "";
+      // 文字稿模式：把粘贴内容打包成 .txt 文件
+      const isTextMode = isRoadshow && transcriptTab === "text";
+      const textTracks = isTextMode
+        ? [{ ...tracks[0], audio: new File([transcriptText], `transcript_${roadshowDate}.txt`, { type: "text/plain" }), interviewee: autoInterviewee }]
+        : tracks;
+
       const body = {
         tenant_id: tenantId,
         user_name: userName.trim(),
         memory_company_id: memoryCompanyId.trim(),
         category,
-        institution_name: institutionName.trim(),
-        batch_label: batchLabel.trim(),
+        institution_name: autoInstitution,
+        batch_label: batchLabel.trim() || (isRoadshow ? roadshowDate : ""),
         investor_name: investorName.trim(),
         custom_roles_other: customRoles.trim(),
         company_background: companyBackground,
@@ -309,9 +333,9 @@ export function PitchUploadWizard({
         hot_words_raw: hotWordsRaw,
         enable_asr_polish: enableAsrPolish,
         use_langgraph_v1: useLanggraphV1,
-        tracks: tracks.map((t) => ({
+        tracks: textTracks.map((t) => ({
           client_temp_id: t.id,
-          interviewee: t.interviewee.trim(),
+          interviewee: isRoadshow ? autoInterviewee : t.interviewee.trim(),
           sniper_rows: t.sniper
             .filter((s) => (s.quote || "").trim() || (s.reason || "").trim())
             .map((s) => ({ quote: s.quote.trim(), reason: s.reason.trim() })),
@@ -323,11 +347,11 @@ export function PitchUploadWizard({
         body,
       );
       const sid = sess.session_id;
-      for (let i = 0; i < tracks.length; i++) {
+      for (let i = 0; i < textTracks.length; i++) {
         const fd = new FormData();
-        fd.append("file", tracks[i].audio as File);
+        fd.append("file", textTracks[i].audio as File);
         await api.post(`/api/v1/pitch/upload-sessions/${sid}/tracks/${i}/audio`, fd);
-        for (const qf of tracks[i].qaFiles) {
+        for (const qf of textTracks[i].qaFiles) {
           const qfd = new FormData();
           qfd.append("file", qf);
           await api.post(`/api/v1/pitch/upload-sessions/${sid}/tracks/${i}/qa`, qfd);
@@ -444,6 +468,7 @@ export function PitchUploadWizard({
 
           {step === 0 ? (
             <div className="flex flex-col gap-4">
+              {/* 场景选择 */}
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">业务大类</span>
                 <select
@@ -465,114 +490,190 @@ export function PitchUploadWizard({
                   ))}
                 </select>
               </label>
-              {category === COACH_OTHER_SCENE ? (
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-bold text-slate-400">具体双方身份（必填）</span>
-                  <input
-                    data-invalid={fieldErr.customRoles ? "1" : undefined}
-                    value={customRoles}
-                    onChange={(e) => {
-                      setCustomRoles(e.target.value);
-                      setFieldErr((fe) => ({ ...fe, customRoles: undefined }));
-                    }}
-                    placeholder="例如：供应商质量负责人 vs 买方投资机构"
-                    className={`rounded-xl border bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50 ${
-                      fieldErr.customRoles ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
-                    }`}
-                  />
-                </label>
-              ) : null}
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-slate-400">投资机构名称（必填）</span>
-                <input
-                  data-invalid={fieldErr.institution ? "1" : undefined}
-                  value={institutionName}
-                  onChange={(e) => {
-                    setInstitutionName(e.target.value);
-                    setFieldErr((fe) => ({ ...fe, institution: undefined }));
-                  }}
-                  className={`rounded-xl border bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50 ${
-                    fieldErr.institution ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
-                  }`}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-slate-400">项目批次备注</span>
-                <input
-                  value={batchLabel}
-                  onChange={(e) => setBatchLabel(e.target.value)}
-                  placeholder="尽调第2轮、2026Q1"
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-slate-400">接待投资人姓名</span>
-                <input
-                  value={investorName}
-                  onChange={(e) => setInvestorName(e.target.value)}
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-slate-400">Coach memory_company_id（可空，空则等同 tenant）</span>
-                <input
-                  value={memoryCompanyId}
-                  onChange={(e) => setMemoryCompanyId(e.target.value)}
-                  placeholder="与旧版侧边栏公司 ID 对齐"
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-slate-400">公司背景（注入复盘）</span>
-                <textarea
-                  value={companyBackground}
-                  onChange={(e) => setCompanyBackground(e.target.value)}
-                  rows={5}
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-slate-400">保密词汇黑名单</span>
-                <textarea
-                  value={sensitiveRaw}
-                  onChange={(e) => setSensitiveRaw(e.target.value)}
-                  rows={3}
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-slate-400">ASR 专有名词热词（逗号分隔）</span>
-                <textarea
-                  value={hotWordsRaw}
-                  onChange={(e) => setHotWordsRaw(e.target.value)}
-                  rows={2}
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
-                />
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={enableAsrPolish}
-                  onChange={(e) => setEnableAsrPolish(e.target.checked)}
-                  className="h-4 w-4 accent-cyan"
-                />
-                开启错别字轻修正（默认勾选，对应 Coach ASR 润色）
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={useLanggraphV1}
-                  onChange={(e) => setUseLanggraphV1(e.target.checked)}
-                  className="h-4 w-4 accent-cyan"
-                />
-                实验：LangGraph V1 评估链路
-              </label>
+
+              {/* ── 机构路演快速模式：只填日期 ────────────────────────────────── */}
+              {isRoadshow ? (
+                <>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">路演日期</span>
+                    <input
+                      type="date"
+                      value={roadshowDate}
+                      onChange={(e) => setRoadshowDate(e.target.value)}
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
+                    />
+                  </label>
+                  <p className="rounded-lg border border-cyan/20 bg-cyan/5 px-3 py-2 text-xs text-cyan-100/80">
+                    🚀 机构路演快速模式：机构名称和参与人将在分析完成后确认，现在只需上传录音或粘贴文字稿。
+                  </p>
+                </>
+              ) : (
+                /* ── 其他场景：完整表单 ───────────────────────────────────────── */
+                <>
+                  {category === COACH_OTHER_SCENE ? (
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-bold text-slate-400">具体双方身份（必填）</span>
+                      <input
+                        data-invalid={fieldErr.customRoles ? "1" : undefined}
+                        value={customRoles}
+                        onChange={(e) => {
+                          setCustomRoles(e.target.value);
+                          setFieldErr((fe) => ({ ...fe, customRoles: undefined }));
+                        }}
+                        placeholder="例如：供应商质量负责人 vs 买方投资机构"
+                        className={`rounded-xl border bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50 ${
+                          fieldErr.customRoles ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
+                        }`}
+                      />
+                    </label>
+                  ) : null}
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">投资机构名称（必填）</span>
+                    <input
+                      data-invalid={fieldErr.institution ? "1" : undefined}
+                      value={institutionName}
+                      onChange={(e) => {
+                        setInstitutionName(e.target.value);
+                        setFieldErr((fe) => ({ ...fe, institution: undefined }));
+                      }}
+                      className={`rounded-xl border bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50 ${
+                        fieldErr.institution ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
+                      }`}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">项目批次备注</span>
+                    <input
+                      value={batchLabel}
+                      onChange={(e) => setBatchLabel(e.target.value)}
+                      placeholder="尽调第2轮、2026Q1"
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">接待投资人姓名</span>
+                    <input
+                      value={investorName}
+                      onChange={(e) => setInvestorName(e.target.value)}
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">Coach memory_company_id（可空，空则等同 tenant）</span>
+                    <input
+                      value={memoryCompanyId}
+                      onChange={(e) => setMemoryCompanyId(e.target.value)}
+                      placeholder="与旧版侧边栏公司 ID 对齐"
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">公司背景（注入复盘）</span>
+                    <textarea
+                      value={companyBackground}
+                      onChange={(e) => setCompanyBackground(e.target.value)}
+                      rows={5}
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">保密词汇黑名单</span>
+                    <textarea
+                      value={sensitiveRaw}
+                      onChange={(e) => setSensitiveRaw(e.target.value)}
+                      rows={3}
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-slate-400">ASR 专有名词热词（逗号分隔）</span>
+                    <textarea
+                      value={hotWordsRaw}
+                      onChange={(e) => setHotWordsRaw(e.target.value)}
+                      rows={2}
+                      className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-white outline-none focus:border-cyan/50"
+                    />
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={enableAsrPolish}
+                      onChange={(e) => setEnableAsrPolish(e.target.checked)}
+                      className="h-4 w-4 accent-cyan"
+                    />
+                    开启错别字轻修正（默认勾选，对应 Coach ASR 润色）
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={useLanggraphV1}
+                      onChange={(e) => setUseLanggraphV1(e.target.checked)}
+                      className="h-4 w-4 accent-cyan"
+                    />
+                    实验：LangGraph V1 评估链路
+                  </label>
+                </>
+              )}
               <p className="text-xs text-slate-500">指挥官：「{userName || "未填写"}」将写入任务日志。</p>
             </div>
           ) : null}
 
           {step === 1 ? (
             <div className="flex flex-col gap-6">
+              {/* ── 机构路演：录音/文字稿 tab 切换 ─────────────────────────── */}
+              {isRoadshow ? (
+                <>
+                  <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
+                    <button
+                      type="button"
+                      onClick={() => setTranscriptTab("audio")}
+                      className={`flex-1 rounded-lg py-2 text-xs font-bold uppercase tracking-wider transition ${
+                        transcriptTab === "audio"
+                          ? "bg-gradient-to-r from-cyan/30 to-plasma/25 text-white"
+                          : "text-slate-500 hover:text-slate-200"
+                      }`}
+                    >
+                      🎵 录音文件
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTranscriptTab("text")}
+                      className={`flex-1 rounded-lg py-2 text-xs font-bold uppercase tracking-wider transition ${
+                        transcriptTab === "text"
+                          ? "bg-gradient-to-r from-cyan/30 to-plasma/25 text-white"
+                          : "text-slate-500 hover:text-slate-200"
+                      }`}
+                    >
+                      📝 文字稿
+                    </button>
+                  </div>
+
+                  {transcriptTab === "text" ? (
+                    <div className="flex flex-col gap-3">
+                      <p className="text-xs text-slate-400">
+                        支持手机 ASR 说话人格式：<code className="text-cyan/80">说话人A: xxx</code>、<code className="text-cyan/80">Speaker 1: xxx</code>，或直接粘贴无说话人标记的文字。
+                      </p>
+                      <textarea
+                        data-invalid={fieldErr.tracks?.[0]?.audio ? "1" : undefined}
+                        value={transcriptText}
+                        onChange={(e) => {
+                          setTranscriptText(e.target.value);
+                          setFieldErr((fe) => ({ ...fe, tracks: undefined }));
+                        }}
+                        rows={14}
+                        placeholder={"说话人A: 你们的商业模式是怎么样的？\n说话人B: 我们主要做SaaS订阅，核心客户是中大型企业…"}
+                        className={`rounded-xl border bg-black/40 px-3 py-2 font-mono text-xs text-white outline-none focus:border-cyan/50 ${
+                          fieldErr.tracks?.[0]?.audio ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
+                        }`}
+                      />
+                      <p className="text-xs text-slate-500">字符数：{transcriptText.length}</p>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
+              {/* ── 录音文件轨道列表（非文字稿模式均显示） ────────────────────── */}
+              {(!isRoadshow || transcriptTab === "audio") ? <>
               {tracks.map((t, ti) => {
                 const terr = fieldErr.tracks?.[ti];
                 const magic = filenameMagic[t.id];
@@ -634,34 +735,36 @@ export function PitchUploadWizard({
                       </div>
                     ) : null}
                     <TrackAudioPreview file={t.audio} />
-                    <label className="mb-2 mt-2 flex flex-col gap-1">
-                      <span className="text-xs text-slate-400">被访谈人（必填）</span>
-                      <input
-                        data-invalid={terr?.interviewee ? "1" : undefined}
-                        value={t.interviewee}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setTracks((prev) =>
-                            prev.map((x, j) => (j === ti ? { ...x, interviewee: v } : x)),
-                          );
-                          setFieldErr((fe) => {
-                            const next = { ...fe, tracks: { ...fe.tracks } };
-                            if (next.tracks?.[ti]) {
-                              const row = { ...next.tracks[ti], interviewee: undefined };
-                              next.tracks[ti] = row;
-                              if (!row.audio) delete next.tracks[ti];
-                            }
-                            if (next.tracks && !Object.keys(next.tracks).length) {
-                              delete next.tracks;
-                            }
-                            return next;
-                          });
-                        }}
-                        className={`rounded-lg border bg-black/40 px-2 py-1.5 text-white outline-none focus:border-cyan/50 ${
-                          terr?.interviewee ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
-                        }`}
-                      />
-                    </label>
+                    {!isRoadshow ? (
+                      <label className="mb-2 mt-2 flex flex-col gap-1">
+                        <span className="text-xs text-slate-400">被访谈人（必填）</span>
+                        <input
+                          data-invalid={terr?.interviewee ? "1" : undefined}
+                          value={t.interviewee}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setTracks((prev) =>
+                              prev.map((x, j) => (j === ti ? { ...x, interviewee: v } : x)),
+                            );
+                            setFieldErr((fe) => {
+                              const next = { ...fe, tracks: { ...fe.tracks } };
+                              if (next.tracks?.[ti]) {
+                                const row = { ...next.tracks[ti], interviewee: undefined };
+                                next.tracks[ti] = row;
+                                if (!row.audio) delete next.tracks[ti];
+                              }
+                              if (next.tracks && !Object.keys(next.tracks).length) {
+                                delete next.tracks;
+                              }
+                              return next;
+                            });
+                          }}
+                          className={`rounded-lg border bg-black/40 px-2 py-1.5 text-white outline-none focus:border-cyan/50 ${
+                            terr?.interviewee ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
+                          }`}
+                        />
+                      </label>
+                    ) : null}
                     <label className="mb-2 flex flex-col gap-1">
                       <span className="text-xs text-slate-400">说话人映射（可选，并入 session_notes）</span>
                       <input
@@ -756,15 +859,30 @@ export function PitchUploadWizard({
               >
                 + 添加一条录音轨道
               </button>
+              </> : null}
             </div>
           ) : null}
 
           {step === 2 ? (
             <div className="flex flex-col gap-3 text-slate-300">
-              <p>
-                共 <strong className="text-white">{tracks.length}</strong> 条轨道；机构{" "}
-                <strong className="text-plasma">{institutionName || "—"}</strong>
-              </p>
+              {isRoadshow ? (
+                <>
+                  <p>
+                    路演日期：<strong className="text-white">{roadshowDate}</strong>
+                    {transcriptTab === "text"
+                      ? <>　文字稿 <strong className="text-cyan">{transcriptText.length}</strong> 字</>
+                      : <>　录音文件 <strong className="text-white">{tracks.filter((t) => t.audio).length}</strong> 条</>}
+                  </p>
+                  <p className="rounded-lg border border-cyan/20 bg-cyan/5 px-3 py-2 text-xs text-cyan-100/80">
+                    机构名将自动标记为「待确认_{roadshowDate}」，分析完成后可在复盘记录中确认每位参与人的身份。
+                  </p>
+                </>
+              ) : (
+                <p>
+                  共 <strong className="text-white">{tracks.length}</strong> 条轨道；机构{" "}
+                  <strong className="text-plasma">{institutionName || "—"}</strong>
+                </p>
+              )}
               <p className="text-xs text-slate-500">
                 提交后将创建后台任务，{NPC_DISPLAY_NAME}
                 会在聊天区提示进度；Task Rail 可查看各 job；完成后可直接打开 L1 报告摘要。

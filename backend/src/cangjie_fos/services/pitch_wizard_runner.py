@@ -31,6 +31,49 @@ class _BytesUpload:
         return self._data
 
 
+def _text_to_words(text: str) -> list[dict]:
+    """把文字稿转换为 words_json 格式（跳过 ASR，直接走 LangGraph）。
+
+    支持手机 ASR 说话人格式：
+      - "说话人A: 内容"  / "说话人 1: 内容"
+      - "Speaker A: 内容" / "S1: 内容"
+    没有说话人标记时统一归 speaker_id="0"。
+    """
+    import re
+
+    speaker_re = re.compile(
+        r"^(?:说话人\s*|Speaker\s*|S)([^\s:：]{1,10})\s*[：:]\s*(.+)",
+        re.IGNORECASE,
+    )
+    words: list[dict] = []
+    fake_time = 0.0
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = speaker_re.match(line)
+        if m:
+            speaker_id = m.group(1).strip()
+            content = m.group(2).strip()
+        else:
+            speaker_id = "0"
+            content = line
+        if not content:
+            continue
+        end_time = fake_time + max(2.0, len(content) * 0.15)
+        words.append(
+            {
+                "word_index": len(words),
+                "text": content,
+                "start_time": round(fake_time, 2),
+                "end_time": round(end_time, 2),
+                "speaker_id": speaker_id,
+            }
+        )
+        fake_time = end_time + 0.5
+    return words
+
+
 def run_pitch_wizard_track_job(
     *,
     job_id: str,
@@ -85,25 +128,61 @@ def run_pitch_wizard_track_job(
             skip_asr_polish=skip_asr_polish,
             use_langgraph_v1=use_langgraph_v1,
         )
-        # 把音频移到永久目录，供审查台 /audio 端点和 HTML 报告使用
-        audio_dir = get_backend_root() / "data" / "audio"
-        audio_dir.mkdir(parents=True, exist_ok=True)
-        suffix = audio_path.suffix or ".bin"
-        permanent_audio_path = audio_dir / f"{job_id}{suffix}"
-        import shutil as _shutil
-        _shutil.copy2(str(audio_path), str(permanent_audio_path))
+        # ── 文字稿模式（.txt）：跳过 ASR，直接转换为 words_json ──────────────
+        is_transcript_mode = audio_path.suffix.lower() == ".txt"
+        if is_transcript_mode:
+            logger.info("transcript_mode job_id=%s: 跳过 ASR，直接解析文字稿", job_id)
+            transcript_text = audio_path.read_text(encoding="utf-8", errors="ignore")
+            # 把文字稿也追加到 qa_text，补充 LangGraph 上下文
+            combined_qa = (transcript_text + "\n\n" + params.qa_text).strip()
+            params = PitchFileJobParams(
+                transcription_json_path=params.transcription_json_path,
+                analysis_json_path=params.analysis_json_path,
+                html_output_path=params.html_output_path,
+                sensitive_words=params.sensitive_words,
+                explicit_context=params.explicit_context,
+                qa_text=combined_qa,
+                model_choice=params.model_choice,
+                html_export_options=params.html_export_options,
+                hot_words=params.hot_words,
+                company_background=params.company_background,
+                memory_company_id=params.memory_company_id,
+                skip_asr_polish=params.skip_asr_polish,
+                use_langgraph_v1=params.use_langgraph_v1,
+            )
+            fake_words_list = _text_to_words(transcript_text)
+            # 直接用 fake_words_list 跑 LangGraph（通过 cached_words）
+            job_update(job_id, status=PitchJobStatus.EVALUATING)
+            db_job_update(job_id, status=str(PitchJobStatus.EVALUATING))
+            from cangjie_fos.engine.schema import TranscriptionWord  # noqa: PLC0415
+            cached = [TranscriptionWord(**w) for w in fake_words_list]
+            words, report = run_pitch_file_job(
+                audio_path,
+                params,
+                on_status=None,
+                skip_html_export=True,
+                cached_words=cached,
+            )
+        else:
+            # ── 普通音频模式 ─────────────────────────────────────────────────────
+            audio_dir = get_backend_root() / "data" / "audio"
+            audio_dir.mkdir(parents=True, exist_ok=True)
+            suffix = audio_path.suffix or ".bin"
+            permanent_audio_path = audio_dir / f"{job_id}{suffix}"
+            import shutil as _shutil
+            _shutil.copy2(str(audio_path), str(permanent_audio_path))
 
-        job_update(job_id, status=PitchJobStatus.EVALUATING)
-        db_job_update(job_id, status=str(PitchJobStatus.EVALUATING),
-                      audio_path=str(permanent_audio_path))
+            job_update(job_id, status=PitchJobStatus.EVALUATING)
+            db_job_update(job_id, status=str(PitchJobStatus.EVALUATING),
+                          audio_path=str(permanent_audio_path))
 
-        words, report = run_pitch_file_job(
-            audio_path,
-            params,
-            on_status=None,
-            skip_html_export=True,
-            cached_words=None,
-        )
+            words, report = run_pitch_file_job(
+                audio_path,
+                params,
+                on_status=None,
+                skip_html_export=True,
+                cached_words=None,
+            )
 
         try:
             from cangjie_fos.services.institution_intel_extract import extract_and_persist_institution_intel
