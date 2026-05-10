@@ -213,6 +213,21 @@ CREATE TABLE IF NOT EXISTS wiki_episodes (
     extracted_at    REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_wiki_episodes_source ON wiki_episodes(source_id);
+
+CREATE TABLE IF NOT EXISTS job_participants (
+    id           TEXT PRIMARY KEY,
+    job_id       TEXT NOT NULL,
+    tenant_id    TEXT NOT NULL,
+    speaker_id   TEXT NOT NULL,
+    real_name    TEXT NOT NULL DEFAULT '',
+    institution  TEXT NOT NULL DEFAULT '',
+    role         TEXT NOT NULL DEFAULT '其他',
+    title        TEXT NOT NULL DEFAULT '',
+    confirmed_at REAL NOT NULL,
+    confirmed_by TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_job_participants_job ON job_participants(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_participants_tenant ON job_participants(tenant_id);
 """
 
 # Columns that store JSON-serialized Python objects.
@@ -221,6 +236,8 @@ _JSON_COLS = {"original_report", "edited_report", "words_json", "warnings"}
 # All writable columns (excludes job_id and created_at which are set at insert time).
 _WRITABLE_COLS = {
     "status",
+    "participants_confirmed",
+    "category",
     "original_report",
     "edited_report",
     "words_json",
@@ -255,6 +272,8 @@ def _init_db(conn: sqlite3.Connection) -> None:
         "ALTER TABLE pitch_jobs ADD COLUMN warnings TEXT",
         "ALTER TABLE pitch_jobs ADD COLUMN substatus TEXT",
         "ALTER TABLE assets ADD COLUMN asset_status TEXT NOT NULL DEFAULT 'approved'",
+        "ALTER TABLE pitch_jobs ADD COLUMN participants_confirmed INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE pitch_jobs ADD COLUMN category TEXT NOT NULL DEFAULT ''",
     ):
         try:
             conn.execute(migration)
@@ -594,6 +613,108 @@ def db_exec_memory_delete(uuid: str) -> None:
         conn = _connect()
         try:
             conn.execute("DELETE FROM executive_memories WHERE uuid = ?", (uuid,))
+            conn.commit()
+        finally:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# job_participants — 参与人身份确认
+# ---------------------------------------------------------------------------
+
+_PARTICIPANT_VALID_ROLES = {
+    "企业方创始人", "企业方高管", "企业方投融资",
+    "GP执行", "LP投资方", "政府招商", "其他",
+}
+
+
+def db_speaker_summary(job_id: str) -> list[dict[str, Any]]:
+    """从 words_json 提取每位说话人的前3句原文，供用户对照身份。"""
+    job = db_job_get(job_id)
+    if not job:
+        return []
+    words_json = job.get("words_json") or []
+    if isinstance(words_json, str):
+        try:
+            words_json = json.loads(words_json)
+        except Exception:
+            return []
+
+    speakers: dict[str, list[str]] = {}
+    speaker_counts: dict[str, int] = {}
+    for w in words_json:
+        sid = str(w.get("speaker_id", "0"))
+        text = str(w.get("text", "")).strip()
+        if not text:
+            continue
+        speaker_counts[sid] = speaker_counts.get(sid, 0) + 1
+        if sid not in speakers:
+            speakers[sid] = []
+        if len(speakers[sid]) < 3:
+            speakers[sid].append(text[:120])
+
+    return [
+        {
+            "speaker_id": sid,
+            "sample_lines": lines,
+            "word_count": speaker_counts.get(sid, 0),
+        }
+        for sid, lines in sorted(speakers.items())
+    ]
+
+
+def db_participants_get(job_id: str) -> list[dict[str, Any]]:
+    """返回该 job 已确认的参与人列表。"""
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM job_participants WHERE job_id = ? ORDER BY rowid",
+            (job_id,),
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    return [dict(r) for r in rows]
+
+
+def db_participants_save(
+    *,
+    job_id: str,
+    tenant_id: str,
+    participants: list[dict[str, Any]],
+    confirmed_by: str,
+) -> None:
+    """原子地保存参与人列表并将 job 标记为已确认。"""
+    now = time.time()
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute("DELETE FROM job_participants WHERE job_id = ?", (job_id,))
+            for p in participants:
+                role = p.get("role", "其他")
+                if role not in _PARTICIPANT_VALID_ROLES:
+                    role = "其他"
+                conn.execute(
+                    """INSERT INTO job_participants
+                        (id, job_id, tenant_id, speaker_id, real_name, institution, role, title, confirmed_at, confirmed_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        str(_uuid.uuid4()),
+                        job_id,
+                        tenant_id,
+                        str(p.get("speaker_id", "")),
+                        str(p.get("real_name", "")).strip(),
+                        str(p.get("institution", "")).strip(),
+                        role,
+                        str(p.get("title", "")).strip(),
+                        now,
+                        confirmed_by,
+                    ),
+                )
+            conn.execute(
+                "UPDATE pitch_jobs SET participants_confirmed = 1 WHERE job_id = ?",
+                (job_id,),
+            )
             conn.commit()
         finally:
             conn.close()

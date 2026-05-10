@@ -12,6 +12,7 @@ from cangjie_fos.api.routes import (
     health,
     materials,
     npc,
+    participants,
     pipeline,
     pitch,
     pitch_wizard,
@@ -36,6 +37,7 @@ api_router.include_router(dashboard.router)
 api_router.include_router(war_room.router)
 api_router.include_router(pitch.router)
 api_router.include_router(pitch_wizard.router)
+api_router.include_router(participants.router)
 api_router.include_router(npc.router)
 api_router.include_router(assets.router)
 api_router.include_router(materials.router)

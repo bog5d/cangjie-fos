@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, getSession, clearSession, type FosSession } from "./api/client";
 import { LoginPage } from "./components/LoginPage";
 import { AchievementFlash } from "./components/AchievementFlash";
@@ -6,9 +6,10 @@ import { DoctorPanel } from "./components/DoctorPanel";
 import { ExpHud } from "./components/ExpHud";
 import { NPCPanel } from "./components/NPCPanel";
 import { ScoreToastStack, type ScoreToastItem } from "./components/ScoreToast";
-import { PitchJobHistory } from "./components/PitchJobHistory";
+import { PitchJobHistory, type JobRow } from "./components/PitchJobHistory";
 import { InstitutionList } from "./components/InstitutionList";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
+import { ParticipantConfirmModal } from "./components/ParticipantConfirmModal";
 
 const AssetLibrary = lazy(() =>
   import("./components/AssetLibrary").then((m) => ({ default: m.AssetLibrary }))
@@ -116,6 +117,10 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
+  // ── 参与人确认弹层 ─────────────────────────────────────────────────────────
+  const [confirmJob, setConfirmJob] = useState<{ jobId: string; interviewee: string | null } | null>(null);
+  const [skippedJobs, setSkippedJobs] = useState<Set<string>>(() => new Set());
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     try {
@@ -210,6 +215,36 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
     },
     [pushToast],
   );
+
+  // ── 轮询：检查是否有已完成但未确认参与人的 job（2小时内才自动弹出）────────
+  useEffect(() => {
+    const TWO_HOURS = 2 * 60 * 60 * 1000;
+    const poll = async () => {
+      if (confirmJob) return; // 弹层已经开着时不重复触发
+      try {
+        const { data } = await api.get<JobRow[]>("/api/pitch/jobs", {
+          params: { tenant_id: tenant, limit: 20 },
+        });
+        const pending = data.find(
+          (j) =>
+            j.status === "completed" &&
+            !j.participants_confirmed &&
+            !skippedJobs.has(j.job_id) &&
+            Date.now() - j.created_at * 1000 < TWO_HOURS,
+        );
+        if (pending) {
+          setConfirmJob({ jobId: pending.job_id, interviewee: pending.interviewee ?? null });
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    void poll();
+    pollTimerRef.current = setInterval(() => void poll(), 8000);
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [tenant, confirmJob, skippedJobs]);
 
   const demoDryRun = async () => {
     try {
@@ -354,7 +389,10 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
         />
       </div>
       <InstitutionList tenantId={tenant} items={institutions} />
-      <PitchJobHistory tenantId={tenant} />
+      <PitchJobHistory
+        tenantId={tenant}
+        onPendingConfirm={(jobId, interviewee) => setConfirmJob({ jobId, interviewee })}
+      />
       <Suspense fallback={<div className="text-slate-500 text-xs p-2">加载资料库…</div>}>
         <AssetLibrary />
       </Suspense>
@@ -367,6 +405,20 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
         uploadBlockedReason={uploadBlockedReason}
       />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
+      {confirmJob ? (
+        <ParticipantConfirmModal
+          jobId={confirmJob.jobId}
+          interviewee={confirmJob.interviewee}
+          tenantId={tenant}
+          confirmedBy={commanderName}
+          institutions={institutions.map((i) => i.name).filter(Boolean)}
+          onConfirmed={() => setConfirmJob(null)}
+          onSkip={() => {
+            setSkippedJobs((s) => new Set([...s, confirmJob.jobId]));
+            setConfirmJob(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

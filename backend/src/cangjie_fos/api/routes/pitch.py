@@ -262,6 +262,7 @@ def pitch_job_list(
         substatus = db_row.get("substatus") if db_row else None
         _words = db_row.get("words_json") if db_row else None
         has_words_json = isinstance(_words, list) and len(_words) > 0
+        participants_confirmed = bool(db_row.get("participants_confirmed")) if db_row else False
         out.append(
             PitchJobSummary(
                 job_id=jid,
@@ -278,6 +279,9 @@ def pitch_job_list(
                 has_words_json=has_words_json,
                 warnings=j.get("warnings"),
                 substatus=substatus,
+                participants_confirmed=participants_confirmed,
+                interviewee=db_row.get("interviewee") if db_row else None,
+                category=db_row.get("category") if db_row else None,
             )
         )
     return out
