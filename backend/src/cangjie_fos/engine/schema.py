@@ -164,6 +164,89 @@ class ExecutiveMemory(BaseModel):
     )
 
 
+# ── 路演情报报告（RoadshowIntelReport）──────────────────────────────────────
+# 用于 category=="01_机构路演" 的场景，提取情报而非打分话术
+
+class IntelQuestion(BaseModel):
+    """对方提出的关键问题（含说话人、原话与背后关切分析）。"""
+    speaker_id: str = Field(default="", description="说话人ID，来自转写标记")
+    verbatim: str = Field(..., description="问题原话（逐字摘录，不润色）")
+    underlying_concern: str = Field(
+        ...,
+        description="该问题背后隐藏的真实关切，30字内，如：对退出路径存疑、质疑GP的行业资源",
+    )
+    priority: Literal["high", "medium", "low"] = Field(
+        default="medium",
+        description="该问题的重要程度：high=核心关切、medium=一般关注、low=礼节性提问",
+    )
+
+
+class IntelSignal(BaseModel):
+    """投资人释放的兴趣信号（正面/疑虑/中性）。"""
+    speaker_id: str = Field(default="", description="说话人ID")
+    verbatim: str = Field(..., description="原话摘录（逐字）")
+    signal_type: Literal["positive", "concern", "neutral"] = Field(
+        ...,
+        description="positive=买入信号、concern=疑虑/抵触、neutral=中性陈述",
+    )
+    interpretation: str = Field(..., description="信号解读，30字内")
+
+
+class IntelAction(BaseModel):
+    """跟进行动项（承诺或建议的下一步）。"""
+    source: Literal["commitment", "suggestion"] = Field(
+        ...,
+        description="commitment=会上明确承诺的事项；suggestion=AI建议主动跟进的事项",
+    )
+    actor: str = Field(default="我方", description="负责人：我方/对方/双方")
+    action: str = Field(..., description="行动描述，50字内")
+    priority: Literal["urgent", "normal", "optional"] = Field(default="normal")
+
+
+class RoadshowIntelReport(BaseModel):
+    """路演情报报告：不打分、不评判发言好坏，只提取关键情报供后续行动。"""
+    report_type: Literal["roadshow_intel"] = Field(
+        default="roadshow_intel",
+        description="固定值，供前端识别报告类型",
+    )
+    meeting_atmosphere: Literal["hot", "warm", "cold"] = Field(
+        ...,
+        description="会议整体氛围：hot=非常积极、warm=正常推进、cold=兴趣不足",
+    )
+    meeting_stage: Literal["first_contact", "deep_discussion", "pre_dd", "unknown"] = Field(
+        default="unknown",
+        description="沟通阶段：first_contact=初次路演、deep_discussion=深度沟通、pre_dd=准尽调",
+    )
+    atmosphere_summary: str = Field(
+        ...,
+        description="100字内会议氛围总结：对方整体态度、核心关切方向、是否有明显兴趣信号",
+    )
+    key_questions: List[IntelQuestion] = Field(
+        default_factory=list,
+        description="对方提出的关键问题，按重要性排序，最多8条",
+    )
+    interest_signals: List[IntelSignal] = Field(
+        default_factory=list,
+        description="兴趣信号（正面/疑虑/中性），最多10条",
+    )
+    hidden_concerns: List[str] = Field(
+        default_factory=list,
+        description="隐性顾虑：没有直接说出但反复绕回的话题，每条30字内，最多5条",
+    )
+    key_verbatim_moments: List[str] = Field(
+        default_factory=list,
+        description="最重要的3-5句原话（逐字摘录，不润色），用引号包裹",
+    )
+    institution_update: str = Field(
+        default="",
+        description="对机构档案的更新建议：投资偏好、决策风格、限制条件等，200字内",
+    )
+    next_actions: List[IntelAction] = Field(
+        default_factory=list,
+        description="下一步行动清单，按优先级排序",
+    )
+
+
 class SessionAnnotation(BaseModel):
     """Phase 2 · Slice B —— 场次级团队注释（只读层）。
 

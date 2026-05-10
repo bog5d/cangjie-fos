@@ -1,4 +1,8 @@
-"""LangGraph 融资评估：薄封装 `agent_runner`（SPEC A4）+ 指数退避重试（R3）。"""
+"""LangGraph 融资评估：薄封装 `agent_runner`（SPEC A4）+ 指数退避重试（R3）。
+
+路演分支（category=='01_机构路演'）直接调用 run_roadshow_intel_analysis，
+其他场景走 LangGraph 两阶段评估。
+"""
 from __future__ import annotations
 
 import logging
@@ -7,10 +11,12 @@ from collections.abc import Callable
 from typing import Any
 
 from cangjie_fos.engine.coach.agent_runner import run_pitch_evaluation_via_langgraph_with_state
+from cangjie_fos.engine.coach.llm_judge import run_roadshow_intel_analysis
 
 logger = logging.getLogger(__name__)
 
 _RETRY_DELAYS = [2, 4, 8]  # seconds between attempt 1→2, 2→3, 3→4
+_ROADSHOW_CATEGORY = "01_机构路演"
 
 
 class PitchGraphService:
@@ -27,7 +33,39 @@ class PitchGraphService:
         historical_memories: list[Any] | None = None,
         trace_id: str | None = None,
     ) -> tuple[Any, dict[str, Any]]:
-        last_exc: Exception | None = None
+        category = (explicit_context or {}).get("biz_type", "")
+        if category == _ROADSHOW_CATEGORY:
+            # ── 路演情报分析分支（不打分、不评判话术）────────────────────────────
+            logger.info(
+                "roadshow_intel_branch: trace_id=%s category=%s", trace_id, category
+            )
+            last_exc: Exception | None = None
+            for attempt in range(len(_RETRY_DELAYS) + 1):
+                if attempt > 0:
+                    delay = _RETRY_DELAYS[attempt - 1]
+                    logger.warning(
+                        "roadshow_intel_retry attempt=%d/%d sleep=%ds reason=%s",
+                        attempt + 1,
+                        len(_RETRY_DELAYS) + 1,
+                        delay,
+                        last_exc,
+                    )
+                    time.sleep(delay)
+                try:
+                    report = run_roadshow_intel_analysis(
+                        words,
+                        model_choice=model_choice,
+                        explicit_context=explicit_context,
+                        on_notice=on_notice,
+                    )
+                    return report, {}
+                except (ConnectionError, TimeoutError) as e:
+                    last_exc = e
+            assert last_exc is not None
+            raise last_exc
+
+        # ── 常规评估分支（LangGraph 两阶段打分）──────────────────────────────────
+        last_exc = None
         for attempt in range(len(_RETRY_DELAYS) + 1):  # 0, 1, 2, 3
             if attempt > 0:
                 delay = _RETRY_DELAYS[attempt - 1]

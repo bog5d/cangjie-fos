@@ -11,13 +11,16 @@ import AddRiskPointForm from "../components/workbench/left/AddRiskPointForm";
 import JobInfoPanel from "../components/workbench/right/JobInfoPanel";
 import WorkbenchNPCChat from "../components/workbench/right/WorkbenchNPCChat";
 import HtmlReportPreview from "../components/workbench/right/HtmlReportPreview";
+import RoadshowIntelView from "../components/workbench/RoadshowIntelView";
 import type {
   AnalysisReport,
+  AnyReport,
   PitchReviewResponse,
   PitchReviewCommitRequest,
   RiskPoint,
   TranscriptionWord,
 } from "../types/review";
+import { isRoadshowReport } from "../types/review";
 
 const DEFAULT_TENANT = "demo-tenant";
 
@@ -54,11 +57,11 @@ export default function ReviewWorkbench() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [reviewData, setReviewData] = useState<PitchReviewResponse | null>(null);
-  const [draftReport, setDraftReport] = useState<AnalysisReport | null>(null);
+  const [draftReport, setDraftReport] = useState<AnyReport | null>(null);
   const [wordsMap, setWordsMap] = useState<Map<number, TranscriptionWord>>(new Map());
   const [isDirty, setIsDirty] = useState(false);
   const [committing, setCommitting] = useState(false);
-  const originalRef = useRef<AnalysisReport | null>(null);
+  const originalRef = useRef<AnyReport | null>(null);
 
   // Load review data
   useEffect(() => {
@@ -117,8 +120,8 @@ export default function ReviewWorkbench() {
 
   const updateDraft = useCallback((updater: (prev: AnalysisReport) => AnalysisReport) => {
     setDraftReport((prev) => {
-      if (!prev) return prev;
-      const next = updater(prev);
+      if (!prev || isRoadshowReport(prev)) return prev;
+      const next = updater(prev as AnalysisReport);
       setIsDirty(true);
       return next;
     });
@@ -178,9 +181,10 @@ export default function ReviewWorkbench() {
 
   const handleCommit = useCallback(async () => {
     if (!draftReport || !jobId) return;
+    if (isRoadshowReport(draftReport)) return; // 路演情报报告不支持编辑提交
     setCommitting(true);
     try {
-      const body: PitchReviewCommitRequest = { edited_report: draftReport };
+      const body: PitchReviewCommitRequest = { edited_report: draftReport as AnalysisReport };
       await api.patch(`/api/pitch/jobs/${jobId}/review`, body);
       setReviewData((prev) =>
         prev ? { ...prev, committed_at: Date.now() / 1000, edited_report: draftReport } : prev,
@@ -235,19 +239,48 @@ export default function ReviewWorkbench() {
     );
   }
 
+  // ── 路演情报报告：独立视图，不走常规审查台 ──────────────────────────────────
+  if (isRoadshowReport(draftReport)) {
+    return (
+      <AudioProvider>
+        <div className="flex h-screen flex-col bg-[#0a0a14] text-white overflow-hidden">
+          <WorkbenchHeader
+            jobId={jobId}
+            status={reviewData!.status}
+            isCommitted={false}
+            committedAt={null}
+            isDirty={false}
+            onBack={() => navigate(-1)}
+            onCommit={() => void Promise.resolve()}
+            committing={false}
+          />
+          <div className="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full">
+            <RoadshowIntelView
+              report={draftReport}
+              interviewee={reviewData?.interviewee}
+            />
+          </div>
+        </div>
+      </AudioProvider>
+    );
+  }
+
+  // ── 常规评估报告视图 ──────────────────────────────────────────────────────
+  const analysisReport = draftReport as AnalysisReport;
+
   const leftPanel = (
     <div className="space-y-0">
       <SceneHeaderFields
-        sceneType={draftReport.scene_analysis.scene_type}
-        speakerRoles={draftReport.scene_analysis.speaker_roles}
-        totalScore={draftReport.total_score}
-        totalScoreDeductionReason={draftReport.total_score_deduction_reason}
+        sceneType={analysisReport.scene_analysis.scene_type}
+        speakerRoles={analysisReport.scene_analysis.speaker_roles}
+        totalScore={analysisReport.total_score}
+        totalScoreDeductionReason={analysisReport.total_score_deduction_reason}
         isReadonly={isCommitted}
         onSceneChange={handleSceneChange}
         onScoreChange={handleScoreChange}
       />
       <RiskPointList
-        points={draftReport.risk_points}
+        points={analysisReport.risk_points}
         isReadonly={isCommitted}
         onChange={handleRiskChange}
         onDelete={handleRiskDelete}
@@ -257,17 +290,21 @@ export default function ReviewWorkbench() {
     </div>
   );
 
+  const originalAnalysis = isRoadshowReport(reviewData!.original_report)
+    ? null
+    : (reviewData!.original_report as AnalysisReport);
+
   const rightPanel = (
     <>
       <JobInfoPanel
         jobId={jobId}
-        status={reviewData.status}
-        totalWords={reviewData.words_summary.total_words}
-        durationSec={reviewData.words_summary.duration_sec}
-        originalScore={reviewData.original_report.total_score}
-        currentScore={draftReport.total_score}
-        committedAt={reviewData.committed_at}
-        interviewee={reviewData.interviewee}
+        status={reviewData!.status}
+        totalWords={reviewData!.words_summary.total_words}
+        durationSec={reviewData!.words_summary.duration_sec}
+        originalScore={originalAnalysis?.total_score ?? 0}
+        currentScore={analysisReport.total_score}
+        committedAt={reviewData!.committed_at}
+        interviewee={reviewData!.interviewee}
       />
       <WorkbenchNPCChat tenantId={tenantId} jobId={jobId} userName={userName} />
       <HtmlReportPreview jobId={jobId} isDirty={isDirty} onCommitFirst={handleCommit} />
@@ -280,7 +317,7 @@ export default function ReviewWorkbench() {
         <div className="flex h-screen flex-col bg-[#0a0a14] text-white overflow-hidden">
           <WorkbenchHeader
             jobId={jobId}
-            status={reviewData.status}
+            status={reviewData!.status}
             isCommitted={isCommitted}
             committedAt={committedAt}
             isDirty={isDirty}

@@ -40,8 +40,8 @@ export interface AnalysisReport {
 export interface PitchReviewResponse {
   job_id: string;
   status: string;
-  original_report: AnalysisReport;
-  edited_report: AnalysisReport | null;
+  original_report: AnyReport;
+  edited_report: AnyReport | null;
   committed_at: number | null;
   words_summary: {
     total_words: number;
@@ -50,6 +50,48 @@ export interface PitchReviewResponse {
   audio_available?: boolean;
   /** 上传向导中的被访谈人；简单上传无此项 */
   interviewee?: string | null;
+}
+
+// ── 路演情报报告类型 ────────────────────────────────────────────────────────
+
+export interface IntelQuestion {
+  speaker_id?: string;
+  verbatim: string;
+  underlying_concern: string;
+  priority: "high" | "medium" | "low";
+}
+
+export interface IntelSignal {
+  speaker_id?: string;
+  verbatim: string;
+  signal_type: "positive" | "concern" | "neutral";
+  interpretation: string;
+}
+
+export interface IntelAction {
+  source: "commitment" | "suggestion";
+  actor?: string;
+  action: string;
+  priority: "urgent" | "normal" | "optional";
+}
+
+export interface RoadshowIntelReport {
+  report_type: "roadshow_intel";
+  meeting_atmosphere: "hot" | "warm" | "cold";
+  meeting_stage: "first_contact" | "deep_discussion" | "pre_dd" | "unknown";
+  atmosphere_summary: string;
+  key_questions: IntelQuestion[];
+  interest_signals: IntelSignal[];
+  hidden_concerns: string[];
+  key_verbatim_moments: string[];
+  institution_update: string;
+  next_actions: IntelAction[];
+}
+
+export type AnyReport = AnalysisReport | RoadshowIntelReport;
+
+export function isRoadshowReport(r: AnyReport | null | undefined): r is RoadshowIntelReport {
+  return (r as RoadshowIntelReport)?.report_type === "roadshow_intel";
 }
 
 export interface PitchReviewCommitRequest {
