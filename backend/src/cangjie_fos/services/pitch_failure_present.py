@@ -145,8 +145,8 @@ def normalize_pitch_failure(raw: str | BaseException, *, job_id: str = "") -> di
     if _is_connection_reset(text):
         summary = (
             "转写服务连接被强制断开（ConnectionReset）。"
-            "最常见原因：① SILICONFLOW_API_KEY 或 DASHSCOPE_API_KEY 无效/过期；"
-            "② 文件体积超过 API 侧限制（建议上传 <25MB 的压缩音频）。"
+            "最常见原因：① DASHSCOPE_API_KEY 无效/过期；"
+            "② 文件体积超过阿里云百炼 API 限制（建议上传 <25MB 的压缩音频）。"
             + (suffix if suffix else "")
         )
         return {

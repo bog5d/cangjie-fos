@@ -19,6 +19,7 @@ from cangjie_fos.api.routes import (
     pitch_wizard,
     ready,
     reflection_settle,
+    settings,
     war_room,
     watch,
     webhooks,
@@ -46,3 +47,4 @@ api_router.include_router(admin.router)
 api_router.include_router(admin.doctor_router)
 api_router.include_router(wiki.router)
 api_router.include_router(follow_ups.router)
+api_router.include_router(settings.router)

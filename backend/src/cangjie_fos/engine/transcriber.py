@@ -678,20 +678,14 @@ def transcribe_audio(
     hot_words: list[str] | None = None,
 ) -> List[TranscriptionWord]:
     """
-    双引擎调度：优先硅基流动；任意异常则打印警告并切换阿里云。
+    使用阿里云百炼（DashScope）ASR 转写音频。
     返回词级转写列表；若提供 out_json_path 则额外写入 JSON（便于调试或归档）。
-    hot_words 非空时向 SiliconFlow 注入 initial_prompt 作为专有名词提示。
+    hot_words 非空时作为专有名词提示注入。
+
+    注：硅基流动（SiliconFlow）已于 2026-05 停用，仅使用阿里云百炼。
     """
     path_str = str(Path(audio_path).resolve())
-    try:
-        words = transcribe_siliconflow(path_str, hot_words=hot_words)
-    except Exception as e:
-        logger.warning("硅基流动转写未成功，切换阿里云兜底: %s", e, exc_info=False)
-        print(
-            f"[transcriber] WARN: 硅基流动失败，已切换阿里云兜底。原因: {e}",
-            file=sys.stderr,
-        )
-        words = transcribe_aliyun(path_str, hot_words=hot_words)
+    words = transcribe_aliyun(path_str, hot_words=hot_words)
 
     if out_json_path is not None:
         out = Path(out_json_path)

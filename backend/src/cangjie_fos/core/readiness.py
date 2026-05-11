@@ -135,27 +135,27 @@ def compute_readiness() -> ReadinessResult:
             )
         )
 
-    # ---- API keys（主力 + 转写二选一策略：Silicon 必填，DeepSeek 按产品；这里报缺省） ----
-    sili = (os.getenv("SILICONFLOW_API_KEY") or "").strip()
+    # ---- API keys（DeepSeek 做 LLM 必填，DashScope 做 ASR 必填）----
+    # 注：硅基流动（SiliconFlow）已于 2026-05 停用，不再检查其 Key。
     deep = (os.getenv("DEEPSEEK_API_KEY") or "").strip()
-    r.api_keys_ok = bool(sili) and bool(deep)
-    if not sili or not deep:
+    dash = (os.getenv("DASHSCOPE_API_KEY") or "").strip()
+    r.api_keys_ok = bool(deep) and bool(dash)
+    if not deep:
         issues.append(
             ReadinessIssue(
                 code=E_API_KEYS_INCOMPLETE,
-                message="SILICONFLOW_API_KEY 或 DEEPSEEK_API_KEY 未配置",
-                fix_hint="运行「填写API密钥_双击我.bat」或编辑 backend/.env，在 = 后粘贴密钥并保存",
+                message="DEEPSEEK_API_KEY 未配置（LLM 评估必需）",
+                fix_hint="运行「填写API密钥_双击我.bat」或编辑 backend/.env，在 DEEPSEEK_API_KEY= 后粘贴密钥并保存",
                 severity="error",
             )
         )
-    if not (os.getenv("DASHSCOPE_API_KEY") or "").strip():
-        # 不阻断 ok，仅警告
+    if not dash:
         issues.append(
             ReadinessIssue(
-                code="W_DASHSCOPE_OPTIONAL",
-                message="未配置 DASHSCOPE_API_KEY，语音转写将不可用",
-                fix_hint="若需上传录音，请在 .env 中填写 DASHSCOPE_API_KEY",
-                severity="warn",
+                code=E_API_KEYS_INCOMPLETE,
+                message="DASHSCOPE_API_KEY 未配置（阿里云百炼 ASR 转写必需）",
+                fix_hint="运行「填写API密钥_双击我.bat」或编辑 backend/.env，在 DASHSCOPE_API_KEY= 后粘贴密钥并保存",
+                severity="error",
             )
         )
 

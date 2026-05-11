@@ -11,6 +11,7 @@ import { InstitutionList } from "./components/InstitutionList";
 import { FollowUpWidget } from "./components/FollowUpWidget";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { ParticipantConfirmModal } from "./components/ParticipantConfirmModal";
+import { SettingsPanel } from "./components/SettingsPanel";
 
 const AssetLibrary = lazy(() =>
   import("./components/AssetLibrary").then((m) => ({ default: m.AssetLibrary }))
@@ -93,8 +94,8 @@ export default function App() {
     setSession(null);
   };
 
-  // 账号系统已配置且未登录 → 显示登录页
-  if (accountsConfigured && !session) {
+  // 未登录 → 始终显示登录页（无论后端是否配置了 FOS_ACCOUNTS）
+  if (!session) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
@@ -353,6 +354,7 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
           >
             🔧 系统诊断
           </button>
+          <SettingsPanel />
           {session && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">
