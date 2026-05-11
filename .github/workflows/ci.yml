@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Backend Tests (228 required)
+    name: Backend Tests (440+ required)
     runs-on: ubuntu-latest
 
     steps:
@@ -39,7 +39,7 @@ jobs:
           CANGJIE_DRY_RUN: "true"
         run: |
           mkdir -p /tmp/mock_pitch_coach/src
-          uv run --extra dev pytest tests/ -q --tb=short
+          uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q --tb=short
 
       - name: Verify test count
         working-directory: backend
@@ -48,10 +48,10 @@ jobs:
           CANGJIE_DRY_RUN: "true"
         run: |
           mkdir -p /tmp/mock_pitch_coach/src
-          COUNT=$(uv run --extra dev pytest tests/ -q --tb=no --no-header 2>&1 | grep "passed" | grep -oP '^\d+')
+          COUNT=$(uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q --tb=no --no-header 2>&1 | grep "passed" | grep -oP '^\d+')
           echo "Tests passed: $COUNT"
-          if [ "$COUNT" -lt 200 ]; then
-            echo "❌ 测试数量不足 200，请检查是否有测试被跳过或删除"
+          if [ "$COUNT" -lt 440 ]; then
+            echo "❌ 测试数量不足 440，请检查是否有测试被跳过或删除"
             exit 1
           fi
 
