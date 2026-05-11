@@ -35,16 +35,27 @@ export interface FosSession {
   tenant_id: string;
 }
 
+/** 前端 session 最长保留时长：24 小时（后端 token TTL 为 72 小时） */
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 export function getSession(): FosSession | null {
   try {
     const raw = localStorage.getItem("fos_session");
-    return raw ? (JSON.parse(raw) as FosSession) : null;
+    if (!raw) return null;
+    const data = JSON.parse(raw) as FosSession & { saved_at?: number };
+    // 超过 24 小时自动清除，强制重新登录
+    if (data.saved_at && Date.now() - data.saved_at > SESSION_MAX_AGE_MS) {
+      clearSession();
+      return null;
+    }
+    return data;
   } catch { return null; }
 }
 
 export function saveSession(s: FosSession): void {
   try {
-    localStorage.setItem("fos_session", JSON.stringify(s));
+    const payload = { ...s, saved_at: Date.now() };
+    localStorage.setItem("fos_session", JSON.stringify(payload));
     localStorage.setItem("fos_token", s.token);
   } catch { /* ignore */ }
 }

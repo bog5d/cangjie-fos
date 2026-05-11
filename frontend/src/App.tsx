@@ -121,8 +121,20 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
   const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
   // ── 参与人确认弹层 ─────────────────────────────────────────────────────────
   const [confirmJob, setConfirmJob] = useState<{ jobId: string; interviewee: string | null } | null>(null);
-  const [skippedJobs, setSkippedJobs] = useState<Set<string>>(() => new Set());
+  const [skippedJobs, setSkippedJobs] = useState<Set<string>>(() => {
+    try {
+      const raw = sessionStorage.getItem("fos_skipped_jobs");
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // skippedJobs 写入 sessionStorage，刷新后不重弹已 skip 过的任务
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("fos_skipped_jobs", JSON.stringify([...skippedJobs]));
+    } catch { /* ignore */ }
+  }, [skippedJobs]);
 
   useEffect(() => {
     try {
@@ -142,20 +154,21 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
     }
   }, []);
 
+  // tenant_id 优先取 URL 参数（调试用），否则用登录 session 里的 tenant_id
   const tenant = useMemo(() => {
     const q = new URLSearchParams(window.location.search).get("tenant");
-    return q && q.length > 0 ? q : DEFAULT_TENANT;
-  }, []);
+    if (q && q.length > 0) return q;
+    return session?.tenant_id ?? "default";
+  }, [session]);
 
   const uploadBlockedReason = useMemo(() => {
     if (ready === undefined) return "正在检查运行环境（/api/v1/ready）…";
     if (ready === null) return "无法获取就绪状态，请确认后端已启动。";
     if (!ready.pitch_coach_ok) {
-      const hit = ready.issues.find((i) => i.code === "E_PITCH_COACH_SRC_MISSING");
-      return hit?.fix_hint ?? "AI_Pitch_Coach 未正确放置，上传与豆区将不可用。";
+      return "AI 评估引擎目录未就绪，点击「🔧 系统诊断」查看修复指引。";
     }
     if (!ready.api_keys_ok) {
-      return "API 密钥未配置完整，请通过「填写API密钥_双击我」配置 backend/.env。";
+      return "API 密钥未配置，点击右上角 ⚙️ 填写 DeepSeek 和 DashScope Key 后即可使用。";
     }
     return null;
   }, [ready]);

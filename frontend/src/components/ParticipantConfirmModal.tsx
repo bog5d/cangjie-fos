@@ -4,7 +4,7 @@
  * 触发条件：job 变为 completed 且 participants_confirmed = false
  * 弹层强制展示，不可不确认关闭（只能 skip — 打标但不写入）。
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 
 const VALID_ROLES = [
@@ -58,6 +58,16 @@ export function ParticipantConfirmModal({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Esc 键 → 跳过（稍后确认）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) onSkip();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [busy, onSkip]);
 
   useEffect(() => {
     setLoading(true);
@@ -102,11 +112,22 @@ export function ParticipantConfirmModal({
   const listId = `institutions-${jobId}`;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      {/* backdrop */}
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      onMouseDown={(e) => {
+        // 点击遮罩（非 card 区域）→ 跳过
+        if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+          onSkip();
+        }
+      }}
+    >
+      {/* backdrop — 点击触发 onSkip 来自父 div 的 onMouseDown */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
-      <div className="relative w-full max-w-xl max-h-[90vh] flex flex-col rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#070712] via-[#06061a] to-black shadow-[0_0_64px_rgba(34,211,238,0.2)]">
+      <div
+        ref={cardRef}
+        className="relative w-full max-w-xl max-h-[90vh] flex flex-col rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#070712] via-[#06061a] to-black shadow-[0_0_64px_rgba(34,211,238,0.2)]"
+      >
         {/* header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <div>
@@ -122,9 +143,10 @@ export function ParticipantConfirmModal({
             type="button"
             onClick={onSkip}
             disabled={busy}
-            className="rounded-lg border border-white/10 px-3 py-1 text-[11px] text-slate-500 hover:text-slate-300"
+            title="关闭（或按 Esc）"
+            className="rounded-lg border border-white/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white"
           >
-            稍后确认
+            ✕ 稍后确认
           </button>
         </div>
 
