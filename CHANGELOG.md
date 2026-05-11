@@ -8,6 +8,39 @@
 
 ---
 
+## [0.5.0] — 2026-05-11  Phase 7.4+7.5 机构路演计数 + 路演分析独立工作流
+
+### Added
+
+**Phase 7.5 — 路演分析独立工作流**
+- **`api/routes/roadshow.py`**（新文件）：5个专属端点
+  - `POST /api/v1/roadshow/start`：上传音频或文字稿，返回 job_id；文字稿直接跳到 awaiting_speakers
+  - `GET /api/v1/roadshow/jobs/{id}/status`：轮询状态（步骤2/4用）
+  - `GET /api/v1/roadshow/jobs/{id}/speaker-preview`：返回每位说话人样本台词 + AI推测角色
+  - `POST /api/v1/roadshow/jobs/{id}/confirm-speakers`：用户确认说话人身份，触发LangGraph
+  - `GET /api/v1/roadshow/jobs/{id}/report`：获取完整路演情报报告
+- **`services/transcript_parser.py`**（新文件）：多格式文字稿解析（「说话人A:」「[A]」「【A】」等）
+- **`frontend/src/components/RoadshowWizard.tsx`**（新文件）：5步独立向导（上传→等待→确认说话人→分析→报告）
+- **`frontend/src/App.tsx`**：新增「🎯 路演分析」按钮（紫色，独立于复盘上传向导）
+- **`schemas/pitch_upload.py`**：新增 `AWAITING_SPEAKERS` / `RESUMING_ANALYSIS` 状态
+- **`services/pitch_job_db.py`**：新增 `is_roadshow` / `confirmed_speakers_json` / `referrer` 列（含迁移）
+- **`engine/schema.py`**：`RoadshowIntelReport` 扩展 `referrer` / `dominant_speaker` / `competitor_mentions` / `timeline_signals` 四个字段
+- **`services/pitch_upload_pipeline.py`**：新增 `run_roadshow_asr_job()`（ASR后暂停等待说话人确认）和 `resume_roadshow_analysis()`（注入说话人身份后继续LangGraph）
+- **`services/github_sync.py`**：新增 `push_roadshow_report()`，推送路演情报到 `analytics/{tenant}/roadshow_{date}_{id[:8]}.json`
+- **`tests/test_roadshow_api.py`**（新文件）：25个测试，覆盖所有端点 + 文字稿解析器 + 说话人角色推测逻辑
+
+**Phase 7.4 — 机构路演统计 + 安全加固**
+- **`services/pitch_job_db.py`**：`db_institution_pitch_stats()` — CTE UNION ALL 合并两数据源统计各机构路演次数和最后日期
+- **`frontend/src/components/InstitutionList.tsx`**：每个机构卡片显示「N次路演 · 最近X天前」
+- **`frontend/src/App.tsx`**：强制登录（去掉 accountsConfigured 旁路条件）
+- **`frontend/src/components/ParticipantConfirmModal.tsx`**：confirmedBy 非空校验
+
+### Changed
+- 测试基线：**466 → 491 passed**（+25）
+- `api/router.py` 注册 roadshow 路由
+
+---
+
 ## [0.4.1] — 2026-05-11  Phase 7.1 情报→档案闭环 + 待跟进行动项系统
 
 ### Added
