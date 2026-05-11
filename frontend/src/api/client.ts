@@ -15,6 +15,22 @@ if (apiKey) {
   });
 }
 
+// 401 响应拦截：token 过期或失效 → 清除 session 并刷新至登录页
+// 排除 /api/auth/login 本身（否则密码错误也会跳转）
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url: string = error?.config?.url ?? "";
+    if (status === 401 && !url.includes("/api/auth/login")) {
+      clearSession();
+      // 用 replace 避免在历史堆栈中留下 stale 页面
+      window.location.replace("/");
+    }
+    return Promise.reject(error);
+  }
+);
+
 // 登录 token 自动注入
 api.interceptors.request.use((config) => {
   try {

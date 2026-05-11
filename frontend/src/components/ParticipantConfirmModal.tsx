@@ -94,11 +94,16 @@ export function ParticipantConfirmModal({
   };
 
   const handleConfirm = async () => {
+    // 坑5：confirmedBy（指挥官名称）必填校验
+    if (!confirmedBy.trim()) {
+      setErr("⚠️ 请先在主界面顶部填写「指挥官名称」，否则无法记录确认人。");
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
       await api.post(`/api/v1/pitch/jobs/${jobId}/participants`, {
-        confirmed_by: confirmedBy || "unknown",
+        confirmed_by: confirmedBy.trim(),
         participants: rows,
       });
       onConfirmed();

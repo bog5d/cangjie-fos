@@ -29,9 +29,11 @@ const DEFAULT_TENANT = "demo-tenant";
 function SyncButton() {
   const [state, setState] = useState<"idle" | "syncing" | "done" | "err">("idle");
   const [msg, setMsg] = useState("");
+  const [fullMsg, setFullMsg] = useState("");
 
   const handleSync = async () => {
     setState("syncing");
+    setFullMsg("");
     try {
       const r = await api.post<{ ok: boolean; message: string; pitch_imported: number; match_imported: number }>(
         "/api/sync/pull"
@@ -41,14 +43,19 @@ function SyncButton() {
         const added = d.pitch_imported + d.match_imported;
         setMsg(added > 0 ? `新增 ${added} 条` : "已是最新");
       } else {
-        setMsg(d.message || "失败");
+        // 截断显示，完整原因放 title（hover 可见）
+        const full = d.message || "同步失败";
+        setFullMsg(full);
+        setMsg(full.length > 20 ? full.slice(0, 18) + "…" : full);
       }
-      setState("done");
+      setState(d.ok ? "done" : "err");
     } catch {
+      const full = "网络错误，请检查后端是否正常运行";
+      setFullMsg(full);
       setMsg("网络错误");
       setState("err");
     } finally {
-      setTimeout(() => setState("idle"), 3000);
+      setTimeout(() => { setState("idle"); setFullMsg(""); }, 3000);
     }
   };
 
@@ -57,7 +64,7 @@ function SyncButton() {
       type="button"
       disabled={state === "syncing"}
       onClick={() => void handleSync()}
-      title="从 GitHub 拉取团队最新数据"
+      title={state === "err" && fullMsg ? fullMsg : "从 GitHub 拉取团队最新数据"}
       className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-[11px] transition hover:border-cyan-500/30 hover:text-cyan-300 disabled:opacity-50"
     >
       {state === "syncing" ? (
@@ -193,12 +200,16 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
     void refreshWarData();
   }, [refreshWarData]);
 
-  useEffect(() => {
+  const fetchReady = useCallback(() => {
     void api
       .get<ReadyPayload>("/api/v1/ready")
       .then((r) => setReady(r.data))
       .catch(() => setReady(null));
   }, []);
+
+  useEffect(() => {
+    fetchReady();
+  }, [fetchReady]);
 
   useEffect(() => {
     if (!dashboard) return;
@@ -367,7 +378,7 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
           >
             🔧 系统诊断
           </button>
-          <SettingsPanel />
+          <SettingsPanel onKeySaved={fetchReady} />
           {session && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">

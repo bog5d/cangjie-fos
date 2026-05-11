@@ -10,7 +10,8 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from cangjie_fos.api.upload_io import read_upload_limited
+from cangjie_fos.api.upload_io import stream_upload_to_path
+from cangjie_fos.core.paths import get_backend_root
 from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
 from cangjie_fos.services import github_sync
 from cangjie_fos.engine.schema import TranscriptionWord as _TranscriptionWord
@@ -193,22 +194,34 @@ async def pitch_upload(
             status_code=429,
             detail={"code": "E_QUEUE_FULL", "message": "任务队列已满，请稍后再试"},
         )
+
+    job_id = uuid.uuid4().hex
+    fname = file.filename or "upload.bin"
+    suffix = Path(fname).suffix or ".bin"
+
+    # 流式落盘：直接写到 data/audio/，不把整个文件读入内存
+    audio_dir = get_backend_root() / "data" / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    incoming_path = audio_dir / f"{job_id}_incoming{suffix}"
+
     try:
-        raw = await read_upload_limited(file)
-        if not raw:
+        bytes_written = await stream_upload_to_path(file, incoming_path)
+        if bytes_written == 0:
+            incoming_path.unlink(missing_ok=True)
+            release_job_slot()
             raise HTTPException(status_code=400, detail="empty file")
     except HTTPException:
+        incoming_path.unlink(missing_ok=True)
         release_job_slot()
         raise
-    job_id = uuid.uuid4().hex
+
     job_create(job_id, tenant_id)
-    fname = file.filename or "upload.bin"
 
     def _run() -> None:
         try:
             run_pitch_upload_job(
                 job_id=job_id,
-                raw_bytes=raw,
+                pre_written_path=incoming_path,
                 filename=fname,
                 tenant_id=tenant_id,
             )
@@ -552,3 +565,17 @@ def get_investor_prefs(
         "prefs": prefs,
         "injected_context": context.get("investor_preferences", ""),
     }
+
+
+@router.get("/institution-stats")
+def get_institution_pitch_stats(
+    tenant_id: str = Query(..., description="租户 ID"),
+) -> list[dict]:
+    """返回各机构的路演次数和最近路演时间（用于机构列表展示）。
+
+    数据合并自 pitch_jobs.institution_id 和 job_participants.institution，
+    确保即使参与人确认绑定不完整也能统计到数据。
+    """
+    from cangjie_fos.services.pitch_job_db import db_institution_pitch_stats  # noqa: PLC0415
+
+    return db_institution_pitch_stats(tenant_id)

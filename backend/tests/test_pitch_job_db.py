@@ -266,3 +266,75 @@ def test_contribution_score_upsert_and_list():
     match = next(r for r in rows if r["contributor"] == "张三")
     assert match["score"] == pytest.approx(15.0)
     assert match["job_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# db_institution_pitch_stats
+# ---------------------------------------------------------------------------
+
+def test_institution_pitch_stats_from_jobs_table(_isolated_db) -> None:
+    """db_institution_pitch_stats returns counts from pitch_jobs.institution_id."""
+    import uuid
+    from cangjie_fos.services.pitch_job_db import db_institution_pitch_stats, db_job_bind_institution
+
+    # Create two completed jobs bound to the same institution
+    jid1, jid2 = str(uuid.uuid4()), str(uuid.uuid4())
+    for jid in (jid1, jid2):
+        db_job_create(jid, "t-stats", filename="a.mp3")
+        db_job_update(jid, status="completed")
+        db_job_bind_institution(jid, "红杉资本")
+
+    # One job for a different institution
+    jid3 = str(uuid.uuid4())
+    db_job_create(jid3, "t-stats", filename="b.mp3")
+    db_job_update(jid3, status="completed")
+    db_job_bind_institution(jid3, "高瓴资本")
+
+    stats = db_institution_pitch_stats("t-stats")
+    names = {s["institution"]: s for s in stats}
+
+    assert "红杉资本" in names
+    assert names["红杉资本"]["pitch_count"] == 2
+    assert names["高瓴资本"]["pitch_count"] == 1
+    assert names["红杉资本"]["last_pitch_at"] is not None
+
+
+def test_institution_pitch_stats_from_participants(_isolated_db) -> None:
+    """db_institution_pitch_stats also counts via job_participants.institution."""
+    import uuid
+    from cangjie_fos.services.pitch_job_db import (
+        db_institution_pitch_stats,
+        db_participants_save,
+    )
+
+    # Job without explicit institution_id binding but with participant data
+    jid = str(uuid.uuid4())
+    db_job_create(jid, "t-part", filename="c.mp3")
+    db_job_update(jid, status="completed")
+    db_participants_save(
+        job_id=jid,
+        tenant_id="t-part",
+        confirmed_by="commander",
+        participants=[
+            {
+                "speaker_id": "S1",
+                "real_name": "张三",
+                "institution": "IDG资本",
+                "role": "GP执行",
+                "title": "合伙人",
+            }
+        ],
+    )
+
+    stats = db_institution_pitch_stats("t-part")
+    names = {s["institution"]: s for s in stats}
+    assert "IDG资本" in names
+    assert names["IDG资本"]["pitch_count"] >= 1
+
+
+def test_institution_pitch_stats_empty_tenant(_isolated_db) -> None:
+    """Returns empty list for tenant with no completed jobs."""
+    from cangjie_fos.services.pitch_job_db import db_institution_pitch_stats
+
+    stats = db_institution_pitch_stats("no-such-tenant")
+    assert stats == []

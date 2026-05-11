@@ -26,14 +26,44 @@ def _mb(n: int) -> str:
     return f"{n / _MB:.0f}MB"
 
 
-def run_pitch_upload_job(*, job_id: str, raw_bytes: bytes, filename: str, tenant_id: str) -> None:
-    """同步后台线程/BackgroundTasks 调用。"""
+def run_pitch_upload_job(
+    *,
+    job_id: str,
+    filename: str,
+    tenant_id: str,
+    raw_bytes: bytes | None = None,
+    pre_written_path: Path | None = None,
+) -> None:
+    """同步后台线程/BackgroundTasks 调用。
+
+    支持两种输入模式：
+    - raw_bytes: 小文件 / 测试用途（旧接口，保留兼容）
+    - pre_written_path: 大文件流式上传后的落盘路径（推荐，避免 OOM）
+    两者必须提供其一。
+    """
+    if raw_bytes is None and pre_written_path is None:
+        raise ValueError("run_pitch_upload_job: raw_bytes 和 pre_written_path 必须提供其一")
+
     tmp: Path | None = None
     audio_path: Path | None = None
     try:
-        orig_size = len(raw_bytes)
+        # ── 步骤 1：获取原始字节（或从落盘路径读取）并确定大小 ──────────
+        audio_dir = get_backend_root() / "data" / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        suffix = Path(filename).suffix or ".bin"
 
-        # ── 步骤 1：压缩（仅 ≥10MB 文件）─────────────────────────────────
+        if pre_written_path is not None:
+            # 大文件路径模式：从磁盘读取用于压缩（避免重复内存拷贝）
+            orig_size = pre_written_path.stat().st_size
+            raw_for_compress = pre_written_path.read_bytes()
+            source_path: Path | None = pre_written_path
+        else:
+            assert raw_bytes is not None  # type narrowing
+            orig_size = len(raw_bytes)
+            raw_for_compress = raw_bytes
+            source_path = None
+
+        # ── 步骤 2：压缩（仅 ≥10MB 文件）─────────────────────────────────
         if orig_size >= _COMPRESS_THRESHOLD_BYTES:
             db_job_update(
                 job_id,
@@ -48,7 +78,7 @@ def run_pitch_upload_job(*, job_id: str, raw_bytes: bytes, filename: str, tenant
             )
         job_update(job_id, status=PitchJobStatus.TRANSCRIBING)
 
-        compressed = AudioService.smart_compress_media(raw_bytes, filename_hint=filename)
+        compressed = AudioService.smart_compress_media(raw_for_compress, filename_hint=filename)
         data = compressed.data
         compressed_size = len(data)
 
@@ -60,17 +90,23 @@ def run_pitch_upload_job(*, job_id: str, raw_bytes: bytes, filename: str, tenant
         else:
             db_job_update(job_id, substatus="写入磁盘…")
 
-        # ── 步骤 2：写入临时文件 → 移到永久位置 ──────────────────────────
-        suffix = Path(filename).suffix or ".bin"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
-            f.write(data)
-            tmp = Path(f.name)
-
-        audio_dir = get_backend_root() / "data" / "audio"
-        audio_dir.mkdir(parents=True, exist_ok=True)
+        # ── 步骤 3：写到永久位置 ──────────────────────────────────────────
         audio_path = audio_dir / f"{job_id}{suffix}"
-        shutil.move(str(tmp), str(audio_path))
-        tmp = None  # tmp has been moved; don't unlink in finally
+        if source_path is not None and not getattr(compressed, "did_compress", False):
+            # 未压缩 + 已在磁盘 → 直接移动，无需再写一次
+            shutil.move(str(source_path), str(audio_path))
+            source_path = None
+        else:
+            # 压缩过，或 raw_bytes 路径 → 写入临时文件再移动
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+                f.write(data)
+                tmp = Path(f.name)
+            shutil.move(str(tmp), str(audio_path))
+            tmp = None
+            # 清理原始落盘临时文件（如有）
+            if source_path is not None:
+                source_path.unlink(missing_ok=True)
+                source_path = None
 
         # ── 步骤 3：ASR 转写 ──────────────────────────────────────────────
         db_job_update(job_id, substatus="ASR 转写中，较长录音请耐心等待…")

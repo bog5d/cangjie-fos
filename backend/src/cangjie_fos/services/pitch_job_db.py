@@ -2073,3 +2073,67 @@ def db_job_bind_institution(job_id: str, institution_name: str) -> None:
             conn.commit()
         finally:
             conn.close()
+
+
+def db_institution_pitch_stats(tenant_id: str) -> list[dict]:
+    """返回各机构的路演统计（次数 + 最近路演时间）。
+
+    数据来源双路合并：
+      1. pitch_jobs.institution_id（参与人确认后由 db_job_bind_institution 写入）
+      2. job_participants.institution（participant 级别明细，未必已绑定到主记录）
+    两路取并集，同一机构取 max(count) 和 max(last_pitch_at)。
+    """
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            """
+            WITH from_jobs AS (
+                -- 来源1：pitch_jobs.institution_id（已完成绑定的记录）
+                SELECT
+                    institution_id AS institution,
+                    COUNT(DISTINCT job_id) AS pitch_count,
+                    MAX(created_at)       AS last_pitch_at
+                FROM pitch_jobs
+                WHERE tenant_id = ?
+                  AND institution_id != ''
+                  AND status = 'completed'
+                GROUP BY institution_id
+            ),
+            from_participants AS (
+                -- 来源2：job_participants.institution（参与人层面）
+                SELECT
+                    jp.institution,
+                    COUNT(DISTINCT jp.job_id) AS pitch_count,
+                    MAX(pj.created_at)        AS last_pitch_at
+                FROM job_participants jp
+                JOIN pitch_jobs pj ON pj.job_id = jp.job_id
+                WHERE jp.tenant_id = ?
+                  AND jp.institution != ''
+                  AND pj.status = 'completed'
+                GROUP BY jp.institution
+            ),
+            merged AS (
+                SELECT institution, pitch_count, last_pitch_at FROM from_jobs
+                UNION ALL
+                SELECT institution, pitch_count, last_pitch_at FROM from_participants
+            )
+            SELECT
+                institution,
+                SUM(pitch_count)  AS pitch_count,
+                MAX(last_pitch_at) AS last_pitch_at
+            FROM merged
+            GROUP BY institution
+            ORDER BY pitch_count DESC, last_pitch_at DESC
+            """,
+            (tenant_id, tenant_id),
+        ).fetchall()
+        return [
+            {
+                "institution": r["institution"],
+                "pitch_count": int(r["pitch_count"]),
+                "last_pitch_at": r["last_pitch_at"],
+            }
+            for r in rows
+        ]
+    finally:
+        conn.close()

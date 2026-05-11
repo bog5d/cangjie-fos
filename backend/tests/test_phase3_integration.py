@@ -40,7 +40,7 @@ def test_pitch_chat_mocked_graph() -> None:
     assert body["graph_invoked"] is True
 
 
-def _instant_complete_job(*, job_id: str, raw_bytes: bytes, filename: str, tenant_id: str) -> None:
+def _instant_complete_job(*, job_id: str, filename: str, tenant_id: str, raw_bytes: bytes | None = None, pre_written_path=None) -> None:
     job_update(
         job_id,
         status=PitchJobStatus.COMPLETED,

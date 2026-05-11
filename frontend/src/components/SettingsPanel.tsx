@@ -5,6 +5,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 
+interface Props {
+  /** 保存 Key 成功后通知父组件重新拉取就绪状态 */
+  onKeySaved?: () => void;
+}
+
 interface KeyStatus {
   DEEPSEEK_API_KEY: boolean;
   DASHSCOPE_API_KEY: boolean;
@@ -16,7 +21,7 @@ interface TestResult {
   message: string;
 }
 
-export function SettingsPanel() {
+export function SettingsPanel({ onKeySaved }: Props = {}) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +93,7 @@ export function SettingsPanel() {
       setKimiKey("");
       setSavedMsg("✅ 保存成功，立即生效（无需重启）");
       await loadStatus();
+      onKeySaved?.();
     } catch {
       setSavedMsg("❌ 保存失败，请重试");
     } finally {
