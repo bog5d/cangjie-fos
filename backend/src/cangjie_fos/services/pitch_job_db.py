@@ -247,7 +247,7 @@ CREATE INDEX IF NOT EXISTS idx_follow_up_job ON follow_up_items(job_id);
 """
 
 # Columns that store JSON-serialized Python objects.
-_JSON_COLS = {"original_report", "edited_report", "words_json", "warnings"}
+_JSON_COLS = {"original_report", "edited_report", "words_json", "warnings", "confirmed_speakers_json"}
 
 # All writable columns (excludes job_id and created_at which are set at insert time).
 _WRITABLE_COLS = {
@@ -269,6 +269,10 @@ _WRITABLE_COLS = {
     "interviewee",
     "warnings",
     "substatus",
+    # Phase 7.5 路演分析
+    "is_roadshow",
+    "confirmed_speakers_json",
+    "referrer",
 }
 
 
@@ -292,6 +296,10 @@ def _init_db(conn: sqlite3.Connection) -> None:
         "ALTER TABLE pitch_jobs ADD COLUMN participants_confirmed INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE pitch_jobs ADD COLUMN category TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE pitch_jobs ADD COLUMN institution_id TEXT NOT NULL DEFAULT ''",
+        # Phase 7.5: 路演分析工作流专属列
+        "ALTER TABLE pitch_jobs ADD COLUMN is_roadshow INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE pitch_jobs ADD COLUMN confirmed_speakers_json TEXT",
+        "ALTER TABLE pitch_jobs ADD COLUMN referrer TEXT NOT NULL DEFAULT ''",
     ):
         try:
             conn.execute(migration)

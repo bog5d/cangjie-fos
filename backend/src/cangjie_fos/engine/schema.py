@@ -204,7 +204,10 @@ class IntelAction(BaseModel):
 
 
 class RoadshowIntelReport(BaseModel):
-    """路演情报报告：不打分、不评判发言好坏，只提取关键情报供后续行动。"""
+    """路演情报报告：不打分、不评判发言好坏，只提取关键情报供后续行动。
+
+    Phase 7.5 新增字段：referrer / dominant_speaker / competitor_mentions / timeline_signals
+    """
     report_type: Literal["roadshow_intel"] = Field(
         default="roadshow_intel",
         description="固定值，供前端识别报告类型",
@@ -244,6 +247,23 @@ class RoadshowIntelReport(BaseModel):
     next_actions: List[IntelAction] = Field(
         default_factory=list,
         description="下一步行动清单，按优先级排序",
+    )
+    # ── Phase 7.5 新增字段 ────────────────────────────────────────────────
+    referrer: str = Field(
+        default="",
+        description="引荐方机构名称（FA或朋友介绍）",
+    )
+    dominant_speaker: str = Field(
+        default="",
+        description="AI推测的主导决策人说话人ID（问题最多、最深入的那位）",
+    )
+    competitor_mentions: List[str] = Field(
+        default_factory=list,
+        description="对话中提到的竞品或竞争对手名称，最多5条",
+    )
+    timeline_signals: str = Field(
+        default="",
+        description="投资决策时间线信号，如'Q3前需要确定'、'明年才有新基金'等，100字内",
     )
 
 

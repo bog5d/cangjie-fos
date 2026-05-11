@@ -10,6 +10,7 @@ import { PitchJobHistory, type JobRow } from "./components/PitchJobHistory";
 import { InstitutionList } from "./components/InstitutionList";
 import { FollowUpWidget } from "./components/FollowUpWidget";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
+import { RoadshowWizard } from "./components/RoadshowWizard";
 import { ParticipantConfirmModal } from "./components/ParticipantConfirmModal";
 import { SettingsPanel } from "./components/SettingsPanel";
 
@@ -124,6 +125,7 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
   const [institutions, setInstitutions] = useState<InstitutionProfile[]>([]);
   const [commanderName, setCommanderName] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [roadshowOpen, setRoadshowOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
   // ── 参与人确认弹层 ─────────────────────────────────────────────────────────
@@ -357,6 +359,15 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
           </button>
           <button
             type="button"
+            disabled={!!uploadBlockedReason}
+            title={uploadBlockedReason ?? "启动路演情报分析工作流"}
+            onClick={() => setRoadshowOpen(true)}
+            className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-purple-300 hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            🎯 路演分析
+          </button>
+          <button
+            type="button"
             onClick={() => onExpEvent(10, "资料补齐")}
             className="rounded-xl bg-gradient-to-r from-cyan/80 to-plasma/80 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-cyan/25 transition hover:brightness-110"
           >
@@ -431,6 +442,14 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
         userName={commanderName}
         onPipelineDataChanged={() => void refreshWarData()}
         uploadBlockedReason={uploadBlockedReason}
+      />
+      <RoadshowWizard
+        open={roadshowOpen}
+        onClose={() => setRoadshowOpen(false)}
+        tenantId={tenant}
+        userName={commanderName}
+        onPipelineDataChanged={() => void refreshWarData()}
+        institutions={institutions.map((i) => i.name).filter(Boolean)}
       />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
       {confirmJob ? (

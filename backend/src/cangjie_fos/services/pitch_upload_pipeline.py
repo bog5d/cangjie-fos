@@ -198,3 +198,201 @@ def run_pitch_upload_job(
     finally:
         if tmp is not None:
             tmp.unlink(missing_ok=True)  # only unlink if move failed
+
+
+# ── 路演分析专属 Pipeline ──────────────────────────────────────────────────────
+
+def run_roadshow_asr_job(
+    *,
+    job_id: str,
+    filename: str,
+    tenant_id: str,
+    referrer: str = "",
+    raw_bytes: bytes | None = None,
+    pre_written_path: Path | None = None,
+) -> None:
+    """路演分析专属：只做压缩+ASR，完成后暂停于 awaiting_speakers 状态。
+
+    用户确认说话人身份后，调用 resume_roadshow_analysis() 继续LangGraph评估。
+    """
+    if raw_bytes is None and pre_written_path is None:
+        raise ValueError("run_roadshow_asr_job: raw_bytes 和 pre_written_path 必须提供其一")
+
+    tmp: Path | None = None
+    audio_path: Path | None = None
+    try:
+        audio_dir = get_backend_root() / "data" / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        suffix = Path(filename).suffix or ".bin"
+
+        if pre_written_path is not None:
+            orig_size = pre_written_path.stat().st_size
+            raw_for_compress = pre_written_path.read_bytes()
+            source_path: Path | None = pre_written_path
+        else:
+            assert raw_bytes is not None
+            orig_size = len(raw_bytes)
+            raw_for_compress = raw_bytes
+            source_path = None
+
+        # ── 压缩 ────────────────────────────────────────────────────────────
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.TRANSCRIBING),
+            substatus=f"正在压缩音频（{_mb(orig_size)}）…" if orig_size >= _COMPRESS_THRESHOLD_BYTES else "准备转写…",
+            is_roadshow=1,
+            referrer=referrer,
+        )
+        job_update(job_id, status=PitchJobStatus.TRANSCRIBING)
+
+        compressed = AudioService.smart_compress_media(raw_for_compress, filename_hint=filename)
+        data = compressed.data
+        compressed_size = len(data)
+
+        # ── 写入磁盘 ─────────────────────────────────────────────────────────
+        audio_path = audio_dir / f"{job_id}{suffix}"
+        if source_path is not None and not getattr(compressed, "did_compress", False):
+            shutil.move(str(source_path), str(audio_path))
+            source_path = None
+        else:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+                f.write(data)
+                tmp = Path(f.name)
+            shutil.move(str(tmp), str(audio_path))
+            tmp = None
+            if source_path is not None:
+                source_path.unlink(missing_ok=True)
+
+        # ── ASR ──────────────────────────────────────────────────────────────
+        db_job_update(job_id, substatus="ASR 转写中，较长录音请耐心等待…")
+        words = transcribe_audio(audio_path)
+        word_count = len(words)
+
+        # ── 保存转写结果，切换到 awaiting_speakers 状态（暂停，等用户确认说话人）
+        db_job_update(
+            job_id,
+            words_json=[w.model_dump() for w in words],
+            audio_path=str(audio_path),
+            status=str(PitchJobStatus.AWAITING_SPEAKERS),
+            substatus=f"转写完成（{word_count} 词），请确认说话人身份后继续分析",
+        )
+        job_update(job_id, status=PitchJobStatus.AWAITING_SPEAKERS)
+        logger.info("roadshow_asr_done job_id=%s word_count=%d awaiting_speakers", job_id, word_count)
+
+    except Exception as e:  # noqa: BLE001
+        logger.exception("roadshow_asr_job_failed job_id=%s", job_id)
+        failure_kwargs = job_failure_update_kwargs(e, job_id=job_id)
+        job_update(job_id, status=PitchJobStatus.FAILED, **failure_kwargs)
+        db_update_kwargs = {k: v for k, v in failure_kwargs.items() if k != "status"}
+        db_job_update(job_id, status=str(PitchJobStatus.FAILED), substatus=None, **db_update_kwargs)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
+def resume_roadshow_analysis(
+    *,
+    job_id: str,
+    tenant_id: str,
+    confirmed_speakers: list[dict],
+) -> None:
+    """路演分析第二阶段：用户确认说话人后，注入身份上下文，继续LangGraph评估。"""
+    from cangjie_fos.services.pitch_job_db import db_job_get  # noqa: PLC0415
+
+    try:
+        job_update(job_id, status=PitchJobStatus.RESUMING_ANALYSIS)
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.RESUMING_ANALYSIS),
+            substatus="正在分析路演内容…",
+            confirmed_speakers_json=confirmed_speakers,
+        )
+
+        job_row = db_job_get(job_id)
+        if not job_row:
+            raise RuntimeError(f"job {job_id} not found in DB")
+
+        raw_words = job_row.get("words_json") or []
+        from cangjie_fos.engine.schema import TranscriptionWord  # noqa: PLC0415
+        words = [TranscriptionWord(**w) if isinstance(w, dict) else w for w in raw_words]
+
+        # 构建说话人身份上下文（注入到LangGraph prompt中）
+        speaker_context_lines = []
+        for sp in confirmed_speakers:
+            sid = sp.get("speaker_id", "")
+            name = sp.get("real_name", "")
+            role = sp.get("role", "")
+            institution = sp.get("institution", "")
+            title = sp.get("title", "")
+            parts = [p for p in [name, title, institution, f"({role})" if role else ""] if p]
+            speaker_context_lines.append(f"说话人{sid}：{'、'.join(parts)}")
+
+        speaker_context = "本场路演说话人身份：\n" + "\n".join(speaker_context_lines)
+
+        upload_context: dict = {
+            "source": "roadshow_analysis",
+            "filename": job_row.get("interviewee", job_id),
+            "confirmed_speakers_context": speaker_context,
+        }
+        upload_context.update(build_investor_context(tenant_id))
+
+        db_job_update(job_id, status=str(PitchJobStatus.EVALUATING), substatus="路演情报提取中…")
+        job_update(job_id, status=PitchJobStatus.EVALUATING)
+
+        report, _excerpt = PitchGraphService.run_evaluation_with_state(
+            tenant_id=tenant_id,
+            words=words,
+            model_choice="deepseek",
+            explicit_context=upload_context,
+            qa_text="",
+            company_background="",
+            trace_id=job_id,
+        )
+
+        db_job_update(job_id, substatus="生成情报报告…")
+        report_dict = report.model_dump()
+
+        job_update(
+            job_id,
+            status=PitchJobStatus.COMPLETED,
+            report=report_dict,
+            exp_delta=30,
+            exp_reason="路演情报分析完成",
+        )
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.COMPLETED),
+            original_report=report_dict,
+            exp_delta=30,
+            exp_reason="路演情报分析完成",
+            substatus=None,
+        )
+
+        # 保存确认的参与人到 job_participants 表
+        from cangjie_fos.services.pitch_job_db import db_participants_save  # noqa: PLC0415
+        if confirmed_speakers:
+            try:
+                db_participants_save(
+                    job_id=job_id,
+                    tenant_id=tenant_id,
+                    confirmed_by="roadshow_wizard",
+                    participants=confirmed_speakers,
+                )
+            except Exception as pe:  # noqa: BLE001
+                logger.warning("roadshow participants_save failed job_id=%s: %s", job_id, pe)
+
+        # GitHub 同步（非阻塞）
+        try:
+            from cangjie_fos.services.github_sync import push_roadshow_report  # noqa: PLC0415
+            push_roadshow_report(job_id)
+        except Exception as sync_exc:  # noqa: BLE001
+            logger.warning("roadshow github_sync 失败（非致命）job_id=%s exc=%s", job_id, sync_exc)
+
+        logger.info("roadshow_analysis_done job_id=%s tenant_id=%s", job_id, tenant_id)
+
+    except Exception as e:  # noqa: BLE001
+        logger.exception("roadshow_analysis_failed job_id=%s", job_id)
+        failure_kwargs = job_failure_update_kwargs(e, job_id=job_id)
+        job_update(job_id, status=PitchJobStatus.FAILED, **failure_kwargs)
+        db_update_kwargs = {k: v for k, v in failure_kwargs.items() if k != "status"}
+        db_job_update(job_id, status=str(PitchJobStatus.FAILED), substatus=None, **db_update_kwargs)

@@ -263,6 +263,63 @@ def push_match_session(session_id: str) -> bool:
     return ok
 
 
+def push_roadshow_report(job_id: str) -> bool:
+    """把路演情报报告 push 到 analytics/{tenant_id}/roadshow_{date}_{job_id[:8]}.json。
+
+    Phase 7.5: 路演分析完成后作为 background_task 调用。
+    """
+    if not is_configured():
+        return False
+
+    from cangjie_fos.services.pitch_job_db import db_job_get  # noqa: PLC0415
+
+    row = db_job_get(job_id)
+    if not row:
+        logger.warning("push_roadshow_report: 找不到 job_id=%s", job_id)
+        return False
+
+    report = row.get("original_report") or {}
+    confirmed_speakers = row.get("confirmed_speakers_json") or []
+
+    import datetime as _dt  # noqa: PLC0415
+    date_str = _dt.datetime.fromtimestamp(row.get("created_at", 0)).strftime("%Y%m%d")
+
+    cfg = _cfg()
+    tenant = row.get("tenant_id") or cfg["tenant"]
+    label = (row.get("interviewee") or job_id)[:30].replace("/", "_").replace(" ", "_")
+
+    export = {
+        "session_id": job_id,
+        "generated_at": _dt.datetime.utcnow().isoformat(),
+        "type": "roadshow_intel",
+        "version": "FOS_V7.5",
+        "fos_source": "cangjie_fos",
+        "company_id": tenant,
+        "institution": row.get("institution_id", ""),
+        "referrer": row.get("referrer", ""),
+        "interviewee": row.get("interviewee", ""),
+        "meeting_atmosphere": report.get("meeting_atmosphere", ""),
+        "meeting_stage": report.get("meeting_stage", ""),
+        "atmosphere_summary": report.get("atmosphere_summary", ""),
+        "key_questions": report.get("key_questions", []),
+        "interest_signals": report.get("interest_signals", []),
+        "hidden_concerns": report.get("hidden_concerns", []),
+        "next_actions": report.get("next_actions", []),
+        "competitor_mentions": report.get("competitor_mentions", []),
+        "timeline_signals": report.get("timeline_signals", ""),
+        "dominant_speaker": report.get("dominant_speaker", ""),
+        "confirmed_speakers": confirmed_speakers,
+    }
+
+    filename = f"roadshow_{date_str}_{job_id[:8]}.json"
+    path = f"analytics/{tenant}/{filename}"
+
+    ok = _put_file(path, export, f"roadshow intel: {tenant} {label}")
+    if ok:
+        logger.info("✅ GitHub sync push roadshow: %s", path)
+    return ok
+
+
 def pull_latest() -> dict[str, int]:
     """
     启动时调用：拉取 analytics/ 和 match_sessions/ 下的新文件，
