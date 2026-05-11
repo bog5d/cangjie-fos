@@ -142,12 +142,11 @@ async def roadshow_start(
     job_id = str(uuid.uuid4())
     label = f"路演_{roadshow_date}" + (f"_{institution_name}" if institution_name else "")
 
-    # 创建内存 job 记录
+    # 创建内存 job 记录（job_create 内部已同步写 SQLite，不需要再调 db_job_create）
     job_create(job_id, tenant_id=tenant_id)
-    # 创建 DB 记录
-    db_job_create(
+    # 补写路演专属字段（job_create 内部的 db_job_create 不知道这些字段）
+    db_job_update(
         job_id,
-        tenant_id,
         interviewee=label,
         category="01_机构路演",
         institution_id=institution_name or f"待确认_{roadshow_date}",
@@ -244,25 +243,52 @@ def roadshow_speaker_preview(job_id: str) -> list[SpeakerPreviewItem]:
     if not words_raw:
         return []
 
-    # 按 speaker_id 分组
+    # 第一步：把 words_json 按说话人分组，同一说话人的连续片段拼成完整话语
+    # （ASR 输出是时间切割的短段，需要先拼句再取样本）
     from collections import defaultdict  # noqa: PLC0415
-    speaker_lines: dict[str, list[str]] = defaultdict(list)
+
     speaker_counts: dict[str, int] = defaultdict(int)
+    # utterances: 每位说话人的"完整话语"列表，每条是多个连续词段拼接的结果
+    speaker_utterances: dict[str, list[str]] = defaultdict(list)
+
+    prev_sid = None
+    buf: list[str] = []
+
+    def _flush(sid: str, buf: list[str]) -> None:
+        text = "".join(buf).strip()
+        if text and len(text) >= 8:  # 拼完后至少8字才算有意义的话语
+            speaker_utterances[sid].append(text)
 
     for w in words_raw:
         sid = str(w.get("speaker_id", "0"))
         text = w.get("text", "").strip()
-        if text:
-            speaker_counts[sid] += 1
-            # 收集较长的句子作为样本（至少5个字）
-            if len(text) >= 5 and len(speaker_lines[sid]) < 10:
-                speaker_lines[sid].append(text)
+        if not text:
+            continue
+        speaker_counts[sid] += 1
 
+        if sid != prev_sid:
+            # 说话人切换，先把上一段 flush
+            if prev_sid is not None:
+                _flush(prev_sid, buf)
+            buf = [text]
+            prev_sid = sid
+        else:
+            buf.append(text)
+            # 单段话语超过 100 字就提前切断，避免整段合成一条超长话语
+            if len("".join(buf)) >= 100:
+                _flush(sid, buf)
+                buf = []
+
+    # flush 最后一段
+    if prev_sid is not None and buf:
+        _flush(prev_sid, buf)
+
+    # 第二步：为每位说话人选最具代表性的 3 条（选较长的）
     result: list[SpeakerPreviewItem] = []
-    for sid in sorted(speaker_lines.keys(), key=lambda x: (len(x), x)):
-        lines = speaker_lines[sid]
-        # 选取最具代表性的3条（选较长的）
-        sample = sorted(lines, key=len, reverse=True)[:3]
+    all_sids = set(speaker_counts.keys()) | set(speaker_utterances.keys())
+    for sid in sorted(all_sids, key=lambda x: (len(x), x)):
+        utterances = speaker_utterances.get(sid, [])
+        sample = sorted(utterances, key=len, reverse=True)[:3]
         guessed_role, guess_reason = _guess_role(sample)
         result.append(SpeakerPreviewItem(
             speaker_id=sid,

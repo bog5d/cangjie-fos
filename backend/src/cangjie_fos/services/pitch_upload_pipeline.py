@@ -332,6 +332,7 @@ def resume_roadshow_analysis(
         upload_context: dict = {
             "source": "roadshow_analysis",
             "filename": job_row.get("interviewee", job_id),
+            "biz_type": "01_机构路演",          # 触发路演情报分析分支（不是评分分支）
             "confirmed_speakers_context": speaker_context,
         }
         upload_context.update(build_investor_context(tenant_id))
