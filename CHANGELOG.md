@@ -8,6 +8,24 @@
 
 ---
 
+## [0.5.1] — 2026-05-11  Hotfix 路演分析3个真实Bug
+
+### Fixed
+- **`api/routes/roadshow.py` Bug #1**：移除重复的 `db_job_create()` 调用 — `job_create()` 内部已写 SQLite，外部再调导致 UNIQUE constraint 500 错误（音频上传必现）
+- **`api/routes/roadshow.py` Bug #2**：`speaker-preview` 重写合并逻辑 — ASR输出短段（"你们的"/"退出路径"）必须拼成完整话语再展示；≥8字保留，每100字切断，选最长3条
+- **`services/pitch_upload_pipeline.py` Bug #3**：`resume_roadshow_analysis()` 补充 `biz_type="01_机构路演"` 到 `explicit_context` — 缺失时 PitchGraphService 走评分分支生成错误格式报告，前端黑屏
+
+### Added
+- **`tests/test_roadshow_e2e.py`**（新文件）：17个E2E回归测试，覆盖3个Bug的精确触发场景
+  - `TestRoadshowTranscriptE2E`：文字稿模式完整链路（无重复写入、合并话语、biz_type传递、报告字段）
+  - `TestRoadshowAudioE2E`：音频模式完整链路（mock ASR，验证同样的3个Bug）
+  - `TestSpeakerPreviewMergeLogic`：合并算法单元测试（连续段合并、说话人切换、8字过滤、100字切断）
+
+### Changed
+- 测试基线：**491 → 495 passed**（+4）
+
+---
+
 ## [0.5.0] — 2026-05-11  Phase 7.4+7.5 机构路演计数 + 路演分析独立工作流
 
 ### Added
