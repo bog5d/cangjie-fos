@@ -57,6 +57,21 @@ def _guess_code_from_text(s: str) -> str:
     return CODE_UNKNOWN
 
 
+_CONNECTION_RESET_HINTS = (
+    "connectionreseterror",
+    "connection aborted",
+    "远程主机强迫关闭",
+    "10054",
+    "connection reset by peer",
+    "econnreset",
+)
+
+
+def _is_connection_reset(text: str) -> bool:
+    low = text.lower()
+    return any(h in low for h in _CONNECTION_RESET_HINTS)
+
+
 def _summary_from_dict(d: dict[str, Any]) -> tuple[str, str | None]:
     candidates: list[str] = []
     for key in (
@@ -125,6 +140,20 @@ def normalize_pitch_failure(raw: str | BaseException, *, job_id: str = "") -> di
     """输出 error_summary / error_detail / error_code；summary 永不为 Raw JSON 块。"""
     text = str(raw).strip() if isinstance(raw, BaseException) else str(raw).strip()
     suffix = f"（任务尾号 {job_id[-6:]}）" if len(job_id) >= 6 else ""
+
+    # ConnectionReset 早退：给出 API Key / 网络 可操作提示
+    if _is_connection_reset(text):
+        summary = (
+            "转写服务连接被强制断开（ConnectionReset）。"
+            "最常见原因：① SILICONFLOW_API_KEY 或 DASHSCOPE_API_KEY 无效/过期；"
+            "② 文件体积超过 API 侧限制（建议上传 <25MB 的压缩音频）。"
+            + (suffix if suffix else "")
+        )
+        return {
+            "error_summary": _truncate(summary, _SUMMARY_MAX),
+            "error_detail": _truncate(_redact(text), _DETAIL_MAX),
+            "error_code": CODE_NETWORK,
+        }
 
     code = _guess_code_from_text(text)
     summary = ""

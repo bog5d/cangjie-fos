@@ -164,20 +164,37 @@ def run_pitch_wizard_track_job(
                 cached_words=cached,
             )
         else:
-            # ── 普通音频模式 ─────────────────────────────────────────────────────
+            # ── 普通音频模式（含 FFmpeg 压缩网关，与旧版单文件上传保持一致）──────
+            from cangjie_fos.services.audio_service import AudioService  # noqa: PLC0415
             audio_dir = get_backend_root() / "data" / "audio"
             audio_dir.mkdir(parents=True, exist_ok=True)
-            suffix = audio_path.suffix or ".bin"
-            permanent_audio_path = audio_dir / f"{job_id}{suffix}"
-            import shutil as _shutil
-            _shutil.copy2(str(audio_path), str(permanent_audio_path))
+
+            raw_bytes = audio_path.read_bytes()
+            orig_mb = len(raw_bytes) // (1024 * 1024)
+            if len(raw_bytes) >= 10 * 1024 * 1024:
+                db_job_update(job_id, substatus=f"正在压缩音频（{orig_mb}MB）…")
+
+            compressed = AudioService.smart_compress_media(raw_bytes, filename_hint=audio_path.name)
+            del raw_bytes  # 原始字节已交给压缩器，释放内存
+
+            final_suffix = ".mp3" if compressed.did_compress else (audio_path.suffix or ".bin")
+            permanent_audio_path = audio_dir / f"{job_id}{final_suffix}"
+            permanent_audio_path.write_bytes(compressed.data)
+
+            if compressed.did_compress:
+                comp_mb = len(compressed.data) // (1024 * 1024)
+                db_job_update(
+                    job_id,
+                    substatus=f"压缩完成（{orig_mb}MB → {comp_mb}MB），准备转写…",
+                )
+            del compressed  # 已落盘，释放内存
 
             job_update(job_id, status=PitchJobStatus.EVALUATING)
             db_job_update(job_id, status=str(PitchJobStatus.EVALUATING),
                           audio_path=str(permanent_audio_path))
 
             words, report = run_pitch_file_job(
-                audio_path,
+                permanent_audio_path,  # 使用落盘后的路径（可能已压缩为 .mp3）
                 params,
                 on_status=None,
                 skip_html_export=True,

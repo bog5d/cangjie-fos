@@ -21,6 +21,11 @@ if not exist "%ENVFILE%" (
         echo DEEPSEEK_API_KEY=
         echo DASHSCOPE_API_KEY=
         echo KIMI_API_KEY=
+        echo.
+        echo # 登录账号（格式：账号:密码:default，多账号用逗号隔开）
+        echo # 示例：FOS_ACCOUNTS=zhangsan:password123:default
+        echo # 留空则任意用户名密码均可直接进入（单人使用时可留空）
+        echo FOS_ACCOUNTS=
     ) > "%ENVFILE%"
 )
 
@@ -32,9 +37,14 @@ echo   SILICONFLOW_API_KEY=  ← 必填，主力 AI（向王波索取）
 echo   DEEPSEEK_API_KEY=     ← 必填（向王波索取）
 echo   DASHSCOPE_API_KEY=    ← 可选，语音转写功能需要
 echo   KIMI_API_KEY=         ← 可选
+echo.
+echo   FOS_ACCOUNTS=         ← 可选，设置登录账号密码
+echo     格式：账号:密码:default（多账号用逗号隔开）
+echo     示例：FOS_ACCOUNTS=wangbo:abc123:default
+echo     留空则任意账号密码均可直接进入（仅限个人机器使用）
 echo  ─────────────────────────────────────────
 echo.
-echo  在"="后面直接粘贴 Key，不要加引号，不要加空格。
+echo  在"="后面直接填写内容，不要加引号，不要加空格。
 echo  保存后关闭记事本，回到此窗口按任意键验证。
 echo.
 pause
@@ -85,8 +95,23 @@ if %SILI_OK%==0 (
     goto :eof
 )
 
+:: ── 校验：FOS_ACCOUNTS 是否填写 ──
+set ACCT_OK=0
+for /f "tokens=2 delims==" %%v in ('findstr /I "^FOS_ACCOUNTS" "%ENVFILE%"') do (
+    set VAL=%%v
+    set VAL=!VAL: =!
+    if not "!VAL!"=="" set ACCT_OK=1
+)
+
+if %ACCT_OK%==1 (
+    echo  FOS_ACCOUNTS        ... ✅ 已设置（登录需验证账号密码）
+) else (
+    echo  FOS_ACCOUNTS        ... ℹ️  未设置（任意账号密码均可登录，单人使用时正常）
+)
+
+echo.
 echo  ✅ 密钥配置完成！
 echo.
-echo  现在可以双击"一键启动_Python版.bat"启动系统了。
+echo  现在可以双击"点击开始-仓颉FOS.bat"启动系统了。
 echo.
 pause

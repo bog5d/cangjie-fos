@@ -10,7 +10,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile
 
-from cangjie_fos.api.upload_io import read_upload_limited
+from cangjie_fos.api.upload_io import read_upload_limited, stream_upload_to_path
 from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
 from cangjie_fos.engine.job_pipeline import OTHER_SCENE_KEY, SCENE_MAP
 from cangjie_fos.engine.sensitive_words import parse_sensitive_words
@@ -85,14 +85,15 @@ async def upload_session_audio(
     payload = UploadWizardCreateRequest.model_validate(s["payload"])
     if track_index < 0 or track_index >= len(payload.tracks):
         raise HTTPException(status_code=400, detail="track_index 越界")
-    raw = await read_upload_limited(file)
-    if not raw:
-        raise HTTPException(status_code=400, detail="empty file")
     suffix = Path(file.filename or "upload.bin").suffix or ".bin"
     fd, name = tempfile.mkstemp(prefix="fos_audio_", suffix=suffix)
     os.close(fd)
-    Path(name).write_bytes(raw)
-    ok = session_set_audio(session_id, track_index, Path(name), file.filename or "upload.bin")
+    dest = Path(name)
+    written = await stream_upload_to_path(file, dest)
+    if written == 0:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail="empty file")
+    ok = session_set_audio(session_id, track_index, dest, file.filename or "upload.bin")
     if not ok:
         Path(name).unlink(missing_ok=True)
         raise HTTPException(status_code=404, detail="session lost")
