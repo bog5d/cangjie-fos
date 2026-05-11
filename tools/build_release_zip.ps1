@@ -1,19 +1,30 @@
 <#
   CangJie FOS release zip builder (clean external distribution).
-  Usage:
-    .\build_release_zip.ps1 -OutDir D:\Releases
-    .\build_release_zip.ps1 -OutDir D:\Releases -ZipBaseName CangJie_FOS_Release_20260510 -BuildFrontend
 
-  Release mode (default) excludes:
-    - docs/ (internal planning docs), releases/ (old zips), tests/ (test code)
-    - .github/, .cursor/ (dev configs)
-    - AGENTS.md, CLAUDE.md, TODO_LIST_*.md (AI-internal files)
-    - node_modules, .venv, .git, __pycache__, etc.
-    - *.pyc, *.zip, .env (API keys must never ship)
-    - software copyright application materials
+  Output always goes to D:\Releases\ (fixed, easy to find).
+  Usage:
+    .\build_release_zip.ps1
+    .\build_release_zip.ps1 -BuildFrontend
+    .\build_release_zip.ps1 -OutDir D:\MyOtherDir   (override only when needed)
+
+  What's in the zip (minimal, colleague-safe):
+    CangJie_FOS/        backend + frontend/dist (no tests, no docs, no node_modules)
+    AI_Pitch_Coach/     evaluation engine
+    .fos_data/          placeholder bridge dir
+    ROOT FILES (from packaging/):
+      点击开始-仓颉FOS.bat        <- one double-click to start
+      00_先看这一行.txt           <- 3-line quick start
+      仓颉FOS-使用指引...md       <- onboarding guide
+      本次更新说明.md             <- per-release: what changed / how to test
+
+  What's excluded:
+    docs/ tests/ .github/ .cursor/  (internal dev files)
+    AGENTS.md CLAUDE.md TODO_LIST_*.md  (AI-internal)
+    node_modules .venv .git __pycache__  (runtime artifacts)
+    *.pyc *.zip .env  (credentials must never ship)
 #>
 param(
-  [string] $OutDir = ".",
+  [string] $OutDir = "D:\Releases",
   [string] $ZipBaseName = "",
   [switch] $BuildFrontend,
   [switch] $ErrorIfNoCoach,
