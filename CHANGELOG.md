@@ -6,6 +6,43 @@
 
 ## [Unreleased] — 开发中
 
+---
+
+## [0.4.1] — 2026-05-11  Phase 7.1 情报→档案闭环 + 待跟进行动项系统
+
+### Added
+
+**P0 — 情报→档案闭环**
+- **`follow_up_items` SQLite 表**（`pitch_job_db.py`）：持久化路演后续行动项，含 `id / tenant_id / job_id / institution_id / actor / action / priority / source / done / done_at`；两个索引：租户-完成状态-时间、job_id
+- **`pitch_jobs.institution_id` 迁移列**（`pitch_job_db.py`）：向现有 `pitch_jobs` 表追加 `institution_id TEXT NOT NULL DEFAULT ''`，用于将路演与机构名绑定
+- **5个 CRUD 函数**（`pitch_job_db.py`）：`db_follow_up_insert / db_follow_up_list / db_follow_up_mark_done / db_follow_up_list_by_job / db_job_bind_institution`
+- **路演分析完成后自动写入行动项**（`pitch_wizard_runner.py`）：检测到 `RoadshowIntelReport` 时，将 `next_actions` 逐条写入 `follow_up_items`，跳过 `institution_id`（参与人确认后回填）
+- **修复 `category` 字段未落盘**（`pitch_wizard_runner.py`）：首次 `db_job_update` 调用补加 `category=category`，确保"01_机构路演"等分类写入 SQLite
+
+**P1 — participants 机构绑定**
+- **`db_job_bind_institution(job_id, name)`**（`pitch_job_db.py`）：原子操作，同时更新 `pitch_jobs.institution_id` + 回填该 job 所有 `institution_id=''` 的 follow_up_items
+- **participants 确认时提取机构名**（`participants.py`）：POST `/participants` 完成后自动从参与人里找投资方（GP执行/LP投资方/政府招商）的 institution 字段，调用 `db_job_bind_institution`；响应新增 `institution` 字段
+
+**P1 — 新增 API 路由**（`api/routes/follow_ups.py`）
+- `GET /api/v1/follow-ups?tenant_id=X` — 列出待跟进行动项（`include_done`/`limit` 参数）
+- `PATCH /api/v1/follow-ups/{item_id}/done` — 标记完成
+- `GET /api/v1/pitch/jobs/{job_id}/follow-ups` — 指定 job 的所有行动项（含已完成）
+- `GET /api/v1/institutions/{name}/jobs` — 机构路演时间线（按时间倒序的 pitch_jobs）
+
+**P1 — 前端**
+- **`FollowUpWidget.tsx`**（新组件）：主页待跟进清单，默认收折，展开后列出所有未完成行动项，支持一键标记完成；无待办时自动隐藏
+- **`InstitutionArchivePanel.tsx` 路演时间线**：机构详情侧边栏新增"路演时间线"区块，展示该机构关联的历次 pitch_jobs（日期/类别/状态/路演标题），点击跳转到对应审查台
+
+**P3 — E2E 测试**
+- **`test_roadshow_e2e.py`**（13个测试）：文字稿 `.txt` → wizard_runner → DB 验证（status/category/report_type/follow_up_items） → Review API → follow-ups API → mark_done
+- **`test_follow_ups_api.py`**（16个测试）：CRUD 单元 + API 层（list/mark_done/404/job_follow_ups/institution_timeline） + participants 确认→机构绑定→follow_up 回填 集成测试
+
+### Changed
+- **测试基线**：422 → **451 passed**（+29）
+- `api/router.py` 注册 `follow_ups` 路由
+
+---
+
 ### V5.2 Wiki 知识展示层（2026-05-05）Phase 5.2
 
 #### Added
