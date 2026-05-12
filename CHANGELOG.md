@@ -6,6 +6,18 @@
 
 ## [Unreleased] — 开发中
 
+### Added
+- **`tests/conftest.py`**（新文件）：Playwright 浏览器测试基础设施
+  - `fos_server_url` session fixture：检测服务是否在 8000 端口运行，未运行则 skip
+- **`tests/test_ui_smoke.py`**（新文件）：Playwright Chromium 浏览器烟雾测试
+  - `TestLoginNoOverlay`：登录页可见、登录成功进主页、无阻塞叠层（Chrome Bug #Chrome-1 回归）、路演分析按钮可点击
+  - `TestChromeRenderingDiagnosis`：收集登录后所有 fixed 元素渲染信息（调试辅助，永远 pass）
+- **依赖**：`playwright>=1.59.0` + `pytest-playwright>=0.7.2` 加入 dev extras；Chromium headless 已安装
+
+### Changed
+- `CLAUDE.md` 测试分层表格新增"浏览器烟雾"层，补充 Playwright 运行说明
+- **开发规范**：新增全屏 Modal/Wizard 必须配套浏览器烟雾测试（检查关闭态无叠层）
+
 ---
 
 ## [0.5.1] — 2026-05-11  Hotfix 路演分析3个真实Bug
