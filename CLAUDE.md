@@ -41,12 +41,33 @@ uv run --extra dev pytest tests/test_pipeline_e2e.py tests/test_wizard_pipeline_
 
 ## 测试分层架构
 
-| 层级 | 文件 | 覆盖范围 | mock范围 |
-|------|------|---------|---------|
-| 单元/接口 | `test_pitch_job_db.py` `test_p0_review_endpoints.py` 等 | 单个函数/端点 | 全mock |
-| Pipeline E2E | `test_pipeline_e2e.py` | 简单上传全链路 | mock ASR+LLM |
-| Wizard E2E | `test_wizard_pipeline_e2e.py` | 向导提交全链路 | mock ASR+LLM |
-| 启动检查 | preflight.py（lifespan自动跑） | 依赖包完整性 | 无mock |
+| 层级 | 文件 | 覆盖范围 | mock范围 | 运行命令 |
+|------|------|---------|---------|---------|
+| 单元/接口 | `test_pitch_job_db.py` `test_p0_review_endpoints.py` 等 | 单个函数/端点 | 全mock | `pytest tests/ -q` |
+| Pipeline E2E | `test_pipeline_e2e.py` | 简单上传全链路 | mock ASR+LLM | `pytest tests/ -q` |
+| Wizard E2E | `test_wizard_pipeline_e2e.py` | 向导提交全链路 | mock ASR+LLM | `pytest tests/ -q` |
+| Roadshow E2E | `test_roadshow_e2e.py` | 路演分析全链路 | mock ASR+LLM | `pytest tests/ -q` |
+| 浏览器烟雾 | `test_ui_smoke.py` | Chrome渲染+点击 | 无（真实浏览器） | `pytest tests/test_ui_smoke.py -v` |
+| 启动检查 | preflight.py（lifespan自动跑） | 依赖包完整性 | 无mock | 自动 |
+
+### 浏览器烟雾测试（Playwright）
+
+**前提**：
+1. `playwright install chromium`（已安装，一次性操作）
+2. FOS 服务必须在运行中（`127.0.0.1:8000`），否则自动 skip
+
+**运行**：
+```bash
+# 先启动服务（另一个终端）
+# 然后：
+uv run --extra dev pytest tests/test_ui_smoke.py -v           # 无头
+uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
+```
+
+**新增 UI 功能必须配套浏览器烟雾测试**：
+- 新增全屏 Modal / Wizard → 必须测试：关闭态无叠层 + 开启态可交互
+- 测试文件：`backend/tests/test_ui_smoke.py`
+- 核心断言模式：登录后检查 `fixed` 元素的 `pointer-events` 不为 `auto`（大面积叠层）
 
 ---
 
