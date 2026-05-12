@@ -1,4 +1,4 @@
-# 夜间验证：预检 + pytest（日志落盘）
+﻿# 夜间验证：预检 + pytest（日志落盘）
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $be = Join-Path $root "backend"
@@ -8,3 +8,4 @@ $log = Join-Path $root "tools\nightly_verify.log"
 Set-Location $be
 & uv run python -m pytest tests/ -q 2>&1 | Tee-Object -FilePath $log -Append
 exit $LASTEXITCODE
+

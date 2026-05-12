@@ -1,4 +1,4 @@
-<#
+﻿<#
   CangJie FOS release zip builder (clean external distribution).
 
   Output always goes to D:\Releases\ (fixed, easy to find).
@@ -212,3 +212,4 @@ try {
 } finally {
   Remove-Item -Recurse -Force -Path $tmp -ErrorAction SilentlyContinue
 }
+

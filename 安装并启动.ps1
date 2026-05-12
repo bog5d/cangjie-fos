@@ -1,4 +1,4 @@
-# 解压后于 CangJie_FOS 根目录运行：预检 + 启动 uvicorn（本机单用户）
+﻿# 解压后于 CangJie_FOS 根目录运行：预检 + 启动 uvicorn（本机单用户）
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 $be = Join-Path $root "backend"
@@ -37,3 +37,4 @@ Write-Host "  ✅ 仓颉 FOS 正在运行：http://${hostLine}:8000"
 Write-Host "  按 Ctrl+C 停止服务"
 Write-Host ""
 uv run uvicorn cangjie_fos.main:app --host $hostLine --port 8000
+

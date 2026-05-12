@@ -1,4 +1,4 @@
-# 备份 backend/data 下 *.sqlite 到 backend/data/backup/
+﻿# 备份 backend/data 下 *.sqlite 到 backend/data/backup/
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $be = Join-Path $root "backend"
@@ -12,3 +12,4 @@ Get-ChildItem -Path $data -Filter "*.sqlite" -File -ErrorAction SilentlyContinue
     Write-Host "Backed up $($_.Name) -> $dest"
 }
 Write-Host "Done."
+

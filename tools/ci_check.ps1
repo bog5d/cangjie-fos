@@ -1,4 +1,4 @@
-<#
+﻿<#
   CangJie FOS — PR / 发版前质量门禁（本机可重复）
   顺序：backend 关键 pytest 子集 -> frontend production build
   用法：在 CangJie_FOS 根目录或 tools 下
@@ -47,3 +47,4 @@ try {
 
 Write-Host "ci_check: OK" -ForegroundColor Green
 exit 0
+

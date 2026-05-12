@@ -1,4 +1,4 @@
-# 本地预检：目录、Python、Coach、dist、.env（退出码 0=通过）
+﻿# 本地预检：目录、Python、Coach、dist、.env（退出码 0=通过）
 $ErrorActionPreference = "Continue"
 $root = Split-Path -Parent $PSScriptRoot
 $fail = 0
@@ -27,3 +27,4 @@ $uvPath = Get-Command uv -ErrorAction SilentlyContinue
 if ($uvPath) { & uv --version } else { Write-Host "[--] uv not in PATH (install from astral.sh)" }
 
 exit $fail
+
