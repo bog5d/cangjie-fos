@@ -338,3 +338,68 @@ def test_institution_pitch_stats_empty_tenant(_isolated_db) -> None:
 
     stats = db_institution_pitch_stats("no-such-tenant")
     assert stats == []
+
+
+# ---------------------------------------------------------------------------
+# State Machine — VALID_TRANSITIONS + db_job_transition
+# ---------------------------------------------------------------------------
+
+def test_valid_transition_pending_to_transcribing():
+    """pending → transcribing is a legal transition."""
+    from cangjie_fos.services.pitch_job_db import db_job_transition, VALID_TRANSITIONS
+    db_job_create("sm-001", "tenant-A")
+    db_job_transition("sm-001", "transcribing")
+    row = db_job_get("sm-001")
+    assert row["status"] == "transcribing"
+
+
+def test_valid_transition_chain():
+    """Full happy-path chain: pending → transcribing → evaluating → completed."""
+    from cangjie_fos.services.pitch_job_db import db_job_transition
+    db_job_create("sm-chain", "tenant-A")
+    db_job_transition("sm-chain", "transcribing")
+    db_job_transition("sm-chain", "evaluating")
+    db_job_transition("sm-chain", "completed")
+    row = db_job_get("sm-chain")
+    assert row["status"] == "completed"
+
+
+def test_invalid_transition_raises():
+    """pending → completed is NOT in VALID_TRANSITIONS, must raise InvalidTransitionError."""
+    from cangjie_fos.services.pitch_job_db import db_job_transition, InvalidTransitionError
+    db_job_create("sm-bad", "tenant-A")
+    with pytest.raises(InvalidTransitionError):
+        db_job_transition("sm-bad", "completed")
+
+
+def test_transition_nonexistent_job_raises():
+    """Transitioning a job that doesn't exist must raise KeyError."""
+    from cangjie_fos.services.pitch_job_db import db_job_transition
+    with pytest.raises(KeyError):
+        db_job_transition("no-such-job", "transcribing")
+
+
+def test_transition_with_extra_fields():
+    """db_job_transition accepts extra kwargs forwarded to db_job_update."""
+    from cangjie_fos.services.pitch_job_db import db_job_transition
+    db_job_create("sm-extra", "tenant-A")
+    db_job_transition("sm-extra", "transcribing", substatus="正在转写…")
+    row = db_job_get("sm-extra")
+    assert row["status"] == "transcribing"
+    assert row["substatus"] == "正在转写…"
+
+
+def test_db_job_update_bypasses_state_machine():
+    """db_job_update (无校验) allows arbitrary status jumps — backward compat."""
+    db_job_create("sm-bypass", "tenant-A")
+    db_job_update("sm-bypass", status="completed")
+    row = db_job_get("sm-bypass")
+    assert row["status"] == "completed"
+
+
+def test_valid_transitions_covers_all_states():
+    """VALID_TRANSITIONS should have an entry for every known status string."""
+    from cangjie_fos.services.pitch_job_db import VALID_TRANSITIONS
+    known_states = {"pending", "transcribing", "awaiting_speakers",
+                    "resuming_analysis", "evaluating", "completed", "failed"}
+    assert set(VALID_TRANSITIONS.keys()) == known_states
