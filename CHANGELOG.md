@@ -6,6 +6,28 @@
 
 ## [Unreleased] — 开发中
 
+---
+
+## [0.5.2] — 2026-05-12  Hotfix 启动脚本编码修复
+
+### Fixed
+- **`安装并启动.ps1`**（UTF-8 无 BOM → 加 BOM）：PowerShell 5.1 在非中文系统上用 ANSI 编码读文件，
+  第37行 `Write-Host "按 Ctrl+C 停止服务"` 被解析成含引号的乱码，触发 "missing string terminator" 解析错误，
+  脚本完全无法执行。加 UTF-8 BOM 后 PowerShell 强制以 UTF-8 读取，问题消除。
+- **`点击开始-仓颉FOS.bat` / `填写API密钥_双击我.bat` / `诊断_打不开请运行我.bat`**（UTF-8 → GBK）：
+  `.bat` 文件由 `cmd.exe` 用系统 ANSI 编码（中文 Windows = GBK）读取，UTF-8 中文显示乱码。
+  转为 GBK 后标题、提示文字正常显示。
+- **其余含中文的 `.ps1` 文件**统一加 UTF-8 BOM：
+  `run_dev.ps1` / `build_release_zip.ps1` / `ci_check.ps1` / `nightly_verify.ps1` /
+  `preflight_local.ps1` / `backup_sqlite.ps1`
+
+### Changed
+- 测试基线：**495 passed**（不变，编码修复不影响逻辑）
+
+---
+
+## [0.5.1] — 2026-05-11  Hotfix 路演分析3个真实Bug
+
 ### Added
 - **`tests/conftest.py`**（新文件）：Playwright 浏览器测试基础设施
   - `fos_server_url` session fixture：检测服务是否在 8000 端口运行，未运行则 skip
