@@ -53,11 +53,11 @@ export function DoctorPanel({ open, onClose }: DoctorPanelProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-      {/* backdrop */}
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
+      {/* backdrop — pointer-events-auto 绑在有背景色元素上，避免 Chrome 透明外层拦截点击 */}
       <button
         type="button"
-        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/75 backdrop-blur-sm pointer-events-auto"
         aria-label="关闭系统诊断"
         onClick={onClose}
       />
@@ -65,7 +65,7 @@ export function DoctorPanel({ open, onClose }: DoctorPanelProps) {
         role="dialog"
         aria-modal="true"
         aria-label="系统诊断"
-        className="relative w-full max-w-md rounded-2xl border border-slate-700 bg-[#0d0d1a] p-6 shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl border border-slate-700 bg-[#0d0d1a] p-6 shadow-2xl pointer-events-auto"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-cyan-400">

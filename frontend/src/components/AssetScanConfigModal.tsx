@@ -48,13 +48,13 @@ export function AssetScanConfigModal({ open, onClose, onScan }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
       <button
         type="button"
-        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/75 backdrop-blur-sm pointer-events-auto"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#0a0a14] to-black p-6 shadow-2xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#0a0a14] to-black p-6 shadow-2xl pointer-events-auto">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-[0.35em] text-slate-500">资产扫描</p>

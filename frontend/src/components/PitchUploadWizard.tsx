@@ -387,16 +387,17 @@ export function PitchUploadWizard({
   const qaHard = qaTotals >= QA_HARD_CHARS;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50 flex pointer-events-none">
+      {/* backdrop — pointer-events-auto 只在暗色遮罩上，避免 Chrome 透明外层 bug */}
       <button
         type="button"
-        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/75 backdrop-blur-sm pointer-events-auto"
         aria-label="关闭"
         onClick={() => close()}
       />
       <aside
         ref={drawerRef}
-        className="relative ml-auto flex h-full w-full max-w-lg flex-col border-l border-cyan/25 bg-gradient-to-b from-[#070712] via-[#06061a] to-black shadow-[0_0_48px_rgba(34,211,238,0.15)]"
+        className="relative ml-auto flex h-full w-full max-w-lg flex-col border-l border-cyan/25 bg-gradient-to-b from-[#070712] via-[#06061a] to-black shadow-[0_0_48px_rgba(34,211,238,0.15)] pointer-events-auto"
         role="dialog"
         aria-modal="true"
       >

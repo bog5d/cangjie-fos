@@ -10,15 +10,15 @@ export function PitchReportPreviewModal({ open, jobId, onClose }: PitchReportPre
   const reviewUrl = `/review/${jobId}${window.location.search}`;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
       <button
         type="button"
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
         aria-label="关闭"
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-sm rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#0a0a14] to-black p-6 shadow-[0_0_40px_rgba(34,211,238,0.2)] flex flex-col items-center gap-4"
+        className="relative w-full max-w-sm rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#0a0a14] to-black p-6 shadow-[0_0_40px_rgba(34,211,238,0.2)] flex flex-col items-center gap-4 pointer-events-auto"
         role="dialog"
         aria-modal="true"
       >

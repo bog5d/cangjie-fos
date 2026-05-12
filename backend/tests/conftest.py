@@ -1,4 +1,4 @@
-﻿"""pytest 全局夹具。
+"""pytest 全局夹具。
 
 包含 Playwright 浏览器 E2E 测试所需的 live_server fixture。
 普通的 API 集成测试不依赖这里（它们用自己的 TestClient）。
@@ -13,7 +13,10 @@
 """
 from __future__ import annotations
 
+import os
 import socket
+from pathlib import Path
+
 import pytest
 
 
@@ -35,3 +38,26 @@ def fos_server_url() -> str:
             f"FOS 服务未运行（{host}:{port}）。"
             "浏览器烟雾测试需要先启动服务：uv run uvicorn cangjie_fos.main:app --port 8000"
         )
+
+
+@pytest.fixture(scope="session")
+def fos_login_credentials() -> tuple[str, str]:
+    """
+    返回可用的登录凭据 (username, password)。
+
+    优先读取 backend/.env 的 FOS_ACCOUNTS（格式：user:pass:tenant,...）。
+    若未配置则返回 dev/dev（后端无账号限制时可用）。
+    """
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("FOS_ACCOUNTS="):
+                value = line[len("FOS_ACCOUNTS="):].strip()
+                if value:
+                    first_account = value.split(",")[0].strip()
+                    parts = first_account.split(":")
+                    if len(parts) >= 2:
+                        return parts[0], parts[1]
+    # 无账号配置 → dev mode，任意凭据
+    return "dev", "dev"

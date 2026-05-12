@@ -8,6 +8,35 @@
 
 ---
 
+## [0.5.3] — 2026-05-12  Chrome叠层Bug全面修复 + 路演数据打通Pipeline CRM
+
+### Fixed
+- **Bug #Chrome-1（Chrome叠层）全面根治**：登录后 Chrome 页面被透明薄膜覆盖无法点击
+  - 根因：5个 Modal/Wizard 组件的透明外层 `fixed inset-0` wrapper 没有 `pointer-events-none`，
+    Chrome `backdrop-filter: blur()` 导致合成层拦截所有点击事件
+  - 修复：`ParticipantConfirmModal.tsx` / `PitchUploadWizard.tsx` / `DoctorPanel.tsx` /
+    `PitchReportPreviewModal.tsx` / `AssetScanConfigModal.tsx` — 外层容器加 `pointer-events-none`，
+    可见背景层和内容卡片加 `pointer-events-auto`
+  - **额外修复**：`ExpHud.tsx` — 顶部 EXP 显示徽标是纯展示组件，加 `pointer-events-none`
+    防止遮挡按钮点击（Playwright 实际测试中发现）
+- **Bug #Data-打通（路演 → Pipeline CRM）**：路演分析完成后数据从不更新左侧战情室
+  - 根因：`resume_roadshow_analysis()` 完成后只写 `pitch_jobs` 表，`institution_store`（Pipeline CRM）从未收到通知
+  - 修复：`pitch_upload_pipeline.py` — 路演完成后自动 `upsert_institution()`，阶段至少为 PITCHED，
+    不降级（已在DD/TS的机构保留阶段），`meeting_atmosphere` 映射到机构热度
+
+### Added
+- **`tests/conftest.py`** 升级：新增 `fos_login_credentials` session fixture，自动读取
+  `backend/.env` 的 `FOS_ACCOUNTS`，确保浏览器测试用正确凭据登录（不再硬编码 dev/dev）
+- **`tests/test_ui_smoke.py`** 全面更新：6个测试全绿
+  - 修复 `_login()` 函数（登录表单有3个字段：指挥官名称/账号/密码，之前只填了2个）
+  - 所有测试注入 `fos_login_credentials`
+  - `test_roadshow_button_clickable` 使用 `get_by_text("路演日期")` 验证向导打开
+
+### Changed
+- 测试基线：502 → **506 passed**（浏览器烟雾测试从3通→6通）
+
+---
+
 ## [0.5.2] — 2026-05-12  Hotfix 启动脚本编码修复
 
 ### Fixed

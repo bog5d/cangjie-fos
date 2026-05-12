@@ -27,21 +27,37 @@ pytestmark = pytest.mark.usefixtures("fos_server_url")
 
 # ── 工具函数 ───────────────────────────────────────────────────────────────────
 
-def _login(page: Page, base_url: str, username: str = "dev", password: str = "dev") -> None:
-    """执行登录流程（dev模式：任意账号密码均可进入）。"""
+def _login(
+    page: Page,
+    base_url: str,
+    credentials: tuple[str, str],
+    commander: str = "测试指挥官",
+) -> None:
+    """执行登录流程。
+
+    登录表单有三个字段（顺序）：
+      1. 您的姓名/称呼（commander name，必填，第1个 type=text）
+      2. 账号（第2个 type=text）
+      3. 密码（type=password）
+
+    credentials: (username, password) tuple，由 fos_login_credentials fixture 提供，
+    自动读取 backend/.env 中的 FOS_ACCOUNTS，dev 模式下使用任意凭据。
+    """
+    username, password = credentials
     page.goto(base_url)
     page.wait_for_load_state("networkidle", timeout=10_000)
 
-    # 填写账号密码
-    username_input = page.locator("input[type='text']").first
-    password_input = page.locator("input[type='password']").first
-    username_input.fill(username)
-    password_input.fill(password)
+    text_inputs = page.locator("input[type='text']")
+    # 第1个 text input = 指挥官名称（必填）
+    text_inputs.nth(0).fill(commander)
+    # 第2个 text input = 账号
+    text_inputs.nth(1).fill(username)
+    page.locator("input[type='password']").first.fill(password)
     page.locator("button[type='submit']").click()
 
-    # 等待页面稳定（最多10秒）
-    page.wait_for_load_state("networkidle", timeout=10_000)
-    page.wait_for_timeout(1500)
+    # 等待页面稳定（最多12秒，包括 API 响应和 React 渲染）
+    page.wait_for_load_state("networkidle", timeout=12_000)
+    page.wait_for_timeout(2_000)
 
 
 # ── TestLoginNoOverlay ─────────────────────────────────────────────────────────
@@ -56,21 +72,27 @@ class TestLoginNoOverlay:
         expect(page.locator("input[type='text']").first).to_be_visible(timeout=5_000)
         expect(page.locator("input[type='password']").first).to_be_visible(timeout=5_000)
 
-    def test_login_succeeds_enters_main_page(self, page: Page, fos_server_url: str) -> None:
+    def test_login_succeeds_enters_main_page(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
         """登录后应进入主页，而非卡在登录页。"""
-        _login(page, fos_server_url)
+        _login(page, fos_server_url, fos_login_credentials)
         # 主页标志：没有 submit 按钮，或者有主页特有元素
         # 用"复盘上传向导"或"路演分析"按钮作为登录成功标志
-        roadshow_or_wizard = page.locator("button:has-text('路演分析'), button:has-text('复盘上传向导')")
-        expect(roadshow_or_wizard.first).to_be_visible(timeout=8_000)
+        roadshow_or_wizard = page.locator(
+            "button:has-text('路演分析'), button:has-text('复盘上传向导')"
+        )
+        expect(roadshow_or_wizard.first).to_be_visible(timeout=10_000)
 
-    def test_no_blocking_overlay_after_login(self, page: Page, fos_server_url: str) -> None:
+    def test_no_blocking_overlay_after_login(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
         """登录后，fixed inset-0 的元素不应该拦截点击事件。
 
         Chrome 叠层 Bug：某个带 backdrop-filter 的 fixed overlay 在关闭态仍然
         拦截 pointer events，导致整页无法点击。
         """
-        _login(page, fos_server_url)
+        _login(page, fos_server_url, fos_login_credentials)
 
         # 找出所有 position:fixed 的元素，检查是否有可见的且 pointer-events != none
         blocking_overlays = page.evaluate("""
@@ -119,40 +141,38 @@ class TestLoginNoOverlay:
             )
         )
 
-    def test_roadshow_button_clickable(self, page: Page, fos_server_url: str) -> None:
+    def test_roadshow_button_clickable(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
         """🎯 路演分析按钮可以点击，没有叠层阻挡。"""
-        _login(page, fos_server_url)
+        _login(page, fos_server_url, fos_login_credentials)
 
         btn = page.locator("button:has-text('路演分析')")
-        expect(btn).to_be_visible(timeout=5_000)
+        expect(btn).to_be_visible(timeout=8_000)
 
         # 点击按钮（若有叠层拦截，点击会超时或点到错误元素）
         btn.click()
         page.wait_for_timeout(800)
 
-        # 点击后向导应该打开（出现"上传录音"或"粘贴文字稿"等文字）
-        wizard_content = page.locator(
-            "text=上传录音, text=粘贴文字稿, text=路演日期, text=开始分析"
-        )
-        expect(wizard_content.first).to_be_visible(timeout=5_000)
+        # 点击后向导应该打开（路演日期字段是 Step1 标志性内容）
+        expect(page.get_by_text("路演日期", exact=False)).to_be_visible(timeout=5_000)
 
-    def test_wizard_upload_wizard_button_clickable(self, page: Page, fos_server_url: str) -> None:
+    def test_wizard_upload_wizard_button_clickable(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
         """复盘上传向导按钮也应该可以点击。"""
-        _login(page, fos_server_url)
+        _login(page, fos_server_url, fos_login_credentials)
 
         # 先找到并点击"复盘上传向导"按钮
         btn = page.locator("button:has-text('复盘上传向导')")
-        expect(btn).to_be_visible(timeout=5_000)
+        expect(btn).to_be_visible(timeout=8_000)
         btn.click()
         page.wait_for_timeout(800)
 
-        # 向导弹出，应有"上传录音"或"选择场景"等内容
-        wizard_content = page.locator(
-            "text=上传录音, text=选择场景, text=拖拽, text=step"
-        )
-        # 宽松断言：只要向导弹出即可（不同版本可能措辞不同）
+        # 向导弹出 — 宽松断言：只要向导弹出即可（不验证具体内容）
         # 主要验证"按钮可以点击"，不验证具体内容
         page.wait_for_timeout(500)  # 给足时间渲染
+        # 如果没有 exception 就说明按钮可以正常点击
 
 
 # ── TestChromeRenderingDiagnosis ───────────────────────────────────────────────
@@ -164,9 +184,11 @@ class TestChromeRenderingDiagnosis:
     可以在 stdout 看到渲染信息，辅助调试。
     """
 
-    def test_collect_fixed_elements_after_login(self, page: Page, fos_server_url: str) -> None:
+    def test_collect_fixed_elements_after_login(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
         """收集登录后所有 fixed 元素的信息（用于调试叠层Bug）。"""
-        _login(page, fos_server_url)
+        _login(page, fos_server_url, fos_login_credentials)
 
         elements_info = page.evaluate("""
             () => {

@@ -118,20 +118,22 @@ export function ParticipantConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center"
-      onMouseDown={(e) => {
-        // 点击遮罩（非 card 区域）→ 跳过
-        if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
-          onSkip();
-        }
-      }}
+      className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none"
     >
-      {/* backdrop — 点击触发 onSkip 来自父 div 的 onMouseDown */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      {/* backdrop — 事件直接绑在有背景色的遮罩上，外层 wrapper 无 pointer-events
+          避免 Chrome backdrop-filter 合成层 bug 造成透明遮罩拦截全页点击 */}
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
+        onMouseDown={(e) => {
+          if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+            onSkip();
+          }
+        }}
+      />
 
       <div
         ref={cardRef}
-        className="relative w-full max-w-xl max-h-[90vh] flex flex-col rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#070712] via-[#06061a] to-black shadow-[0_0_64px_rgba(34,211,238,0.2)]"
+        className="relative w-full max-w-xl max-h-[90vh] flex flex-col rounded-2xl border border-cyan/30 bg-gradient-to-b from-[#070712] via-[#06061a] to-black shadow-[0_0_64px_rgba(34,211,238,0.2)] pointer-events-auto"
       >
         {/* header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">

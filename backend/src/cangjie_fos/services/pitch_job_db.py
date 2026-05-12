@@ -547,7 +547,22 @@ _PARTICIPANT_VALID_ROLES = {
 
 
 def db_speaker_summary(job_id: str) -> list[dict[str, Any]]:
-    """从 words_json 提取每位说话人的前3句原文，供用户对照身份。"""
+    """从 words_json 提取每位说话人的前3段话，供用户对照身份。
+
+    words_json 是逐词（word-level）数据，每条 entry 含：
+      text, start_time（秒）, end_time（秒）, speaker_id
+
+    聚合策略：
+    - 以【说话人切换】为段落边界——这是唯一可靠的边界标志。
+      中文 ASR 逐字输出时，字间自然停顿常超过 1-2 秒，时间阈值容易误切。
+    - 同一说话人连续词全部拼合为一段（speaker turn）。
+    - 每段超过 MAX_CHARS 字时截断并用「…」结尾。
+    - 每位说话人最多展示 MAX_LINES 段（取其最早出现的段落）。
+    - word_count 统计该说话人的总字符数。
+    """
+    MAX_LINES = 3
+    MAX_CHARS = 80
+
     job = db_job_get(job_id)
     if not job:
         return []
@@ -557,27 +572,52 @@ def db_speaker_summary(job_id: str) -> list[dict[str, Any]]:
             words_json = json.loads(words_json)
         except Exception:
             return []
+    if not words_json:
+        return []
 
-    speakers: dict[str, list[str]] = {}
-    speaker_counts: dict[str, int] = {}
+    # ── 第一步：按说话人切换把逐词流分成「speaker turns」 ─────────────
+    # turns: [{"speaker_id": str, "text": str}, ...]
+    turns: list[dict[str, str]] = []
+    cur_sid: str = ""
+    cur_buf: list[str] = []
+
     for w in words_json:
         sid = str(w.get("speaker_id", "0"))
-        text = str(w.get("text", "")).strip()
-        if not text:
+        word = str(w.get("text", "")).strip()
+        if not word:
             continue
-        speaker_counts[sid] = speaker_counts.get(sid, 0) + 1
-        if sid not in speakers:
-            speakers[sid] = []
-        if len(speakers[sid]) < 3:
-            speakers[sid].append(text[:120])
+        if sid != cur_sid:
+            if cur_buf and cur_sid:
+                turns.append({"speaker_id": cur_sid, "text": "".join(cur_buf)})
+            cur_sid = sid
+            cur_buf = [word]
+        else:
+            cur_buf.append(word)
+
+    if cur_buf and cur_sid:
+        turns.append({"speaker_id": cur_sid, "text": "".join(cur_buf)})
+
+    # ── 第二步：按说话人聚合，取前 MAX_LINES 个 turn ────────────────
+    speaker_lines: dict[str, list[str]] = {}
+    speaker_char_counts: dict[str, int] = {}
+
+    for turn in turns:
+        sid = turn["speaker_id"]
+        text = turn["text"]
+        speaker_char_counts[sid] = speaker_char_counts.get(sid, 0) + len(text)
+        if sid not in speaker_lines:
+            speaker_lines[sid] = []
+        if len(speaker_lines[sid]) < MAX_LINES:
+            display = text[:MAX_CHARS] + ("…" if len(text) > MAX_CHARS else "")
+            speaker_lines[sid].append(display)
 
     return [
         {
             "speaker_id": sid,
             "sample_lines": lines,
-            "word_count": speaker_counts.get(sid, 0),
+            "word_count": speaker_char_counts.get(sid, 0),
         }
-        for sid, lines in sorted(speakers.items())
+        for sid, lines in sorted(speaker_lines.items())
     ]
 
 
