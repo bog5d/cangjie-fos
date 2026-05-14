@@ -73,19 +73,27 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 - `core/readiness.py` AI_Pitch_Coach 缺失从「错误」降级为「静默通过」
   → engine/ 已包含所有核心模块，兄弟目录是可选的历史依赖
 
-### v0.5.4（2026-05-14）— 同事反馈 Bug 修复
+### v0.5.4（2026-05-14）— 同事反馈 Bug 修复（13个问题中修复3个）
 
-同事 zt001 测试后提了 13 个问题，本版修复其中 3 个「纯 Bug」：
+同事 zt001 测试 v0.5.3 后反馈 13 个问题，完整清单及处理状态如下：
 
-| Bug | 现象 | 根因文件 | 修复 |
-|-----|------|---------|------|
-| #11 | 路演报告第5步字段全undefined/空白 | `frontend/src/components/RoadshowWizard.tsx` | TypeScript 接口与后端 schema 字段名不符，全部对齐 |
-| #7 | 删除风险点后总分不更新 | `frontend/src/pages/ReviewWorkbench.tsx` | `handleRiskDelete` 补加 `total_score` 重算逻辑 |
-| #5 | 历史列表没有机构名 | `schemas/pitch_upload.py` + `routes/pitch.py` + `PitchJobHistory.tsx` | `PitchJobSummary` 加 `institution_id` 字段并全链路回填 |
+| # | 问题描述 | 状态 | 备注 |
+|---|---------|------|------|
+| 1 | 录音片段不完整，前后缺 5-10 秒上下文 | ❌ 待处理 | ASR 片段截取逻辑 |
+| 2 | 新增风险点缺少"问题简述"字段，只能填改进建议和扣分原因 | ❌ 待处理 | ReviewWorkbench 新增风险点表单 |
+| 3 | 尽调响应台匹配不准（营业执照18%）+ 无打包下载功能 | ❌ 待处理 | matchmaker 算法 + 打包 API |
+| 4 | 口述实录无法编辑且语序错误 | ❌ 待处理 | ReviewWorkbench 口述实录编辑入口 |
+| 5 | 历史记录缺机构名称列 | ✅ v0.5.4 | `PitchJobSummary` 加 `institution_id`，历史列表显示 🏢 机构名 |
+| 6 | 报告锁定后无法解锁编辑 | ❌ 待处理 | ReviewWorkbench 解锁按钮 |
+| 7 | 删除风险点后总分不重算 | ✅ v0.5.4 | `handleRiskDelete` 补加 `total_score = 100 - Σdeductions` |
+| 8 | Pipeline 看板机构卡片无法点开详情/编辑阶段 | ❌ 待处理 | InstitutionList 卡片交互 |
+| 9 | Pipeline 漏斗阶段计数无法手动修改 | ❌ 待处理 | 阶段切换下拉菜单 |
+| 10 | 资产台账搜索不到已有文件 | ❌ 待处理 | 扫描逻辑 + 重新扫描按钮 |
+| 11 | 路演情报报告第5步字段 undefined/空白 | ✅ v0.5.4 | RoadshowWizard TS 接口与 schema 字段名全面对齐 |
+| 12 | 路演情报报告无编辑入口 | ❌ 待处理 | RoadshowWizard Step5 或新建编辑页面 |
+| 13 | Pipeline 看板机构卡片内容为空（即使有路演记录） | ❌ 待处理 | 卡片数据渲染，与 v0.5.3 CRM打通是不同问题 |
 
-**⏳ 待处理（剩余 10 个问题，向王波索取原始反馈截图确认优先级）：**
-- 已知 #1：录音片段不完整（ASR 相关）
-- 其余 9 个：UX 优化 / 配置类 / 边缘场景，优先级待定
+**进度：3/13 已修复，10/13 待处理**
 
 ### v0.5.3（2026-05-12）— Chrome 叠层 Bug + 路演数据打通
 
