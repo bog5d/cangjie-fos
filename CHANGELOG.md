@@ -8,6 +8,41 @@
 
 ---
 
+## [0.5.4] — 2026-05-14  同事反馈Bug修复（路演报告空白 + 评分重算 + 历史机构名）
+
+> 背景：同事 zt001 测试 v0.5.3 后提交13个问题，本版修复其中3个「纯Bug」类问题。
+> 剩余10个问题（UX优化类/ASR类/配置类）待后续排期。
+
+### Fixed
+
+- **Bug #11 — 路演情报报告第5步字段全部显示undefined/空白**（用户可见严重Bug）
+  - 根因：`frontend/src/components/RoadshowWizard.tsx` 本地 TypeScript 接口与后端
+    `engine/schema.py` 字段名不符，导致 JavaScript 运行时访问不存在的属性
+  - 具体不符点（错误→正确）：
+    - `KeyQuestion.question/theme/asked_by` → `verbatim/underlying_concern/speaker_id`
+    - `InterestSignal.signal/sentiment` → `verbatim/signal_type/interpretation`
+    - `NextAction.owner/deadline` → `actor`（后端无 deadline 字段）
+    - `key_verbatim_moments: KeyVerbatim[]` → `string[]`（后端返回纯字符串列表）
+  - 修复：删除错误的本地接口定义，全部对齐后端 schema；Step5 渲染直接使用正确字段名
+
+- **Bug #7 — 复盘审查台删除风险点后总分不更新**
+  - 根因：`frontend/src/pages/ReviewWorkbench.tsx` `handleRiskDelete` 只过滤了
+    `risk_points` 数组，没有重算 `total_score`
+  - 修复：删除后重算 `total_score = max(0, 100 - Σ(remaining.score_deduction))`
+
+- **Bug #5 — 复盘历史记录列表缺机构名列**
+  - 根因：`PitchJobSummary` schema 未含 `institution_id`，路由也未回填，前端无法展示
+  - 修复三件套：
+    1. `backend/src/cangjie_fos/schemas/pitch_upload.py` — `PitchJobSummary` 加 `institution_id: str | None`
+    2. `backend/src/cangjie_fos/api/routes/pitch.py` — 列表路由回填 `db_row.institution_id`
+    3. `frontend/src/components/PitchJobHistory.tsx` — `JobRow` 加字段，列表显示 `🏢 机构名`（自动过滤 `待确认_` 前缀）
+
+### Changed
+- 测试基线：**502 passed**（不变，三个修复均为前端逻辑，无需新增后端测试；后端 schema 改动
+  通过现有 PitchJobSummary 序列化测试验证）
+
+---
+
 ## [0.5.3] — 2026-05-12  Chrome叠层Bug全面修复 + 路演数据打通Pipeline CRM
 
 ### Fixed
