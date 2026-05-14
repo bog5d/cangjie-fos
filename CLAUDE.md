@@ -8,10 +8,11 @@
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
-- **后端**：`D:\AI_Workspaces\CangJie_FOS\backend\` — FastAPI + SQLite + LangGraph
-- **前端**：`D:\AI_Workspaces\CangJie_FOS\frontend\` — React + TypeScript + Vite
-- **分析引擎**：`D:\AI_Workspaces\AI_Pitch_Coach\` — 路演评分/路演情报 LangGraph 图
+- **后端**：`backend/` — FastAPI + SQLite + LangGraph
+- **前端**：`frontend/` — React + TypeScript + Vite
+- **分析引擎**：`backend/src/cangjie_fos/engine/` — 路演评分/路演情报（从 AI_Pitch_Coach 迁入）
 - **进入点**：`backend/src/cangjie_fos/main.py` — FastAPI app + lifespan
+- **外部依赖**：`../AI_Pitch_Coach/`（兄弟目录，独立仓库，测试通过 mock 绕过）
 
 ### 最近做了什么（v0.5.3 → v0.5.4）
 
@@ -25,31 +26,29 @@
 同事（zt001）测试 v0.5.3 后提了13个问题，按「纯Bug」优先级分类处理：
 
 **✅ 已修复（v0.5.4）：**
-- Bug #11：路演报告第5步报告大量字段显示undefined/空白（TypeScript接口与后端schema不符）
+- Bug #11：路演报告第5步大量字段显示undefined/空白（TypeScript接口与后端schema不符）
 - Bug #7：复盘审查台删除风险点后总分不自动重算
 - Bug #5：复盘历史记录列表缺机构名列（PitchJobSummary schema未含 institution_id）
 
-**⏳ 待处理（未分类，原始编号 #1~#13，排除已修复3个）：**
-- #1：录音片段不完整（ASR相关）
-- 其余9个问题含 UX改进、配置类、边缘场景 — 需要重新读同事反馈原文确认优先级
-- 原始反馈截图在上个 session，可从 `C:\Users\王波\.claude\projects\D--AI-Workspaces\195c2d2c-9faa-4f3d-9a22-f349da20ac24.jsonl` 检索
+**⏳ 待处理（剩余10个，向王波索取原始反馈截图确认优先级）：**
+- 已知 #1：录音片段不完整（ASR相关）
+- 其余9个含 UX改进、配置类、边缘场景
 
 ### 启动开发环境
 
-```powershell
-# 后端（另开终端）
-cd D:\AI_Workspaces\CangJie_FOS\backend
+```bash
+# 后端（克隆后）
+cd backend
 uv run uvicorn cangjie_fos.main:app --reload --port 8000
 
-# 前端（另开终端）
-cd D:\AI_Workspaces\CangJie_FOS\frontend
-npm run dev   # 只在需要热更新时，通常直接用 backend serve 的 dist/
+# 前端热更新（可选）
+cd frontend && npm run dev
 ```
 
 ### 跑测试
 
-```powershell
-cd D:\AI_Workspaces\CangJie_FOS\backend
+```bash
+cd backend
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 # 期望：502+ passed，0 failed
 ```
@@ -61,6 +60,7 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 - `IntelSignal.verbatim / signal_type / interpretation`（不是 signal/sentiment）
 - `IntelAction.actor / action / priority`（不是 owner/deadline）
 - Review API 读 SQLite（`db_job_get`），不读内存 store
+- **字段名权威来源**：`backend/src/cangjie_fos/engine/schema.py`，前端接口必须与之对齐
 
 ---
 
