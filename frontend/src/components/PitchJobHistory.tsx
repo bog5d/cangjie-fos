@@ -12,6 +12,7 @@ export interface JobRow {
   participants_confirmed: boolean;
   interviewee?: string | null;
   category?: string | null;
+  institution_id?: string | null;
   has_words_json?: boolean;
 }
 
@@ -102,9 +103,15 @@ export function PitchJobHistory({ tenantId, onPendingConfirm }: Props) {
                   <span className={`w-14 shrink-0 font-bold ${STATUS_COLOR[r.status] ?? "text-slate-400"}`}>
                     {STATUS_LABEL[r.status] ?? r.status}
                   </span>
+                  {/* 机构名称（优先展示） */}
+                  {r.institution_id && !r.institution_id.startsWith("待确认_") && !r.error_summary ? (
+                    <span className="truncate max-w-[100px] shrink-0 text-[10px] font-semibold text-cyan-300/80" title={r.institution_id}>
+                      🏢 {r.institution_id}
+                    </span>
+                  ) : null}
                   {/* 被访谈人/路演标识 */}
                   {r.interviewee && !r.error_summary ? (
-                    <span className="truncate max-w-[120px] text-[10px] text-slate-400" title={r.interviewee}>
+                    <span className="truncate max-w-[100px] text-[10px] text-slate-400" title={r.interviewee}>
                       {r.interviewee}
                     </span>
                   ) : null}

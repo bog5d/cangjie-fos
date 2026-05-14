@@ -66,6 +66,7 @@ class PitchJobSummary(BaseModel):
     participants_confirmed: bool = Field(default=False, description="参与人身份已完成确认")
     interviewee: str | None = Field(default=None, description="被访谈人/路演标识")
     category: str | None = Field(default=None, description="业务场景大类")
+    institution_id: str | None = Field(default=None, description="关联机构名称（pitch_jobs.institution_id 存的是机构名）")
 
 
 class WordsSummary(BaseModel):

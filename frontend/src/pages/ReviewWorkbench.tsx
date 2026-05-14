@@ -161,10 +161,14 @@ export default function ReviewWorkbench() {
 
   const handleRiskDelete = useCallback(
     (index: number) => {
-      updateDraft((prev) => ({
-        ...prev,
-        risk_points: prev.risk_points.filter((_, i) => i !== index),
-      }));
+      updateDraft((prev) => {
+        const remaining = prev.risk_points.filter((_, i) => i !== index);
+        const newTotal = Math.max(
+          0,
+          100 - remaining.reduce((sum, p) => sum + (p.score_deduction ?? 0), 0),
+        );
+        return { ...prev, risk_points: remaining, total_score: newTotal };
+      });
     },
     [updateDraft],
   );

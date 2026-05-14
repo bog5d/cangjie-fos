@@ -29,29 +29,23 @@ interface ConfirmedSpeaker {
   title: string;
 }
 
+// 字段名与后端 schema.py 保持一致
 interface NextAction {
   action: string;
-  owner: string;
-  deadline: string;
+  actor: string;   // 后端字段名是 actor，不是 owner
   priority: string;
 }
 
 interface KeyQuestion {
-  question: string;
-  theme: string;
-  asked_by: string;
+  verbatim: string;           // 后端字段名
+  underlying_concern: string; // 后端字段名
+  speaker_id: string;
 }
 
 interface InterestSignal {
-  signal: string;
-  speaker_id: string;
-  sentiment: string;
-}
-
-interface KeyVerbatim {
-  speaker_id: string;
-  text: string;
-  significance: string;
+  verbatim: string;     // 后端字段名
+  signal_type: string;  // "positive" | "concern" | "neutral"
+  interpretation: string;
 }
 
 interface RoadshowReport {
@@ -60,7 +54,7 @@ interface RoadshowReport {
   key_questions: KeyQuestion[];
   interest_signals: InterestSignal[];
   hidden_concerns: string[];
-  key_verbatim_moments: KeyVerbatim[];
+  key_verbatim_moments: string[];  // 后端是 List[str]，不是对象数组
   institution_update: string;
   next_actions: NextAction[];
   referrer: string;
@@ -704,15 +698,13 @@ export function RoadshowWizard({
                   <ul className="space-y-2">
                     {report.key_questions.map((q, i) => (
                       <li key={i} className="rounded-lg bg-black/20 p-3">
-                        <div className="flex items-start gap-2">
-                          <span className="mt-0.5 shrink-0 rounded bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-300">
-                            {q.theme || "问题"}
-                          </span>
-                          <p className="text-sm text-slate-200">{q.question}</p>
-                        </div>
-                        {q.asked_by && (
+                        <p className="text-sm text-slate-200">「{q.verbatim}」</p>
+                        {q.underlying_concern && (
+                          <p className="mt-1 text-xs text-blue-300/80">↳ 深层顾虑：{q.underlying_concern}</p>
+                        )}
+                        {q.speaker_id && (
                           <p className="mt-1 text-xs text-slate-600">
-                            — {speakerName(q.asked_by)}
+                            — {speakerName(q.speaker_id)}
                           </p>
                         )}
                       </li>
@@ -727,10 +719,15 @@ export function RoadshowWizard({
                   <ul className="space-y-1.5">
                     {report.interest_signals.map((s, i) => (
                       <li key={i} className="flex items-start gap-2 rounded-lg bg-black/20 px-3 py-2">
-                        <span className={`mt-0.5 text-sm ${s.sentiment === "positive" ? "text-emerald-400" : s.sentiment === "negative" ? "text-red-400" : "text-slate-400"}`}>
-                          {s.sentiment === "positive" ? "✓" : s.sentiment === "negative" ? "✗" : "○"}
+                        <span className={`mt-0.5 text-sm ${s.signal_type === "positive" ? "text-emerald-400" : s.signal_type === "concern" ? "text-red-400" : "text-slate-400"}`}>
+                          {s.signal_type === "positive" ? "✓" : s.signal_type === "concern" ? "✗" : "○"}
                         </span>
-                        <span className="text-sm text-slate-300">{s.signal}</span>
+                        <div className="flex-1">
+                          <p className="text-sm text-slate-300">「{s.verbatim}」</p>
+                          {s.interpretation && (
+                            <p className="mt-0.5 text-xs text-slate-500">{s.interpretation}</p>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -757,13 +754,7 @@ export function RoadshowWizard({
                   <div className="space-y-3">
                     {report.key_verbatim_moments.map((v, i) => (
                       <div key={i} className="rounded-lg border border-white/5 bg-black/20 p-3">
-                        <p className="text-sm text-slate-200 italic">「{v.text}」</p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <span className="text-xs text-slate-500">— {speakerName(v.speaker_id)}</span>
-                          {v.significance && (
-                            <span className="text-xs text-cyan-600">{v.significance}</span>
-                          )}
-                        </div>
+                        <p className="text-sm italic text-slate-200">「{v}」</p>
                       </div>
                     ))}
                   </div>
@@ -780,8 +771,7 @@ export function RoadshowWizard({
                         <div className="flex-1">
                           <p className="text-sm text-slate-200">{a.action}</p>
                           <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
-                            {a.owner && <span>负责：{a.owner}</span>}
-                            {a.deadline && <span>DDL：{a.deadline}</span>}
+                            {a.actor && <span>负责：{a.actor}</span>}
                             {a.priority && (
                               <span className={`rounded px-1 ${a.priority === "high" ? "bg-red-500/20 text-red-300" : "bg-slate-500/20"}`}>
                                 {a.priority === "high" ? "紧急" : a.priority === "medium" ? "中" : "低"}

@@ -295,6 +295,7 @@ def pitch_job_list(
                 participants_confirmed=participants_confirmed,
                 interviewee=db_row.get("interviewee") if db_row else None,
                 category=db_row.get("category") if db_row else None,
+                institution_id=db_row.get("institution_id") if db_row else None,
             )
         )
     return out
