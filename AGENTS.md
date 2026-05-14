@@ -11,9 +11,11 @@
 | 项目 | 状态 |
 |------|------|
 | 版本 | **v0.5.4** |
-| 测试基线 | **502 passed**（命令见下） |
-| 前端构建 | **零错误**（`cd frontend && npm run build`） |
+| 测试基线 | **502 passed** |
+| 前端构建 | **零错误** |
 | 详细变更历史 | 见 `CHANGELOG.md` |
+
+> ⚠️ **你接手后完成任何代码改动，必须按本文「文档更新规则」一节更新上面这个表格。**
 
 ---
 
@@ -35,8 +37,8 @@ cangjie-fos/（本仓库）
 │       └── pages/          ReviewWorkbench / WarRoomMap 等页面
 ├── tools/                  doctor.py 诊断脚本、build_release_zip.ps1 打包
 ├── CLAUDE.md               开发规范（测试标准 + 架构约定详细版）
-├── AGENTS.md               本文件（AI 接手手册）
-└── CHANGELOG.md            版本历史
+├── AGENTS.md               本文件（AI 接手手册，每次改动后必须更新）
+└── CHANGELOG.md            版本历史（每次改动后必须更新）
 
 【外部依赖 — 兄弟目录，独立仓库】
 ../AI_Pitch_Coach/          LLM 评估引擎原始仓库
@@ -49,21 +51,11 @@ cangjie-fos/（本仓库）
 ## 克隆后第一步：验证环境
 
 ```bash
-# 1. 克隆主仓库
 git clone https://github.com/bog5d/cangjie-fos.git
-cd cangjie-fos
-
-# 2. 安装后端依赖（用 uv，不用 pip）
-cd backend
+cd cangjie-fos/backend
 uv sync --extra dev
-
-# 3. 跑测试确认基线（不需要 AI_Pitch_Coach，全 mock）
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
-# 期望：502 passed，0 failed
-
-# 4. 前端构建验证（可选）
-cd ../frontend && npm install && npm run build
-# 期望：zero errors，built in ~4s
+# 期望：502 passed，0 failed — 不对就停下来先修测试
 ```
 
 ---
@@ -80,15 +72,152 @@ cd ../frontend && npm install && npm run build
 | #7 | 删除风险点后总分不更新 | `frontend/src/pages/ReviewWorkbench.tsx` | `handleRiskDelete` 补加 `total_score` 重算逻辑 |
 | #5 | 历史列表没有机构名 | `schemas/pitch_upload.py` + `routes/pitch.py` + `PitchJobHistory.tsx` | `PitchJobSummary` 加 `institution_id` 字段并全链路回填 |
 
-**⏳ 待处理（剩余 10 个问题）：**
+**⏳ 待处理（剩余 10 个问题，向王波索取原始反馈截图确认优先级）：**
 - 已知 #1：录音片段不完整（ASR 相关）
-- 其余 9 个：优先级待王波确认（向王波索取原始反馈截图）
+- 其余 9 个：UX 优化 / 配置类 / 边缘场景，优先级待定
 
 ### v0.5.3（2026-05-12）— Chrome 叠层 Bug + 路演数据打通
 
 - Chrome 登录后整页被透明膜覆盖无法点击 → 5 个 Modal 组件 + ExpHud 加 `pointer-events-none`
 - 路演完成后 Pipeline CRM 不更新 → `pitch_upload_pipeline.py` 完成后调 `upsert_institution()`
 - 引入 Playwright 浏览器烟雾测试（`tests/test_ui_smoke.py`，6 个测试）
+
+---
+
+## ══════════════════════════════════════════
+## 文档更新规则（每次 push 前强制执行）
+## ══════════════════════════════════════════
+
+> **这是本文件最重要的一节。**  
+> 你完成任何代码改动并 push 之前，必须按下列规则更新对应文档。  
+> 不更新文档 = 工作未完成。下一个 AI 会因为状态过期而重复踩坑。
+
+---
+
+### 规则 0：判断本次改动的类型
+
+先判断你做了什么，再对号入座执行对应规则：
+
+| 改动类型 | 版本号变化 | 必须更新的文件 |
+|---------|-----------|--------------|
+| Bug 修复（行为修正，无新功能） | patch +1（0.5.4 → 0.5.5） | AGENTS.md + CHANGELOG.md |
+| 新功能上线 | minor +1（0.5.x → 0.6.0） | AGENTS.md + CHANGELOG.md + 同事上手指南.md |
+| 纯文档/注释/测试调整 | 不变 | AGENTS.md（仅更新日期和测试基线） |
+| 架构重构（接口变化/字段改名） | minor +1 | AGENTS.md + CHANGELOG.md + 关键架构约定表格 |
+
+版本号规则：`v主版本.功能版本.修复版本`，主版本目前锁定为 0。
+
+---
+
+### 规则 1：更新 AGENTS.md 本文件（每次必做）
+
+**第一步：更新顶部「当前状态」表格**
+
+```
+修改这个表格中的三个字段：
+- 版本：改为新版本号
+- 测试基线：改为实际 passed 数（跑完测试后的数字）
+- 最后更新日期：改为今天日期（YYYY-MM-DD）
+```
+
+示例（修复了一个 bug，测试从 502 → 505）：
+```markdown
+| 版本 | **v0.5.5** |
+| 测试基线 | **505 passed** |
+| 最后更新 | 2026-05-20 |
+```
+
+**第二步：更新「最近做了什么」区块**
+
+在该区块顶部插入新版本段落，旧版本往下推（保留最近 2 个版本，更早的靠 CHANGELOG.md）。
+
+新版本段落模板：
+```markdown
+### vX.Y.Z（YYYY-MM-DD）— 一句话说明本次主题
+
+[本次改了什么，用 1-3 条要点说明：现象 → 根因 → 修复文件]
+
+**⏳ 待处理（若有）：**
+- 列出已知但本次未处理的问题
+```
+
+**第三步：若改动涉及字段名 / 接口名 / 架构约定**
+
+更新「关键架构约定」区块中对应的表格行。  
+原则：任何踩过的坑都要记录在这里，防止下一个 AI 重蹈。
+
+---
+
+### 规则 2：更新 CHANGELOG.md（每次必做）
+
+在文件顶部 `## [Unreleased]` 下方插入新版本块。格式严格如下：
+
+```markdown
+## [X.Y.Z] — YYYY-MM-DD  本次主题（一句话）
+
+### Fixed（有 bug 修复时填）
+- **现象描述**（用户感知角度）
+  - 根因：`具体文件:行号区域` — 一句话说根因
+  - 修复：做了什么改动
+
+### Added（有新功能时填）
+- **功能名称**：一句话描述
+  - 新增文件：`路径`
+  - 修改文件：`路径`
+
+### Changed
+- 测试基线：旧数 → **新数 passed**（+delta）
+```
+
+**必须遵守：**
+- `Fixed` / `Added` / `Changed` 三个块按需选用，没有就省略，不要留空块
+- 根因说明必须包含具体文件路径，不能只说「前端有 bug」
+- 测试基线变化必须写，哪怕没变也写「N passed（不变）」
+
+---
+
+### 规则 3：更新同事上手指南.md（新功能上线时才做）
+
+触发条件：新增了用户可见的功能（新按钮、新页面、新流程）。
+
+必须更新的位置：
+1. 顶部版本号行 → 改为新版本 + 今天日期
+2. 第三节「功能一览」→ 新增功能描述
+3. 第四节「怎么测试」→ 新增验收清单（格式：`- [ ] 操作步骤 → 预期结果`）
+4. 第五节「已知问题与修复记录」→ 在顶部新增本版修复内容
+
+Bug 修复不需要更新测试验收清单，只在第五节加修复说明。
+
+---
+
+### 规则 4：push 前的最终检查清单
+
+每次 push 之前，在脑中过一遍这个清单，全部 ✓ 才能 push：
+
+```
+[ ] 跑过 pytest 且全绿（502+ passed，0 failed）
+[ ] 前端有改动时跑过 npm run build（零错误）
+[ ] AGENTS.md 顶部「当前状态」表格已更新（版本/测试数/日期）
+[ ] AGENTS.md「最近做了什么」已插入本次版本段落
+[ ] CHANGELOG.md 已插入新版本块（格式符合规则 2）
+[ ] 若有新功能：同事上手指南.md 已更新
+[ ] 若有架构/字段名变化：AGENTS.md 架构约定表格已更新
+[ ] git add 时只 add 具体文件，没有 git add -A
+[ ] commit message 格式正确：type(scope): 描述
+```
+
+---
+
+### 规则 5：本次未完成的工作怎么交接
+
+若因 context 不足或任务中断，无法完成所有工作，push 前必须在 AGENTS.md「最近做了什么」段落末尾加：
+
+```markdown
+**🚧 本次未完成，下一个 AI 接着做：**
+- 具体描述做到哪一步了
+- 下一步需要做什么（越具体越好，包括文件路径）
+- 已知的障碍或注意事项
+```
 
 ---
 
@@ -102,6 +231,8 @@ cd ../frontend && npm install && npm run build
 | `IntelQuestion` 字段 | `question / theme / asked_by` | `verbatim / underlying_concern / speaker_id` |
 | `IntelSignal` 字段 | `signal / sentiment` | `verbatim / signal_type / interpretation` |
 | `IntelAction` 字段 | `owner / deadline` | `actor / action / priority`（无 deadline） |
+
+> 新增报告类型时：**先读 `engine/schema.py` 确认字段名，再写前端接口**，不要凭记忆猜。
 
 ### 数据层约定
 
@@ -125,15 +256,14 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 ### 提交规范
 
 ```bash
-git pull origin master          # 先拉最新
-# ...改代码...
-uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q  # 必须全绿
-git add <具体文件>              # 禁止 git add -A（防止提交 .env）
-git commit -m "fix(wizard): 修复路演报告字段名"
+git pull origin master              # 先拉最新
+# ...改代码 + 更新文档（见上方规则）...
+uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
+git add <具体文件列表>              # 禁止 git add -A
+git commit -m "fix(scope): 描述"
 git push origin master
 ```
 
-提交格式：`type(scope): 描述`  
 type：`feat` | `fix` | `docs` | `refactor` | `test` | `chore`
 
 ### 禁止行为
@@ -141,9 +271,11 @@ type：`feat` | `fix` | `docs` | `refactor` | `test` | `chore`
 | 禁止 | 原因 |
 |------|------|
 | 改完说「应该好了你试试」 | 必须先跑测试证明 |
+| push 前不更新 AGENTS.md / CHANGELOG | 下一个 AI 会基于过期状态做出错误判断 |
 | `git add -A` 或 `git add .` | 可能提交 `.env`（API Key 泄露） |
 | 只 mock 外部服务不验证 DB 写入 | DB 才是审查台的数据源 |
 | 新增 pipeline 步骤不同步更新 E2E 测试 | 覆盖缺失 = 没有测试 |
+| 新增报告字段时前端凭记忆写接口 | 必须先读 `engine/schema.py` 确认字段名 |
 
 ---
 
@@ -160,10 +292,10 @@ type：`feat` | `fix` | `docs` | `refactor` | `test` | `chore`
 
 | 文件 | 作用 |
 |------|------|
-| `CHANGELOG.md` | 版本历史，每次提交前必须更新 |
+| `CHANGELOG.md` | 版本历史，每次 push 前必须更新 |
 | `CLAUDE.md` | 测试标准 + 开发规范详细版 |
-| `backend/src/cangjie_fos/main.py` | FastAPI app 入口 + lifespan |
 | `backend/src/cangjie_fos/engine/schema.py` | **所有报告 schema（字段名权威来源）** |
+| `backend/src/cangjie_fos/main.py` | FastAPI app 入口 + lifespan |
 | `backend/src/cangjie_fos/services/pitch_upload_pipeline.py` | 上传→ASR→评估主流水线 |
 | `backend/src/cangjie_fos/services/pitch_job_db.py` | SQLite 持久化层（单一真相源） |
 | `backend/src/cangjie_fos/api/routes/roadshow.py` | 路演分析专属 5 个端点 |
