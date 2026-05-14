@@ -10,10 +10,12 @@
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.5.4** |
+| 版本 | **v0.5.5** |
 | 测试基线 | **502 passed** |
 | 前端构建 | **零错误** |
+| 单仓库可运行 | **✅ 是** — clone cangjie-fos 即可，无需 AI_Pitch_Coach |
 | 详细变更历史 | 见 `CHANGELOG.md` |
+| 最后更新 | 2026-05-14 |
 
 > ⚠️ **你接手后完成任何代码改动，必须按本文「文档更新规则」一节更新上面这个表格。**
 
@@ -24,12 +26,12 @@
 **仓颉 FOS（融资作战操作系统）** — 帮 VC/FA 管理融资流程的内部工具。
 
 ```
-cangjie-fos/（本仓库）
+cangjie-fos/（本仓库，完全自包含）
 ├── backend/                FastAPI + SQLite + LangGraph 后端
 │   └── src/cangjie_fos/
 │       ├── api/routes/     HTTP 路由
 │       ├── services/       业务逻辑 + DB 操作
-│       ├── engine/         ASR转写 / LLM评估（从 AI_Pitch_Coach 迁入的子包）
+│       ├── engine/         所有核心模块（ASR / LLM评估 / 投资人匹配等，已从 AI_Pitch_Coach 迁入）
 │       └── main.py         FastAPI app 入口
 ├── frontend/               React + TypeScript + Vite 前端
 │   └── src/
@@ -40,10 +42,10 @@ cangjie-fos/（本仓库）
 ├── AGENTS.md               本文件（AI 接手手册，每次改动后必须更新）
 └── CHANGELOG.md            版本历史（每次改动后必须更新）
 
-【外部依赖 — 兄弟目录，独立仓库】
-../AI_Pitch_Coach/          LLM 评估引擎原始仓库
-                            测试时通过 mock 绕过，502 个测试无需它存在
-                            生产运行需要，向王波索取访问权限
+【AI_Pitch_Coach 说明】
+../AI_Pitch_Coach/ 是原始来源仓库，现已归档（只读参考）。
+所有运行所需的代码已迁入 engine/ 子包。
+克隆 cangjie-fos 无需 AI_Pitch_Coach 即可完整运行和测试。
 ```
 
 ---
@@ -51,7 +53,7 @@ cangjie-fos/（本仓库）
 ## 克隆后第一步：验证环境
 
 ```bash
-git clone https://github.com/bog5d/cangjie-fos.git
+git clone https://github.com/bog5d/cangjie-fos.git   # 只需要这一个仓库
 cd cangjie-fos/backend
 uv sync --extra dev
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
@@ -61,6 +63,15 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 ---
 
 ## 最近做了什么（v0.5.3 → v0.5.4）
+
+### v0.5.5（2026-05-14）— 单仓库自包含（移除 AI_Pitch_Coach 外部依赖）
+
+- `pyproject.toml` 移除 `testpaths` 中的 `../../AI_Pitch_Coach/tests`
+  → clone 单仓库即可跑全部 502 个测试，无需兄弟目录
+- `core/paths.py` `ensure_pitch_coach_import_path()` 改为警告而非崩溃
+  → AI_Pitch_Coach 不存在时记录日志并返回 None，不影响启动
+- `core/readiness.py` AI_Pitch_Coach 缺失从「错误」降级为「静默通过」
+  → engine/ 已包含所有核心模块，兄弟目录是可选的历史依赖
 
 ### v0.5.4（2026-05-14）— 同事反馈 Bug 修复
 

@@ -103,12 +103,23 @@ def hydrate_pitch_coach_env() -> None:
             os.environ[k] = v
 
 
-def ensure_pitch_coach_import_path() -> Path:
-    """将 Pitch_Coach `src` 置于 sys.path 首位，供薄封装 Service 延迟 import。"""
+def ensure_pitch_coach_import_path() -> Path | None:
+    """
+    将 Pitch_Coach `src` 置于 sys.path 首位（向后兼容保留）。
+
+    engine/ 子包已包含所有核心模块，本函数不再是必须调用路径。
+    若 AI_Pitch_Coach 不存在（单仓库部署），记录警告并返回 None 而非崩溃。
+    """
+    import logging
     root = get_pitch_coach_root()
     src = root / "src"
     if not src.is_dir():
-        raise FileNotFoundError(f"Pitch_Coach src 不存在: {src}")
+        logging.getLogger(__name__).warning(
+            "AI_Pitch_Coach src 不存在（%s），跳过 sys.path 注入。"
+            "engine/ 子包已覆盖核心功能，通常无影响。",
+            src,
+        )
+        return None
     s_src = str(src)
     s_root = str(root)
     if s_root not in sys.path:

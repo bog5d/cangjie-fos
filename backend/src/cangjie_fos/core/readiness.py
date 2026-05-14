@@ -127,13 +127,10 @@ def compute_readiness() -> ReadinessResult:
     src = root / "src"
     r.pitch_coach_ok = src.is_dir()
     if not r.pitch_coach_ok:
-        issues.append(
-            ReadinessIssue(
-                code=E_PITCH_COACH_SRC_MISSING,
-                message="未找到 AI_Pitch_Coach 的 src 目录",
-                fix_hint="将 AI_Pitch_Coach 与 CangJie_FOS 并列放在同一父目录，或在 backend/.env 设置 CANGJIE_PITCH_COACH_ROOT=绝对路径",
-            )
-        )
+        # 注意：engine/ 子包已包含 ASR + LLM 评估全部核心模块。
+        # AI_Pitch_Coach 兄弟目录不存在时，系统仍可正常运行。
+        # 此处记录为「可选依赖缺失」，不计入致命 issues，仅供信息参考。
+        pass  # 不再 append 到 issues，降级为静默通过
 
     # ---- API keys（DeepSeek 做 LLM 必填，DashScope 做 ASR 必填）----
     # 注：硅基流动（SiliconFlow）已于 2026-05 停用，不再检查其 Key。

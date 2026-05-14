@@ -8,6 +8,26 @@
 
 ---
 
+## [0.5.5] — 2026-05-14  单仓库自包含（移除 AI_Pitch_Coach 外部依赖）
+
+> **背景**：AI_Pitch_Coach 的所有核心模块早已迁入 `engine/` 子包（Phase 1，v0.3.0）。
+> 但 `pyproject.toml` 的 testpaths 一直保留着指向兄弟目录的引用，导致克隆单仓库无法完整运行。
+
+### Changed
+- **`backend/pyproject.toml`** — 从 `testpaths` 移除 `../../AI_Pitch_Coach/tests`
+  - 单独克隆 `cangjie-fos` 即可运行全部 502 个测试，无需兄弟仓库
+  - 验证：移除前后测试数量完全一致（502 passed），AI_Pitch_Coach 测试本已因模块路径问题静默跳过
+- **`core/paths.py` `ensure_pitch_coach_import_path()`** — 改为警告 + 返回 None，不再 raise FileNotFoundError
+  - AI_Pitch_Coach 不存在时静默降级，不影响应用启动和核心功能
+- **`core/readiness.py`** — AI_Pitch_Coach 目录缺失从「问题（issues）」降为「静默通过」
+  - `engine/` 已包含全部核心模块，兄弟目录是可选的历史遗留
+
+### Changed
+- 测试基线：**502 passed**（不变）
+- AI_Pitch_Coach 仓库现为可选归档参考，不再是运行依赖
+
+---
+
 ## [0.5.4] — 2026-05-14  同事反馈Bug修复（路演报告空白 + 评分重算 + 历史机构名）
 
 > 背景：同事 zt001 测试 v0.5.3 后提交13个问题，本版修复其中3个「纯Bug」类问题。

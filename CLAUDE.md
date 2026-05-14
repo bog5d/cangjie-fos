@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-14 | 当前版本：**v0.5.4** | 测试基线：**502 passed**
+> 最后更新：2026-05-14 | 当前版本：**v0.5.5** | 测试基线：**502 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -12,7 +12,7 @@
 - **前端**：`frontend/` — React + TypeScript + Vite
 - **分析引擎**：`backend/src/cangjie_fos/engine/` — 路演评分/路演情报（从 AI_Pitch_Coach 迁入）
 - **进入点**：`backend/src/cangjie_fos/main.py` — FastAPI app + lifespan
-- **外部依赖**：`../AI_Pitch_Coach/`（兄弟目录，独立仓库，测试通过 mock 绕过）
+- **外部依赖**：无 — `engine/` 子包已包含所有核心模块，AI_Pitch_Coach 是可选的历史归档
 
 ### 最近做了什么（v0.5.3 → v0.5.4）
 
@@ -20,6 +20,7 @@
 |------|------|---------|
 | v0.5.3 | 05-12 | Chrome叠层Bug（5个Modal + ExpHud）+ 路演数据打通Pipeline CRM + Playwright浏览器测试 |
 | v0.5.4 | 05-14 | 3个Bug修复：路演报告Step5字段undefined / 删风险点评分不重算 / 历史列表缺机构名 |
+| v0.5.5 | 05-14 | **单仓库自包含**：移除 AI_Pitch_Coach 外部依赖，clone 一个仓库即完整 |
 
 ### 同事反馈的13个问题——当前处理状态
 

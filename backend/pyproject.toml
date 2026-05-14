@@ -39,9 +39,10 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.pytest.ini_options]
+# AI_Pitch_Coach/tests 已移除：engine/ 目录已包含所有核心模块，
+# 单独克隆 cangjie-fos 即可运行全部测试，无需兄弟仓库。
 testpaths = [
   "tests",
-  "../../AI_Pitch_Coach/tests",
 ]
 pythonpath = ["src"]
 asyncio_mode = "auto"
