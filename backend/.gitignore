@@ -5,3 +5,6 @@ __pycache__/
 .pytest_cache/
 .venv/
 *.egg-info/
+# 启动/诊断日志（保留目录占位符）
+logs/*.log
+!logs/.gitkeep

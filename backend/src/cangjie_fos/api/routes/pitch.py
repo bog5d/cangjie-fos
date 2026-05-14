@@ -393,6 +393,16 @@ def pitch_job_review_commit(
     return PitchReviewCommitResponse(job_id=job_id, committed_at=committed_at)
 
 
+@router.delete("/jobs/{job_id}/review-lock")
+def pitch_job_review_unlock(job_id: str) -> dict:
+    """解除审查锁定，允许重新编辑报告（仅清除 committed_at，保留 edited_report）。"""
+    job_row = db_job_get(job_id)
+    if job_row is None:
+        raise HTTPException(status_code=404, detail="unknown job")
+    db_job_update(job_id, committed_at=None)
+    return {"ok": True, "job_id": job_id}
+
+
 @router.post("/jobs/{job_id}/html-report", response_model=PitchHtmlReportResponse)
 def generate_html_report_endpoint(job_id: str) -> PitchHtmlReportResponse:
     """Trigger FFmpeg-based HTML report generation for a completed job.

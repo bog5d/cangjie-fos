@@ -8,6 +8,57 @@
 
 ---
 
+## [0.6.0] — 2026-05-15  7个Bug修复 + 启动体验增强 + Pipeline编辑
+
+> 继 v0.5.4 修复3个Bug后，本版处理剩余同事反馈中优先级最高的7个问题，并改善启动调试体验。
+> 共修复 #2/#4/#6/#8/#9/#12/#13，累计已解决13中的10个。
+
+### Added
+
+- **Bug #2 — 新增风险点缺「问题简述」字段**
+  - `frontend/src/components/workbench/left/AddRiskPointForm.tsx`
+  - 「新增遗漏痛点」表单顶部加入「问题简述」必填输入框（对应 `problem_summary` 字段，30字内）
+
+- **Bug #6 — 锁定后无法解锁编辑**
+  - 后端：`backend/src/cangjie_fos/api/routes/pitch.py` 新增 `DELETE /api/pitch/jobs/{id}/review-lock` 端点
+  - 前端：`frontend/src/components/workbench/WorkbenchHeader.tsx` 锁定状态旁出现「🔓 解锁编辑」按钮
+  - `frontend/src/pages/ReviewWorkbench.tsx` 增加 `handleUnlock` 回调，点击后清除 DB 的 `committed_at`
+
+- **Bug #4 — 口述实录无法编辑**
+  - `frontend/src/components/workbench/left/RiskPointCard.tsx`
+  - 每张风险点卡片新增「口述实录」区块，显示 `original_text` 字段
+  - 非锁定状态下可直接编辑（纠正 ASR 错字/语序问题）
+
+- **Bug #12 — 路演情报报告无编辑入口**
+  - `frontend/src/components/workbench/RoadshowIntelView.tsx` 支持 `onSave` 和 `saving` props
+  - 报告顶部加「✏️ 编辑摘要」按钮，进入编辑模式可修改：会议氛围综述、隐性顾虑（每行一条）、机构档案更新建议
+  - 编辑模式保存后调用 `PATCH /api/pitch/jobs/{id}/review`，与常规审查台共用同一提交路径
+  - `ReviewWorkbench.tsx` 修复 `handleCommit` 支持 `reportOverride` 参数，路演报告现可正常保存
+
+- **Bug #13/#8/#9 — Pipeline看板卡片内容为空 / 无法点开编辑 / 阶段计数无法改**
+  - 后端：`backend/src/cangjie_fos/schemas/institution.py` 新增 `InstitutionProfileUpdate` schema
+  - 后端：`backend/src/cangjie_fos/services/institution_store.py` 新增 `update_institution()` 函数
+  - 后端：`backend/src/cangjie_fos/api/routes/pipeline.py` 新增 `PATCH /api/v1/pipeline/institutions/{id}`
+  - 前端：`frontend/src/components/InstitutionList.tsx` 全面重写：
+    - 卡片内容为空时显示「暂无摘要 · 点击编辑机构画像」提示
+    - 所有卡片点击可开启编辑弹窗（EditModal）
+    - 编辑弹窗包含：综合画像、核心疑虑、投资偏好、Pipeline阶段（下拉）、热度（下拉）
+    - 保存后热更新卡片显示，无需刷新页面
+
+- **启动体验 — 失败自动生成桌面诊断报告**
+  - `安装并启动.ps1` 重写：
+    - 启动日志落盘 `backend/logs/startup_YYYYMMDD_HHMMSS.log`
+    - 任意步骤失败时自动生成 `桌面/诊断报告_请发给AI_YYYYMMDD_HHMMSS.txt`，包含错误信息 + AI提示模板
+    - 自动用记事本打开诊断报告，引导用户复制给技术支持
+  - `tools/doctor.py` — `--fix` 模式将修复操作追加写入 `backend/logs/doctor_fixes.log`
+  - `backend/logs/.gitkeep` — 日志目录占位符（`.gitignore` 已排除 `*.log` 文件）
+
+### Changed
+- 测试基线：**502 passed**（不变，无新增后端测试需求）
+- `npm run build` — ✓ 零错误（frontend/dist 已重新构建）
+
+---
+
 ## [0.5.5] — 2026-05-14  单仓库自包含（移除 AI_Pitch_Coach 外部依赖）
 
 > **背景**：AI_Pitch_Coach 的所有核心模块早已迁入 `engine/` 子包（Phase 1，v0.3.0）。

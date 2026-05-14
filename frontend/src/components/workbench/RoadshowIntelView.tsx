@@ -1,8 +1,9 @@
 /**
  * 路演情报视图（Phase 7）
  * 当 original_report.report_type === "roadshow_intel" 时渲染此视图。
- * 只读展示，不做评分/风险点编辑。
+ * 支持编辑文本摘要字段（atmosphere_summary、institution_update、hidden_concerns）。
  */
+import { useState } from "react";
 import type { RoadshowIntelReport, IntelQuestion, IntelSignal, IntelAction } from "../../types/review";
 
 const ATMOSPHERE_LABEL: Record<string, { text: string; cls: string }> = {
@@ -123,19 +124,66 @@ function ActionCard({ a }: { a: IntelAction }) {
   );
 }
 
+const TA = "w-full rounded-lg border border-white/15 bg-black/35 px-3 py-2 text-sm text-white/95 outline-none focus:border-cyan-400/50 resize-none";
+
 interface Props {
   report: RoadshowIntelReport;
   interviewee?: string | null;
+  onSave?: (updated: RoadshowIntelReport) => void;
+  saving?: boolean;
 }
 
-export default function RoadshowIntelView({ report, interviewee }: Props) {
+export default function RoadshowIntelView({ report, interviewee, onSave, saving }: Props) {
   const atm = ATMOSPHERE_LABEL[report.meeting_atmosphere] ?? ATMOSPHERE_LABEL.warm;
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState<RoadshowIntelReport>(report);
+
+  function handleSave() {
+    onSave?.(draft);
+    setEditMode(false);
+  }
+  function handleCancel() {
+    setDraft(report);
+    setEditMode(false);
+  }
+
+  const cur = editMode ? draft : report;
 
   return (
     <div className="space-y-1 pb-8">
       {/* Header */}
       <div className="rounded-2xl border border-cyan/20 bg-gradient-to-b from-cyan/5 to-transparent p-5 mb-4">
-        <p className="font-display text-[10px] uppercase tracking-[0.4em] text-cyan/60 mb-1">路演情报报告</p>
+        <div className="flex items-start justify-between mb-1">
+          <p className="font-display text-[10px] uppercase tracking-[0.4em] text-cyan/60">路演情报报告</p>
+          {onSave && !editMode && (
+            <button
+              type="button"
+              onClick={() => setEditMode(true)}
+              className="text-[10px] text-amber-400 hover:text-amber-300 border border-amber-400/30 rounded px-2 py-0.5 transition-colors"
+            >
+              ✏️ 编辑摘要
+            </button>
+          )}
+          {editMode && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="text-[10px] text-slate-400 hover:text-slate-300 border border-slate-400/30 rounded px-2 py-0.5 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="text-[10px] text-cyan-300 hover:text-cyan-200 border border-cyan-400/40 rounded px-2 py-0.5 transition-colors disabled:opacity-40"
+              >
+                {saving ? "保存中…" : "💾 保存"}
+              </button>
+            </div>
+          )}
+        </div>
         {interviewee && (
           <p className="text-xs text-slate-400 mb-3">
             路演场次：<span className="text-cyan/80">{interviewee}</span>
@@ -146,18 +194,28 @@ export default function RoadshowIntelView({ report, interviewee }: Props) {
             {atm.text}
           </span>
           <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-400">
-            {STAGE_LABEL[report.meeting_stage] ?? "阶段未知"}
+            {STAGE_LABEL[cur.meeting_stage] ?? "阶段未知"}
           </span>
         </div>
-        <p className="text-sm text-slate-300 leading-relaxed">{report.atmosphere_summary}</p>
+        {editMode ? (
+          <textarea
+            className={TA}
+            rows={4}
+            value={draft.atmosphere_summary}
+            onChange={(e) => setDraft((d) => ({ ...d, atmosphere_summary: e.target.value }))}
+            placeholder="会议氛围综述"
+          />
+        ) : (
+          <p className="text-sm text-slate-300 leading-relaxed">{cur.atmosphere_summary}</p>
+        )}
       </div>
 
       {/* Key questions */}
-      {report.key_questions.length > 0 && (
+      {cur.key_questions.length > 0 && (
         <>
-          <SectionTitle>对方关键问题 ({report.key_questions.length})</SectionTitle>
+          <SectionTitle>对方关键问题 ({cur.key_questions.length})</SectionTitle>
           <div className="space-y-2">
-            {report.key_questions.map((q, i) => (
+            {cur.key_questions.map((q, i) => (
               <QuestionCard key={i} q={q} idx={i} />
             ))}
           </div>
@@ -165,11 +223,11 @@ export default function RoadshowIntelView({ report, interviewee }: Props) {
       )}
 
       {/* Signals */}
-      {report.interest_signals.length > 0 && (
+      {cur.interest_signals.length > 0 && (
         <>
-          <SectionTitle>兴趣信号 ({report.interest_signals.length})</SectionTitle>
+          <SectionTitle>兴趣信号 ({cur.interest_signals.length})</SectionTitle>
           <div className="space-y-2">
-            {report.interest_signals.map((s, i) => (
+            {cur.interest_signals.map((s, i) => (
               <SignalCard key={i} s={s} />
             ))}
           </div>
@@ -177,29 +235,41 @@ export default function RoadshowIntelView({ report, interviewee }: Props) {
       )}
 
       {/* Hidden concerns */}
-      {report.hidden_concerns.length > 0 && (
+      {cur.hidden_concerns.length > 0 && (
         <>
-          <SectionTitle>隐性顾虑</SectionTitle>
+          <SectionTitle>隐性顾虑{editMode && <span className="ml-2 text-[9px] text-slate-500 normal-case tracking-normal">（每行一条，保存后生效）</span>}</SectionTitle>
           <Card>
-            <ul className="space-y-2">
-              {report.hidden_concerns.map((c, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-amber-200">
-                  <span className="shrink-0 text-amber-400">⚠</span>
-                  {c}
-                </li>
-              ))}
-            </ul>
+            {editMode ? (
+              <textarea
+                className={TA}
+                rows={4}
+                value={draft.hidden_concerns.join("\n")}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, hidden_concerns: e.target.value.split("\n").filter(Boolean) }))
+                }
+                placeholder="每行一条隐性顾虑"
+              />
+            ) : (
+              <ul className="space-y-2">
+                {cur.hidden_concerns.map((c, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-amber-200">
+                    <span className="shrink-0 text-amber-400">⚠</span>
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </>
       )}
 
       {/* Key verbatim */}
-      {report.key_verbatim_moments.length > 0 && (
+      {cur.key_verbatim_moments.length > 0 && (
         <>
           <SectionTitle>关键原声</SectionTitle>
           <Card>
             <ul className="space-y-3">
-              {report.key_verbatim_moments.map((m, i) => (
+              {cur.key_verbatim_moments.map((m, i) => (
                 <li key={i} className="text-xs text-slate-200 leading-relaxed border-l-2 border-cyan/30 pl-3">
                   {m}
                 </li>
@@ -210,21 +280,31 @@ export default function RoadshowIntelView({ report, interviewee }: Props) {
       )}
 
       {/* Institution update */}
-      {report.institution_update && (
+      {(cur.institution_update || editMode) && (
         <>
           <SectionTitle>机构档案更新建议</SectionTitle>
           <Card>
-            <p className="text-xs text-slate-300 leading-relaxed">{report.institution_update}</p>
+            {editMode ? (
+              <textarea
+                className={TA}
+                rows={4}
+                value={draft.institution_update ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, institution_update: e.target.value }))}
+                placeholder="关于该机构新获取的洞察，用于更新档案"
+              />
+            ) : (
+              <p className="text-xs text-slate-300 leading-relaxed">{cur.institution_update}</p>
+            )}
           </Card>
         </>
       )}
 
       {/* Actions */}
-      {report.next_actions.length > 0 && (
+      {cur.next_actions.length > 0 && (
         <>
-          <SectionTitle>下一步行动 ({report.next_actions.length})</SectionTitle>
+          <SectionTitle>下一步行动 ({cur.next_actions.length})</SectionTitle>
           <div className="space-y-2">
-            {report.next_actions.map((a, i) => (
+            {cur.next_actions.map((a, i) => (
               <ActionCard key={i} a={a} />
             ))}
           </div>

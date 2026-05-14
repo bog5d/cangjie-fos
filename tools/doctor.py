@@ -210,6 +210,20 @@ _CHECKS: list[tuple[str, bool]] = [
 ]
 
 
+def _fix_log_path() -> Path:
+    """--fix 操作日志落盘路径：backend/logs/doctor_fixes.log。"""
+    return _project_root() / "backend" / "logs" / "doctor_fixes.log"
+
+
+def _log_fix(msg: str, log_path: Path) -> None:
+    """将修复操作追加写入日志文件（首次运行时自动创建目录）。"""
+    import datetime
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(f"[{ts}] {msg}\n")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="仓颉 FOS 诊断修复脚本",
@@ -218,11 +232,14 @@ def main() -> int:
     parser.add_argument("--fix", action="store_true", help="自动修复可修复项")
     args = parser.parse_args()
     fix: bool = args.fix
+    fix_log = _fix_log_path() if fix else None
 
     print()
     print("=" * 52)
     print(f"  仓颉 FOS — 系统诊断{'（自动修复模式）' if fix else ''}")
     print("=" * 52)
+    if fix_log:
+        print(f"  修复日志：{fix_log}")
     print()
 
     results = [
@@ -238,6 +255,7 @@ def main() -> int:
     ]
 
     fail = 0
+    fixed_count = 0
     for (ok, msg, hints), (label, _fixable) in zip(results, _CHECKS):
         icon = "✅" if ok else "❌"
         print(f"[{icon}] {label}: {msg}")
@@ -245,6 +263,14 @@ def main() -> int:
             print(f"    → {h}")
         if not ok:
             fail += 1
+        elif fix and _fixable and fix_log:
+            # 如果原来有问题但 fix 后变成 ok，记录修复成功
+            _log_fix(f"[OK after fix] {label}: {msg}", fix_log)
+            fixed_count += 1
+
+    # 如果 --fix 模式，把本次诊断摘要写入日志
+    if fix and fix_log:
+        _log_fix(f"诊断完成：发现 {fail} 个问题，修复尝试 {len([r for r in results if not r[0]])} 项", fix_log)
 
     print()
     print("=" * 52)
@@ -254,6 +280,8 @@ def main() -> int:
     else:
         suffix = "已尝试自动修复，部分项可能仍需手动操作。" if fix else "运行 python tools/doctor.py --fix 可自动修复部分问题。"
         print(f"❌ 发现 {fail} 个问题。{suffix}")
+    if fix and fix_log and fix_log.exists():
+        print(f"   修复日志已保存：{fix_log}")
     print("=" * 52)
     print()
 

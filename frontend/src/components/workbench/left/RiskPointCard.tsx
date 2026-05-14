@@ -54,6 +54,7 @@ export function RiskPointCard({
   const { jobId, wordsMap } = useWorkbench();
   const [chainOpen, setChainOpen] = useState(false);
   const taImp = useAutoTextareaHeight(point.improvement_suggestion);
+  const taOrig = useAutoTextareaHeight(point.original_text ?? "");
 
   const { impLead, impRest } = useMemo(
     () => {
@@ -126,6 +127,32 @@ export function RiskPointCard({
         <p className="text-xs text-amber-200/90 font-medium line-clamp-2">
           本条在讲什么：{point.problem_summary.trim()}
         </p>
+      ) : null}
+
+      {/* 口述实录 — 原始转写文本，可编辑纠正 ASR 错字 */}
+      {(point.original_text || !isReadonly) ? (
+        <div>
+          <p className="text-xs text-slate-400 mb-1">口述实录
+            {!isReadonly && (
+              <span className="ml-2 text-slate-500 text-[10px]">（可纠正 ASR 错字）</span>
+            )}
+          </p>
+          {isReadonly ? (
+            <p className="text-xs text-slate-300/80 bg-black/20 rounded-lg px-3 py-2 whitespace-pre-wrap leading-relaxed border border-white/5">
+              {point.original_text || "（未记录原文）"}
+            </p>
+          ) : (
+            <textarea
+              ref={taOrig}
+              value={point.original_text ?? ""}
+              onChange={(e) => onChange({ ...point, original_text: e.target.value })}
+              className={TA_CLASS + " min-h-[3rem] text-xs text-slate-200"}
+              rows={2}
+              placeholder="原始转写文本（可粘贴或纠正 ASR 错字/语序问题）"
+              spellCheck={false}
+            />
+          )}
+        </div>
       ) : null}
 
       <div>

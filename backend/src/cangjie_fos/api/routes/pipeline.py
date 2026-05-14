@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from cangjie_fos.schemas.institution import InstitutionProfile, InstitutionProfileCreate, PipelineCountsResponse
+from cangjie_fos.schemas.institution import InstitutionProfile, InstitutionProfileCreate, InstitutionProfileUpdate, PipelineCountsResponse
 from cangjie_fos.services.institution_store import (
     count_by_stage,
     create_institution,
     delete_institution,
     list_institutions,
+    update_institution,
 )
 from cangjie_fos.services.pipeline_funnel import build_funnel_from_institutions
 
@@ -24,6 +25,28 @@ def get_institutions(tenant_id: str = Query(..., min_length=1)) -> list[Institut
 def post_institution(body: InstitutionProfileCreate) -> InstitutionProfile:
     prof = create_institution(body)
     return prof
+
+
+@router.patch("/institutions/{institution_id}", response_model=InstitutionProfile)
+def patch_institution(
+    institution_id: str,
+    body: InstitutionProfileUpdate,
+    tenant_id: str = Query(..., min_length=1),
+) -> InstitutionProfile:
+    """部分更新机构档案字段（ai_summary, concerns, preferences, stage, thermal）。"""
+    updated = update_institution(
+        tenant_id=tenant_id,
+        institution_id=institution_id,
+        name=body.name,
+        stage=body.stage.value if body.stage else None,
+        thermal=body.thermal.value if body.thermal else None,
+        preferences=body.preferences,
+        concerns=body.concerns,
+        ai_summary=body.ai_summary,
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="not_found")
+    return updated
 
 
 @router.delete("/institutions/{institution_id}")

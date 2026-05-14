@@ -8,7 +8,9 @@ interface WorkbenchHeaderProps {
   isDirty: boolean;
   onBack: () => void;
   onCommit: () => void;
+  onUnlock?: () => void;
   committing: boolean;
+  unlocking?: boolean;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -42,7 +44,9 @@ export default function WorkbenchHeader({
   isDirty,
   onBack,
   onCommit,
+  onUnlock,
   committing,
+  unlocking,
 }: WorkbenchHeaderProps) {
   const commitDisabled = committing || isCommitted || !isDirty;
 
@@ -67,14 +71,25 @@ export default function WorkbenchHeader({
         )}
       </div>
 
-      {/* Right: commit button */}
-      <button
-        onClick={onCommit}
-        disabled={commitDisabled}
-        className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
-      >
-        {isCommitted ? '已锁定 ✓' : '锁定 ▶'}
-      </button>
+      {/* Right: unlock + commit buttons */}
+      <div className="flex items-center gap-2">
+        {isCommitted && onUnlock && (
+          <button
+            onClick={onUnlock}
+            disabled={unlocking}
+            className="bg-amber-800/60 hover:bg-amber-700/80 text-amber-300 text-xs px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors border border-amber-600/30"
+          >
+            {unlocking ? '解锁中…' : '🔓 解锁编辑'}
+          </button>
+        )}
+        <button
+          onClick={onCommit}
+          disabled={commitDisabled}
+          className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+        >
+          {isCommitted ? '已锁定 ✓' : '锁定 ▶'}
+        </button>
+      </div>
     </header>
   );
 }

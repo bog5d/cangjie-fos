@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-14 | 当前版本：**v0.5.5** | 测试基线：**502 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.6.0** | 测试基线：**502 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -21,19 +21,28 @@
 | v0.5.3 | 05-12 | Chrome叠层Bug（5个Modal + ExpHud）+ 路演数据打通Pipeline CRM + Playwright浏览器测试 |
 | v0.5.4 | 05-14 | 3个Bug修复：路演报告Step5字段undefined / 删风险点评分不重算 / 历史列表缺机构名 |
 | v0.5.5 | 05-14 | **单仓库自包含**：移除 AI_Pitch_Coach 外部依赖，clone 一个仓库即完整 |
+| v0.6.0 | 05-15 | 7个Bug修复（#2/#4/#6/#8/#9/#12/#13）+ 启动失败自动诊断 + Pipeline卡片编辑 |
 
 ### 同事反馈的13个问题——当前处理状态
 
 同事（zt001）测试 v0.5.3 后提了13个问题，按「纯Bug」优先级分类处理：
 
-**✅ 已修复（v0.5.4）：**
-- Bug #11：路演报告第5步大量字段显示undefined/空白（TypeScript接口与后端schema不符）
-- Bug #7：复盘审查台删除风险点后总分不自动重算
-- Bug #5：复盘历史记录列表缺机构名列（PitchJobSummary schema未含 institution_id）
+**✅ 已修复（v0.5.4 + v0.6.0，共10个）：**
+- Bug #2：新增风险点「问题简述」字段（AddRiskPointForm 新增 problem_summary 输入）
+- Bug #4：口述实录可编辑（RiskPointCard 展示并可编辑 original_text）
+- Bug #5：历史记录显示机构名（PitchJobSummary + institution_id）
+- Bug #6：锁定后可解锁编辑（WorkbenchHeader 🔓按钮 + DELETE /review-lock）
+- Bug #7：删风险点总分自动重算（handleRiskDelete 补加重算逻辑）
+- Bug #8：Pipeline卡片可点击编辑（InstitutionList 点击开 EditModal）
+- Bug #9：Pipeline阶段可手动切换（EditModal stage 下拉菜单）
+- Bug #11：路演报告Step5字段对齐（RoadshowWizard TS接口与schema一致）
+- Bug #12：路演情报报告有编辑入口（RoadshowIntelView 编辑摘要模式）
+- Bug #13：Pipeline卡片内容为空时提示并可点击填充
 
-**⏳ 待处理（剩余10个，向王波索取原始反馈截图确认优先级）：**
-- 已知 #1：录音片段不完整（ASR相关）
-- 其余9个含 UX改进、配置类、边缘场景
+**⏳ 待处理（剩余3个）：**
+- #1：录音片段不完整（ASR片段截取，ASR核心逻辑改动，风险高）
+- #3：尽调匹配不准 + 无打包下载（两个独立复杂功能）
+- #10：资产台账搜索不到（扫描逻辑需深入调查）
 
 ### 启动开发环境
 

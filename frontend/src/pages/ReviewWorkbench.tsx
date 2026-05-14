@@ -61,6 +61,7 @@ export default function ReviewWorkbench() {
   const [wordsMap, setWordsMap] = useState<Map<number, TranscriptionWord>>(new Map());
   const [isDirty, setIsDirty] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const originalRef = useRef<AnyReport | null>(null);
 
   // Load review data
@@ -183,16 +184,18 @@ export default function ReviewWorkbench() {
     [updateDraft],
   );
 
-  const handleCommit = useCallback(async () => {
-    if (!draftReport || !jobId) return;
-    if (isRoadshowReport(draftReport)) return; // 路演情报报告不支持编辑提交
+  const handleCommit = useCallback(async (reportOverride?: AnyReport) => {
+    if (!jobId) return;
+    const toSave = reportOverride ?? draftReport;
+    if (!toSave) return;
     setCommitting(true);
     try {
-      const body: PitchReviewCommitRequest = { edited_report: draftReport as AnalysisReport };
+      const body = { edited_report: toSave };
       await api.patch(`/api/pitch/jobs/${jobId}/review`, body);
       setReviewData((prev) =>
-        prev ? { ...prev, committed_at: Date.now() / 1000, edited_report: draftReport } : prev,
+        prev ? { ...prev, committed_at: Date.now() / 1000, edited_report: toSave } : prev,
       );
+      setDraftReport(toSave);
       setIsDirty(false);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "提交失败，请重试");
@@ -200,6 +203,20 @@ export default function ReviewWorkbench() {
       setCommitting(false);
     }
   }, [draftReport, jobId]);
+
+  const handleUnlock = useCallback(async () => {
+    if (!jobId) return;
+    setUnlocking(true);
+    try {
+      await api.delete(`/api/pitch/jobs/${jobId}/review-lock`);
+      setReviewData((prev) => prev ? { ...prev, committed_at: undefined } : prev);
+      setIsDirty(false);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "解锁失败，请重试");
+    } finally {
+      setUnlocking(false);
+    }
+  }, [jobId]);
 
   const isCommitted = reviewData?.committed_at != null;
   const committedAt = reviewData?.committed_at
@@ -262,6 +279,8 @@ export default function ReviewWorkbench() {
             <RoadshowIntelView
               report={draftReport}
               interviewee={reviewData?.interviewee}
+              onSave={(updated) => void handleCommit(updated)}
+              saving={committing}
             />
           </div>
         </div>
@@ -327,7 +346,9 @@ export default function ReviewWorkbench() {
             isDirty={isDirty}
             onBack={() => navigate(-1)}
             onCommit={() => void handleCommit()}
+            onUnlock={() => void handleUnlock()}
             committing={committing}
+            unlocking={unlocking}
           />
           <WorkbenchBody leftPanel={leftPanel} rightPanel={rightPanel} />
         </div>

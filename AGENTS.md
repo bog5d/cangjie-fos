@@ -6,16 +6,16 @@
 
 ---
 
-## 当前状态（最后更新：2026-05-14）
+## 当前状态（最后更新：2026-05-15）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.5.5** |
+| 版本 | **v0.6.0** |
 | 测试基线 | **502 passed** |
 | 前端构建 | **零错误** |
 | 单仓库可运行 | **✅ 是** — clone cangjie-fos 即可，无需 AI_Pitch_Coach |
 | 详细变更历史 | 见 `CHANGELOG.md` |
-| 最后更新 | 2026-05-14 |
+| 最后更新 | 2026-05-15 |
 
 > ⚠️ **你接手后完成任何代码改动，必须按本文「文档更新规则」一节更新上面这个表格。**
 
@@ -62,7 +62,34 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 
 ---
 
-## 最近做了什么（v0.5.3 → v0.5.4）
+## 最近做了什么（v0.5.3 → v0.6.0）
+
+### v0.6.0（2026-05-15）— 7个Bug修复 + 启动体验 + Pipeline编辑
+
+累计已解决同事反馈13个问题中的10个（本版修复 #2/#4/#6/#8/#9/#12/#13）：
+
+| # | 问题描述 | 状态 | 版本 | 关键文件 |
+|---|---------|------|------|---------|
+| 1 | 录音片段不完整 | ❌ 待处理 | — | ASR 片段截取逻辑 |
+| 2 | 新增风险点缺「问题简述」字段 | ✅ 已修复 | v0.6.0 | `AddRiskPointForm.tsx` 加 problem_summary 输入 |
+| 3 | 尽调匹配不准 + 无打包下载 | ❌ 待处理 | — | matchmaker + 打包 API（复杂，后续迭代）|
+| 4 | 口述实录无法编辑/语序错误 | ✅ 已修复 | v0.6.0 | `RiskPointCard.tsx` 新增可编辑 original_text 区块 |
+| 5 | 历史记录缺机构名 | ✅ 已修复 | v0.5.4 | PitchJobSummary + institution_id |
+| 6 | 锁定后无法解锁编辑 | ✅ 已修复 | v0.6.0 | `WorkbenchHeader` 🔓按钮 + `DELETE /review-lock` 端点 |
+| 7 | 删除风险点总分不变 | ✅ 已修复 | v0.5.4 | handleRiskDelete 重算 total_score |
+| 8 | Pipeline卡片无法点开/编辑 | ✅ 已修复 | v0.6.0 | `InstitutionList` 点击弹出 EditModal |
+| 9 | Pipeline阶段计数无法手动改 | ✅ 已修复 | v0.6.0 | EditModal 中的 stage 下拉菜单 |
+| 10 | 资产台账搜索不到 | ❌ 待处理 | — | 扫描逻辑（需深入调查）|
+| 11 | 路演报告Step5 undefined | ✅ 已修复 | v0.5.4 | RoadshowWizard TS 接口对齐 |
+| 12 | 路演情报报告无编辑入口 | ✅ 已修复 | v0.6.0 | `RoadshowIntelView` 编辑摘要模式 |
+| 13 | Pipeline卡片内容为空 | ✅ 已修复 | v0.6.0 | EditModal 填充内容 + 空时提示「点击编辑」|
+
+**进度：10/13 已修复，3/13 待处理**（#1录音片段、#3尽调匹配、#10资产搜索）
+
+**其他：启动体验改善**
+- `安装并启动.ps1`：启动日志落盘 + 失败自动生成桌面诊断报告，记事本打开
+- `tools/doctor.py`：`--fix` 操作写入 `backend/logs/doctor_fixes.log`
+- `backend/logs/.gitkeep`：日志目录占位符，`*.log` 文件已被 `.gitignore` 排除
 
 ### v0.5.5（2026-05-14）— 单仓库自包含（移除 AI_Pitch_Coach 外部依赖）
 
@@ -76,24 +103,6 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 ### v0.5.4（2026-05-14）— 同事反馈 Bug 修复（13个问题中修复3个）
 
 同事 zt001 测试 v0.5.3 后反馈 13 个问题，完整清单及处理状态如下：
-
-| # | 问题描述 | 状态 | 备注 |
-|---|---------|------|------|
-| 1 | 录音片段不完整，前后缺 5-10 秒上下文 | ❌ 待处理 | ASR 片段截取逻辑 |
-| 2 | 新增风险点缺少"问题简述"字段，只能填改进建议和扣分原因 | ❌ 待处理 | ReviewWorkbench 新增风险点表单 |
-| 3 | 尽调响应台匹配不准（营业执照18%）+ 无打包下载功能 | ❌ 待处理 | matchmaker 算法 + 打包 API |
-| 4 | 口述实录无法编辑且语序错误 | ❌ 待处理 | ReviewWorkbench 口述实录编辑入口 |
-| 5 | 历史记录缺机构名称列 | ✅ v0.5.4 | `PitchJobSummary` 加 `institution_id`，历史列表显示 🏢 机构名 |
-| 6 | 报告锁定后无法解锁编辑 | ❌ 待处理 | ReviewWorkbench 解锁按钮 |
-| 7 | 删除风险点后总分不重算 | ✅ v0.5.4 | `handleRiskDelete` 补加 `total_score = 100 - Σdeductions` |
-| 8 | Pipeline 看板机构卡片无法点开详情/编辑阶段 | ❌ 待处理 | InstitutionList 卡片交互 |
-| 9 | Pipeline 漏斗阶段计数无法手动修改 | ❌ 待处理 | 阶段切换下拉菜单 |
-| 10 | 资产台账搜索不到已有文件 | ❌ 待处理 | 扫描逻辑 + 重新扫描按钮 |
-| 11 | 路演情报报告第5步字段 undefined/空白 | ✅ v0.5.4 | RoadshowWizard TS 接口与 schema 字段名全面对齐 |
-| 12 | 路演情报报告无编辑入口 | ❌ 待处理 | RoadshowWizard Step5 或新建编辑页面 |
-| 13 | Pipeline 看板机构卡片内容为空（即使有路演记录） | ❌ 待处理 | 卡片数据渲染，与 v0.5.3 CRM打通是不同问题 |
-
-**进度：3/13 已修复，10/13 待处理**
 
 ### v0.5.3（2026-05-12）— Chrome 叠层 Bug + 路演数据打通
 

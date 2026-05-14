@@ -82,6 +82,20 @@ export default function AddRiskPointForm({ onAdd, disabled }: AddRiskPointFormPr
             </select>
           </div>
 
+          {/* 问题简述 */}
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">
+              问题简述 <span className="text-rose-400">*</span>
+            </label>
+            <input
+              className={inputCls}
+              placeholder="一句话概括风险点（30字内，如：市场份额数据缺乏来源）"
+              value={form.problem_summary ?? ""}
+              disabled={disabled}
+              onChange={(e) => handleChange("problem_summary", e.target.value)}
+            />
+          </div>
+
           {/* 改进建议 */}
           <div>
             <label className="text-xs text-slate-400 block mb-1">改进建议</label>

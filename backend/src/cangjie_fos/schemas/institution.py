@@ -47,6 +47,17 @@ class InstitutionProfileCreate(BaseModel):
     source_trace_id: str | None = None
 
 
+class InstitutionProfileUpdate(BaseModel):
+    """PATCH 请求体：只传需要更新的字段，None = 不修改。"""
+
+    name: str | None = None
+    stage: PipelineStage | None = None
+    thermal: InstitutionThermal | None = None
+    preferences: str | None = None
+    concerns: str | None = None
+    ai_summary: str | None = None
+
+
 class PipelineCountsResponse(BaseModel):
     tenant_id: str
     counts: dict[str, int]

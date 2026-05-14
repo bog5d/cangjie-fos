@@ -144,6 +144,53 @@ def delete_institution(*, tenant_id: str, institution_id: str) -> bool:
         return cur.rowcount > 0
 
 
+def update_institution(
+    *,
+    tenant_id: str,
+    institution_id: str,
+    name: str | None = None,
+    stage: str | None = None,
+    thermal: str | None = None,
+    preferences: str | None = None,
+    concerns: str | None = None,
+    ai_summary: str | None = None,
+) -> InstitutionProfile | None:
+    """部分更新机构字段，返回更新后的档案；找不到则返回 None。"""
+    import time as _time
+    updates: dict[str, Any] = {"updated_at": _time.time()}
+    if name is not None:
+        updates["name"] = name.strip()
+    if stage is not None:
+        updates["stage"] = stage
+    if thermal is not None:
+        updates["thermal"] = thermal
+    if preferences is not None:
+        updates["preferences"] = preferences
+    if concerns is not None:
+        updates["concerns"] = concerns
+    if ai_summary is not None:
+        updates["ai_summary"] = ai_summary
+    if not updates:
+        return None
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    vals = list(updates.values()) + [tenant_id, institution_id]
+    with _conn() as c:
+        cur = c.execute(
+            f"UPDATE institutions SET {set_clause} WHERE tenant_id = ? AND institution_id = ?",  # noqa: S608
+            vals,
+        )
+        c.commit()
+        if cur.rowcount == 0:
+            return None
+        row = c.execute(
+            """SELECT institution_id, tenant_id, name, stage, thermal,
+                      preferences, concerns, ai_summary, updated_at, source_trace_id
+               FROM institutions WHERE tenant_id = ? AND institution_id = ?""",
+            (tenant_id, institution_id),
+        ).fetchone()
+    return row_to_profile(row) if row else None
+
+
 def row_to_profile(row: tuple[Any, ...]) -> InstitutionProfile:
     return InstitutionProfile(
         institution_id=row[0],
