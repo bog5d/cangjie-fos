@@ -43,6 +43,9 @@ from cangjie_fos.engine.runtime_paths import get_writable_app_root
 
 from cangjie_fos.engine.coach.llm_judge._evaluation import _make_client
 from cangjie_fos.engine.coach.llm_judge._prompts import _normalize_explicit_context, format_transcript_for_llm
+from cangjie_fos.engine.coach.llm_judge._config import JUDGE_MODEL_KEYS, MAX_COMPLETION_TOKENS_BY_MODEL, MAX_TRANSCRIPT_CHARS
+
+logger = logging.getLogger(__name__)
 
 def run_roadshow_intel_analysis(
     words: list[Any],

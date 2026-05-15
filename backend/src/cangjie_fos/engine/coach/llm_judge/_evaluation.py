@@ -45,6 +45,8 @@ from cangjie_fos.engine.coach.llm_judge._config import truncate_qa_text, truncat
 from cangjie_fos.engine.coach.llm_judge._prompts import _build_system_prompt, _build_risk_scan_system_prompt, _build_deep_single_risk_system_prompt, _clamp_word_span, format_transcript_for_llm
 from cangjie_fos.engine.coach.llm_judge._salvage import _salvage_risk_scan_result, _is_valid_risk_point
 
+logger = logging.getLogger(__name__)
+
 def _make_client(model_key: str) -> tuple[OpenAI, str]:
     if model_key not in ROUTER:
         raise ValueError(f"未知模型键: {model_key}，应为 deepseek / kimi / qwen")

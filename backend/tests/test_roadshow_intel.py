@@ -131,7 +131,7 @@ def test_run_roadshow_intel_analysis_success():
 
     mock_resp = _make_mock_llm_response(payload)
 
-    with patch("cangjie_fos.engine.coach.llm_judge._evaluation._make_client") as mock_client_fn, \
+    with patch("cangjie_fos.engine.coach.llm_judge._roadshow._make_client") as mock_client_fn, \
          patch("cangjie_fos.engine.coach.llm_judge._roadshow.run_with_backoff") as mock_backoff:
         mock_client = MagicMock()
         mock_client_fn.return_value = (mock_client, "deepseek-chat")
@@ -160,7 +160,7 @@ def test_run_roadshow_intel_analysis_llm_parse_failure_graceful():
     resp = MagicMock()
     resp.choices = [choice]
 
-    with patch("cangjie_fos.engine.coach.llm_judge._evaluation._make_client") as mock_client_fn, \
+    with patch("cangjie_fos.engine.coach.llm_judge._roadshow._make_client") as mock_client_fn, \
          patch("cangjie_fos.engine.coach.llm_judge._roadshow.run_with_backoff") as mock_backoff:
         mock_client = MagicMock()
         mock_client_fn.return_value = (mock_client, "deepseek-chat")
