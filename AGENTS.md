@@ -131,6 +131,65 @@ type：`feat` | `fix` | `docs` | `refactor` | `test` | `chore`
 
 ---
 
+## 多 AI 协作规范（多人同时开发时强制执行）
+
+> 本仓库允许多个 AI 并行开发，以下规则防止互相踩坑。
+
+### ❌ 绝对禁止：用 `@pytest.mark.skip` 当垃圾桶
+
+**错误做法**：测试写了一半跑不通，加个 `@pytest.mark.skip` 先提交。  
+**正确做法**：要么测试写完跑通再提交；要么完全不提交该测试文件。
+
+- `@pytest.mark.skip` 只允许用于**已知的、有 GitHub Issue 追踪的外部限制**（如"需要真实 ASR 服务"）
+- commit message 里写了 `X passed, Y skipped`，Y > 0 必须在 AGENTS.md 「待处理」节说明原因
+- **绝不允许**：把原本通过的测试改写成新行为、跑不通、再 skip 掉——这比没有测试更危险
+
+### 🔍 同类问题必须横向扫描
+
+修复某个代码 pattern（bare `except`、硬编码路径、编码问题）时，**必须扫全仓库**，一次性修完同类问题。
+
+```bash
+# 例：修 bare except 前先扫存量
+grep -rn "except:" backend/src/ --include="*.py"
+grep -rn "except Exception:" backend/src/ --include="*.py"
+
+# 例：修 encoding 前先扫
+grep -rn 'read_text(encoding="utf-8")' backend/src/ --include="*.py"
+
+# 例：修硬编码路径前先扫
+grep -rn '"data"/"audio"' backend/src/ --include="*.py"
+```
+
+**不允许**：修了 A 文件的 pattern，留着 B 文件的同类问题等下一次。
+
+### 📋 提交前 self-check 清单（每次 push 前逐项确认）
+
+```
+□ pytest 全套跑完，输出了 "NNN passed, 0 failed"（不是"应该能过"）
+□ 本次改动没有引入新的 @pytest.mark.skip
+□ 如果修了某个 pattern，已用 grep 确认全仓库同类问题都处理了
+□ 新增测试文件：若使用 TestClient 或 module/class-scope fixture，已加 @pytest.mark.real_db
+□ commit message 包含实际测试数字（如 "605 passed"），不写估算值
+□ AGENTS.md 顶部版本号 + 测试基线已更新
+```
+
+### 🧪 测试文件分类规则
+
+新建或修改测试文件时，按以下判断决定是否加 `pytestmark = [pytest.mark.real_db]`：
+
+| 测试特征 | 是否加 real_db |
+|---------|--------------|
+| 使用 module/class-scope fixture 预写 DB 数据 | ✅ 必须加 |
+| 使用 `TestClient(global_app)` 发真实 HTTP | ✅ 必须加 |
+| 已有自己的 `isolated_db` fixture | ✅ 必须加（防双重 monkeypatch）|
+| 纯函数单元测试，不碰 DB | ❌ 不需要 |
+| 用 `patch.object` 全 mock，不发真实请求 | ❌ 不需要 |
+
+原理：`_isolate_db_per_test` 是 autouse fixture，会给每个测试注入独立的 SQLite 临时文件。  
+`real_db` 标记 = "我自己管 DB，不要 autouse 干预"。
+
+---
+
 ## 文档更新规则（每次 push 前强制执行）
 
 > 你完成任何代码改动并 push 之前，必须更新本文档和 CHANGELOG.md。
