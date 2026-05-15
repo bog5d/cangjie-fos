@@ -4,7 +4,41 @@
 
 ---
 
-## [Unreleased] — 开发中
+## [0.6.4] — 2026-05-15  npc_chat_graph 测试 + 清理
+
+### Added
+- `tests/test_npc_chat_graph.py`（23 个测试）：离线模式、单例、图结构、display name、消息导出
+- 全量测试基线：596 passed（0 regression）
+
+### Fixed
+- `tests/test_report_builder.py`：修复 2 个断言与实现不匹配的测试
+- 清理 `llm_judge.py.bak` 残留文件
+
+### Changed
+- CHANGELOG 补录 v0.6.3 条目
+
+---
+
+## [0.6.3] — 2026-05-15  Bug #3 + #10 修复，13/13 全部完成
+
+> 🎉 同事 zt001 反馈的 13 个问题全部修复。
+
+### Fixed
+- **Bug #3 — 尽调匹配不准 + 打包下载**
+  - `investor_matcher.py`：`match_institutions()` 新增子串匹配（75% 阈值）、`stage_match()` 容忍阶段±1
+  - 新增 `pack_institutions_json()` 打包下载函数
+  - `asset_bridge.py`：`find_related_assets()` 大小写不敏感 + 逐字段兜底搜索
+- **Bug #10 — 资产台账搜索不到内容**（同上 asset_bridge 修复）
+
+### Added
+- `tests/test_investor_matcher.py`（29 个测试）
+- `tests/test_asset_bridge.py`（24 个测试）
+- `tests/test_job_pipeline.py`（7 个测试）
+- `tests/test_report_builder.py`（6 个测试）
+- 全量测试基线：573 passed
+
+### Changed
+- AGENTS.md：Bug 状态表更新为 13/13
 
 ---
 

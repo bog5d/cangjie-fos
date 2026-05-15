@@ -22,14 +22,14 @@ class TestDesensitizeText:
         result = desensitize_text("深圳市创新投资集团", is_person=False)
         assert len(result) < len("深圳市创新投资集团有限公司")
 
-    def test_empty_text_returns_empty(self):
+    def test_empty_text_returns_placeholder(self):
         result = desensitize_text("", is_person=True)
-        assert result == "" or result.strip() == ""
+        assert result == "未命名"  # by design: empty input → placeholder
 
-    def test_mixed_chinese_english_preserved(self):
+    def test_person_mode_replace_all(self):
+        # is_person=True → entire input replaced with "XXX"
         result = desensitize_text("ABC公司与张三合作", is_person=True)
-        assert "ABC" in result
-        assert "张三" not in result
+        assert result == "XXX"
 
 
 class TestHanInitialsSegment:
