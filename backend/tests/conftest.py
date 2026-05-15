@@ -70,26 +70,15 @@ def _isolate_db_per_test(request, tmp_path, monkeypatch):
     monkeypatch pitch_job_db._db_path 到临时目录，
     确保测试间完全隔离，杜绝并行测试时的全局状态泄漏。
 
-    例外：E2E 测试（wizard/pipeline/retry-eval）使用 module/class 级
-    fixture 预先写入 DB 数据，scope 不匹配会导致读取临时空 DB——
-    对这类测试跳过隔离，让它们直接使用真实 DB 路径。
+    测试可通过 ``@pytest.mark.real_db`` 声明自己需要真实 DB：
+    - 使用 module/class 级 fixture 预写数据的 E2E 测试
+    - 已有自己的 isolated_db fixture 需要避免双重 monkeypatch
 
     对不使用 DB 的测试无副作用（只有首次 _connect() 时才创建文件）。
     """
-    # E2E 测试在 module/class fixture 中预写数据到真实 DB 路径，
-    # function-scope DB 隔离会导致读不到数据 → 跳过 monkeypatch
-    _SKIP_DB_ISOLATION_MODULES = (
-        "test_wizard_pipeline_e2e",
-        "test_pipeline_e2e",
-        "test_p0_retry_eval",
-        "test_follow_ups_api",
-        # test_wiki_display 已有自己的 isolated_db fixture 做 DB 隔离，
-        # 若 autouse 再做一次 monkeypatch 会导致双重 patch 互相干扰（不同 tmp_path）
-        "test_wiki_display",
-    )
-    module_path = str(request.node.path)
-    if any(name in module_path for name in _SKIP_DB_ISOLATION_MODULES):
-        return  # yield nothing — E2E tests use real DB
+    # ``@pytest.mark.real_db`` 标记的测试自行管理 DB，跳过隔离
+    if request.node.get_closest_marker("real_db"):
+        return
 
     import cangjie_fos.services.pitch_job_db as db_module  # noqa: PLC0415
 

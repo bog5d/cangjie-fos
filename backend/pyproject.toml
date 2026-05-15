@@ -49,3 +49,6 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-q --ignore=tests/test_ui_smoke.py"
 python_files = ["test_*.py", "*_test.py"]
+markers = [
+  "real_db: 测试使用 module/class 级 fixture 预写数据到真实 DB，跳过 _isolate_db_per_test 的临时 DB monkeypatch",
+]

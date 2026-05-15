@@ -244,8 +244,8 @@ def prepare_pitch_evaluation_context(
         if callable(on_notice):
             try:
                 on_notice(warn_msg)
-            except Exception:
-                logger.exception("on_notice 回调失败")
+            except Exception as e:
+                logger.exception("on_notice 回调失败: %s", e)
 
     bg_use, _ = truncate_company_background(company_background or "")
     asset_ref = (asset_reference_markdown or "").strip()
@@ -353,8 +353,8 @@ def run_phase1_risk_scan(ctx: PitchEvalContext) -> tuple[RiskScanResult, bool]:
         if callable(ctx.on_notice):
             try:
                 ctx.on_notice(warn_msg)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("on_notice 回调失败: %s", e)
 
     return scan, _stage1_truncated
 
@@ -400,8 +400,8 @@ def run_phase2_deep_eval_and_assemble_report(
                 lang_hint=ctx.lang_hint,
             )
             return idx, rp
-        except Exception:
-            logger.exception("靶点 %d 深评失败，已跳过该条", idx)
+        except (RuntimeError, ValueError, json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.exception("靶点 %d 深评失败: %s，已跳过", idx, e)
             return idx, None
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:

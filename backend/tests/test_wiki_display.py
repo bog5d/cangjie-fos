@@ -9,6 +9,8 @@ import uuid
 import pytest
 from starlette.testclient import TestClient
 
+pytestmark = [pytest.mark.real_db]
+
 from cangjie_fos.main import app as global_app
 
 

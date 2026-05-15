@@ -12,6 +12,8 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from fastapi.testclient import TestClient
 
+pytestmark = [pytest.mark.real_db]
+
 from cangjie_fos.main import create_app
 from cangjie_fos.services.pitch_job_db import _connect, db_job_create, db_job_get, db_job_update
 

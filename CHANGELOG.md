@@ -4,6 +4,57 @@
 
 ---
 
+## [0.6.8] — 2026-05-15  DB 隔离架构 + marker 自治 + bare except 收敛
+
+> 测试基线：605 passed，0 skipped，0 failed
+
+### Added
+- **`_isolate_db_per_test` autouse fixture**：每个测试独立 SQLite 临时数据库，杜绝并行状态泄漏
+- **`@pytest.mark.real_db` marker**：测试文件声明自己使用真实 DB（替代中央豁免列表硬编码）
+  - 适用：module/class 级 fixture 预写数据、已有独立 DB 隔离 fixture
+  - 5 个文件已迁移：`test_wizard_pipeline_e2e`, `test_pipeline_e2e`, `test_p0_retry_eval`, `test_follow_ups_api`, `test_wiki_display`
+- **`get_audio_dir()` 路径抽象**（`core/paths.py`）：支持 `CANGJIE_AUDIO_DIR` 环境变量覆盖，测试可隔离音频目录
+- `test_report_builder.py` 新建（10 测试）：desensitize/han_initials/apply_masks + 缺音频降级场景
+
+### Fixed
+- **test_p1b_html_report_service**：移除 2 个 `@pytest.mark.skip`，补齐完整 mock 链，修复跨平台路径问题
+- **test_wiki_display**：双重 monkeypatch 导致偶发 `database is locked`，通过 `@pytest.mark.real_db` 豁免
+
+### Changed
+- **7 处硬编码音频路径** → `get_audio_dir()`（pitch, roadshow, main, pitch_upload_pipeline, pitch_wizard_runner）
+- **裸 except 收敛**：`_evaluation.py` 6 个 → 具体异常 / `Exception as e` + 日志；`report_builder.py` 4 个 → 具体异常
+- **全项目裸 except 存量**：36 个（从 v0.6.5 的 61 个降至 36 个）
+
+
+## [0.6.7] — 2026-05-15  同事部署问题 3.5/3.6 修复
+
+> 同事 Word 文档 6 个问题全部清零。测试基线：600 passed。
+
+### Fixed
+- **Bug 3.5 — data/ 目录未自动创建**：`main.py` 启动时创建 `data/audio` 目录
+- **Bug 3.6 — HTML 报告缺音频直接崩溃**：`report_builder.py` + `html_report_service.py` 优雅降级
+  - `raise FileNotFoundError` → `logger.warning` + 跳过音频切片，生成纯文本报告
+
+### Added
+- `test_report_builder.py` 新增 4 个测试（缺音频降级场景）
+
+
+## [0.6.6] — 2026-05-15  根治启动脚本编码崩溃 + JSON GBK 兜底
+
+> 测试基线：596 passed（asset_bridge 2 个之前失败的测试现已通过）
+
+### Fixed
+- **`安装并启动.ps1`**：根治 PS5.1 GBK 解析崩溃
+  - 顶部加 `[Console]::OutputEncoding` + `$OutputEncoding = UTF8`
+  - here-string → 字符串数组拼接
+  - 诊断报告文件名改为纯 ASCII
+  - `uv sync --extra dev` → `uv sync`（提速）
+  - `uv sync` 失败时自动清理 `.venv` 后重试
+- **`.bat` 脚本全部重写**：UTF-8 + `chcp 65001`，彻底消除中文乱码
+- **JSON 读取编码回退链**：`utf-8 → gbk → utf-8-sig`（`asset_bridge.py`, `investor_matcher.py`）
+  - 修复中文 Windows 生成的 GBK 编码 JSON 导致 `UnicodeDecodeError`
+
+
 ## [0.6.5] — 2026-05-15  代码质量：裸异常收敛
 
 ### Changed

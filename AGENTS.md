@@ -17,15 +17,17 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v0.6.5，2026-05-15）
+## 当前状态（v0.6.8，2026-05-15）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.6.5** |
-| 测试基线 | **596 passed**，0 failed（跳过 4 个预存 flaky 测试）|
+| 版本 | **v0.6.8** |
+| 测试基线 | **605 passed**，0 skipped，0 failed |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
+| DB fixture | `_isolate_db_per_test` autouse：每测试独立 SQLite。用 `@pytest.mark.real_db` 声明豁免 |
+| Push hook | `.git/hooks/pre-push` 自动跑 DB fixture 测试 |
 
 ---
 
@@ -68,6 +70,23 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 | 13 | Pipeline卡片内容为空 | ✅ 已修复 | v0.6.0 |
 
 **13/13 全部已修复** 🎉
+
+---
+
+## v0.6.8 刚做的事（2026-05-15）
+
+| 改了哪里 | 做了什么 |
+|---------|---------|
+| `core/paths.py` | 新增 `get_audio_dir()`，支持 `CANGJIE_AUDIO_DIR` 环境变量，测试可隔离音频目录 |
+| 5 个文件 | 7 处硬编码 `get_backend_root()/"data"/"audio"` → `get_audio_dir()` |
+| `tests/conftest.py` | `_isolate_db_per_test` autouse：每测试独立 SQLite；用 `@pytest.mark.real_db` 声明豁免 |
+| 5 个测试文件 | 加 `pytestmark = [pytest.mark.real_db]`（替代中央豁免列表） |
+| `_evaluation.py` | 6 个裸 `except Exception` 收敛；`report_builder.py` 4 个 |
+| `.git/hooks/pre-push` | 自动跑 DB fixture 测试，防止 scope mismatch 打红 |
+| `CHANGELOG.md` | 补 v0.6.6 / v0.6.7 / v0.6.8 三版条目 |
+| `test_p1b_html_report_service.py` | 移除 2 个 skip，补齐 mock 链，修跨平台路径 |
+
+测试基线：**605 passed，0 skipped，0 failed**
 
 ---
 
