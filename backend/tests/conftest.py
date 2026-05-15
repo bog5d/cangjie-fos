@@ -83,6 +83,9 @@ def _isolate_db_per_test(request, tmp_path, monkeypatch):
         "test_pipeline_e2e",
         "test_p0_retry_eval",
         "test_follow_ups_api",
+        # test_wiki_display 已有自己的 isolated_db fixture 做 DB 隔离，
+        # 若 autouse 再做一次 monkeypatch 会导致双重 patch 互相干扰（不同 tmp_path）
+        "test_wiki_display",
     )
     module_path = str(request.node.path)
     if any(name in module_path for name in _SKIP_DB_ISOLATION_MODULES):

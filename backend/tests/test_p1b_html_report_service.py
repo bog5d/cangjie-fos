@@ -110,22 +110,36 @@ class TestGenerateJobHtmlReport:
             with pytest.raises(ValueError, match="no transcription words"):
                 svc.generate_job_html_report("job1")
 
-    @pytest.mark.skip(reason="Bug 3.6 fix: graceful degradation tested in test_report_builder.py")
-    def test_generates_text_only_report_when_no_audio(self):
-        """When audio_path is None/missing, should still generate HTML (Bug 3.6 fix)."""
+    def test_generates_text_only_report_when_no_audio(self, tmp_path):
+        """When audio_path is None, service must NOT raise FileNotFoundError (Bug 3.6)."""
         row = _make_row(original_report=_SAMPLE_REPORT, audio_path=None)
+        fake_output = tmp_path / "job1.html"
+        fake_output.touch()
         svc = _get_svc()
-        fake_html = Path("/tmp/job1.html")
-        with patch.object(svc, "db_job_get", return_value=row),              patch.object(svc, "db_job_update", return_value=None),              patch.object(svc, "generate_html_report", return_value=fake_html):
+        with (
+            patch.object(svc, "db_job_get", return_value=row),
+            patch.object(svc, "db_job_update"),
+            patch.object(svc, "get_backend_root", return_value=tmp_path),
+            patch("cangjie_fos.engine.report_builder.generate_html_report", return_value=fake_output),
+            patch("cangjie_fos.engine.schema.AnalysisReport.model_validate", return_value=MagicMock()),
+            patch("cangjie_fos.engine.schema.TranscriptionWord.model_validate", return_value=MagicMock()),
+        ):
             result = svc.generate_job_html_report("job1")
             assert result.name.endswith(".html")
 
-    @pytest.mark.skip(reason="Bug 3.6 fix: graceful degradation tested in test_report_builder.py")
-    def test_generates_text_only_report_when_audio_missing_from_disk(self):
-        """When audio file doesn't exist on disk, should still generate HTML (Bug 3.6 fix)."""
+    def test_generates_text_only_report_when_audio_missing_from_disk(self, tmp_path):
+        """When audio file path given but file doesn't exist, must NOT raise (Bug 3.6)."""
         row = _make_row(original_report=_SAMPLE_REPORT, audio_path="/nonexistent/path/audio.m4a")
+        fake_output = tmp_path / "job1.html"
+        fake_output.touch()
         svc = _get_svc()
-        fake_html = Path("/tmp/job1.html")
-        with patch.object(svc, "db_job_get", return_value=row),              patch.object(svc, "db_job_update", return_value=None),              patch.object(svc, "generate_html_report", return_value=fake_html):
+        with (
+            patch.object(svc, "db_job_get", return_value=row),
+            patch.object(svc, "db_job_update"),
+            patch.object(svc, "get_backend_root", return_value=tmp_path),
+            patch("cangjie_fos.engine.report_builder.generate_html_report", return_value=fake_output),
+            patch("cangjie_fos.engine.schema.AnalysisReport.model_validate", return_value=MagicMock()),
+            patch("cangjie_fos.engine.schema.TranscriptionWord.model_validate", return_value=MagicMock()),
+        ):
             result = svc.generate_job_html_report("job1")
             assert result.name.endswith(".html")
