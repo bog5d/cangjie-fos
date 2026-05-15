@@ -253,6 +253,9 @@ def push_match_session(session_id: str) -> bool:
 
     row_dict = dict(row)
     cfg = _cfg()
+    # TODO: 当 match_sessions 表新增 tenant_id 列后，改为：
+    #   tenant = row_dict.get("tenant_id") or cfg["tenant"]
+    # 目前表中无 tenant_id 列，暂时使用环境变量配置值
     tenant = cfg["tenant"]
     export = _match_session_to_export(row_dict)
 

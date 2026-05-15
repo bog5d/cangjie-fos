@@ -265,6 +265,11 @@ def run_pitch_wizard_track_job(
             exp_reason="向导提交：录音解析并完成 LangGraph 复盘",
         )
         logger.info("pitch_wizard_job_done job_id=%s tenant_id=%s", job_id, tenant_id)
+        try:
+            from cangjie_fos.services import github_sync
+            github_sync.push_pitch_job(job_id)
+        except Exception as exc:
+            logger.warning("wizard github_sync 失败: %s", exc)
     except Exception as e:  # noqa: BLE001
         logger.exception("pitch_wizard_job_failed job_id=%s", job_id)
         failure_kwargs = job_failure_update_kwargs(e, job_id=job_id)
