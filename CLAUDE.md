@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-15 | 当前版本：**v0.6.2** | 测试基线：**502 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.6.6** | 测试基线：**598 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -24,6 +24,10 @@
 | v0.6.0 | 05-15 | 7个Bug修复（#2/#4/#6/#8/#9/#12/#13）+ 启动失败自动诊断 + Pipeline卡片编辑 |
 | v0.6.1 | 05-15 | 修复向导轨道任务完成后不同步 GitHub 的 Bug（pitch_wizard_runner 补加 push_pitch_job）|
 | v0.6.2 | 05-15 | 预埋默认配置（Token/Key/账号）— 外发包开箱即用，无需同事手动填 .env |
+| v0.6.3 | 05-15 | Bug #3 + Bug #10：尽调匹配子串化 + 打包下载 + 资产搜索增强 |
+| v0.6.4 | 05-15 | npc_chat_graph 测试(23个) + 残留代码清理 |
+| v0.6.5 | 05-15 | 收敛20个裸 except Exception 为具体异常类型，测试基线 596 passed |
+| v0.6.6 | 05-15 | **根治启动脚本编码崩溃**：PS1 here-string → 数组；bat 全部 UTF-8 重写；JSON读取 GBK 兜底 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -245,6 +249,18 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 |------|---------|
 | `backend/src/cangjie_fos/services/pitch_wizard_runner.py` | 向导轨道任务完成后新增 `push_pitch_job(job_id)` 调用，修复数据不同步到 `coach_data` 的 Bug |
 | `backend/src/cangjie_fos/services/github_sync.py` | `push_match_session` 中加 TODO 注释（tenant 硬编码问题，待 match_sessions 表加 tenant_id 列后修）|
+
+---
+
+### v0.6.6 改动文件清单（2026-05-15）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `安装并启动.ps1` | 顶部加 UTF8 编码声明；here-string 改为字符串数组，彻底消除 PS5.1 GBK 解析崩溃；报告文件名改 ASCII；`uv sync --extra dev` 改为 `uv sync`；uv sync 失败后自动清理 .venv 重试 |
+| `填写API密钥_双击我.bat` | 完全重写（UTF-8 + chcp 65001）；简化为可选覆盖模式（_embedded.py 已内置默认值，不再强制要求填写） |
+| `诊断_打不开请运行我.bat` | 完全重写（UTF-8 + chcp 65001）；保留 `doctor.py --fix` 核心逻辑，界面更简洁 |
+| `backend/src/cangjie_fos/engine/asset_bridge.py` | `load_asset_index()` 读 JSON 时增加编码回退链（utf-8 → gbk → utf-8-sig），修复中文 Windows GBK 文件导致的 UnicodeDecodeError |
+| `backend/src/cangjie_fos/engine/investor_matcher.py` | `_load_analytics_by_institution()` 同上，编码回退链 |
 
 ---
 
