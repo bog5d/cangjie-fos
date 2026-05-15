@@ -22,7 +22,7 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 | 项目 | 状态 |
 |------|------|
 | 版本 | **v0.6.5** |
-| 测试基线 | **573 passed**，0 failed |
+| 测试基线 | **596 passed**，0 failed（跳过 4 个预存 flaky 测试）|
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
