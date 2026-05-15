@@ -4,6 +4,25 @@
 
 ---
 
+## [0.7.0] — 2026-05-15  尽调响应台（Phase DD-1）
+
+> 测试基线：625 passed（605 + 20 新增）
+
+### Added
+- **尽调响应台**：机构发来尽调清单 → AI 匹配本地材料库 → 表格审核（🔴🟡🟢置信度）→ 导出文件夹 + 缺失清单
+  - `dd_file_parser.py`：PDF/Word/Excel/txt 内容提取（pdfplumber + openpyxl + python-docx）
+  - `dd_index_service.py`：文件夹扫描建索引（LLM 生成20字摘要，存 `dd_asset_index` 表）
+  - `dd_checklist_parser.py`：清单解析——代码读格式 + AI 只做语义提取（解决之前解析准确率差的根本原因）
+  - `dd_match_service.py`：批量 LLM 匹配（每批30条，全文件列表+摘要 vs 需求项）
+  - `dd_export_service.py`：按大类子目录复制文件 + 生成缺失清单.txt
+  - `api/routes/dd_response.py`：7个 API 端点（索引/session/匹配/审核/导出）
+  - `DueDiligenceWizard.tsx`：3步向导前端（扫描材料库 → 上传清单 → 审核&导出）
+- 新增依赖：pdfplumber、openpyxl
+- 新增 SQLite 表：`dd_asset_index`、`dd_match_sessions`、`dd_match_items`
+- 新增测试：20个（test_dd_file_parser.py + test_dd_checklist_parser.py + test_dd_e2e.py）
+
+---
+
 ## [0.6.9] — 2026-05-15  外发版修复：启动脚本编码根治 + 打包脚本排除 .claude 目录
 
 > 测试基线：605 passed，0 skipped，0 failed
