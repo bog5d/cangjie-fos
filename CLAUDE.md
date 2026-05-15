@@ -14,7 +14,7 @@
 - **进入点**：`backend/src/cangjie_fos/main.py` — FastAPI app + lifespan
 - **外部依赖**：无 — `engine/` 子包已包含所有核心模块，AI_Pitch_Coach 是可选的历史归档
 
-### 最近做了什么（v0.5.3 → v0.5.4）
+### 最近做了什么（v0.5.3 → v0.6.0）
 
 | 版本 | 日期 | 主要内容 |
 |------|------|---------|
@@ -79,7 +79,7 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 ### 测试运行命令
 ```bash
 cd backend
-uv run --extra dev pytest tests/ -q   # 全套，133+ passed 才算通
+uv run --extra dev pytest tests/ -q   # 全套，502+ passed 才算通
 uv run --extra dev pytest tests/test_pipeline_e2e.py tests/test_wizard_pipeline_e2e.py -v  # 核心链路
 ```
 
@@ -165,3 +165,72 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 - 缺包用 `uv add <package>`，不用 pip
 - 新增依赖后必须重启 uvicorn（热重载不可靠）
 - 启动时 preflight.py 自动检查必选依赖，缺失会阻断启动并提示安装命令
+
+---
+
+## v0.6.0 改动文件清单（接手必读，2026-05-15）
+
+> 以下是本版本所有改动过的文件，接手 AI 在改相关功能前先读这些文件。
+
+### 启动体验（Group A）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `安装并启动.ps1` | 完全重写：启动过程写日志到 `backend/logs/startup_*.log`；任何步骤失败自动在桌面生成「诊断报告_请发给AI_时间戳.txt」并用记事本打开 |
+| `tools/doctor.py` | `--fix` 模式增加日志文件（`backend/logs/doctor_fixes.log`），每条修复操作有时间戳记录 |
+| `backend/logs/.gitkeep` | 新建：让 `backend/logs/` 目录被 git 追踪 |
+| `.gitignore` | `logs/` 改为 `/logs/`（只排除根目录 logs，不排除 backend/logs） |
+| `backend/.gitignore` | 新增 `logs/*.log` + `!logs/.gitkeep` |
+
+### Bug #2 — 新增风险点「问题简述」字段
+
+| 文件 | 改了什么 |
+|------|---------|
+| `frontend/src/components/workbench/left/AddRiskPointForm.tsx` | 在改进建议前新增 `problem_summary` 输入框（30字内，一句话概括） |
+
+### Bug #4 — 口述实录可编辑
+
+| 文件 | 改了什么 |
+|------|---------|
+| `frontend/src/components/workbench/left/RiskPointCard.tsx` | 风险点卡片新增「口述实录」区块，显示 `original_text`；非锁定状态下为可编辑 textarea |
+
+### Bug #6 — 锁定后可解锁编辑
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/api/routes/pitch.py` | 新增 `DELETE /api/v1/pitch/jobs/{job_id}/review-lock`，清除 `committed_at` 字段 |
+| `frontend/src/components/workbench/WorkbenchHeader.tsx` | 新增 `onUnlock` / `unlocking` props；锁定状态下显示「🔓 解锁编辑」琥珀色按钮 |
+| `frontend/src/pages/ReviewWorkbench.tsx` | 新增 `unlocking` state 和 `handleUnlock` 回调；`handleCommit` 接受可选 `reportOverride` 参数（支持路演报告保存） |
+
+### Bug #8 / #9 / #13 — Pipeline 卡片编辑
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/schemas/institution.py` | 新增 `InstitutionProfileUpdate` Pydantic schema（name/stage/thermal/preferences/concerns/ai_summary 均可选） |
+| `backend/src/cangjie_fos/services/institution_store.py` | 新增 `update_institution(institution_id, update)` 函数，参数化 UPDATE + 重新 SELECT 返回最新行 |
+| `backend/src/cangjie_fos/api/routes/pipeline.py` | 新增 `PATCH /api/v1/pipeline/institutions/{institution_id}` 端点 |
+| `frontend/src/components/InstitutionList.tsx` | 完全重写：卡片可点击（cursor-pointer），点击弹出内联 `EditModal`；支持 ai_summary/concerns/preferences/stage/thermal 编辑；空卡片显示「暂无摘要 · 点击编辑机构画像」；保存后乐观更新 `localItems` state |
+
+### Bug #12 — 路演情报报告编辑入口
+
+| 文件 | 改了什么 |
+|------|---------|
+| `frontend/src/components/workbench/RoadshowIntelView.tsx` | 新增 `onSave` / `saving` props；内部新增 `editMode` 和 `draft` state；顶部「✏️ 编辑摘要」/ 「取消」/ 「💾 保存」按钮；可编辑字段：`atmosphere_summary`、`hidden_concerns`（换行分隔）、`institution_update` |
+
+### 文档更新
+
+| 文件 | 改了什么 |
+|------|---------|
+| `CHANGELOG.md` | 新增完整 `[0.6.0] — 2026-05-15` 版本块 |
+| `CLAUDE.md`（本文件） | 版本号、测试基线、版本历史表、13问题状态、本文件清单 |
+| `AGENTS.md` | 版本号、状态表、v0.6.0 节、13问题完整追踪表 |
+| `packaging/本次更新说明.md` | 完全重写为 v0.6.0 内容（7个修复 + 验收清单） |
+| `同事上手指南.md` | 版本号 + 功能一览新增 v0.6.0 改进节 + 测试清单新增 v0.6.0 验收 + 已知问题新增 v0.6.0 修复记录 |
+
+### 待处理的 3 个问题（下一版接手从这里开始）
+
+| Bug | 现象 | 难度 | 建议入手文件 |
+|-----|------|------|------------|
+| #1 | 录音片段不完整，ASR 截取有问题 | 高风险，ASR 核心逻辑 | `backend/src/cangjie_fos/engine/transcriber.py` |
+| #3 | 尽调匹配不准 + 无打包下载 | 两个独立功能 | `backend/src/cangjie_fos/services/investor_matcher.py` |
+| #10 | 资产台账搜索不到 | 需调查扫描逻辑 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
