@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-15 | 当前版本：**v0.6.8** | 测试基线：**605 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.6.9** | 测试基线：**605 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -14,7 +14,7 @@
 - **进入点**：`backend/src/cangjie_fos/main.py` — FastAPI app + lifespan
 - **外部依赖**：无 — `engine/` 子包已包含所有核心模块，AI_Pitch_Coach 是可选的历史归档
 
-### 最近做了什么（v0.5.3 → v0.6.0）
+### 最近做了什么（v0.5.3 → v0.6.9）
 
 | 版本 | 日期 | 主要内容 |
 |------|------|---------|
@@ -29,8 +29,8 @@
 | v0.6.5 | 05-15 | 收敛20个裸 except Exception 为具体异常类型，测试基线 596 passed |
 | v0.6.6 | 05-15 | **根治启动脚本编码崩溃**：PS1 here-string → 数组；bat 全部 UTF-8 重写；JSON读取 GBK 兜底 |
 | v0.6.7 | 05-15 | Bug 3.5/3.6：data/audio 目录自动创建；HTML报告缺音频优雅降级（不再崩溃） |
-| v0.6.7+ | 05-15 | get_audio_dir() 抽象；_isolate_db_per_test autouse DB 隔离；bare except 收敛 |
-| v0.6.8 | 05-15 | 修复2个遗留 skip 测试；conftest 豁免 test_wiki_display（双重 monkeypatch 导致 DB 锁） |
+| v0.6.8 | 05-15 | _isolate_db_per_test autouse DB 隔离；get_audio_dir() 抽象；bare except 全面收敛；605 passed |
+| v0.6.9 | 05-15 | **外发版**：build_release_zip.ps1 排除 .claude 目录；发版文档更新为开箱即用说明 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -284,12 +284,27 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `backend/tests/test_report_builder.py` | **新建**：desensitize/han_initials/apply_masks + 缺音频降级场景（10个测试） |
 | `backend/tests/test_p1b_html_report_service.py` | 移除2个 `@pytest.mark.skip`；补齐完整 mock 链；修复 Win32 路径问题 |
 
+### v0.6.9 改动文件清单（2026-05-15）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `tools/build_release_zip.ps1` | 排除目录新增 `.claude`，防止 Claude Code worktree 文件泄漏进发版包 |
+| `packaging/本次更新说明.md` | 更新为 v0.6.9：开箱即用说明，账号密码已内置 |
+| `同事上手指南.md` | 版本号 → v0.6.9；准备工作简化（不再要求手动填 API Key） |
+| `CHANGELOG.md` | 新增 v0.6.9 版本块 |
+
 ---
 
-### 待处理的 3 个问题（下一版接手从这里开始）
+### 待处理问题 + 下一个大功能（v0.7.0 方向）
 
-| Bug | 现象 | 难度 | 建议入手文件 |
+| 类型 | 现象/目标 | 难度 | 建议入手文件 |
 |-----|------|------|------------|
-| #1 | 录音片段不完整，ASR 截取有问题 | 高风险，ASR 核心逻辑 | `backend/src/cangjie_fos/engine/transcriber.py` |
-| #3 | 尽调匹配不准 + 无打包下载 | 两个独立功能 | `backend/src/cangjie_fos/services/investor_matcher.py` |
-| #10 | 资产台账搜索不到 | 需调查扫描逻辑 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
+| Bug #1 | 录音片段不完整，ASR 截取有问题 | 高风险，ASR 核心逻辑 | `backend/src/cangjie_fos/engine/transcriber.py` |
+| Bug #10 | 资产台账搜索不到 | 需调查扫描逻辑 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
+| **v0.7.0 重点** | **尽调材料包真正实现**：下载 ZIP + INDEX.md + LLM 需求解析 | 中等，架构已就绪缺最后一环 | `backend/src/cangjie_fos/engine/matchmaker.py` + `api/routes/assets.py` + `frontend/src/components/MatchMakerPanel.tsx` |
+
+**尽调材料包现状（重要，接手必读）**：
+- 现有 BM25 匹配 + bundle API 已可工作，但**无下载端点**，用户点确认后拿不到文件
+- `investor_matcher.py` 是死代码（无路由）—— 真正用的是 `matchmaker.py`
+- 需要：① `GET /api/v1/assets/bundle/{session_id}/download` 返回 ZIP 流 ② 前端"下载尽调包"按钮 ③ LLM 生成 INDEX.md 说明每个文件对应哪个尽调问题
+- 详细讨论用 `/grill-me` skill 先把需求问清楚再开发
