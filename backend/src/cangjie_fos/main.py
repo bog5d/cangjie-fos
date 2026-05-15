@@ -28,6 +28,12 @@ _SPA_EXCLUDE_PREFIXES = ("/api/", "/health", "/reports/", "/docs", "/openapi")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
+    # 注入内置默认配置（.env 里有值时不覆盖）
+    try:
+        from cangjie_fos.core._embedded import inject_defaults  # noqa: PLC0415
+        inject_defaults()
+    except Exception:  # noqa: BLE001
+        pass
     from cangjie_fos.core.preflight import run_preflight  # noqa: PLC0415
 
     if (os.getenv("CANGJIE_STRICT_STARTUP", "").strip().lower() in {"1", "true", "yes"}):

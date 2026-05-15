@@ -1,5 +1,7 @@
 data/evolution/
 data/watch_inbox/
+# 内置默认配置（含编码 Token，仅随外发包分发，不进公开仓库）
+src/cangjie_fos/core/_embedded.py
 __pycache__/
 *.pyc
 .pytest_cache/
