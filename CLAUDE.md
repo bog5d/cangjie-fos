@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-15 | 当前版本：**v0.7.0** | 测试基线：**625 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.7.1** | 测试基线：**625 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -32,6 +32,7 @@
 | v0.6.8 | 05-15 | _isolate_db_per_test autouse DB 隔离；get_audio_dir() 抽象；bare except 全面收敛；605 passed |
 | v0.6.9 | 05-15 | **外发版**：build_release_zip.ps1 排除 .claude 目录；发版文档更新为开箱即用说明 |
 | v0.7.0 | 05-15 | **尽调响应台**：清单解析 + AI 批量匹配 + 表格审核 + 导出文件夹；20个新测试（625 passed）|
+| v0.7.1 | 05-15 | **红队加固**：修复7个尽调响应台崩溃点（临时文件泄漏/空结果404级联/session永不完成/fetch无错误处理/轮询无超时/空结果强跳Step3/interval内存泄漏）|
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -315,6 +316,16 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `packaging/本次更新说明.md` | 更新为 v0.6.9：开箱即用说明，账号密码已内置 |
 | `同事上手指南.md` | 版本号 → v0.6.9；准备工作简化（不再要求手动填 API Key） |
 | `CHANGELOG.md` | 新增 v0.6.9 版本块 |
+
+---
+
+### v0.7.1 改动文件清单（2026-05-15，红队加固）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | 临时文件 try/finally 清理；LLM返回0条需求时提前 HTTP 400，防止后续 404 级联崩溃 |
+| `backend/src/cangjie_fos/services/dd_match_service.py` | `run_matching` 用 try/finally 包裹，保证任何情况下都调用 `_mark_session_done`，防止前端永久轮询 |
+| `frontend/src/components/DueDiligenceWizard.tsx` | 全面补 try/catch（fetch 错误 → 用户可见提示）；扫描轮询加120次上限（3分钟）；匹配轮询0条时显示错误而非跳转空表；useEffect cleanup 清理所有 interval |
 
 ---
 
