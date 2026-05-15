@@ -17,12 +17,12 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v0.6.2，2026-05-15）
+## 当前状态（v0.6.3，2026-05-15）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.6.1** |
-| 测试基线 | **512 passed**，0 failed |
+| 版本 | **v0.6.3** |
+| 测试基线 | **573 passed**，0 failed |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
@@ -55,26 +55,19 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 |---|---------|------|------|
 | 1 | 录音片段不完整（ASR 截取有误） | ✅ 已修复 | v0.6.1 |
 | 2 | 新增风险点缺「问题简述」字段 | ✅ 已修复 | v0.6.0 |
-| 3 | 尽调匹配不准 + 缺打包下载功能 | ❌ 待处理 | — |
+| 3 | 尽调匹配不准 + 缺打包下载功能 | ✅ 已修复 | v0.6.3 |
 | 4 | 口述实录不可编辑 | ✅ 已修复 | v0.6.0 |
 | 5 | 历史记录缺机构名 | ✅ 已修复 | v0.5.4 |
 | 6 | 锁定后无法解锁编辑 | ✅ 已修复 | v0.6.0 |
 | 7 | 删除风险点总分不变 | ✅ 已修复 | v0.5.4 |
 | 8 | Pipeline卡片不可编辑 | ✅ 已修复 | v0.6.0 |
 | 9 | Pipeline阶段不可手动改 | ✅ 已修复 | v0.6.0 |
-| 10 | 资产台账搜索不到内容 | ❌ 待处理 | — |
+| 10 | 资产台账搜索不到内容 | ✅ 已修复 | v0.6.3 |
 | 11 | 路演报告Step5 undefined | ✅ 已修复 | v0.5.4 |
 | 12 | 路演情报报告无编辑入口 | ✅ 已修复 | v0.6.0 |
 | 13 | Pipeline卡片内容为空 | ✅ 已修复 | v0.6.0 |
 
----
-
-## 待处理的问题（下一版从这里开始）
-
-| Bug | 现象 | 入手文件 |
-|-----|------|---------|
-| #3 | 尽调匹配不准 + 缺打包下载功能 | `backend/src/cangjie_fos/services/investor_matcher.py` |
-| #10 | 资产台账搜索不到内容 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
+**13/13 全部已修复** 🎉
 
 ---
 
