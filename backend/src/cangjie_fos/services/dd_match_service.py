@@ -51,42 +51,46 @@ def run_matching(session_id: str, folder_root: str) -> None:
     """
     对 session 的所有需求项，与 folder_root 下的已索引文件做批量匹配。
     同步执行，调用方应包装进 BackgroundTask。
+    无论中途是否异常，都保证最终标记 session 为 matched（防止前端无限轮询）。
     """
-    index_rows = _get_index_for_folder(folder_root)
-    if not index_rows:
-        logger.warning("文件夹 %s 没有已索引文件，跳过匹配", folder_root)
+    try:
+        index_rows = _get_index_for_folder(folder_root)
+        if not index_rows:
+            logger.warning("文件夹 %s 没有已索引文件，跳过匹配", folder_root)
+            return
+
+        with _connect() as conn:
+            items = [dict(r) for r in conn.execute(
+                "SELECT id, requirement FROM dd_match_items WHERE session_id = ?",
+                (session_id,),
+            ).fetchall()]
+
+        if not items:
+            return
+
+        file_list_text = "\n".join(
+            f"[{i}] 文件名：{r['filename']}  摘要：{r['summary'] or '无摘要'}"
+            for i, r in enumerate(index_rows)
+        )
+        matches = _llm_batch_match(items, file_list_text, index_rows)
+
+        with _connect() as conn:
+            for item_id, result in matches.items():
+                conn.execute(
+                    """UPDATE dd_match_items
+                       SET matched_file_path = ?, matched_filename = ?,
+                           confidence = ?, match_reason = ?
+                       WHERE id = ?""",
+                    (result.get("file_path"), result.get("filename"),
+                     result.get("confidence", 0.0), result.get("reason", ""),
+                     item_id),
+                )
+    except Exception as e:
+        logger.error("匹配任务异常 session=%s: %s", session_id, e)
+    finally:
+        # 无论成功/失败/异常，都必须将 session 标记为完成
+        # 否则前端轮询会永久挂起
         _mark_session_done(session_id)
-        return
-
-    with _connect() as conn:
-        items = [dict(r) for r in conn.execute(
-            "SELECT id, requirement FROM dd_match_items WHERE session_id = ?",
-            (session_id,),
-        ).fetchall()]
-
-    if not items:
-        _mark_session_done(session_id)
-        return
-
-    file_list_text = "\n".join(
-        f"[{i}] 文件名：{r['filename']}  摘要：{r['summary'] or '无摘要'}"
-        for i, r in enumerate(index_rows)
-    )
-    matches = _llm_batch_match(items, file_list_text, index_rows)
-
-    with _connect() as conn:
-        for item_id, result in matches.items():
-            conn.execute(
-                """UPDATE dd_match_items
-                   SET matched_file_path = ?, matched_filename = ?,
-                       confidence = ?, match_reason = ?
-                   WHERE id = ?""",
-                (result.get("file_path"), result.get("filename"),
-                 result.get("confidence", 0.0), result.get("reason", ""),
-                 item_id),
-            )
-
-    _mark_session_done(session_id)
 
 
 def _get_index_for_folder(folder_root: str) -> list[dict]:

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 
 interface DDItem {
   id: string;
@@ -33,15 +33,26 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
   const [checklistFile, setChecklistFile] = useState<File | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
-  const [matchStatus, setMatchStatus] = useState<string>("idle"); // idle | running | done
+  const [matchStatus, setMatchStatus] = useState<string>("idle"); // idle | running | done | error
+  const [matchError, setMatchError] = useState<string>("");
+  const pollMatchRef = useRef<number | null>(null);
 
   // Step 3 state
   const [items, setItems] = useState<DDItem[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<string>("");
+  const [exportError, setExportError] = useState<string>("");
   const [outputDir, setOutputDir] = useState("");
 
   const [step, setStep] = useState<Step>(1);
+
+  // ── 清理所有轮询 interval（组件卸载时）────────────────────
+  useEffect(() => {
+    return () => {
+      if (pollRef.current !== null) clearInterval(pollRef.current);
+      if (pollMatchRef.current !== null) clearInterval(pollMatchRef.current);
+    };
+  }, []);
 
   // ── Step 1: 扫描文件夹 ──────────────────────────────────────
   const handleScan = useCallback(async () => {
@@ -49,26 +60,54 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
     setScanStatus("running");
     setScanResult("");
 
-    const resp = await fetch("/api/v1/dd/index", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ folder_path: folderPath.trim(), tenant_id: "default" }),
-    });
-    const data = await resp.json();
+    let data: { scan_id: string };
+    try {
+      const resp = await fetch("/api/v1/dd/index", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_path: folderPath.trim(), tenant_id: "default" }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        setScanStatus("error");
+        setScanResult(`❌ 扫描请求失败：${err.detail || resp.statusText}`);
+        return;
+      }
+      data = await resp.json();
+    } catch (e) {
+      setScanStatus("error");
+      setScanResult(`❌ 网络错误：${e instanceof Error ? e.message : "请求失败"}`);
+      return;
+    }
+
     setScanId(data.scan_id);
 
-    // 轮询进度
+    // 轮询进度，最多 3 分钟（120 次 × 1500ms）
+    let attempts = 0;
+    const MAX_SCAN_ATTEMPTS = 120;
     pollRef.current = window.setInterval(async () => {
-      const r = await fetch(`/api/v1/dd/index/status/${data.scan_id}`);
-      const s = await r.json();
-      if (s.status === "done") {
-        clearInterval(pollRef.current!);
-        setScanStatus("done");
-        setScanResult(`✅ 扫描完成：共索引 ${s.indexed} 个文件，${s.failed} 个失败`);
-      } else if (s.status === "error") {
-        clearInterval(pollRef.current!);
-        setScanStatus("error");
-        setScanResult(`❌ 扫描失败：${s.error}`);
+      attempts++;
+      try {
+        const r = await fetch(`/api/v1/dd/index/status/${data.scan_id}`);
+        const s = await r.json();
+        if (s.status === "done") {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setScanStatus("done");
+          setScanResult(`✅ 扫描完成：共索引 ${s.indexed} 个文件，${s.failed} 个失败`);
+        } else if (s.status === "error") {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setScanStatus("error");
+          setScanResult(`❌ 扫描失败：${s.error}`);
+        } else if (attempts >= MAX_SCAN_ATTEMPTS) {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setScanStatus("error");
+          setScanResult("❌ 扫描超时（超过3分钟），请检查文件夹路径或减少文件数量后重试");
+        }
+      } catch (_) {
+        // 网络抖动不终止轮询，等下一次重试
       }
     }, 1500);
   }, [folderPath]);
@@ -76,6 +115,8 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
   // ── Step 2: 解析清单 + 触发匹配 ────────────────────────────
   const handleParseAndMatch = useCallback(async () => {
     setParsing(true);
+    setMatchError("");
+
     const formData = new FormData();
     formData.append("tenant_id", "default");
     formData.append("folder_root", folderPath.trim());
@@ -85,29 +126,83 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
       formData.append("text", checklistText);
     }
 
-    const resp = await fetch("/api/v1/dd/sessions", { method: "POST", body: formData });
-    const data = await resp.json();
-    setSessionId(data.session_id);
+    let sessionData: { session_id: string };
+    try {
+      const resp = await fetch("/api/v1/dd/sessions", { method: "POST", body: formData });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        setParsing(false);
+        setMatchError(`❌ 清单解析失败：${err.detail || resp.statusText}`);
+        return;
+      }
+      sessionData = await resp.json();
+    } catch (e) {
+      setParsing(false);
+      setMatchError(`❌ 网络错误：${e instanceof Error ? e.message : "请求失败"}`);
+      return;
+    }
+
+    setSessionId(sessionData.session_id);
     setParsing(false);
 
     // 触发匹配
     setMatchStatus("running");
-    await fetch(`/api/v1/dd/sessions/${data.session_id}/match?folder_root=${encodeURIComponent(folderPath.trim())}`, {
-      method: "POST",
-    });
+    try {
+      const matchResp = await fetch(
+        `/api/v1/dd/sessions/${sessionData.session_id}/match?folder_root=${encodeURIComponent(folderPath.trim())}`,
+        { method: "POST" }
+      );
+      if (!matchResp.ok) {
+        setMatchStatus("error");
+        setMatchError("❌ 触发匹配失败，请刷新后重试");
+        return;
+      }
+    } catch (e) {
+      setMatchStatus("error");
+      setMatchError(`❌ 网络错误：${e instanceof Error ? e.message : "请求失败"}`);
+      return;
+    }
 
-    // 轮询匹配（每2秒拉一次，最多30次）
+    // 轮询匹配（每2秒，最多30次 = 60秒）
     let attempts = 0;
-    const pollMatch = window.setInterval(async () => {
+    const MAX_MATCH_ATTEMPTS = 30;
+    const sid = sessionData.session_id;
+    pollMatchRef.current = window.setInterval(async () => {
       attempts++;
-      const r = await fetch(`/api/v1/dd/sessions/${data.session_id}/items`);
-      const itemList: DDItem[] = await r.json();
-      const hasResults = itemList.some((i) => i.confidence !== null);
-      if (hasResults || attempts >= 30) {
-        clearInterval(pollMatch);
-        setItems(itemList);
-        setMatchStatus("done");
-        setStep(3);
+      try {
+        const r = await fetch(`/api/v1/dd/sessions/${sid}/items`);
+        if (!r.ok) {
+          // 非200响应：可能是session还没有items
+          if (attempts >= MAX_MATCH_ATTEMPTS) {
+            clearInterval(pollMatchRef.current!);
+            pollMatchRef.current = null;
+            setMatchStatus("error");
+            setMatchError("⚠️ AI 匹配超时，请检查材料库是否已扫描，或重新上传清单");
+          }
+          return;
+        }
+        const itemList: DDItem[] = await r.json();
+        const hasResults = itemList.some((i) => i.confidence !== null);
+        if (hasResults || attempts >= MAX_MATCH_ATTEMPTS) {
+          clearInterval(pollMatchRef.current!);
+          pollMatchRef.current = null;
+          if (itemList.length === 0) {
+            setMatchStatus("error");
+            setMatchError("⚠️ 未解析到任何需求项，请检查清单格式后重试");
+          } else {
+            setItems(itemList);
+            setMatchStatus("done");
+            setStep(3);
+          }
+        }
+      } catch (_) {
+        // 网络抖动不终止轮询
+        if (attempts >= MAX_MATCH_ATTEMPTS) {
+          clearInterval(pollMatchRef.current!);
+          pollMatchRef.current = null;
+          setMatchStatus("error");
+          setMatchError("❌ 网络连接中断，请检查服务是否在运行后重试");
+        }
       }
     }, 2000);
   }, [folderPath, checklistFile, checklistText]);
@@ -115,35 +210,55 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
   // ── Step 3: 审核 + 导出 ────────────────────────────────────
   const handleSkip = useCallback(async (itemId: string) => {
     if (!sessionId) return;
-    await fetch(`/api/v1/dd/sessions/${sessionId}/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_skipped: true }),
-    });
-    setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, user_skipped: 1 } : i));
+    try {
+      await fetch(`/api/v1/dd/sessions/${sessionId}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_skipped: true }),
+      });
+      setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, user_skipped: 1 } : i));
+    } catch (_) {
+      // 静默失败，不影响主流程
+    }
   }, [sessionId]);
 
   const handleConfirm = useCallback(async (itemId: string) => {
     if (!sessionId) return;
-    await fetch(`/api/v1/dd/sessions/${sessionId}/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_confirmed: true }),
-    });
-    setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, user_confirmed: 1 } : i));
+    try {
+      await fetch(`/api/v1/dd/sessions/${sessionId}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_confirmed: true }),
+      });
+      setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, user_confirmed: 1 } : i));
+    } catch (_) {
+      // 静默失败，不影响主流程
+    }
   }, [sessionId]);
 
   const handleExport = useCallback(async () => {
     if (!sessionId || !outputDir.trim()) return;
     setExporting(true);
-    const resp = await fetch(`/api/v1/dd/sessions/${sessionId}/export`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ output_dir: outputDir.trim() }),
-    });
-    const result = await resp.json();
-    setExporting(false);
-    setExportResult(`✅ 导出完成：${result.exported} 个文件已复制，${result.missing} 个缺失。文件夹：${result.output_path}`);
+    setExportError("");
+    try {
+      const resp = await fetch(`/api/v1/dd/sessions/${sessionId}/export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ output_dir: outputDir.trim() }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        setExportError(`❌ 导出失败：${err.detail || resp.statusText}`);
+        setExporting(false);
+        return;
+      }
+      const result = await resp.json();
+      setExportResult(`✅ 导出完成：${result.exported} 个文件已复制，${result.missing} 个缺失。文件夹：${result.output_path}`);
+    } catch (e) {
+      setExportError(`❌ 网络错误：${e instanceof Error ? e.message : "导出失败"}`);
+    } finally {
+      setExporting(false);
+    }
   }, [sessionId, outputDir]);
 
   // ── 置信度颜色 ──────────────────────────────────────────────
@@ -162,6 +277,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
     return ca - cb;
   });
 
+  // 必须在所有 hooks 之后才能 early return
   if (!open) return null;
 
   return (
@@ -239,6 +355,9 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                   onChange={(e) => setChecklistText(e.target.value)}
                 />
               </div>
+              {matchError && (
+                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">{matchError}</p>
+              )}
               <div className="flex gap-2">
                 <button onClick={() => setStep(1)} className="px-4 py-2 border rounded text-sm text-gray-600">← 上一步</button>
                 <button
@@ -248,6 +367,14 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                 >
                   {parsing ? "解析中…" : matchStatus === "running" ? "AI 匹配中…" : "解析 & 开始匹配"}
                 </button>
+                {matchStatus === "error" && (
+                  <button
+                    onClick={() => { setMatchStatus("idle"); setMatchError(""); }}
+                    className="px-4 py-2 border rounded text-sm text-gray-600"
+                  >
+                    重置重试
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -321,6 +448,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                 </button>
               </div>
               {exportResult && <p className="text-sm text-green-600">{exportResult}</p>}
+              {exportError && <p className="text-sm text-red-500">{exportError}</p>}
             </div>
           )}
         </div>

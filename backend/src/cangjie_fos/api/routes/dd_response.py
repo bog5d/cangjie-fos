@@ -1,6 +1,7 @@
 """尽调响应台 API 路由。"""
 from __future__ import annotations
 import logging
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -89,16 +90,24 @@ async def create_session(
                     ".doc": "word", ".pdf": "pdf"}
         source_type = type_map.get(suffix, "text")
         content = await file.read()
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-        items = parse_checklist(tmp_path, source_type)
+        tmp_path: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+            items = parse_checklist(tmp_path, source_type)
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
         checklist_name = file.filename
     elif text:
         items = parse_checklist(text, "text")
         checklist_name = "粘贴文字"
     else:
         raise HTTPException(400, "必须提供 file 或 text")
+
+    if not items:
+        raise HTTPException(400, "清单解析未找到任何需求项，请检查上传内容格式或清单是否为空")
 
     session_id = create_match_session(tenant_id, checklist_name, folder_root, items)
     return {"session_id": session_id, "items": items, "count": len(items)}
