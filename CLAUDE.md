@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-15 | 当前版本：**v0.6.6** | 测试基线：**598 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.6.8** | 测试基线：**605 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -28,6 +28,9 @@
 | v0.6.4 | 05-15 | npc_chat_graph 测试(23个) + 残留代码清理 |
 | v0.6.5 | 05-15 | 收敛20个裸 except Exception 为具体异常类型，测试基线 596 passed |
 | v0.6.6 | 05-15 | **根治启动脚本编码崩溃**：PS1 here-string → 数组；bat 全部 UTF-8 重写；JSON读取 GBK 兜底 |
+| v0.6.7 | 05-15 | Bug 3.5/3.6：data/audio 目录自动创建；HTML报告缺音频优雅降级（不再崩溃） |
+| v0.6.7+ | 05-15 | get_audio_dir() 抽象；_isolate_db_per_test autouse DB 隔离；bare except 收敛 |
+| v0.6.8 | 05-15 | 修复2个遗留 skip 测试；conftest 豁免 test_wiki_display（双重 monkeypatch 导致 DB 锁） |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -261,6 +264,25 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `诊断_打不开请运行我.bat` | 完全重写（UTF-8 + chcp 65001）；保留 `doctor.py --fix` 核心逻辑，界面更简洁 |
 | `backend/src/cangjie_fos/engine/asset_bridge.py` | `load_asset_index()` 读 JSON 时增加编码回退链（utf-8 → gbk → utf-8-sig），修复中文 Windows GBK 文件导致的 UnicodeDecodeError |
 | `backend/src/cangjie_fos/engine/investor_matcher.py` | `_load_analytics_by_institution()` 同上，编码回退链 |
+
+---
+
+### v0.6.7–v0.6.8 改动文件清单（2026-05-15，另一个 AI + 本 AI 联合完成）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/main.py` | 启动时创建 `data/audio` 目录（Bug 3.5）；`get_audio_dir()` 替换硬编码路径 |
+| `backend/src/cangjie_fos/core/paths.py` | 新增 `get_audio_dir()`，支持 `CANGJIE_AUDIO_DIR` 环境变量覆盖（测试可隔离音频目录） |
+| `backend/src/cangjie_fos/engine/report_builder.py` | 缺音频不再 raise FileNotFoundError，改为 warning + 降级生成纯文本报告（Bug 3.6）；bare except → 具体异常 |
+| `backend/src/cangjie_fos/services/html_report_service.py` | 同上，service 层也优雅降级；更新 docstring |
+| `backend/src/cangjie_fos/api/routes/pitch.py` | 7处硬编码音频路径 → `get_audio_dir()` |
+| `backend/src/cangjie_fos/api/routes/roadshow.py` | 同上 |
+| `backend/src/cangjie_fos/services/pitch_upload_pipeline.py` | 同上 |
+| `backend/src/cangjie_fos/services/pitch_wizard_runner.py` | 同上 |
+| `backend/src/cangjie_fos/engine/coach/llm_judge/_evaluation.py` | bare except → 具体异常 |
+| `backend/tests/conftest.py` | 新增 `_isolate_db_per_test` autouse（每测试独立 SQLite）；豁免列表加 `test_wiki_display`（避免双重 monkeypatch） |
+| `backend/tests/test_report_builder.py` | **新建**：desensitize/han_initials/apply_masks + 缺音频降级场景（10个测试） |
+| `backend/tests/test_p1b_html_report_service.py` | 移除2个 `@pytest.mark.skip`；补齐完整 mock 链；修复 Win32 路径问题 |
 
 ---
 
