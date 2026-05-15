@@ -4,6 +4,18 @@
 
 ---
 
+## [0.6.5] — 2026-05-15  代码质量：裸异常收敛
+
+### Changed
+- **收敛 20 个裸 `except Exception` 为具体异常类型**
+  - `services/github_sync.py`（8 个）：`urllib.error.URLError, OSError, ValueError, json.JSONDecodeError`
+  - `engine/document_reader.py`（7 个）：`ValueError, RuntimeError, OSError`
+  - `services/nightly_settle.py`（5 个）：`RuntimeError, OSError, ValueError`
+- llm_judge 交叉导入已确认全为绝对路径，无需修改
+- dashboard/war_room 同名文件确认无实际歧义（完全限定导入）
+
+---
+
 ## [0.6.4] — 2026-05-15  npc_chat_graph 测试 + 清理
 
 ### Added

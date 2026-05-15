@@ -17,11 +17,11 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v0.6.4，2026-05-15）
+## 当前状态（v0.6.5，2026-05-15）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.6.3** |
+| 版本 | **v0.6.5** |
 | 测试基线 | **573 passed**，0 failed |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |

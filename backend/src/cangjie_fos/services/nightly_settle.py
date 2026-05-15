@@ -119,7 +119,7 @@ async def nightly_settle_for_tenant(tenant_id: str) -> int:
         from cangjie_fos.services.evolution_extractor import run_preference_extraction  # noqa: PLC0415
         extracted = run_preference_extraction(tenant_id=tenant_id)
         log.info("nightly_pref_extracted", tenant_id=tenant_id, count=extracted)
-    except Exception as exc:
+    except (RuntimeError, OSError, ValueError) as exc:
         log.warning("nightly_pref_extraction_failed", tenant_id=tenant_id, error=str(exc))
 
     # Step 2: 生成素材建议
@@ -160,7 +160,7 @@ async def nightly_settle_all_tenants() -> None:
     for tenant_id in tenant_ids:
         try:
             await nightly_settle_for_tenant(tenant_id)
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             log.error("nightly_settle_tenant_failed", tenant_id=tenant_id, error=str(exc))
 
     log.info("nightly_settle_all_done", tenant_count=len(tenant_ids))

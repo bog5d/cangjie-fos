@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import time
+import urllib.error
 from datetime import datetime, timezone
 from typing import Any
 
@@ -60,7 +61,7 @@ def _get_file_sha(path: str) -> str | None:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read())
             return data.get("sha")
-    except Exception:
+    except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError):
         return None  # 文件不存在或网络错误
 
 
@@ -92,7 +93,7 @@ def _put_file(path: str, content_dict: dict[str, Any], message: str) -> bool:
     except urllib.error.HTTPError as e:
         logger.warning("GitHub PUT 失败 %s: %s %s", path, e.code, e.reason)
         return False
-    except Exception as e:
+    except (urllib.error.URLError, OSError, ValueError) as e:
         logger.warning("GitHub PUT 异常 %s: %s", path, e)
         return False
 
@@ -116,7 +117,7 @@ def _list_folder(folder: str) -> list[dict]:
             return []
         logger.warning("GitHub 列目录失败 %s: %s", folder, e)
         return []
-    except Exception as e:
+    except (urllib.error.URLError, OSError, ValueError) as e:
         logger.warning("GitHub 列目录异常 %s: %s", folder, e)
         return []
 
@@ -128,7 +129,7 @@ def _download_json(download_url: str) -> dict | None:
         req = urllib.request.Request(download_url, headers={"User-Agent": "CangJie-FOS"})
         with urllib.request.urlopen(req, timeout=15) as resp:
             return json.loads(resp.read())
-    except Exception as e:
+    except (urllib.error.URLError, OSError, ValueError) as e:
         logger.warning("GitHub 下载失败 %s: %s", download_url, e)
         return None
 
@@ -346,7 +347,7 @@ def pull_latest() -> dict[str, int]:
         req = urllib.request.Request(url, headers=_headers())
         with urllib.request.urlopen(req, timeout=15) as resp:
             tenant_dirs = json.loads(resp.read())
-    except Exception as e:
+    except (urllib.error.URLError, OSError, ValueError) as e:
         logger.warning("pull_latest: 无法读取 analytics/: %s", e)
         tenant_dirs = []
 
@@ -386,8 +387,8 @@ def pull_latest() -> dict[str, int]:
         req2 = _ur.Request(url2, headers=_headers())
         with _ur.urlopen(req2, timeout=15) as resp2:
             ms_dirs = json.loads(resp2.read())
-    except Exception:
-        ms_dirs = []
+    except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError):
+        ms_dirs: list[dict[str, Any]] = []
 
     for mdir in ms_dirs:
         if mdir.get("type") != "dir":
@@ -429,7 +430,7 @@ def _import_remote_pitch(data: dict) -> None:
     locked_at = data.get("locked_at", "")
     try:
         ts = datetime.strptime(locked_at, "%Y-%m-%dT%H:%M:%SZ").timestamp()
-    except Exception:
+    except (ValueError, TypeError):
         ts = time.time()
 
     # 重建最小化 report 以便 UI 能展示
@@ -464,7 +465,7 @@ def _import_remote_match(data: dict) -> None:
     created_iso = data.get("created_at", "")
     try:
         ts = datetime.strptime(created_iso, "%Y-%m-%dT%H:%M:%SZ").timestamp()
-    except Exception:
+    except (ValueError, TypeError):
         ts = time.time()
 
     confirmed_files = data.get("confirmed_files", [])

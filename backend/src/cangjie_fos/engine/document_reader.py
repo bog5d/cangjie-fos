@@ -32,10 +32,10 @@ def _read_pdf(data: bytes) -> str:
                 t = page.extract_text()
                 if t:
                     chunks.append(t)
-            except Exception:
+            except (ValueError, RuntimeError):
                 continue
         return "\n".join(chunks)
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         logger.debug("PDF 读取跳过: %s", e)
         return ""
 
@@ -44,7 +44,7 @@ def _read_docx(data: bytes) -> str:
     try:
         doc = Document(io.BytesIO(data))
         return "\n".join(p.text for p in doc.paragraphs if p.text)
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         logger.debug("DOCX 读取跳过: %s", e)
         return ""
 
@@ -52,17 +52,17 @@ def _read_docx(data: bytes) -> str:
 def _read_excel(data: bytes) -> str:
     try:
         sheets = pd.read_excel(io.BytesIO(data), sheet_name=None, engine="openpyxl")
-    except Exception:
+    except (ValueError, KeyError, OSError):
         try:
             sheets = pd.read_excel(io.BytesIO(data), sheet_name=None)
-        except Exception as e:
+        except (ValueError, KeyError, OSError) as e:
             logger.debug("Excel 读取跳过: %s", e)
             return ""
     parts: list[str] = []
     for name, df in sheets.items():
         try:
             parts.append(f"=== Sheet: {name} ===\n{df.to_string()}")
-        except Exception:
+        except (ValueError, RuntimeError):
             continue
     return "\n".join(parts)
 
@@ -111,7 +111,7 @@ def extract_text_from_files(uploaded_files: Any, max_chars: int = 15000) -> str:
             text = _one_file_text(str(name), bytes(raw))
             if text:
                 parts.append(f"\n\n--- FILE: {name} ---\n{text}")
-        except Exception as e:
+        except (ValueError, RuntimeError, OSError) as e:
             logger.debug("跳过损坏文件: %s", e)
             continue
 
