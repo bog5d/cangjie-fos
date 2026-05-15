@@ -43,7 +43,15 @@ def load_asset_index(fos_data_dir: Path | str | None = None) -> list[dict]:
 
     index_path = data_dir / "asset_index.json"
     try:
-        text = index_path.read_text(encoding="utf-8")
+        text = None
+        for enc in ("utf-8", "gbk", "utf-8-sig"):
+            try:
+                text = index_path.read_text(encoding=enc)
+                break
+            except (UnicodeDecodeError, LookupError):
+                continue
+        if text is None:
+            return []
         data = json.loads(text)
         return data.get("assets") or []
     except (FileNotFoundError, json.JSONDecodeError, OSError):

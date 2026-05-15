@@ -69,11 +69,21 @@ def _load_analytics_by_institution(workspace_root: str) -> dict[str, list[dict]]
 
     for p in root.rglob("*_analytics.json"):
         try:
-            data = json.loads(p.read_text(encoding="utf-8"))
+            # 优先 utf-8，Windows 中文系统可能产生 gbk 文件，逐级兜底
+            for enc in ("utf-8", "gbk", "utf-8-sig"):
+                try:
+                    text = p.read_text(encoding=enc)
+                    break
+                except (UnicodeDecodeError, LookupError):
+                    continue
+            else:
+                logger.warning("investor_matcher: 无法解码文件 %s，已跳过", p)
+                continue
+            data = json.loads(text)
             iid = (data.get("institution_id") or "").strip()
             if iid:
                 grouped.setdefault(iid, []).append(data)
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError, ValueError):
             continue
     return grouped
 

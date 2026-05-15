@@ -1,4 +1,6 @@
 # 解压后于 CangJie_FOS 根目录运行：预检 + 启动 uvicorn（本机单用户）
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$OutputEncoding = [Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 $be = Join-Path $root "backend"
@@ -23,39 +25,29 @@ function Write-Fail {
   Write-Log "[错误] 步骤失败：$step"
   Write-Log "详情：$detail"
 
-  # 生成桌面诊断报告
+  # 生成桌面诊断报告（纯ASCII文件名，避免中文Windows乱码）
   $desktop = [Environment]::GetFolderPath("Desktop")
-  $reportFile = Join-Path $desktop "诊断报告_请发给AI_$ts.txt"
-  $sysInfo = "OS: $([System.Environment]::OSVersion.VersionString)`nPowerShell: $($PSVersionTable.PSVersion)`n日志文件: $logFile"
+  $reportFile = Join-Path $desktop "FOS_DiagReport_$ts.txt"
+  $sysInfo = "OS: $([System.Environment]::OSVersion.VersionString) | PS: $($PSVersionTable.PSVersion) | Log: $logFile"
 
-  $reportContent = @"
-==== 仓颉 FOS 启动失败诊断报告 ====
-时间：$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-失败步骤：$step
-
-错误详情：
-$detail
-
-系统信息：
-$sysInfo
-
-日志文件路径：$logFile
-
-===========================================================
-== 请将以下内容完整复制给 AI / 技术支持 ==
-===========================================================
-我在运行仓颉 FOS 时遇到了问题，无法启动。
-
-失败步骤：$step
-
-错误详情：
-$detail
-
-系统信息：
-$sysInfo
-
-请帮我诊断问题原因并给出修复步骤。
-"@
+  $lines = @(
+    "==== CangJie FOS Startup Failure Report ===="
+    "Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    "Failed step: $step"
+    ""
+    "Error detail:"
+    $detail
+    ""
+    "System info:"
+    $sysInfo
+    ""
+    "Log file: $logFile"
+    ""
+    "============================================"
+    "Please paste all content above to AI / tech support."
+    "============================================"
+  )
+  $reportContent = $lines -join [Environment]::NewLine
 
   $reportContent | Out-File -FilePath $reportFile -Encoding UTF8
   Write-Log "诊断报告已生成：$reportFile"
@@ -93,12 +85,20 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 
 # ── 2. 安装 Python 依赖 ────────────────────────────────────
 Write-Log "[2/4] 安装依赖（首次约3-5分钟，之后秒速）..."
-$depOut = uv sync --extra dev 2>&1
+$depOut = uv sync 2>&1
 $depOut | ForEach-Object { Add-Content -Path $logFile -Value $_ -Encoding UTF8 }
 $depOut | Write-Host
 if ($LASTEXITCODE -ne 0) {
-  Write-Fail "[2/4] 安装依赖" ($depOut | Select-Object -Last 20 | Out-String)
-  pause; exit 1
+  Write-Log "[2/4] 安装失败，清理虚拟环境重试..."
+  $venvPath = Join-Path $be ".venv"
+  if (Test-Path $venvPath) { Remove-Item -Recurse -Force $venvPath }
+  $depOut = uv sync 2>&1
+  $depOut | ForEach-Object { Add-Content -Path $logFile -Value $_ -Encoding UTF8 }
+  $depOut | Write-Host
+  if ($LASTEXITCODE -ne 0) {
+    Write-Fail "[2/4] 安装依赖" ($depOut | Select-Object -Last 20 | Out-String)
+    pause; exit 1
+  }
 }
 Write-Log "[2/4] 依赖安装完成 ✓"
 
