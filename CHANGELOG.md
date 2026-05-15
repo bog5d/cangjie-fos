@@ -4,6 +4,18 @@
 
 ---
 
+## [0.6.9] — 2026-05-15  外发版修复：启动脚本编码根治 + 打包脚本排除 .claude 目录
+
+> 测试基线：605 passed，0 skipped，0 failed
+
+### Fixed
+- **build_release_zip.ps1**：新增 `.claude` 到排除目录列表，防止 Claude Code worktree 文件泄漏进发版包
+- **发版验证**：确认最新 zip 中 `安装并启动.ps1` 为修复版（无 here-string），`_embedded.py` 已包含（开箱即用）
+
+### Changed
+- 外发包 zip 从 3.9 MB 降至 3.3 MB（排除 .claude 目录）
+
+
 ## [0.6.8] — 2026-05-15  DB 隔离架构 + marker 自治 + bare except 收敛
 
 > 测试基线：605 passed，0 skipped，0 failed

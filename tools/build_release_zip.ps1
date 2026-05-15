@@ -101,6 +101,7 @@ try {
     "tests",
     ".github",
     ".cursor",
+    ".claude",
     "html_reports",
     "audio",
     (Join-Path $root "soft_copyright_materials")
