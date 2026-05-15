@@ -11,6 +11,7 @@ import { InstitutionList } from "./components/InstitutionList";
 import { FollowUpWidget } from "./components/FollowUpWidget";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { RoadshowWizard } from "./components/RoadshowWizard";
+import DueDiligenceWizard from "./components/DueDiligenceWizard";
 import { ParticipantConfirmModal } from "./components/ParticipantConfirmModal";
 import { SettingsPanel } from "./components/SettingsPanel";
 
@@ -126,6 +127,7 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
   const [commanderName, setCommanderName] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [roadshowOpen, setRoadshowOpen] = useState(false);
+  const [ddOpen, setDdOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
   // ── 参与人确认弹层 ─────────────────────────────────────────────────────────
@@ -368,6 +370,13 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
           </button>
           <button
             type="button"
+            onClick={() => setDdOpen(true)}
+            className="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
+          >
+            📋 尽调响应
+          </button>
+          <button
+            type="button"
             onClick={() => onExpEvent(10, "资料补齐")}
             className="rounded-xl bg-gradient-to-r from-cyan/80 to-plasma/80 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-cyan/25 transition hover:brightness-110"
           >
@@ -452,6 +461,7 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
         institutions={institutions.map((i) => i.name).filter(Boolean)}
       />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
+      <DueDiligenceWizard open={ddOpen} onClose={() => setDdOpen(false)} />
       {confirmJob ? (
         <ParticipantConfirmModal
           jobId={confirmJob.jobId}
