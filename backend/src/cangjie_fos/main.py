@@ -126,6 +126,8 @@ def create_app() -> FastAPI:
 
     html_reports_dir = get_backend_root() / "data" / "html_reports"
     html_reports_dir.mkdir(parents=True, exist_ok=True)
+    audio_dir = get_backend_root() / "data" / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/reports", StaticFiles(directory=str(html_reports_dir)), name="html_reports")
     dist = get_frontend_dist_dir()
     if (dist / "index.html").is_file():

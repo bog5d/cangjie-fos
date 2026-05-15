@@ -6,6 +6,7 @@ generate_job_html_report(job_id) -> Path
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from cangjie_fos.core.paths import get_backend_root
@@ -13,13 +14,15 @@ from cangjie_fos.engine.report_builder import generate_html_report
 from cangjie_fos.engine.schema import AnalysisReport, TranscriptionWord
 from cangjie_fos.services.pitch_job_db import db_job_get, db_job_update
 
+logger = logging.getLogger(__name__)
+
 
 def generate_job_html_report(job_id: str) -> Path:
     """Load job data from SQLite, call legacy report_builder, save HTML.
 
     Returns the Path to the generated HTML file.
     Raises ValueError if job not found or missing required data.
-    Raises FileNotFoundError if audio file is missing.
+    When audio file is missing, generates a text-only HTML report.
     """
     # 1. Load from DB
     row = db_job_get(job_id)
@@ -35,9 +38,13 @@ def generate_job_html_report(job_id: str) -> Path:
     if not words_raw:
         raise ValueError(f"Job {job_id} has no transcription words")
 
-    audio_path = row.get("audio_path") or ""
-    if not audio_path or not Path(audio_path).is_file():
-        raise FileNotFoundError(f"Audio file not found for job {job_id}: {audio_path}")
+    # 3. Audio file — graceful degradation if missing
+    audio_path = Path(row.get("audio_path") or "")
+    if not audio_path.is_file():
+        logger.warning(
+            "Audio file missing for job %s: %s — generating text-only report",
+            job_id, audio_path,
+        )
 
     # 4. Convert FOS data → legacy types
     words_list = [TranscriptionWord.model_validate(w) for w in words_raw]

@@ -563,8 +563,9 @@ def generate_html_report(
     annotations 为 Phase 2 Slice B 新增的场次级团队注释列表；None 或空列表则不渲染附录段。
     """
     ap = Path(audio_path)
-    if not ap.is_file():
-        raise FileNotFoundError(f"缺少录音文件: {ap}")
+    audio_available = ap.is_file()
+    if not audio_available:
+        logger.warning("音频文件缺失，将生成纯文本报告（无音频切片）: %s", ap)
 
     opts = export_options or HtmlExportOptions()
     report_for_export = apply_asr_original_text_override(report_obj, words_list)
@@ -588,11 +589,15 @@ def generate_html_report(
                 t0, t1 = _risk_time_range(
                     by_index, rp.start_word_index, rp.end_word_index
                 )
-                b64 = slice_audio_file_to_base64(ap, t0, t1)
-                if b64:
-                    data_uri = f"data:audio/mpeg;base64,{b64}"
+                if audio_available:
+                    b64 = slice_audio_file_to_base64(ap, t0, t1)
+                    if b64:
+                        data_uri = f"data:audio/mpeg;base64,{b64}"
+                    else:
+                        audio_extraction_failed = True
                 else:
-                    audio_extraction_failed = True
+                    data_uri = ""
+                    audio_extraction_failed = False  # 非失败，音频本就不存在
                 time_label = (
                     f"{t0:.2f}s — {t1:.2f}s（词 {rp.start_word_index}–{rp.end_word_index}）"
                 )
