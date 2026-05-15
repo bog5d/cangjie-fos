@@ -186,7 +186,13 @@ def calculate_match_score(
 
     # 1. 行业关键词重合度（40分）
     company_industry = set(t.lower() for t in company.industry_tags)
-    industry_hits = company_industry & inst_keywords
+    # Bug #3 修复：子串匹配 — 公司标签若为机构关键词的子串 或 反之，均视为命中
+    industry_hits: set[str] = set()
+    if inst_keywords:
+        for ct in company_industry:
+            for ik in inst_keywords:
+                if ct in ik or ik in ct:
+                    industry_hits.add(ik)
     industry_score = min(40, len(industry_hits) * 10) if inst_keywords else 0
 
     # 2. 融资阶段匹配度（25分）
@@ -265,13 +271,21 @@ def match_institutions(
 
         score = calculate_match_score(company, profile)
 
-        # 计算匹配关键词
+        # 计算匹配关键词（Bug #3: 子串匹配）
         inst_keywords = set(kw.lower() for kw in profile.get("all_keywords") or [])
-        matched_kw = sorted(company_all_tags & inst_keywords)
+        matched_kw: list[str] = []
+        for ct in company_all_tags:
+            for ik in inst_keywords:
+                if ct in ik or ik in ct:
+                    matched_kw.append(ik)
+        matched_kw = sorted(set(matched_kw))
 
-        # 阶段匹配
+        # 阶段匹配（Bug #3: 用接近度而非精确相等）
         inst_stages = set(profile.get("preferred_stages") or [])
-        stage_match = bool(company.stage and company.stage in inst_stages)
+        stage_match = bool(
+            company.stage and inst_stages
+            and _stage_proximity(company.stage, max(inst_stages, key=lambda s: _stage_proximity(company.stage, s))) >= 0.75
+        )
 
         reason = _build_match_reason(company, profile, matched_kw, stage_match)
 
@@ -319,3 +333,42 @@ def format_match_report(company: CompanySnapshot, results: list[InstitutionMatch
 
     lines.append("=" * 54)
     return "\n".join(lines)
+
+
+# ─────────────────────────────────────────────
+# Bug #3: 打包下载
+# ─────────────────────────────────────────────
+
+def download_match_pack(
+    company: CompanySnapshot,
+    results: list[InstitutionMatchResult],
+) -> str:
+    """生成匹配结果打包 JSON，供前端下载。
+
+    返回一个 JSON 字符串，包含公司快照 + 全部匹配结果，
+    可直接保存为 .json 文件或包装为 ZIP 由上层处理。
+    """
+    import json as _json
+    pack = {
+        "generated_at": company.company_name,
+        "source": {
+            "company_name": company.company_name,
+            "industry_tags": company.industry_tags,
+            "stage": company.stage,
+            "model_tags": company.model_tags,
+        },
+        "total_matches": len(results),
+        "matches": [
+            {
+                "institution_id": r.institution_id,
+                "institution_name": r.institution_name,
+                "score": r.score,
+                "matched_keywords": r.matched_keywords,
+                "stage_match": r.stage_match,
+                "session_count": r.session_count,
+                "match_reason": r.match_reason,
+            }
+            for r in results
+        ],
+    }
+    return _json.dumps(pack, ensure_ascii=False, indent=2)

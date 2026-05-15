@@ -76,7 +76,17 @@ def find_related_assets(
             asset.get("summary", ""),
             " ".join(asset.get("tags", [])),
         ])
-        hits = sum(1 for kw in keywords if kw in searchable)
+        hits = sum(1 for kw in keywords if kw.lower() in searchable.lower())
+        # Bug #10: 若完全子串未命中，尝试反向匹配（文件名/标签包含关键词）
+        if hits == 0:
+            for kw in keywords:
+                kw_lower = kw.lower()
+                if any(kw_lower in field.lower() for field in [
+                    asset.get("filename", ""),
+                    asset.get("summary", ""),
+                ] + asset.get("tags", [])):
+                    hits = 1
+                    break
         if hits > 0:
             scored.append((hits, asset))
 
