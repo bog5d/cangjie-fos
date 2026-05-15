@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-15 | 当前版本：**v0.6.1** | 测试基线：**502 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.6.2** | 测试基线：**502 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -23,6 +23,7 @@
 | v0.5.5 | 05-14 | **单仓库自包含**：移除 AI_Pitch_Coach 外部依赖，clone 一个仓库即完整 |
 | v0.6.0 | 05-15 | 7个Bug修复（#2/#4/#6/#8/#9/#12/#13）+ 启动失败自动诊断 + Pipeline卡片编辑 |
 | v0.6.1 | 05-15 | 修复向导轨道任务完成后不同步 GitHub 的 Bug（pitch_wizard_runner 补加 push_pitch_job）|
+| v0.6.2 | 05-15 | 预埋默认配置（Token/Key/账号）— 外发包开箱即用，无需同事手动填 .env |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -227,6 +228,16 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `AGENTS.md` | 版本号、状态表、v0.6.0 节、13问题完整追踪表 |
 | `packaging/本次更新说明.md` | 完全重写为 v0.6.0 内容（7个修复 + 验收清单） |
 | `同事上手指南.md` | 版本号 + 功能一览新增 v0.6.0 改进节 + 测试清单新增 v0.6.0 验收 + 已知问题新增 v0.6.0 修复记录 |
+
+### v0.6.2 改动文件清单（2026-05-15）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/core/_embedded.py` | **新建（gitignored，仅在外发 zip 里）**：Base64 编码存储 Token/Key/账号，开箱即用 |
+| `backend/src/cangjie_fos/main.py` | lifespan 最开始调用 `inject_defaults()`，注入内置配置（.env 里有值时不覆盖） |
+| `backend/.gitignore` | 新增 `_embedded.py` 排除规则，防止 Token 被推送到公开 GitHub 仓库 |
+
+> ⚠️ `_embedded.py` 不在 git 里，只在 zip 里。更新 Token/Key 需重新生成此文件再打包。
 
 ### v0.6.1 改动文件清单（2026-05-15）
 
