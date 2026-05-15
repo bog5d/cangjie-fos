@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-15 | 当前版本：**v0.6.9** | 测试基线：**605 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.7.0** | 测试基线：**625 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -14,7 +14,7 @@
 - **进入点**：`backend/src/cangjie_fos/main.py` — FastAPI app + lifespan
 - **外部依赖**：无 — `engine/` 子包已包含所有核心模块，AI_Pitch_Coach 是可选的历史归档
 
-### 最近做了什么（v0.5.3 → v0.6.9）
+### 最近做了什么（v0.5.3 → v0.7.0）
 
 | 版本 | 日期 | 主要内容 |
 |------|------|---------|
@@ -31,6 +31,7 @@
 | v0.6.7 | 05-15 | Bug 3.5/3.6：data/audio 目录自动创建；HTML报告缺音频优雅降级（不再崩溃） |
 | v0.6.8 | 05-15 | _isolate_db_per_test autouse DB 隔离；get_audio_dir() 抽象；bare except 全面收敛；605 passed |
 | v0.6.9 | 05-15 | **外发版**：build_release_zip.ps1 排除 .claude 目录；发版文档更新为开箱即用说明 |
+| v0.7.0 | 05-15 | **尽调响应台**：清单解析 + AI 批量匹配 + 表格审核 + 导出文件夹；20个新测试（625 passed）|
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -284,6 +285,28 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `backend/tests/test_report_builder.py` | **新建**：desensitize/han_initials/apply_masks + 缺音频降级场景（10个测试） |
 | `backend/tests/test_p1b_html_report_service.py` | 移除2个 `@pytest.mark.skip`；补齐完整 mock 链；修复 Win32 路径问题 |
 
+### v0.7.0 改动文件清单（2026-05-15）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/pyproject.toml` + `uv.lock` | 新增 pdfplumber、openpyxl 依赖 |
+| `backend/src/cangjie_fos/services/db_base.py` | `_init_db()` 末尾新增3张表 DDL：`dd_asset_index`、`dd_match_sessions`、`dd_match_items` |
+| `backend/src/cangjie_fos/services/dd_file_parser.py` | **新建**：从 PDF/Word/Excel/txt 提取文字（`extract_text(path) → (text, readable)`） |
+| `backend/src/cangjie_fos/services/dd_index_service.py` | **新建**：扫描文件夹建索引（`scan_and_index_folder` + `_llm_summarize` + `get_index_by_folder`） |
+| `backend/src/cangjie_fos/services/dd_checklist_parser.py` | **新建**：清单解析（代码读格式 → 纯文字；AI 只提取语义需求项）|
+| `backend/src/cangjie_fos/services/dd_match_service.py` | **新建**：批量 LLM 匹配（`create_match_session`、`run_matching`、`_llm_batch_match`，每批30条） |
+| `backend/src/cangjie_fos/services/dd_export_service.py` | **新建**：导出文件夹 + 缺失清单.txt（`export_to_folder`） |
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | **新建**：7个 API 端点（索引/session创建/触发匹配/获取items/更新item/导出） |
+| `backend/src/cangjie_fos/api/router.py` | 注册 dd_router |
+| `backend/tests/test_dd_file_parser.py` | **新建**：6个测试（parser 4 + index_service 2） |
+| `backend/tests/test_dd_checklist_parser.py` | **新建**：7个测试（parser 4 + match_service 2 + export_service 1） |
+| `backend/tests/test_dd_e2e.py` | **新建**：7个 E2E 测试（全套 LLM mock） |
+| `frontend/src/components/DueDiligenceWizard.tsx` | **新建**：3步向导组件（扫描 → 清单 → 审核导出） |
+| `frontend/src/App.tsx` | 新增 `ddOpen` state + `📋 尽调响应` 按钮 + `<DueDiligenceWizard>` 实例 |
+| `CHANGELOG.md` | 新增 v0.7.0 版本块 |
+
+---
+
 ### v0.6.9 改动文件清单（2026-05-15）
 
 | 文件 | 改了什么 |
@@ -295,16 +318,16 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 
 ---
 
-### 待处理问题 + 下一个大功能（v0.7.0 方向）
+### 待处理问题（v0.7.1+ 方向）
 
 | 类型 | 现象/目标 | 难度 | 建议入手文件 |
 |-----|------|------|------------|
 | Bug #1 | 录音片段不完整，ASR 截取有问题 | 高风险，ASR 核心逻辑 | `backend/src/cangjie_fos/engine/transcriber.py` |
 | Bug #10 | 资产台账搜索不到 | 需调查扫描逻辑 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
-| **v0.7.0 重点** | **尽调材料包真正实现**：下载 ZIP + INDEX.md + LLM 需求解析 | 中等，架构已就绪缺最后一环 | `backend/src/cangjie_fos/engine/matchmaker.py` + `api/routes/assets.py` + `frontend/src/components/MatchMakerPanel.tsx` |
+| **DD v2** | 尽调响应台扩展：重新扫描单文件、手动替换匹配、历史 session 列表 | 中等 | `backend/src/cangjie_fos/services/dd_*.py` + `DueDiligenceWizard.tsx` |
 
-**尽调材料包现状（重要，接手必读）**：
-- 现有 BM25 匹配 + bundle API 已可工作，但**无下载端点**，用户点确认后拿不到文件
-- `investor_matcher.py` 是死代码（无路由）—— 真正用的是 `matchmaker.py`
-- 需要：① `GET /api/v1/assets/bundle/{session_id}/download` 返回 ZIP 流 ② 前端"下载尽调包"按钮 ③ LLM 生成 INDEX.md 说明每个文件对应哪个尽调问题
-- 详细讨论用 `/grill-me` skill 先把需求问清楚再开发
+**尽调响应台现状（v0.7.0 已完成）**：
+- ✅ 3步向导：扫描材料库 → 上传清单（Excel/Word/PDF/文字）→ AI 匹配 → 表格审核 → 导出
+- ✅ 7个 API 端点：`/api/v1/dd/index`、`/api/v1/dd/sessions`、`/api/v1/dd/sessions/{id}/match` 等
+- ✅ 置信度颜色：🟢≥80% / 🟡50-80% / 🔴<50%，低置信排前
+- ⚠️ 尚未支持：重新触发单文件扫描、session 历史列表页、多机构清单同时处理
