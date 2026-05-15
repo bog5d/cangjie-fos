@@ -8,6 +8,26 @@
 
 ---
 
+## [0.6.2] — 2026-05-15  Bug #1 修复：录音片段不完整
+
+> 根因：`_map_aliyun_paraformer_to_schema` 在 Paraformer 返回句子缺词级时间戳时
+> 静默丢弃整句（`continue`），导致转写输出缺失段落。
+
+### Fixed
+- **Bug #1 — 录音片段不完整（ASR 截取有误）**
+  - 根因：`backend/src/cangjie_fos/engine/transcriber.py` `_map_aliyun_paraformer_to_schema` L449-450
+    - 句子缺词级 `begin_time/end_time` 时，整句被 `continue` 跳过
+    - Paraformer API 在低质量音频或短句时可能只返回句子级时间戳
+  - 修复：
+    - 整句缺词级时间戳时：用句子级 `begin_time/end_time` 创建单条词记录兜底
+    - 句中部分词缺时间戳时：线性插值估算缺失词的时间窗口（前后最近有效词取中点）
+    - 新增 `tests/test_transcriber.py`（10 个测试）覆盖：正常流、缺词级时间戳、混合场景、多说话人
+
+### Changed
+- 测试基线：502 → **512 passed**（+10，test_transcriber.py）
+
+---
+
 ## [0.6.1] — 2026-05-15  紧急修复：向导轨道数据不同步 GitHub
 
 ### Fixed

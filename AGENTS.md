@@ -17,12 +17,12 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v0.6.0，2026-05-15）
+## 当前状态（v0.6.2，2026-05-15）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.6.0** |
-| 测试基线 | **502 passed**，0 failed |
+| 版本 | **v0.6.1** |
+| 测试基线 | **512 passed**，0 failed |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
@@ -31,7 +31,7 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ## v0.6.0 刚做完的事（你拿到的仓库已包含这些）
 
-同事（zt001）反馈了13个问题，已修其中10个。v0.6.0 修了7个：
+同事（zt001）反馈了13个问题，已修其中10个。v0.6.0 修了7个，v0.6.1 修了1个：
 
 | 改了哪里 | 做了什么 |
 |---------|---------|
@@ -47,12 +47,13 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 | frontend/.../RoadshowIntelView.tsx | 新增「✏️ 编辑摘要」按钮，atmosphere_summary / hidden_concerns / institution_update 可编辑保存 |
 | 安装并启动.ps1 | 启动失败自动在桌面生成「诊断报告_请发给AI_时间戳.txt」 |
 | v0.5.5 | 移除 AI_Pitch_Coach 外部依赖 → 单仓库自包含 |
+| v0.6.1 | Bug #1 修复：录音片段不完整 — `_map_aliyun_paraformer_to_schema` 缺词级时间戳时用句子级兜底，不再静默丢弃整句 |
 
 **13个问题全貌：**
 
 | # | 问题描述 | 状态 | 版本 |
 |---|---------|------|------|
-| 1 | 录音片段不完整（ASR 截取有误） | ❌ 待处理 | — |
+| 1 | 录音片段不完整（ASR 截取有误） | ✅ 已修复 | v0.6.1 |
 | 2 | 新增风险点缺「问题简述」字段 | ✅ 已修复 | v0.6.0 |
 | 3 | 尽调匹配不准 + 缺打包下载功能 | ❌ 待处理 | — |
 | 4 | 口述实录不可编辑 | ✅ 已修复 | v0.6.0 |
@@ -68,11 +69,10 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 待处理的3个问题（下一版从这里开始）
+## 待处理的问题（下一版从这里开始）
 
 | Bug | 现象 | 入手文件 |
 |-----|------|---------|
-| #1 | 录音片段不完整，ASR 截取有误 | `backend/src/cangjie_fos/engine/transcriber.py` |
 | #3 | 尽调匹配不准 + 缺打包下载功能 | `backend/src/cangjie_fos/services/investor_matcher.py` |
 | #10 | 资产台账搜索不到内容 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
 

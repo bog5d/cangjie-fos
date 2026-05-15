@@ -436,10 +436,18 @@ def _map_aliyun_paraformer_to_schema(result: dict[str, Any]) -> List[Transcripti
         for sent in sentences:
             if not isinstance(sent, dict):
                 continue
-            # 预先收集本句有效词（有 begin_time/end_time），以确定"末词"位置
             sent_word_list = sent.get("words") or []
             if not isinstance(sent_word_list, list):
                 continue
+            # 句末标点（来自 sentence 级别的 text 字段，包含 ASR 预测标点）
+            sent_text = str(sent.get("text") or "").rstrip()
+            sent_terminal_punct = (
+                sent_text[-1]
+                if sent_text and sent_text[-1] in _SENTENCE_PUNCT_CHARS
+                else ""
+            )
+            # ── Bug #1 修复：缺词级时间戳时用句子级 begin_time/end_time 兜底 ──
+            # 收集本句内所有有效词（有 begin_time/end_time）
             valid_words = [
                 w for w in sent_word_list
                 if isinstance(w, dict)
@@ -447,25 +455,94 @@ def _map_aliyun_paraformer_to_schema(result: dict[str, Any]) -> List[Transcripti
                 and w.get("end_time") is not None
             ]
             if not valid_words:
+                # 整句无词级时间戳 → 用句子级时间戳创建单条词记录
+                sent_bt = sent.get("begin_time")
+                sent_et = sent.get("end_time")
+                if sent_bt is not None and sent_et is not None:
+                    spk = _speaker_id_from_vendor_word({}, sent) or sent.get("speaker_id")
+                    raw_rows.append(
+                        (float(sent_bt) / 1000.0,
+                         float(sent_et) / 1000.0,
+                         sent_text or "(空)",
+                         spk)
+                    )
                 continue
-            # 提取句末标点（来自 sentence 级别的 text 字段，包含 ASR 预测标点）
-            sent_text = str(sent.get("text") or "").rstrip()
-            sent_terminal_punct = (
-                sent_text[-1]
-                if sent_text and sent_text[-1] in _SENTENCE_PUNCT_CHARS
-                else ""
-            )
-            last_valid_idx = len(valid_words) - 1
-            for local_idx, w in enumerate(valid_words):
+
+            # ── Bug #1 修复：句中部分词缺时间戳时，用线性插值估算 ──
+            # 先找出所有有/无时间戳的词索引
+            sent_word_list_valid: list[dict[str, Any]] = []
+            for w in sent_word_list:
+                if not isinstance(w, dict):
+                    continue
                 bt = w.get("begin_time")
                 et = w.get("end_time")
+                if bt is not None and et is not None:
+                    sent_word_list_valid.append(w)
+                else:
+                    sent_word_list_valid.append(w)  # 保留缺时间的词，稍后估算
+
+            # 为缺时间的词估算 begin_time/end_time
+            last_valid_idx = -1
+            for local_idx in range(len(sent_word_list_valid)):
+                w = sent_word_list_valid[local_idx]
+                if w.get("begin_time") is not None and w.get("end_time") is not None:
+                    last_valid_idx = local_idx
+                    continue
+                # 需要估算：找前后最近的有效词
+                prev_et = None
+                next_bt = None
+                # 向前找
+                for pi in range(local_idx - 1, -1, -1):
+                    pw = sent_word_list_valid[pi]
+                    if pw.get("end_time") is not None:
+                        prev_et = float(pw["end_time"])
+                        break
+                # 向后找
+                for ni in range(local_idx + 1, len(sent_word_list_valid)):
+                    nw = sent_word_list_valid[ni]
+                    if nw.get("begin_time") is not None:
+                        next_bt = float(nw["begin_time"])
+                        break
+                # 线性插值估算
+                DEFAULT_WORD_DURATION_MS = 300.0
+                if prev_et is not None and next_bt is not None:
+                    mid = (prev_et + next_bt) / 2.0
+                    half = min((next_bt - prev_et) / 4.0, DEFAULT_WORD_DURATION_MS / 2.0)
+                    w["begin_time"] = mid - half
+                    w["end_time"] = mid + half
+                elif prev_et is not None:
+                    w["begin_time"] = prev_et
+                    w["end_time"] = prev_et + DEFAULT_WORD_DURATION_MS
+                elif next_bt is not None:
+                    w["end_time"] = next_bt
+                    w["begin_time"] = next_bt - DEFAULT_WORD_DURATION_MS
+                else:
+                    # 无前后参考 → 用句子级时间戳
+                    sent_bt = sent.get("begin_time")
+                    sent_et = sent.get("end_time")
+                    w["begin_time"] = float(sent_bt) if sent_bt is not None else 0.0
+                    w["end_time"] = float(sent_et) if sent_et is not None else DEFAULT_WORD_DURATION_MS
+                # 标记最后一个有效索引（插值后的词也算有效）
+                last_valid_idx = local_idx
+
+            # 重新收集（现在所有词都应有 begin_time/end_time）
+            final_valid = [
+                w for w in sent_word_list_valid
+                if w.get("begin_time") is not None and w.get("end_time") is not None
+            ]
+            if last_valid_idx < 0:
+                last_valid_idx = len(final_valid) - 1
+
+            for local_idx, w in enumerate(final_valid):
+                bt = float(w["begin_time"])
+                et = float(w["end_time"])
                 text = str(w.get("text") or "").strip()
                 spk = _speaker_id_from_vendor_word(w, sent)
                 # 仅末词追加句末标点，其余词不变（保持时间戳对齐语义）
                 if local_idx == last_valid_idx and sent_terminal_punct and text:
                     text = text + sent_terminal_punct
                 raw_rows.append(
-                    (float(bt) / 1000.0, float(et) / 1000.0, text or "(空)", spk)
+                    (bt / 1000.0, et / 1000.0, text or "(空)", spk)
                 )
 
     speaker_ids = _assign_auto_speaker_ids([r[3] for r in raw_rows])
