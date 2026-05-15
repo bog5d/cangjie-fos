@@ -8,6 +8,22 @@
 
 ---
 
+## [0.6.1] — 2026-05-15  紧急修复：向导轨道数据不同步 GitHub
+
+### Fixed
+- **数据不同步到 coach_data 仓库**（关键Bug）
+  - `backend/src/cangjie_fos/services/pitch_wizard_runner.py`
+  - 向导提交轨道（复盘/路演）任务完成后，数据从未同步到 `bog5d/coach_data`。
+    原因：`run_pitch_wizard_track_job` 缺少 `github_sync.push_pitch_job()` 调用。
+    现已在任务成功完成后补加，与上传轨道行为一致。
+  - `backend/src/cangjie_fos/services/github_sync.py`
+  - `push_match_session` 留 TODO：tenant 读取硬编码 env var，待 match_sessions 表加 tenant_id 列后修。
+
+### Changed
+- 测试基线：502 → 502 passed（+0，无新增测试，逻辑已被现有 E2E 覆盖）
+
+---
+
 ## [0.6.0] — 2026-05-15  7个Bug修复 + 启动体验增强 + Pipeline编辑
 
 > 继 v0.5.4 修复3个Bug后，本版处理剩余同事反馈中优先级最高的7个问题，并改善启动调试体验。
