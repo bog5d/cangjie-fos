@@ -263,6 +263,41 @@ CREATE TABLE IF NOT EXISTS follow_up_items (
 );
 CREATE INDEX IF NOT EXISTS idx_follow_up_tenant ON follow_up_items(tenant_id, done, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_follow_up_job ON follow_up_items(job_id);
+
+CREATE TABLE IF NOT EXISTS dd_asset_index (
+    id          TEXT PRIMARY KEY,
+    folder_root TEXT NOT NULL,
+    file_path   TEXT NOT NULL,
+    filename    TEXT NOT NULL,
+    file_type   TEXT NOT NULL,
+    summary     TEXT,
+    readable    INTEGER NOT NULL DEFAULT 1,
+    indexed_at  REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS dd_match_sessions (
+    session_id     TEXT PRIMARY KEY,
+    tenant_id      TEXT NOT NULL,
+    checklist_name TEXT,
+    folder_root    TEXT NOT NULL DEFAULT '',
+    status         TEXT NOT NULL DEFAULT 'pending',
+    created_at     REAL NOT NULL,
+    completed_at   REAL
+);
+
+CREATE TABLE IF NOT EXISTS dd_match_items (
+    id                TEXT PRIMARY KEY,
+    session_id        TEXT NOT NULL,
+    item_no           TEXT NOT NULL,
+    category          TEXT,
+    requirement       TEXT NOT NULL,
+    matched_file_path TEXT,
+    matched_filename  TEXT,
+    confidence        REAL,
+    match_reason      TEXT,
+    user_confirmed    INTEGER NOT NULL DEFAULT 0,
+    user_skipped      INTEGER NOT NULL DEFAULT 0
+);
 """
 
 # ── 版本化迁移列表（既有 DB 升级用，新安装 DDL 已包含所有列） ─────────────────
