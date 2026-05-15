@@ -54,6 +54,21 @@ def get_fos_bridge_data_dir() -> Path:
     return get_monorepo_root().parent / ".fos_data"
 
 
+def get_audio_dir() -> Path:
+    """音频文件存储目录（可用 CANGJIE_AUDIO_DIR 覆盖）。
+
+    默认 ``backend/data/audio/``，测试中可设为临时目录。
+    """
+    import os
+
+    override = os.getenv("CANGJIE_AUDIO_DIR", "").strip()
+    if override:
+        p = Path(override).resolve()
+    else:
+        p = get_backend_root() / "data" / "audio"  # fallback: use default path if no env override
+    return p
+
+
 def get_data_room_root() -> Path:
     """资料室根目录（按 tenant 分子目录扫描）。"""
     import os

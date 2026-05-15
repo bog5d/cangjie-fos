@@ -170,7 +170,7 @@ def _get_ffmpeg_exe() -> str | None:
         return None
     try:
         return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
+    except (RuntimeError, FileNotFoundError, OSError):
         return None
 
 
@@ -232,7 +232,7 @@ def _ffprobe_duration_sec(audio_path: Path) -> float | None:
         if r.returncode != 0 or not (r.stdout or "").strip():
             return None
         return max(0.0, float((r.stdout or "").strip()))
-    except Exception as e:
+    except (subprocess.CalledProcessError, ValueError, OSError) as e:
         logger.warning("ffprobe failed for %s: %s", audio_path, e)
         return None
 
@@ -325,7 +325,7 @@ def _ffmpeg_slice_to_mp3_bytes(audio_path: Path, start_word_t: float, end_word_t
             logger.warning("ffmpeg mp3 slice produced empty/short output")
             return None
         return out
-    except Exception as e:
+    except (subprocess.CalledProcessError, OSError, RuntimeError) as e:
         logger.warning("ffmpeg mp3 slice exception: %s", e)
         return None
     finally:
@@ -350,7 +350,7 @@ def slice_audio_file_to_base64(
         if not raw:
             return ""
         return base64.b64encode(raw).decode("ascii")
-    except Exception as e:
+    except (subprocess.CalledProcessError, OSError, RuntimeError) as e:
         logger.warning("slice_audio_file_to_base64: %s", e)
         return ""
 

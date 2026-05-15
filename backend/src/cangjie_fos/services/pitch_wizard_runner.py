@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from cangjie_fos.core.paths import get_backend_root
+from cangjie_fos.core.paths import get_backend_root, get_audio_dir
 from cangjie_fos.engine.job_pipeline import HtmlExportOptions, PitchFileJobParams, build_explicit_context, run_pitch_file_job
 from cangjie_fos.engine.document_reader import extract_text_from_files
 from cangjie_fos.schemas.pitch_upload import PitchJobStatus
@@ -166,7 +166,7 @@ def run_pitch_wizard_track_job(
         else:
             # ── 普通音频模式（含 FFmpeg 压缩网关，与旧版单文件上传保持一致）──────
             from cangjie_fos.services.audio_service import AudioService  # noqa: PLC0415
-            audio_dir = get_backend_root() / "data" / "audio"
+            audio_dir = get_audio_dir()
             audio_dir.mkdir(parents=True, exist_ok=True)
 
             raw_bytes = audio_path.read_bytes()

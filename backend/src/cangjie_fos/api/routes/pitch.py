@@ -11,7 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from cangjie_fos.api.upload_io import stream_upload_to_path
-from cangjie_fos.core.paths import get_backend_root
+from cangjie_fos.core.paths import get_backend_root, get_audio_dir
 from cangjie_fos.core.job_semaphore import release_job_slot, try_reserve_jobs
 from cangjie_fos.services import github_sync
 from cangjie_fos.engine.schema import TranscriptionWord as _TranscriptionWord
@@ -200,7 +200,7 @@ async def pitch_upload(
     suffix = Path(fname).suffix or ".bin"
 
     # 流式落盘：直接写到 data/audio/，不把整个文件读入内存
-    audio_dir = get_backend_root() / "data" / "audio"
+    audio_dir = get_audio_dir()
     audio_dir.mkdir(parents=True, exist_ok=True)
     incoming_path = audio_dir / f"{job_id}_incoming{suffix}"
 
@@ -428,7 +428,7 @@ def generate_html_report_endpoint(job_id: str) -> PitchHtmlReportResponse:
 @router.get("/jobs/{job_id}/html-report")
 def get_html_report_endpoint(job_id: str) -> FileResponse:
     """Serve the generated HTML report file."""
-    from cangjie_fos.core.paths import get_backend_root  # noqa: PLC0415
+    from cangjie_fos.core.paths import get_backend_root, get_audio_dir  # noqa: PLC0415
 
     report_path = get_backend_root() / "data" / "html_reports" / f"{job_id}.html"
     if not report_path.exists():
@@ -529,7 +529,7 @@ def pitch_job_audio(job_id: str) -> FileResponse:
 @router.get("/health")
 def health_check() -> dict:
     """系统健康检查：DB 连通性 + 目录 + 关键依赖。"""
-    from cangjie_fos.core.paths import get_backend_root  # noqa: PLC0415
+    from cangjie_fos.core.paths import get_backend_root, get_audio_dir  # noqa: PLC0415
     from cangjie_fos.services.pitch_job_db import _connect  # noqa: PLC0415
     import importlib
 
@@ -543,11 +543,15 @@ def health_check() -> dict:
         issues.append(f"db: {e}")
 
     root = get_backend_root()
-    for d in ["data/audio", "data/html_reports"]:
-        p = root / d
-        p.mkdir(parents=True, exist_ok=True)
-        if not p.is_dir():
-            issues.append(f"missing dir: {d}")
+    # 健康检查：创建并验证关键目录
+    audio_d = get_audio_dir()
+    audio_d.mkdir(parents=True, exist_ok=True)
+    if not audio_d.is_dir():
+        issues.append("missing dir: audio")
+    html_d = root / "data" / "html_reports"
+    html_d.mkdir(parents=True, exist_ok=True)
+    if not html_d.is_dir():
+        issues.append("missing dir: data/html_reports")
 
     for pkg in ["pandas", "docx", "jinja2", "openai"]:
         try:

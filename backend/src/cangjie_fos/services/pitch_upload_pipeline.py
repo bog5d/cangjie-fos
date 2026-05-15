@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from cangjie_fos.core.paths import get_backend_root
+from cangjie_fos.core.paths import get_backend_root, get_audio_dir
 from cangjie_fos.engine.transcriber import transcribe_audio
 from cangjie_fos.schemas.pitch_upload import PitchJobStatus
 from cangjie_fos.services.audio_service import AudioService
@@ -48,7 +48,7 @@ def run_pitch_upload_job(
     audio_path: Path | None = None
     try:
         # ── 步骤 1：获取原始字节（或从落盘路径读取）并确定大小 ──────────
-        audio_dir = get_backend_root() / "data" / "audio"
+        audio_dir = get_audio_dir()
         audio_dir.mkdir(parents=True, exist_ok=True)
         suffix = Path(filename).suffix or ".bin"
 
@@ -221,7 +221,7 @@ def run_roadshow_asr_job(
     tmp: Path | None = None
     audio_path: Path | None = None
     try:
-        audio_dir = get_backend_root() / "data" / "audio"
+        audio_dir = get_audio_dir()
         audio_dir.mkdir(parents=True, exist_ok=True)
         suffix = Path(filename).suffix or ".bin"
 

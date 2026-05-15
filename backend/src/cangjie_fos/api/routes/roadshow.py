@@ -21,7 +21,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from cangjie_fos.core.paths import get_backend_root
+from cangjie_fos.core.paths import get_backend_root, get_audio_dir
 from cangjie_fos.schemas.pitch_upload import PitchJobStatus
 from cangjie_fos.api.upload_io import stream_upload_to_path
 from cangjie_fos.services.pitch_job_db import db_job_create, db_job_get, db_job_update
@@ -158,7 +158,7 @@ async def roadshow_start(
         # 音频上传路径
         fname = file.filename or f"roadshow_{job_id}.mp3"
         suffix = Path(fname).suffix or ".mp3"
-        audio_dir = get_backend_root() / "data" / "audio"
+        audio_dir = get_audio_dir()
         audio_dir.mkdir(parents=True, exist_ok=True)
         incoming_path = audio_dir / f"{job_id}_incoming{suffix}"
         await stream_upload_to_path(file, incoming_path)

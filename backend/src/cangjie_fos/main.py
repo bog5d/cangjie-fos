@@ -17,7 +17,7 @@ from cangjie_fos.api.router import api_router
 from cangjie_fos.core.checkpointing import get_sqlite_checkpointer, shutdown_checkpointer
 from cangjie_fos.core.config import settings
 from cangjie_fos.core.http_errors import http_exception_handler, unhandled_exception_handler
-from cangjie_fos.core.paths import get_frontend_dist_dir
+from cangjie_fos.core.paths import get_backend_root, get_frontend_dist_dir, get_audio_dir
 from cangjie_fos.events.file_watchdog import start_file_watchdog, stop_file_watchdog
 from cangjie_fos.events.npc_ws_house import set_main_event_loop
 from cangjie_fos.events.watchdog_runner import stop_watchdog_stub
@@ -126,7 +126,7 @@ def create_app() -> FastAPI:
 
     html_reports_dir = get_backend_root() / "data" / "html_reports"
     html_reports_dir.mkdir(parents=True, exist_ok=True)
-    audio_dir = get_backend_root() / "data" / "audio"
+    audio_dir = get_audio_dir()
     audio_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/reports", StaticFiles(directory=str(html_reports_dir)), name="html_reports")
     dist = get_frontend_dist_dir()

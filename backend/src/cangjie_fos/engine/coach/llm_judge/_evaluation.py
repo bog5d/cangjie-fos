@@ -174,7 +174,7 @@ def deep_evaluate_single_risk(
             outer = json.loads(raw_json)
             inner = next((v for v in outer.values() if isinstance(v, dict)), outer)
             rp = RiskPoint.model_validate(inner)
-        except Exception as e:
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
             raise ValueError(f"深评结果不符合 RiskPoint 契约: {e}\n原始: {raw_json[:800]}") from e
 
     return rp.model_copy(
@@ -325,7 +325,7 @@ def run_phase1_risk_scan(ctx: PitchEvalContext) -> tuple[RiskScanResult, bool]:
     except APIError as e:
         logger.exception("阶段一扫描 API 失败")
         raise RuntimeError(f"LLM API 请求失败: {e}") from e
-    except Exception as e:
+    except (RuntimeError, ValueError, OSError) as e:
         logger.exception("阶段一扫描异常")
         raise RuntimeError(f"LLM 调用异常: {e}") from e
 

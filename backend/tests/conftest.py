@@ -61,3 +61,34 @@ def fos_login_credentials() -> tuple[str, str]:
                         return parts[0], parts[1]
     # 无账号配置 → dev mode，任意凭据
     return "dev", "dev"
+
+
+@pytest.fixture(autouse=True)
+def _isolate_db_per_test(request, tmp_path, monkeypatch):
+    """每个测试获得独立的 SQLite 数据库实例（自动启用）。
+
+    monkeypatch pitch_job_db._db_path 到临时目录，
+    确保测试间完全隔离，杜绝并行测试时的全局状态泄漏。
+
+    例外：E2E 测试（wizard/pipeline/retry-eval）使用 module/class 级
+    fixture 预先写入 DB 数据，scope 不匹配会导致读取临时空 DB——
+    对这类测试跳过隔离，让它们直接使用真实 DB 路径。
+
+    对不使用 DB 的测试无副作用（只有首次 _connect() 时才创建文件）。
+    """
+    # E2E 测试在 module/class fixture 中预写数据到真实 DB 路径，
+    # function-scope DB 隔离会导致读不到数据 → 跳过 monkeypatch
+    _SKIP_DB_ISOLATION_MODULES = (
+        "test_wizard_pipeline_e2e",
+        "test_pipeline_e2e",
+        "test_p0_retry_eval",
+        "test_follow_ups_api",
+    )
+    module_path = str(request.node.path)
+    if any(name in module_path for name in _SKIP_DB_ISOLATION_MODULES):
+        return  # yield nothing — E2E tests use real DB
+
+    import cangjie_fos.services.pitch_job_db as db_module  # noqa: PLC0415
+
+    db_file = tmp_path / "test_fos.db"
+    monkeypatch.setattr(db_module, "_db_path", lambda: str(db_file))
