@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-15 | 当前版本：**v0.6.0** | 测试基线：**502 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-15 | 当前版本：**v0.6.1** | 测试基线：**502 passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -22,6 +22,7 @@
 | v0.5.4 | 05-14 | 3个Bug修复：路演报告Step5字段undefined / 删风险点评分不重算 / 历史列表缺机构名 |
 | v0.5.5 | 05-14 | **单仓库自包含**：移除 AI_Pitch_Coach 外部依赖，clone 一个仓库即完整 |
 | v0.6.0 | 05-15 | 7个Bug修复（#2/#4/#6/#8/#9/#12/#13）+ 启动失败自动诊断 + Pipeline卡片编辑 |
+| v0.6.1 | 05-15 | 修复向导轨道任务完成后不同步 GitHub 的 Bug（pitch_wizard_runner 补加 push_pitch_job）|
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -226,6 +227,15 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `AGENTS.md` | 版本号、状态表、v0.6.0 节、13问题完整追踪表 |
 | `packaging/本次更新说明.md` | 完全重写为 v0.6.0 内容（7个修复 + 验收清单） |
 | `同事上手指南.md` | 版本号 + 功能一览新增 v0.6.0 改进节 + 测试清单新增 v0.6.0 验收 + 已知问题新增 v0.6.0 修复记录 |
+
+### v0.6.1 改动文件清单（2026-05-15）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/pitch_wizard_runner.py` | 向导轨道任务完成后新增 `push_pitch_job(job_id)` 调用，修复数据不同步到 `coach_data` 的 Bug |
+| `backend/src/cangjie_fos/services/github_sync.py` | `push_match_session` 中加 TODO 注释（tenant 硬编码问题，待 match_sessions 表加 tenant_id 列后修）|
+
+---
 
 ### 待处理的 3 个问题（下一版接手从这里开始）
 
