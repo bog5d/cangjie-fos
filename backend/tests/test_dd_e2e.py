@@ -224,3 +224,42 @@ class TestDDSessionList:
         gaoling = next((i for i in institutions if i.name == "高瓴资本"), None)
         assert gaoling is not None
         assert gaoling.stage == PipelineStage.DD
+
+
+_MOCK_ITEMS_GH = [
+    {"item_no": "1", "category": "基本情况", "requirement": "营业执照"},
+]
+
+
+class TestDDGitHubSync:
+    """导出后触发 GitHub 同步。"""
+
+    def test_export_triggers_github_push(self, client, tmp_path, monkeypatch):
+        """export 成功后应调用 push_dd_session。"""
+        push_calls: list[str] = []
+
+        def mock_push(session_id: str) -> bool:
+            push_calls.append(session_id)
+            return True
+
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.dd_response.push_dd_session",
+            mock_push,
+        )
+
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=_MOCK_ITEMS_GH):
+            resp = client.post(
+                "/api/v1/dd/sessions",
+                data={"tenant_id": "gh_test", "folder_root": "/tmp", "text": "1. 营业执照"},
+                files={},
+            )
+        session_id = resp.json()["session_id"]
+
+        export_resp = client.post(
+            f"/api/v1/dd/sessions/{session_id}/export",
+            json={"output_dir": str(tmp_path)},
+        )
+        assert export_resp.status_code == 200
+        # BackgroundTask 在 TestClient 中同步执行
+        assert session_id in push_calls

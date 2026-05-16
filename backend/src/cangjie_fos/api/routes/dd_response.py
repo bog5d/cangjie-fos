@@ -18,6 +18,7 @@ from cangjie_fos.services.dd_match_service import (
     run_matching,
 )
 from cangjie_fos.services.db_base import _connect
+from cangjie_fos.services.github_sync import push_dd_session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/dd", tags=["due-diligence"])
@@ -202,9 +203,10 @@ def update_item(session_id: str, item_id: str, req: ItemUpdateRequest):
 
 
 @router.post("/sessions/{session_id}/export")
-def export_session(session_id: str, req: ExportRequest):
-    """将已确认的匹配文件导出到本地文件夹，生成缺失清单。"""
+def export_session(session_id: str, req: ExportRequest, background_tasks: BackgroundTasks):
+    """将已确认的匹配文件导出到本地文件夹，生成缺失清单，并异步同步到 GitHub。"""
     result = export_to_folder(session_id, req.output_dir)
+    background_tasks.add_task(push_dd_session, session_id)
     return result
 
 

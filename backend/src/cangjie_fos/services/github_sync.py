@@ -457,6 +457,71 @@ def _import_remote_pitch(data: dict) -> None:
         conn.close()
 
 
+def push_dd_session(session_id: str) -> bool:
+    """
+    把尽调会话摘要 push 到 analytics/{tenant}/dd/{date}_{session_id[:8]}.json。
+    在 export 成功后作为 background_task 调用。
+    """
+    if not is_configured():
+        return False
+
+    from cangjie_fos.services.db_base import _connect
+    import datetime as _dt
+
+    with _connect() as conn:
+        session_row = conn.execute(
+            "SELECT * FROM dd_match_sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+        if not session_row:
+            logger.warning("push_dd_session: session 不存在 %s", session_id)
+            return False
+        session = dict(session_row)
+
+        items = [
+            dict(r)
+            for r in conn.execute(
+                """SELECT item_no, category, requirement, matched_filename,
+                          confidence, user_confirmed, user_skipped
+                   FROM dd_match_items WHERE session_id = ? ORDER BY item_no""",
+                (session_id,),
+            ).fetchall()
+        ]
+
+    cfg = _cfg()
+    tenant = session.get("tenant_id") or cfg["tenant"]
+    date_str = _dt.date.today().isoformat()
+    filename = f"{date_str}_{session_id[:8]}.json"
+    path = f"analytics/{tenant}/dd/{filename}"
+
+    export_payload = {
+        "session_id": session_id,
+        "institution_name": session.get("institution_name", ""),
+        "checklist_name": session.get("checklist_name", ""),
+        "folder_root": session.get("folder_root", ""),
+        "status": session.get("status", ""),
+        "created_at": _dt.datetime.fromtimestamp(
+            session.get("created_at") or 0, tz=_dt.timezone.utc
+        ).isoformat(),
+        "item_count": len(items),
+        "exported_count": sum(
+            1 for i in items if i.get("user_confirmed") and not i.get("user_skipped")
+        ),
+        "missing_count": sum(1 for i in items if i.get("user_skipped")),
+        "items": items,
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+    }
+
+    ok = _put_file(
+        path,
+        export_payload,
+        f"dd session: {tenant} {session.get('institution_name') or session_id[:8]}",
+    )
+    if ok:
+        logger.info("✅ GitHub sync DD session: %s", path)
+    return ok
+
+
 def _import_remote_match(data: dict) -> None:
     """把远端 match_sessions JSON 写入本地 match_sessions。"""
     from cangjie_fos.services.pitch_job_db import _connect  # type: ignore
