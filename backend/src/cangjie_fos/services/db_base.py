@@ -276,13 +276,14 @@ CREATE TABLE IF NOT EXISTS dd_asset_index (
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_sessions (
-    session_id     TEXT PRIMARY KEY,
-    tenant_id      TEXT NOT NULL,
-    checklist_name TEXT,
-    folder_root    TEXT NOT NULL DEFAULT '',
-    status         TEXT NOT NULL DEFAULT 'pending',
-    created_at     REAL NOT NULL,
-    completed_at   REAL
+    session_id       TEXT PRIMARY KEY,
+    tenant_id        TEXT NOT NULL,
+    checklist_name   TEXT,
+    folder_root      TEXT NOT NULL DEFAULT '',
+    status           TEXT NOT NULL DEFAULT 'pending',
+    institution_name TEXT NOT NULL DEFAULT '',
+    created_at       REAL NOT NULL,
+    completed_at     REAL
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_items (
@@ -315,6 +316,7 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (9,  "ALTER TABLE pitch_jobs ADD COLUMN is_roadshow INTEGER NOT NULL DEFAULT 0"),
     (10, "ALTER TABLE pitch_jobs ADD COLUMN confirmed_speakers_json TEXT"),
     (11, "ALTER TABLE pitch_jobs ADD COLUMN referrer TEXT NOT NULL DEFAULT ''"),
+    (12, "ALTER TABLE dd_match_sessions ADD COLUMN institution_name TEXT NOT NULL DEFAULT ''"),
 ]
 
 
