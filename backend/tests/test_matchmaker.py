@@ -507,3 +507,98 @@ def test_institution_profile_api_empty(isolated_db):
     assert body["total_sessions"] == 0
     assert body["preferred_paths"] == []
     assert body["preferred_tags"] == []
+
+
+# ─── 11. 分类预过滤 ───────────────────────────────────────────────────────────
+
+def test_filter_assets_by_scene_type_narrows_pool():
+    """scene_type 匹配时只保留同类别资产（池子足够大不触发回退）。"""
+    from cangjie_fos.engine.matchmaker import _filter_assets_by_scene_type
+
+    finance = [{"filename": f"审计{i}.pdf", "category": "财务审计"} for i in range(12)]
+    biz = [{"filename": f"BP{i}.pdf", "category": "商业模式"} for i in range(8)]
+    assets = finance + biz
+
+    filtered = _filter_assets_by_scene_type(assets, "财务审计", min_pool=10)
+    assert len(filtered) == 12
+    assert all(a["category"] == "财务审计" for a in filtered)
+
+
+def test_filter_assets_by_scene_type_fallback_when_pool_too_small():
+    """过滤后池子 < min_pool 时回退到全量资产。"""
+    from cangjie_fos.engine.matchmaker import _filter_assets_by_scene_type
+
+    assets = [
+        {"filename": "审计.pdf", "category": "财务审计"},
+        {"filename": "BP.pdf", "category": "商业模式"},
+        {"filename": "股权.docx", "category": "股权结构"},
+    ]
+    # 只有 1 个财务审计文件，min_pool=5，触发回退
+    filtered = _filter_assets_by_scene_type(assets, "财务审计", min_pool=5)
+    assert len(filtered) == 3  # 全量回退
+
+
+def test_filter_assets_by_scene_type_skip_when_no_scene():
+    """scene_type 为空或 '其他' 时不过滤，直接返回全量。"""
+    from cangjie_fos.engine.matchmaker import _filter_assets_by_scene_type
+
+    assets = [{"filename": "a.pdf", "category": "财务审计"}, {"filename": "b.pdf", "category": "商业模式"}]
+    assert _filter_assets_by_scene_type(assets, "") == assets
+    assert _filter_assets_by_scene_type(assets, "其他") == assets
+
+
+def test_bm25_skill_uses_category_prefilter():
+    """BM25MatcherSkill 在 scene_type 有效且池子足够时只在同类别资产中搜索。"""
+    from cangjie_fos.engine.matchmaker import BM25MatcherSkill, RequirementItem
+
+    finance = [
+        {
+            "filename": f"审计{i}.pdf",
+            "summary": "年度审计报告",
+            "tags": ["审计", "财务"],
+            "relative_path": f"审计{i}.pdf",
+            "category": "财务审计",
+        }
+        for i in range(12)
+    ]
+    biz = [
+        {
+            "filename": f"BP{i}.pdf",
+            "summary": "商业计划",
+            "tags": ["BP"],
+            "relative_path": f"BP{i}.pdf",
+            "category": "商业模式",
+        }
+        for i in range(8)
+    ]
+    assets = finance + biz
+
+    req = RequirementItem(description="年度审计报告", scene_type="财务审计")
+    results = BM25MatcherSkill().match([req], assets, top_n=3)
+    # 所有候选文件应来自财务审计类别
+    for c in results[0].candidates:
+        assert c.asset["category"] == "财务审计", f"期望财务审计，实际 {c.asset['category']}"
+
+
+def test_classify_asset_category_with_mock(monkeypatch: pytest.MonkeyPatch):
+    """classify_asset_category：LLM 返回有效分类时正确解析。"""
+    from cangjie_fos.engine.matchmaker import classify_asset_category
+
+    monkeypatch.setattr(
+        "cangjie_fos.engine.matchmaker._call_llm_classify",
+        lambda prompt, api_key="": "财务审计",
+    )
+    asset = {"filename": "audit2023.pdf", "summary": "年度审计", "tags": ["审计"]}
+    assert classify_asset_category(asset) == "财务审计"
+
+
+def test_classify_asset_category_fallback_on_error(monkeypatch: pytest.MonkeyPatch):
+    """LLM 失败时 classify_asset_category 降级返回 '其他'，不抛异常。"""
+    from cangjie_fos.engine.matchmaker import classify_asset_category
+
+    def _raise(*_, **__):
+        raise RuntimeError("timeout")
+
+    monkeypatch.setattr("cangjie_fos.engine.matchmaker._call_llm_classify", _raise)
+    asset = {"filename": "test.pdf", "summary": "", "tags": []}
+    assert classify_asset_category(asset) == "其他"

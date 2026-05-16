@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS assets (
     last_modified   TEXT,
     summary         TEXT DEFAULT '',
     tags            TEXT DEFAULT '[]',
+    category        TEXT NOT NULL DEFAULT '',
     scan_dir        TEXT,
     indexed_at      REAL NOT NULL
 );
@@ -293,6 +294,7 @@ def _init_db(conn: sqlite3.Connection) -> None:
         "ALTER TABLE pitch_jobs ADD COLUMN warnings TEXT",
         "ALTER TABLE pitch_jobs ADD COLUMN substatus TEXT",
         "ALTER TABLE assets ADD COLUMN asset_status TEXT NOT NULL DEFAULT 'approved'",
+        "ALTER TABLE assets ADD COLUMN category TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE pitch_jobs ADD COLUMN participants_confirmed INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE pitch_jobs ADD COLUMN category TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE pitch_jobs ADD COLUMN institution_id TEXT NOT NULL DEFAULT ''",
@@ -1136,6 +1138,42 @@ def db_assets_clear() -> int:
             return cur.rowcount
         finally:
             conn.close()
+
+
+def db_asset_set_category(relative_path: str, category: str) -> None:
+    """更新单条资产的 category 字段（仅更新，不触发 indexed_at 变化）。"""
+    with _write_lock:
+        conn = _connect()
+        try:
+            conn.execute(
+                "UPDATE assets SET category = ? WHERE relative_path = ?",
+                (category, relative_path),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+
+def db_assets_list_uncategorized(limit: int = 500) -> list[dict[str, Any]]:
+    """返回 category 为空的资产列表（待分类），按 indexed_at 倒序。"""
+    lim = max(1, min(int(limit), 2000))
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "SELECT * FROM assets WHERE category = '' ORDER BY indexed_at DESC LIMIT ?", (lim,)
+        )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        try:
+            d["tags"] = json.loads(d.get("tags") or "[]")
+        except (json.JSONDecodeError, ValueError):
+            d["tags"] = []
+        result.append(d)
+    return result
 
 
 def db_scan_config_get() -> dict[str, Any] | None:

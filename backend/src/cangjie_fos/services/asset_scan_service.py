@@ -111,6 +111,39 @@ def run_scan(scan_dir: str | None = None) -> dict[str, Any]:
     }
 
 
+def classify_unclassified_assets(api_key: str = "") -> dict[str, Any]:
+    """对 category 为空的资产逐一调用 LLM 分类，结果写回 DB。
+
+    每个资产只分类一次（已有 category 的跳过）。适合扫描后手动触发或夜间批量执行。
+    """
+    from cangjie_fos.engine.matchmaker import classify_asset_category  # noqa: PLC0415
+    from cangjie_fos.services.pitch_job_db import (  # noqa: PLC0415
+        db_assets_list_uncategorized,
+        db_asset_set_category,
+    )
+
+    pending = db_assets_list_uncategorized(limit=500)
+    if not pending:
+        return {"classified": 0, "failed": 0, "total_pending": 0}
+
+    classified = 0
+    failed = 0
+    for asset in pending:
+        rel_path = asset.get("relative_path", "")
+        if not rel_path:
+            continue
+        try:
+            cat = classify_asset_category(asset, api_key)
+            db_asset_set_category(rel_path, cat)
+            classified += 1
+        except Exception:
+            logger.debug("分类失败 path=%s", rel_path, exc_info=True)
+            failed += 1
+
+    logger.info("asset classify done classified=%d failed=%d total=%d", classified, failed, len(pending))
+    return {"classified": classified, "failed": failed, "total_pending": len(pending)}
+
+
 def get_scan_status() -> dict[str, Any]:
     """返回最近一次扫描状态（从 assets 表推断）。"""
     assets = db_assets_list(limit=1)

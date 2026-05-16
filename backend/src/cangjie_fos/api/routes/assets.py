@@ -21,6 +21,7 @@ from cangjie_fos.services.asset_health_service import (
     take_health_snapshot,
 )
 from cangjie_fos.services.asset_scan_service import (
+    classify_unclassified_assets,
     get_scan_config,
     get_scan_status,
     run_scan,
@@ -223,6 +224,19 @@ def get_scan_config_route() -> dict[str, Any]:
 def put_scan_config_route(body: ScanConfigIn) -> dict[str, Any]:
     """保存扫描配置（scan_dir + auto_scan）。"""
     return save_scan_config(scan_dir=body.scan_dir, auto_scan=body.auto_scan)
+
+
+@router.post("/api/v1/assets/classify", tags=["assets"])
+def post_classify_route(body: dict = None) -> dict[str, Any]:
+    """对未分类资产（category 为空）批量调用 LLM 分类，结果写回 assets.category。
+
+    每个资产只分类一次；已有 category 的文件跳过。
+    body 可选传 {"api_key": "..."} 覆盖环境变量中的 DEEPSEEK_API_KEY。
+    """
+    api_key = ""
+    if isinstance(body, dict):
+        api_key = str(body.get("api_key") or "")
+    return classify_unclassified_assets(api_key=api_key)
 
 
 @router.post("/api/v1/assets/scan", tags=["assets"])

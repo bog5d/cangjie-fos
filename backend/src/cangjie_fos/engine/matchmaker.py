@@ -47,6 +47,16 @@ COLOR_GRAY   = "gray"
 THRESHOLD_GREEN  = 0.70
 THRESHOLD_YELLOW = 0.40
 
+# ─── 资产分类词表（与需求解析的 scene_type 使用同一词汇表）────────────────────
+
+ASSET_CATEGORIES: frozenset[str] = frozenset({
+    "财务审计", "税务合规", "资产负债", "股权结构", "知识产权",
+    "工商资质", "合规诉讼", "商业模式", "产品介绍", "市场分析",
+    "高管背景", "团队资质", "融资协议", "客户合同", "供应商合同", "其他",
+})
+
+_MIN_CATEGORY_POOL = 10  # 过滤后池子不足此数时回退全量
+
 
 # ─── 数据结构 ─────────────────────────────────────────────────────────────────
 
@@ -166,6 +176,73 @@ def _call_llm_parse(text: str, api_key: str = "") -> str:
         return resp.json()["choices"][0]["message"]["content"]
     except Exception as exc:
         raise RuntimeError(f"LLM 调用失败：{exc}") from exc
+
+
+_CLASSIFY_ASSET_PROMPT = """你是一个文件分类助手，将文件归入最合适的分类。只输出分类名称，不要解释。
+
+可用分类：财务审计、税务合规、资产负债、股权结构、知识产权、工商资质、合规诉讼、商业模式、产品介绍、市场分析、高管背景、团队资质、融资协议、客户合同、供应商合同、其他
+
+文件名：{filename}
+摘要：{summary}
+标签：{tags}"""
+
+
+def _call_llm_classify(prompt: str, api_key: str = "") -> str:
+    """调用 LLM 分类单个资产，返回原始文本。外部可 mock 此函数进行测试。"""
+    try:
+        import requests  # noqa: PLC0415
+        key = api_key or os.environ.get("DEEPSEEK_API_KEY", "")
+        if not key:
+            raise ValueError("未配置 DEEPSEEK_API_KEY")
+        resp = requests.post(
+            "https://api.deepseek.com/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={
+                "model": "deepseek-chat",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 32,
+                "temperature": 0.0,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"].strip()
+    except Exception as exc:
+        raise RuntimeError(f"LLM 分类调用失败：{exc}") from exc
+
+
+def classify_asset_category(asset: dict, api_key: str = "") -> str:
+    """对单个资产调用 LLM 分类，返回 ASSET_CATEGORIES 中的一个值。失败时返回 '其他'。"""
+    filename = str(asset.get("filename") or "")
+    summary = str(asset.get("summary") or "")[:500]
+    tags_raw = asset.get("tags") or []
+    tags = "、".join(str(t) for t in tags_raw)
+    prompt = _CLASSIFY_ASSET_PROMPT.format(filename=filename, summary=summary, tags=tags)
+    try:
+        raw = _call_llm_classify(prompt, api_key)
+        for cat in ASSET_CATEGORIES:
+            if cat in raw:
+                return cat
+        return "其他"
+    except Exception:
+        logger.debug("资产分类失败，降级为'其他'", exc_info=True)
+        return "其他"
+
+
+def _filter_assets_by_scene_type(
+    assets: list[dict],
+    scene_type: str,
+    min_pool: int = _MIN_CATEGORY_POOL,
+) -> list[dict]:
+    """按 scene_type 圈同类别资产，缩小 BM25 搜索空间。
+
+    - scene_type 为空或 '其他' 时不过滤（返回全量）
+    - 过滤后池子 < min_pool 时回退全量（防止资产尚未分类时返回空结果）
+    """
+    if not scene_type or scene_type == "其他":
+        return assets
+    filtered = [a for a in assets if a.get("category") == scene_type]
+    return filtered if len(filtered) >= min_pool else assets
 
 
 def parse_requirements_heuristic(text: str) -> list[RequirementItem]:
@@ -451,14 +528,16 @@ class BM25MatcherSkill:
     ) -> list[MatchCandidate]:
         if not assets:
             return []
+        # Step 2: 按 scene_type 圈同类别资产，缩小 BM25 搜索空间
+        pool = _filter_assets_by_scene_type(assets, req.scene_type)
         all_lengths = [
             len(_tokenize(str(a.get("summary") or "") + " " + str(a.get("filename") or "")))
-            for a in assets
+            for a in pool
         ]
         avg_len = sum(all_lengths) / len(all_lengths) if all_lengths else 20.0
 
         scored: list[tuple[float, dict, list[str]]] = []
-        for asset in assets:
+        for asset in pool:
             score, fields = _score_asset_for_requirement(req, asset, avg_doc_len=avg_len)
             if score > 0:
                 scored.append((score, asset, fields))
