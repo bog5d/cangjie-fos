@@ -84,13 +84,12 @@ def _llm_extract_items(raw_text: str) -> list[dict]:
     """
     第二步：AI 只做一件事——从纯文字里识别哪些行是真正的资料需求项，
     过滤大类标题、说明行、空行，输出结构化 JSON。
-    """
-    from openai import OpenAI
 
-    client = OpenAI(
-        api_key=os.getenv("DEEPSEEK_API_KEY", ""),
-        base_url="https://api.deepseek.com",
-    )
+    v0.7.2 改进：使用 dd_llm_client 统一管理 provider 配置 + 重试。
+    """
+    from cangjie_fos.services.dd_llm_client import get_dd_llm_client, call_with_retry
+
+    client = get_dd_llm_client()
     # 截断防止超 token
     text = raw_text[:5000]
 
@@ -104,13 +103,16 @@ def _llm_extract_items(raw_text: str) -> list[dict]:
 
 只返回 JSON 数组，不要任何解释或 markdown 标记："""
 
-    resp = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=3000,
-        temperature=0,
-    )
-    raw = resp.choices[0].message.content.strip()
+    def _call():
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=3000,
+            temperature=0,
+        )
+        return resp.choices[0].message.content.strip()
+
+    raw = call_with_retry(_call, max_retries=3)
 
     # 清理 markdown 代码块
     if raw.startswith("```"):

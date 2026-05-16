@@ -17,17 +17,37 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v0.6.8，2026-05-15）
+## 当前状态（v0.7.2，2026-05-16）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.6.8** |
-| 测试基线 | **605 passed**，0 skipped，0 failed |
+| 版本 | **v0.7.2** |
+| 测试基线 | **630 passed**（625 + 5 新增），0 failed（预存的 3 个 wizard 429 限流不计入） |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
 | DB fixture | `_isolate_db_per_test` autouse：每测试独立 SQLite。用 `@pytest.mark.real_db` 声明豁免 |
 | Push hook | `.git/hooks/pre-push` 自动跑 DB fixture 测试 |
+
+---
+
+## v0.7.x 尽调响应台（Due Diligence Response Desk）总览
+
+| 版本 | 日期 | 内容 |
+|------|------|------|
+| v0.7.0 | 05-15 | **尽调响应台上线**：清单解析 + AI 批量匹配 + 表格审核 + 导出文件夹；625 passed |
+| v0.7.1 | 05-15 | **红队加固**：修复 7 个崩溃点（文件泄漏/404级联/session不完成/fetch崩溃/轮询超时等） |
+| v0.7.2 | 05-16 | **稳定性加固**：统一 LLM 客户端 + 重试 + 显式 NULL 标记 + 服务重启 DB fallback + 导出大小上限 |
+
+### v0.7.2 关键变更（新 AI 接手必读）
+
+| 变更 | 说明 |
+|------|------|
+| `dd_llm_client.py` | **共享 LLM 客户端工厂**。所有 DD 服务统一用 `get_dd_llm_client()` 获取客户端，`call_with_retry()` 3次重试。不要在 dd_* 文件里手写 `OpenAI(api_key=...)` |
+| 匹配结果 NULL → 0.0 | `run_matching` 现在显式写 `confidence=0.0` 到未匹配项。**不要依赖 NULL 判断** |
+| scan status DB fallback | 服务重启后 `get_scan_status` 降级查 `dd_asset_index`，返回 `source: "db_fallback"` |
+| 导出 guard | 单文件 >100MB 跳过，累计 >500MB 终止。在 `dd_export_service.py` 顶部 `MB_LIMIT_PER_FILE` / `MB_LIMIT_TOTAL` 可调节 |
+| 新增测试 | `tests/test_dd_v072.py`（5个）
 
 ---
 

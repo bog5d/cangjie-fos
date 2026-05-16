@@ -51,7 +51,10 @@ def run_matching(session_id: str, folder_root: str) -> None:
     """
     对 session 的所有需求项，与 folder_root 下的已索引文件做批量匹配。
     同步执行，调用方应包装进 BackgroundTask。
-    无论中途是否异常，都保证最终标记 session 为 matched（防止前端无限轮询）。
+
+    v0.7.2 改进：
+      - 匹配失败的项会显式写入 confidence=0.0（而非留 NULL）
+      - 无论中途是否异常，都保证最终标记 session 为 matched（防止前端无限轮询）
     """
     try:
         index_rows = _get_index_for_folder(folder_root)
@@ -74,6 +77,8 @@ def run_matching(session_id: str, folder_root: str) -> None:
         )
         matches = _llm_batch_match(items, file_list_text, index_rows)
 
+        # ── v0.7.2: 写入匹配结果 + 显式标记未匹配项 ──
+        matched_ids = set(matches.keys())
         with _connect() as conn:
             for item_id, result in matches.items():
                 conn.execute(
@@ -85,6 +90,18 @@ def run_matching(session_id: str, folder_root: str) -> None:
                      result.get("confidence", 0.0), result.get("reason", ""),
                      item_id),
                 )
+            # —— 把 LLM 未返回的项显式标为 confidence=0.0 ——
+            # 原 v0.7.0 行为：LLM 返回 {} 时，不写任何 UPDATE，
+            #   confidence 留在 DB 为 NULL，前端无法区分「未匹配」和「未处理」。
+            # v0.7.2 修复：显式写入 0.0。
+            for item in items:
+                if item["id"] not in matched_ids:
+                    conn.execute(
+                        """UPDATE dd_match_items
+                           SET confidence = 0.0, match_reason = '未匹配'
+                           WHERE id = ?""",
+                        (item["id"],),
+                    )
     except Exception as e:
         logger.error("匹配任务异常 session=%s: %s", session_id, e)
     finally:
@@ -118,10 +135,15 @@ def _llm_batch_match(
     """
     批量匹配：每次最多 30 条需求，全部文件列表一起发给 LLM。
     返回 {item_id: {file_path, filename, confidence, reason}}
-    """
-    from openai import OpenAI
 
-    client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY", ""), base_url="https://api.deepseek.com")
+    v0.7.2 改进：
+      - 使用 dd_llm_client.call_with_retry() 代替裸 except Exception→{}，
+        网络抖动不再整批丢弃（3次重试，指数退避）
+      - LLM 返回结果不包含某需求 ID 时，仍显式输出 confidence=0.0
+    """
+    from cangjie_fos.services.dd_llm_client import get_dd_llm_client, call_with_retry
+
+    client = get_dd_llm_client()
     results: dict[str, dict] = {}
     batch_size = 30
 
@@ -145,7 +167,11 @@ def _llm_batch_match(
 }}
 只返回 JSON："""
 
-        try:
+        # ── v0.7.2: 带重试的 LLM 调用 ──
+        # 原 v0.7.0 中 except Exception: batch_results = {} 意味着
+        # 一次网络超时就丢弃整批30条，用户看到全「无匹配」会很困惑。
+        # 现在改为 3 次重试后才投降。
+        def _do_batch_call() -> dict:
             resp = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": prompt}],
@@ -157,9 +183,12 @@ def _llm_batch_match(
                 raw = raw.split("```")[1]
                 if raw.lower().startswith("json"):
                     raw = raw[4:]
-            batch_results: dict = json.loads(raw.strip())
+            return json.loads(raw.strip())
+
+        try:
+            batch_results: dict = call_with_retry(_do_batch_call, max_retries=3)
         except Exception as e:
-            logger.error("LLM 批量匹配失败: %s", e)
+            logger.error("LLM 批量匹配失败（重试3次后）: %s", e)
             batch_results = {}
 
         for item in batch:
@@ -174,6 +203,7 @@ def _llm_batch_match(
                     "reason": str(item_result.get("reason", "")),
                 }
             else:
+                # ── 即使 LLM 没返回这个 ID，也显式输出 confidence=0.0 ──
                 results[item["id"]] = {
                     "file_path": None,
                     "filename": None,

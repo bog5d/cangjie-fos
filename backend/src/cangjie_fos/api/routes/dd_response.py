@@ -64,8 +64,37 @@ async def start_indexing(req: ScanRequest, background_tasks: BackgroundTasks):
 
 @router.get("/index/status/{scan_id}")
 def get_scan_status(scan_id: str):
-    """轮询扫描进度。"""
-    return _scan_status.get(scan_id, {"status": "not_found"})
+    """
+    轮询扫描进度。
+
+    v0.7.2 改进：当内存 _scan_status 中没有记录（如服务重启后），
+    降级查询 dd_asset_index 表，返回最近一次索引时间作为 fallback。
+    避免前端在重启后永远看到「not_found」。
+    """
+    if scan_id in _scan_status:
+        return _scan_status[scan_id]
+
+    # ── DB fallback：服务重启后内存清空，但 DB 有历史索引记录 ──
+    # 提取 scan_id 中的 folder 信息不够准确（scan_id 是时间戳格式），
+    # 改为返回全局最新索引时间，让前端知道「之前扫描过」。
+    with _connect() as conn:
+        row = conn.execute(
+            """SELECT folder_root, MAX(indexed_at) as last_scan,
+                      COUNT(*) as file_count
+               FROM dd_asset_index"""
+        ).fetchone()
+
+    if row and row["last_scan"] is not None:
+        return {
+            "status": "completed",
+            "source": "db_fallback",
+            "folder_root": row["folder_root"],
+            "last_scan_at": row["last_scan"],
+            "file_count": row["file_count"],
+            "note": "服务重启后从数据库恢复的索引状态。如需重新扫描请再次触发。",
+        }
+
+    return {"status": "not_found"}
 
 
 @router.get("/index")

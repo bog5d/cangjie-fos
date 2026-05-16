@@ -4,6 +4,41 @@
 
 ---
 
+## [0.7.2] — 2026-05-16  尽调响应台稳定性加固
+
+> 测试基线：630 passed（625 + 5 新增）
+
+### Changed
+- **统一 LLM 客户端**：新增 `dd_llm_client.py`，所有 DD 服务（dd_match_service / dd_index_service / dd_checklist_parser）统一使用 `get_dd_llm_client()` 获取客户端，不再各自硬编码 DeepSeek
+  - 密钥优先级：`DEEPSEEK_API_KEY` > `OPENAI_API_KEY`（与其他服务文件一致）
+  - 所有 LLM 调用增加 `call_with_retry()` 3次重试（指数退避 2s/4s/8s），**网络抖动不再导致整批30条需求「无匹配」**
+- **匹配结果显式标记**：LLM 返回结果不包含某需求 ID 时，显式写入 `confidence=0.0, match_reason='未匹配'`，替代之前的留 NULL（前端无法区分「未匹配」和「未处理」）
+- **DD scan status DB fallback**：`get_scan_status` 服务重启后降级查询 `dd_asset_index` 表，返回最近索引时间，不再永远返回 `not_found`
+- **导出大小防护**：`dd_export_service.py` 新增两个 guard
+  - 单文件 > 100MB → 跳过，记入缺失清单
+  - 累计 > 500MB → 终止全部导出，返回错误说明
+
+### Architecture
+- 新增文件：`services/dd_llm_client.py`（共享 LLM 客户端工厂）
+- 新增测试：`tests/test_dd_v072.py`（5个：LLM空结果/异常恢复/文件大小guard/总大小guard/DB fallback）
+
+---
+
+## [0.7.1] — 2026-05-15  尽调响应台红队加固
+
+> 测试基线：625 passed
+
+### Fixed
+- [CRITICAL] 临时文件泄漏 → `try/finally + os.unlink`
+- [CRITICAL] LLM 返回 0 条需求项时产生级联 404 → 提前返回 400
+- [CRITICAL] `run_matching` 异常时 session 永远不标记完成 → `finally _mark_session_done`
+- [CRITICAL] 前端所有 fetch 无 try/catch → UI 冻结 → 全面补错误处理
+- [MODERATE] 扫描轮询无超时 → 增加 120 次上限（3分钟）
+- [MODERATE] 匹配轮询后强制跳 Step3 即使 0 条 → 加空结果守卫
+- [MODERATE] interval 未在 unmount 时清理 → useEffect cleanup
+
+---
+
 ## [0.7.0] — 2026-05-15  尽调响应台（Phase DD-1）
 
 > 测试基线：625 passed（605 + 20 新增）

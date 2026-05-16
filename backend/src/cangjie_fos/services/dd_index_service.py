@@ -74,25 +74,30 @@ def _index_single_file(file_path: Path, folder_root: str) -> None:
 
 
 def _llm_summarize(filename: str, content: str) -> str:
-    """调用 DeepSeek 生成文件一句话摘要（20字以内）。"""
-    from openai import OpenAI
+    """
+    调用 LLM 生成文件一句话摘要（20字以内）。
 
-    client = OpenAI(
-        api_key=os.getenv("DEEPSEEK_API_KEY", ""),
-        base_url="https://api.deepseek.com",
-    )
+    v0.7.2 改进：使用 dd_llm_client 统一管理 provider 配置 + 重试。
+    """
+    from cangjie_fos.services.dd_llm_client import get_dd_llm_client, call_with_retry
+
+    client = get_dd_llm_client()
     prompt = (
         f"文件名：{filename}\n"
         f"内容摘录：\n{content[:600]}\n\n"
         "用一句话（20字以内）说明这是什么资料（例如：2023年财务审计报告）："
     )
-    resp = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=60,
-        temperature=0,
-    )
-    return resp.choices[0].message.content.strip()
+
+    def _call():
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=60,
+            temperature=0,
+        )
+        return resp.choices[0].message.content.strip()
+
+    return call_with_retry(_call, max_retries=2)  # 摘要生成重试2次即可
 
 
 def get_index_by_folder(folder_root: str) -> list[dict]:
