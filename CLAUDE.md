@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-16 | 当前版本：**v0.7.2** | 测试基线：**630 passed** | 单仓库可运行：✅
+> 最后更新：2026-05-16 | 当前版本：**v0.8.0** | 测试基线：**641+ passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -34,6 +34,7 @@
 | v0.7.0 | 05-15 | **尽调响应台**：清单解析 + AI 批量匹配 + 表格审核 + 导出文件夹；20个新测试（625 passed）|
 | v0.7.1 | 05-15 | **红队加固**：修复7个尽调响应台崩溃点（临时文件泄漏/空结果404级联/session永不完成/fetch无错误处理/轮询无超时/空结果强跳Step3/interval内存泄漏）|
 | v0.7.2 | 05-16 | **稳定性加固**：统一 LLM 客户端 + 重试/显式NULL标记/服务重启DB fallback/导出大小上限 |
+| v0.8.0 | 05-16 | **尽调响应台全面升级**：分块解析/文件预筛/Session历史/批量确认/手动替换/机构联动/GitHub同步 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -327,6 +328,22 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `backend/src/cangjie_fos/api/routes/dd_response.py` | 临时文件 try/finally 清理；LLM返回0条需求时提前 HTTP 400，防止后续 404 级联崩溃 |
 | `backend/src/cangjie_fos/services/dd_match_service.py` | `run_matching` 用 try/finally 包裹，保证任何情况下都调用 `_mark_session_done`，防止前端永久轮询 |
 | `frontend/src/components/DueDiligenceWizard.tsx` | 全面补 try/catch（fetch 错误 → 用户可见提示）；扫描轮询加120次上限（3分钟）；匹配轮询0条时显示错误而非跳转空表；useEffect cleanup 清理所有 interval |
+
+---
+
+### v0.8.0 改动文件清单（2026-05-16，尽调响应台全面升级）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/db_base.py` | migration 12：`dd_match_sessions` 新增 `institution_name` 列；DDL同步更新 |
+| `backend/src/cangjie_fos/services/dd_checklist_parser.py` | `_llm_extract_items` 改为分块（4000字/块，300字重叠，去重合并）；新增 `_split_into_chunks` + `_llm_extract_chunk`（可 monkeypatch）；整合 dd_llm_client 重试 |
+| `backend/src/cangjie_fos/services/dd_match_service.py` | 新增 `_prefilter_files_for_batch`（汉字二元组预筛，top_n=50）；`_llm_batch_match` 每批调用预筛；`create_match_session` 新增 `institution_name` 参数 |
+| `backend/src/cangjie_fos/services/institution_store.py` | 新增 `update_stage_by_name(tenant_id, name, stage)` |
+| `backend/src/cangjie_fos/services/github_sync.py` | 新增 `push_dd_session(session_id)` — 推送到 `analytics/{tenant}/dd/` |
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | `create_session` 新增 `institution_name` Form参数 + 机构阶段联动；新增 `GET /sessions` + `POST /sessions/{id}/items/bulk-confirm`；`export_session` 新增 BackgroundTasks 触发 GitHub 同步 |
+| `backend/tests/test_dd_checklist_parser.py` | 新增4个测试：分块/去重/预筛（100→50）/预筛直通（30） |
+| `backend/tests/test_dd_e2e.py` | 新增4个测试：Session历史列表/批量确认/机构阶段联动/GitHub同步 |
+| `frontend/src/components/DueDiligenceWizard.tsx` | 全面升级（380→600行）：Session历史面板/机构名称字段/批量确认按钮/手动文件替换内联输入 |
 
 ---
 

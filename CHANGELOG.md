@@ -4,6 +4,27 @@
 
 ---
 
+## [0.8.0] — 2026-05-16  Phase DD-2 尽调响应台全面升级
+
+> 测试基线：630 → 641+ passed（+11 新增）
+
+### Added
+- `dd_checklist_parser.py`: 清单**分块解析**（4000字/块 + 300字重叠 + 去重），彻底消除5000字截断静默丢失；整合 `dd_llm_client` 重试机制
+- `dd_match_service.py`: `_prefilter_files_for_batch` — 大材料库（>50文件）**汉字二元组关键词预筛**，每批只传最相关50个文件给 LLM，防token爆炸
+- `GET /api/v1/dd/sessions` — Session历史列表接口（含需求项数量 + 已确认数统计）
+- `POST /api/v1/dd/sessions/{id}/items/bulk-confirm` — **一键确认**所有置信度 ≥ 阈值的需求项
+- `institution_store.py`: `update_stage_by_name` — 按名称更新机构Pipeline阶段
+- 创建Session时可选传 `institution_name`，自动将对应机构推进到**DD阶段**
+- `github_sync.py`: `push_dd_session` — 导出成功后自动同步DD摘要到 `analytics/{tenant}/dd/`
+- 前端 `DueDiligenceWizard.tsx`（380行→600行）：**Session历史恢复**面板 / **批量确认**按钮 / **手动文件替换**内联输入 / **机构名称**字段
+
+### Changed
+- `_llm_batch_match` 签名简化（移除 `file_list_text` 参数，内部按批次计算）
+- `export_session` 端点新增 BackgroundTasks，导出后异步触发GitHub同步
+- `migration 12`: 现有DD数据库自动添加 `institution_name` 列
+
+---
+
 ## [0.7.2] — 2026-05-16  尽调响应台稳定性加固
 
 > 测试基线：630 passed（625 + 5 新增）
