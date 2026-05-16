@@ -4,6 +4,19 @@
 
 ---
 
+## [0.9.0] — 2026-05-16  Bug修复 + 代码质量提升
+
+> 测试基线：641 → 643 passed（+2 新增，修复 Bug #10 资产搜索）
+
+### Fixed
+- **Bug #10（资产搜索）**：资产台账中文文件名/标签搜索已验证正确工作（`/api/v1/assets/search` 使用 casefold() 子串匹配，对中文完全有效）；新增2个回归测试固化此行为
+- **utcnow() deprecation**：`github_sync.py` 中 `push_roadshow_report` 的 `datetime.utcnow()` 改为 `datetime.now(timezone.utc)`（Python 3.12 将 utcnow 标记为 deprecated）
+
+### Added
+- `tests/test_assets_api.py`: 新增 `test_search_sqlite_chinese_filename` + `test_search_sqlite_chinese_tag`（Bug #10 回归测试）
+
+---
+
 ## [0.8.0] — 2026-05-16  Phase DD-2 尽调响应台全面升级
 
 > 测试基线：630 → 641+ passed（+11 新增）

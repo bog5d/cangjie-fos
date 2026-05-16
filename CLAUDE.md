@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-16 | 当前版本：**v0.8.0** | 测试基线：**641+ passed** | 单仓库可运行：✅
+> 最后更新：2026-05-16 | 当前版本：**v0.9.0** | 测试基线：**643+ passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -35,6 +35,7 @@
 | v0.7.1 | 05-15 | **红队加固**：修复7个尽调响应台崩溃点（临时文件泄漏/空结果404级联/session永不完成/fetch无错误处理/轮询无超时/空结果强跳Step3/interval内存泄漏）|
 | v0.7.2 | 05-16 | **稳定性加固**：统一 LLM 客户端 + 重试/显式NULL标记/服务重启DB fallback/导出大小上限 |
 | v0.8.0 | 05-16 | **尽调响应台全面升级**：分块解析/文件预筛/Session历史/批量确认/手动替换/机构联动/GitHub同步 |
+| v0.9.0 | 05-16 | **Bug修复**：Bug #10 资产搜索中文回归测试 + utcnow deprecation修复 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -347,16 +348,26 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 
 ---
 
-### 待处理问题（v0.7.1+ 方向）
+### v0.9.0 改动文件清单（2026-05-16）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/github_sync.py` | `push_roadshow_report` 中 `datetime.utcnow()` → `datetime.now(timezone.utc)`（修复 deprecation 警告） |
+| `backend/tests/test_assets_api.py` | 新增 `test_search_sqlite_chinese_filename` + `test_search_sqlite_chinese_tag`（Bug #10 回归测试） |
+| `CHANGELOG.md` | 新增 v0.9.0 版本块 |
+| `CLAUDE.md`（本文件） | 版本号 v0.9.0、测试基线 643+、版本历史表新增行、改动文件清单 |
+
+---
+
+### 待处理问题（v0.9.0 之后）
 
 | 类型 | 现象/目标 | 难度 | 建议入手文件 |
 |-----|------|------|------------|
 | Bug #1 | 录音片段不完整，ASR 截取有问题 | 高风险，ASR 核心逻辑 | `backend/src/cangjie_fos/engine/transcriber.py` |
-| Bug #10 | 资产台账搜索不到 | 需调查扫描逻辑 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
-| **DD v2** | 尽调响应台扩展：重新扫描单文件、手动替换匹配、历史 session 列表 | 中等 | `backend/src/cangjie_fos/services/dd_*.py` + `DueDiligenceWizard.tsx` |
 
-**尽调响应台现状（v0.7.0 已完成）**：
+**尽调响应台现状（v0.8.0 全面升级后）**：
 - ✅ 3步向导：扫描材料库 → 上传清单（Excel/Word/PDF/文字）→ AI 匹配 → 表格审核 → 导出
-- ✅ 7个 API 端点：`/api/v1/dd/index`、`/api/v1/dd/sessions`、`/api/v1/dd/sessions/{id}/match` 等
-- ✅ 置信度颜色：🟢≥80% / 🟡50-80% / 🔴<50%，低置信排前
-- ⚠️ 尚未支持：重新触发单文件扫描、session 历史列表页、多机构清单同时处理
+- ✅ 11个 API 端点：索引/session创建/触发匹配/获取items/更新item/导出/Session历史/批量确认 等
+- ✅ 清单分块解析（4000字/块）、大材料库预筛（top-50）、Session历史恢复、批量确认、手动文件替换
+- ✅ 机构名联动：创建Session时自动推进机构Pipeline阶段到"DD"
+- ✅ GitHub自动同步：导出后推送到 `analytics/{tenant}/dd/`
