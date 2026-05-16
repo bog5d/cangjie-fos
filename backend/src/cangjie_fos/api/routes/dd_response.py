@@ -111,6 +111,7 @@ async def create_session(
     text: str | None = Form(None),
     tenant_id: str = Form("default"),
     folder_root: str = Form(...),
+    institution_name: str = Form(""),
 ):
     """上传尽调清单文件或粘贴文字，解析为需求项列表，创建匹配 session。"""
     if file and file.filename:
@@ -138,7 +139,18 @@ async def create_session(
     if not items:
         raise HTTPException(400, "清单解析未找到任何需求项，请检查上传内容格式或清单是否为空")
 
-    session_id = create_match_session(tenant_id, checklist_name, folder_root, items)
+    session_id = create_match_session(tenant_id, checklist_name, folder_root, items, institution_name)
+
+    # 若指定了机构名，尝试更新机构阶段为 DD
+    if institution_name.strip():
+        try:
+            from cangjie_fos.services.institution_store import update_stage_by_name
+            updated = update_stage_by_name(tenant_id=tenant_id, name=institution_name.strip(), stage="dd")
+            if updated:
+                logger.info("机构 %s 阶段已自动更新为 DD", institution_name)
+        except Exception as e:
+            logger.warning("更新机构阶段失败（不影响主流程）: %s", e)
+
     return {"session_id": session_id, "items": items, "count": len(items)}
 
 
@@ -194,3 +206,41 @@ def export_session(session_id: str, req: ExportRequest):
     """将已确认的匹配文件导出到本地文件夹，生成缺失清单。"""
     result = export_to_folder(session_id, req.output_dir)
     return result
+
+
+@router.get("/sessions")
+def list_sessions_route(tenant_id: str = "default", limit: int = 10):
+    """列出最近的匹配会话（含需求项数量统计）。"""
+    with _connect() as conn:
+        rows = conn.execute(
+            """SELECT s.session_id, s.tenant_id, s.checklist_name, s.folder_root,
+                      s.status, s.created_at, s.completed_at, s.institution_name,
+                      COUNT(i.id) AS item_count,
+                      SUM(CASE WHEN i.user_confirmed = 1 THEN 1 ELSE 0 END) AS confirmed_count
+               FROM dd_match_sessions s
+               LEFT JOIN dd_match_items i ON i.session_id = s.session_id
+               WHERE s.tenant_id = ?
+               GROUP BY s.session_id
+               ORDER BY s.created_at DESC
+               LIMIT ?""",
+            (tenant_id, limit),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@router.post("/sessions/{session_id}/items/bulk-confirm")
+def bulk_confirm_items(session_id: str, min_confidence: float = 0.8):
+    """一键确认所有置信度 >= min_confidence 的未确认、未跳过项。"""
+    with _connect() as conn:
+        conn.execute(
+            """UPDATE dd_match_items
+               SET user_confirmed = 1
+               WHERE session_id = ? AND confidence >= ?
+                 AND user_confirmed = 0 AND user_skipped = 0""",
+            (session_id, min_confidence),
+        )
+        row = conn.execute(
+            "SELECT COUNT(*) FROM dd_match_items WHERE session_id = ? AND user_confirmed = 1",
+            (session_id,),
+        ).fetchone()
+    return {"ok": True, "confirmed_count": row[0] if row else 0}

@@ -129,3 +129,98 @@ class TestExportEndpoint:
         gap = Path(out_dir) / "缺失清单.txt"
         assert gap.exists()
         assert "审计报告" in gap.read_text(encoding="utf-8")
+
+
+_MOCK_ITEMS_2 = [
+    {"item_no": "1", "category": "基本情况", "requirement": "验资报告"},
+    {"item_no": "2", "category": "基本情况", "requirement": "营业执照"},
+]
+
+_MOCK_ITEMS_3 = [
+    {"item_no": "1", "category": "基本情况", "requirement": "营业执照"},
+]
+
+
+class TestDDSessionList:
+    """Session 历史列表 API 测试。"""
+
+    def test_list_sessions_returns_recent(self, client):
+        """GET /api/v1/dd/sessions 应返回已创建的 session。"""
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=_MOCK_ITEMS_2):
+            resp = client.post(
+                "/api/v1/dd/sessions",
+                data={"tenant_id": "t1", "folder_root": "/tmp", "text": "1. 验资报告\n2. 营业执照"},
+                files={},
+            )
+        assert resp.status_code == 200
+
+        list_resp = client.get("/api/v1/dd/sessions?tenant_id=t1")
+        assert list_resp.status_code == 200
+        sessions = list_resp.json()
+        assert isinstance(sessions, list)
+        assert len(sessions) >= 1
+        assert "session_id" in sessions[0]
+        assert "item_count" in sessions[0]
+
+    def test_bulk_confirm_high_confidence_items(self, client):
+        """POST bulk-confirm 应将置信度 >= 阈值的项设为已确认。"""
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=_MOCK_ITEMS_2):
+            resp = client.post(
+                "/api/v1/dd/sessions",
+                data={"tenant_id": "t2", "folder_root": "/tmp", "text": "1. 审计报告\n2. 营业执照"},
+                files={},
+            )
+        session_id = resp.json()["session_id"]
+
+        from cangjie_fos.services.db_base import _connect
+        with _connect() as conn:
+            items = conn.execute(
+                "SELECT id FROM dd_match_items WHERE session_id = ?",
+                (session_id,)
+            ).fetchall()
+            for row in items:
+                conn.execute(
+                    "UPDATE dd_match_items SET confidence = 0.9 WHERE id = ?",
+                    (row[0],)
+                )
+
+        confirm_resp = client.post(
+            f"/api/v1/dd/sessions/{session_id}/items/bulk-confirm?min_confidence=0.8"
+        )
+        assert confirm_resp.status_code == 200
+        data = confirm_resp.json()
+        assert data["ok"] is True
+        assert data["confirmed_count"] == 2
+
+    def test_create_session_with_institution_name_updates_stage(self, client, monkeypatch):
+        """创建 session 时若指定机构名，且该机构存在，应自动更新其 Pipeline 阶段为 dd。"""
+        from cangjie_fos.services.institution_store import create_institution
+        from cangjie_fos.schemas.institution import InstitutionProfileCreate, PipelineStage, InstitutionThermal
+        create_institution(InstitutionProfileCreate(
+            tenant_id="t3",
+            name="高瓴资本",
+            stage=PipelineStage.PITCHED,
+            thermal=InstitutionThermal.WARM,
+        ))
+
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=_MOCK_ITEMS_3):
+            resp = client.post(
+                "/api/v1/dd/sessions",
+                data={
+                    "tenant_id": "t3",
+                    "folder_root": "/tmp",
+                    "text": "1. 营业执照",
+                    "institution_name": "高瓴资本",
+                },
+                files={},
+            )
+        assert resp.status_code == 200
+
+        from cangjie_fos.services.institution_store import list_institutions
+        institutions = list_institutions(tenant_id="t3")
+        gaoling = next((i for i in institutions if i.name == "高瓴资本"), None)
+        assert gaoling is not None
+        assert gaoling.stage == PipelineStage.DD

@@ -255,3 +255,18 @@ def find_matching_names(*, tenant_id: str, text: str) -> list[InstitutionProfile
             hits.append(inst)
             seen.add(inst.institution_id)
     return hits
+
+
+def update_stage_by_name(*, tenant_id: str, name: str, stage: str) -> bool:
+    """
+    按机构名查找并更新 Pipeline 阶段。
+    找不到时返回 False（不自动创建机构）。
+    用于 DD 会话创建时自动推进机构阶段。
+    """
+    with _conn() as c:
+        cur = c.execute(
+            "UPDATE institutions SET stage = ?, updated_at = ? WHERE tenant_id = ? AND name = ?",
+            (stage, time.time(), tenant_id, name),
+        )
+        c.commit()
+    return cur.rowcount > 0

@@ -16,15 +16,16 @@ def create_match_session(
     checklist_name: str,
     folder_root: str,
     items: list[dict],
+    institution_name: str = "",
 ) -> str:
     """创建匹配会话，存储清单需求项。返回 session_id。"""
     session_id = str(uuid.uuid4())
     with _connect() as conn:
         conn.execute(
             """INSERT INTO dd_match_sessions
-               (session_id, tenant_id, checklist_name, folder_root, status, created_at)
-               VALUES (?, ?, ?, ?, 'pending', ?)""",
-            (session_id, tenant_id, checklist_name, folder_root, time.time()),
+               (session_id, tenant_id, checklist_name, folder_root, institution_name, status, created_at)
+               VALUES (?, ?, ?, ?, ?, 'pending', ?)""",
+            (session_id, tenant_id, checklist_name, folder_root, institution_name, time.time()),
         )
         for item in items:
             conn.execute(
