@@ -146,3 +146,47 @@ def test_export_creates_folder_and_copies_files(tmp_path):
     gap = Path(out_dir) / "缺失清单.txt"
     assert gap.exists()
     assert "军工四证" in gap.read_text(encoding="utf-8")
+
+
+def test_long_checklist_splits_into_multiple_chunks(monkeypatch):
+    """超过4000字的清单应分多块处理，两块都应有 LLM 调用。"""
+    call_count = 0
+
+    def mock_extract_chunk(chunk_text: str) -> list[dict]:
+        nonlocal call_count
+        call_count += 1
+        # 每块返回一个不同的需求项
+        return [{"item_no": str(call_count), "category": "测试", "requirement": f"需求第{call_count}块"}]
+
+    monkeypatch.setattr(
+        "cangjie_fos.services.dd_checklist_parser._llm_extract_chunk",
+        mock_extract_chunk,
+    )
+    long_text = "这是一条尽调需求条目示例内容。\n" * 300  # ~30个字符 × 300行 ≈ 9000字符，强制分3块
+    from cangjie_fos.services.dd_checklist_parser import _llm_extract_items
+    items = _llm_extract_items(long_text)
+
+    assert call_count >= 2, f"长文本应分多块，实际调用次数: {call_count}"
+    assert len(items) >= 2
+
+
+def test_chunked_deduplication_removes_overlap_duplicates(monkeypatch):
+    """重叠区域的相同需求项不应出现两次。"""
+    def mock_extract_chunk(chunk_text: str) -> list[dict]:
+        # 每块都返回同样两条需求（模拟重叠区域重复）
+        return [
+            {"item_no": "1", "category": "财务", "requirement": "验资报告"},
+            {"item_no": "2", "category": "法务", "requirement": "营业执照"},
+        ]
+
+    monkeypatch.setattr(
+        "cangjie_fos.services.dd_checklist_parser._llm_extract_chunk",
+        mock_extract_chunk,
+    )
+    long_text = "x" * 8000  # 强制分3块
+    from cangjie_fos.services.dd_checklist_parser import _llm_extract_items
+    items = _llm_extract_items(long_text)
+
+    requirements = [i["requirement"] for i in items]
+    assert len(requirements) == len(set(requirements)), "重复需求项应被去重"
+    assert len(items) == 2  # "验资报告" 和 "营业执照" 各一条

@@ -80,22 +80,59 @@ def _read_pdf(path: Path) -> str:
     return "\n".join(texts)
 
 
+_CHUNK_SIZE = 4000
+_CHUNK_OVERLAP = 300
+
+
 def _llm_extract_items(raw_text: str) -> list[dict]:
     """
-    第二步：AI 只做一件事——从纯文字里识别哪些行是真正的资料需求项，
-    过滤大类标题、说明行、空行，输出结构化 JSON。
-
-    v0.7.2 改进：使用 dd_llm_client 统一管理 provider 配置 + 重试。
+    第二步：AI 从纯文字中提取结构化需求项。
+    长文本自动分块（4000字符/块，300字符重叠），去重合并。
+    使用 dd_llm_client 统一管理 provider 配置 + 3次重试。
     """
+    chunks = _split_into_chunks(raw_text, _CHUNK_SIZE, _CHUNK_OVERLAP)
+    all_items: list[dict] = []
+    seen: set[str] = set()
+
+    for chunk in chunks:
+        chunk_items = _llm_extract_chunk(chunk)
+        for item in chunk_items:
+            # 以需求文字前60字符做去重 key（处理重叠区域）
+            key = item["requirement"][:60].strip().lower()
+            if key and key not in seen:
+                seen.add(key)
+                all_items.append(item)
+
+    # 重新按顺序编号
+    for i, item in enumerate(all_items):
+        item["item_no"] = str(i + 1)
+
+    return all_items
+
+
+def _split_into_chunks(text: str, chunk_size: int, overlap: int) -> list[str]:
+    """将长文本分割为有重叠的块列表。"""
+    if len(text) <= chunk_size:
+        return [text]
+    chunks: list[str] = []
+    start = 0
+    while start < len(text):
+        end = min(start + chunk_size, len(text))
+        chunks.append(text[start:end])
+        if end == len(text):
+            break
+        start = end - overlap
+    return chunks
+
+
+def _llm_extract_chunk(chunk_text: str) -> list[dict]:
+    """对单个文本块调用 LLM 提取需求项（可被测试 monkeypatch）。使用 dd_llm_client 统一重试。"""
     from cangjie_fos.services.dd_llm_client import get_dd_llm_client, call_with_retry
 
     client = get_dd_llm_client()
-    # 截断防止超 token
-    text = raw_text[:5000]
-
     prompt = f"""以下是一份机构发来的尽调清单原始内容（可能包含表头、大类标题、说明行等噪音）：
 
-{text}
+{chunk_text}
 
 请提取所有具体的资料需求项（忽略大类标题行、表头行、空行、说明行）。
 以 JSON 数组格式返回，每项格式：
@@ -124,7 +161,7 @@ def _llm_extract_items(raw_text: str) -> list[dict]:
     try:
         items = json.loads(raw.strip())
     except json.JSONDecodeError as e:
-        logger.error("LLM 返回的 JSON 解析失败: %s\n原文: %s", e, raw[:300])
+        logger.error("LLM chunk 解析失败: %s\n原文: %s", e, raw[:300])
         return []
 
     return [
