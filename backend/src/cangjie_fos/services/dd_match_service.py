@@ -71,11 +71,7 @@ def run_matching(session_id: str, folder_root: str) -> None:
         if not items:
             return
 
-        file_list_text = "\n".join(
-            f"[{i}] 文件名：{r['filename']}  摘要：{r['summary'] or '无摘要'}"
-            for i, r in enumerate(index_rows)
-        )
-        matches = _llm_batch_match(items, file_list_text, index_rows)
+        matches = _llm_batch_match(items, "", index_rows)
 
         # ── v0.7.2: 写入匹配结果 + 显式标记未匹配项 ──
         matched_ids = set(matches.keys())
@@ -127,6 +123,38 @@ def _mark_session_done(session_id: str) -> None:
         )
 
 
+def _prefilter_files_for_batch(
+    batch_items: list[dict],
+    index_rows: list[dict],
+    top_n: int = 50,
+) -> list[dict]:
+    """
+    关键词预筛：从 index_rows 中找出与当前批次需求最相关的 top_n 个文件。
+    文件数不超过 top_n 时直接返回全量。
+    使用汉字二元组（bigram）匹配，忽略停用字。
+    """
+    if len(index_rows) <= top_n:
+        return index_rows
+
+    stop_chars = set("的和与或等及提供相关情况说明文件资料证明（）、，。是有无")
+    all_keywords: set[str] = set()
+    for item in batch_items:
+        req = item.get("requirement", "")
+        for i in range(len(req) - 1):
+            bigram = req[i : i + 2]
+            if not any(c in stop_chars for c in bigram):
+                all_keywords.add(bigram)
+
+    scored: list[tuple[int, dict]] = []
+    for row in index_rows:
+        text = f"{row.get('filename', '')} {row.get('summary') or ''}".lower()
+        score = sum(1 for kw in all_keywords if kw in text)
+        scored.append((score, row))
+
+    scored.sort(key=lambda x: -x[0])
+    return [row for _, row in scored[:top_n]]
+
+
 def _llm_batch_match(
     items: list[dict],
     file_list_text: str,
@@ -149,13 +177,18 @@ def _llm_batch_match(
 
     for start in range(0, len(items), batch_size):
         batch = items[start: start + batch_size]
+        batch_rows = _prefilter_files_for_batch(batch, index_rows, top_n=50)
+        batch_file_list_text = "\n".join(
+            f"[{i}] 文件名：{r['filename']}  摘要：{r['summary'] or '无摘要'}"
+            for i, r in enumerate(batch_rows)
+        )
         req_lines = "\n".join(
             f"需求{i + 1}（ID:{item['id']}）：{item['requirement']}"
             for i, item in enumerate(batch)
         )
         prompt = f"""你是尽调助手。以下是我们材料库中的文件（编号+摘要）：
 
-{file_list_text}
+{batch_file_list_text}
 
 以下是机构的尽调需求：
 {req_lines}
@@ -194,8 +227,8 @@ def _llm_batch_match(
         for item in batch:
             item_result = batch_results.get(item["id"], {})
             file_idx = item_result.get("file_index")
-            if file_idx is not None and isinstance(file_idx, int) and 0 <= file_idx < len(index_rows):
-                matched = index_rows[file_idx]
+            if file_idx is not None and isinstance(file_idx, int) and 0 <= file_idx < len(batch_rows):
+                matched = batch_rows[file_idx]
                 results[item["id"]] = {
                     "file_path": matched["file_path"],
                     "filename": matched["filename"],

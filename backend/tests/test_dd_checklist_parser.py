@@ -190,3 +190,24 @@ def test_chunked_deduplication_removes_overlap_duplicates(monkeypatch):
     requirements = [i["requirement"] for i in items]
     assert len(requirements) == len(set(requirements)), "重复需求项应被去重"
     assert len(items) == 2  # "验资报告" 和 "营业执照" 各一条
+
+
+def test_prefilter_reduces_large_index_to_top_n():
+    """超过50个文件时，预筛应只返回最相关的50个（不超限）。"""
+    from cangjie_fos.services.dd_match_service import _prefilter_files_for_batch
+    index_rows = [
+        {"filename": f"文件{i}.pdf", "summary": f"摘要内容{i}"}
+        for i in range(100)
+    ]
+    batch_items = [{"id": "1", "requirement": "财务报告审计年报"}]
+    result = _prefilter_files_for_batch(batch_items, index_rows, top_n=50)
+    assert len(result) == 50
+
+
+def test_prefilter_passthrough_when_small_index():
+    """文件数不超过 top_n 时，直接返回全量不做筛选。"""
+    from cangjie_fos.services.dd_match_service import _prefilter_files_for_batch
+    index_rows = [{"filename": f"{i}.pdf", "summary": ""} for i in range(30)]
+    batch_items = [{"id": "1", "requirement": "营业执照"}]
+    result = _prefilter_files_for_batch(batch_items, index_rows, top_n=50)
+    assert len(result) == 30
