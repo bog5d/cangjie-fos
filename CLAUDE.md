@@ -363,7 +363,7 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 
 | 类型 | 现象/目标 | 难度 | 建议入手文件 |
 |-----|------|------|------------|
-| Bug #1 | 录音片段不完整，ASR 截取有问题 | 高风险，ASR 核心逻辑 | `backend/src/cangjie_fos/engine/transcriber.py` |
+| ~~Bug #1~~ | ✅ **已修复**（commit `46c7f79`，2026-05-15）：缺词级时间戳时用句子级兜底+线性插值，`test_transcriber.py` 10个测试覆盖 | — | — |
 
 **尽调响应台现状（v0.8.0 全面升级后）**：
 - ✅ 3步向导：扫描材料库 → 上传清单（Excel/Word/PDF/文字）→ AI 匹配 → 表格审核 → 导出
