@@ -317,3 +317,71 @@ def test_bundle_marks_files_as_sent():
     row = next((row for row in rows if row["relative_path"] == "_auto_sent_test"), None)
     assert row is not None
     assert row["asset_status"] == "sent"
+
+
+# --- Bug #10: SQLite 路径的中文搜索 ---
+
+def test_search_sqlite_chinese_filename(monkeypatch):
+    """Bug #10: 资产在 SQLite 中时，中文文件名搜索应命中结果。"""
+    from cangjie_fos.services.pitch_job_db import db_asset_upsert
+
+    # 在 SQLite 中插入中文资产
+    db_asset_upsert(
+        filename="财务报表_Bug10.xlsx",
+        relative_path="_bug10_test_caiwu",
+        full_path="",
+        last_modified="2026-01-01",
+        summary="第一季度财务数据",
+        tags=["财务", "报表"],
+    )
+    db_asset_upsert(
+        filename="商业计划书_Bug10.pdf",
+        relative_path="_bug10_test_bp",
+        full_path="",
+        last_modified="2026-01-01",
+        summary="融资商业计划",
+        tags=["BP", "融资"],
+    )
+    db_asset_upsert(
+        filename="无关文件_Bug10.docx",
+        relative_path="_bug10_test_other",
+        full_path="",
+        last_modified="2026-01-01",
+        summary="无关内容",
+        tags=["其他"],
+    )
+
+    c = TestClient(global_app)
+    # 搜索 "财务" — 应命中 SQLite 中的财务报表
+    r = c.get("/api/v1/assets/search?q=财务")
+    assert r.status_code == 200
+    data = r.json()
+    filenames = [a["filename"] for a in data["assets"]]
+    assert any("财务" in fn for fn in filenames), (
+        f"Bug #10: 搜索 '财务' 应在 SQLite 中找到中文文件名，实际结果: {filenames}"
+    )
+
+
+def test_search_sqlite_chinese_tag(monkeypatch):
+    """Bug #10: 资产在 SQLite 中时，中文标签搜索应命中结果。"""
+    from cangjie_fos.services.pitch_job_db import db_asset_upsert
+
+    db_asset_upsert(
+        filename="路演材料_Bug10.pptx",
+        relative_path="_bug10_test_roadshow",
+        full_path="",
+        last_modified="2026-01-01",
+        summary="",
+        tags=["路演", "PPT"],
+    )
+
+    c = TestClient(global_app)
+    r = c.get("/api/v1/assets/search?q=路演")
+    assert r.status_code == 200
+    data = r.json()
+    filenames = [a["filename"] for a in data["assets"]]
+    assert any("路演" in fn or any("路演" in a.get("summary", "") or "路演" in str(a.get("tags", [])) for a in data["assets"]) for fn in filenames or [True]), (
+        f"Bug #10: 搜索 '路演' 应在 SQLite 标签中找到结果"
+    )
+    # More direct check
+    assert data["total_files"] >= 1, f"Bug #10: 中文标签搜索应返回至少1个结果，实际: {data}"

@@ -294,7 +294,7 @@ def push_roadshow_report(job_id: str) -> bool:
 
     export = {
         "session_id": job_id,
-        "generated_at": _dt.datetime.utcnow().isoformat(),
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
         "type": "roadshow_intel",
         "version": "FOS_V7.5",
         "fos_source": "cangjie_fos",
