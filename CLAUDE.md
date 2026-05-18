@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-16 | 当前版本：**v0.9.0** | 测试基线：**643+ passed** | 单仓库可运行：✅
+> 最后更新：2026-05-18 | 当前版本：**v1.0.0** | 测试基线：**643+ passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -36,6 +36,7 @@
 | v0.7.2 | 05-16 | **稳定性加固**：统一 LLM 客户端 + 重试/显式NULL标记/服务重启DB fallback/导出大小上限 |
 | v0.8.0 | 05-16 | **尽调响应台全面升级**：分块解析/文件预筛/Session历史/批量确认/手动替换/机构联动/GitHub同步 |
 | v0.9.0 | 05-16 | **Bug修复**：Bug #10 资产搜索中文回归测试 + utcnow deprecation修复 |
+| v1.0.0 | 05-18 | **尽调响应台体验升级**：原生文件夹/文件选取框（tkinter），三处路径输入均支持 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -345,6 +346,17 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `backend/tests/test_dd_checklist_parser.py` | 新增4个测试：分块/去重/预筛（100→50）/预筛直通（30） |
 | `backend/tests/test_dd_e2e.py` | 新增4个测试：Session历史列表/批量确认/机构阶段联动/GitHub同步 |
 | `frontend/src/components/DueDiligenceWizard.tsx` | 全面升级（380→600行）：Session历史面板/机构名称字段/批量确认按钮/手动文件替换内联输入 |
+
+---
+
+### v1.0.0 改动文件清单（2026-05-18）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | 新增 `GET /pick-folder` 和 `GET /pick-file`，调用 `tkinter.filedialog` 弹出系统原生对话框并返回路径 |
+| `frontend/src/components/DueDiligenceWizard.tsx` | 新增 `pickFolder()` / `pickFile()` 工具函数；Step1 材料库路径、Step3 导出路径、手动指定文件三处加「📁 选择」按钮 |
+| `packaging/本次更新说明.md` | 版本号 → v1.0.0，更新内容说明 |
+| `CHANGELOG.md` | 新增 v1.0.0 版本块 |
 
 ---
 
