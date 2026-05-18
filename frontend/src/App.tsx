@@ -96,7 +96,25 @@ export default function App() {
       .catch(() => setAccountsConfigured(false));
   }, []);
 
-  const handleLogin = (s: FosSession, _commanderName: string) => setSession(s);
+  const [syncNotice, setSyncNotice] = useState<string>("");
+
+  const handleLogin = (s: FosSession, _commanderName: string) => {
+    setSession(s);
+    // 登录后触发 GitHub 同步，并给用户一个可见提示
+    setSyncNotice("⏳ 正在从 GitHub 同步最新数据…");
+    api.post<{ ok: boolean; pitch_imported: number; match_imported: number }>("/api/sync/pull")
+      .then(r => {
+        const d = r.data;
+        if (d.ok) {
+          const n = d.pitch_imported + d.match_imported;
+          setSyncNotice(n > 0 ? `✅ 已同步 ${n} 条新数据` : "✅ 数据已是最新");
+        } else {
+          setSyncNotice("");
+        }
+      })
+      .catch(() => setSyncNotice(""))
+      .finally(() => setTimeout(() => setSyncNotice(""), 4000));
+  };
   const handleLogout = () => {
     void api.post("/api/auth/logout").catch(() => {});
     clearSession();
@@ -401,6 +419,11 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
           <SettingsPanel onKeySaved={fetchReady} />
           {session && (
             <div className="flex items-center gap-2">
+              {syncNotice && (
+                <span className="text-[11px] text-cyan-300 animate-pulse">
+                  {syncNotice}
+                </span>
+              )}
               <span className="text-xs text-slate-500">
                 👤 {session.username}
               </span>
