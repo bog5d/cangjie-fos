@@ -129,11 +129,11 @@ export default function App() {
   // 等待配置检查完成（短暂空白过渡）
   if (accountsConfigured === null) return null;
 
-  return <MainApp session={session} onLogout={handleLogout} />;
+  return <MainApp session={session} onLogout={handleLogout} syncNotice={syncNotice} />;
 }
 
 // ── 主应用：所有业务 hooks 都在这里，永远不会有条件返回在 hooks 之前 ──────────
-function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: () => void }) {
+function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null; onLogout: () => void; syncNotice?: string }) {
   const [dashboard, setDashboard] = useState<DashboardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
