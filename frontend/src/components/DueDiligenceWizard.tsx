@@ -30,6 +30,24 @@ interface Props {
 
 type Step = 1 | 2 | 3;
 
+/** 调用后端原生文件夹选取框，返回路径字符串（取消则返回空串）。 */
+async function pickFolder(initialDir = ""): Promise<string> {
+  const params = initialDir ? `?initial_dir=${encodeURIComponent(initialDir)}` : "";
+  const r = await fetch(`/api/v1/dd/pick-folder${params}`);
+  if (!r.ok) return "";
+  const data: { path: string; cancelled: boolean } = await r.json();
+  return data.cancelled ? "" : data.path;
+}
+
+/** 调用后端原生文件选取框，返回路径字符串（取消则返回空串）。 */
+async function pickFile(initialDir = ""): Promise<string> {
+  const params = initialDir ? `?initial_dir=${encodeURIComponent(initialDir)}` : "";
+  const r = await fetch(`/api/v1/dd/pick-file${params}`);
+  if (!r.ok) return "";
+  const data: { path: string; cancelled: boolean } = await r.json();
+  return data.cancelled ? "" : data.path;
+}
+
 export default function DueDiligenceWizard({ open, onClose }: Props) {
   // Step 1 state
   const [folderPath, setFolderPath] = useState("");
@@ -383,19 +401,29 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
           {step === 1 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                指定你的材料库文件夹路径（系统会扫描并建立索引，供后续匹配用）。
+                选择你的材料库文件夹（系统会扫描并建立索引，供后续匹配用）。
               </p>
               <div className="flex gap-2">
                 <input
                   className="flex-1 border rounded px-3 py-2 text-sm"
-                  placeholder="例如：D:\zt2025-01-17\资料包"
+                  placeholder="点击「📁 选择文件夹」或手动输入路径"
                   value={folderPath}
                   onChange={(e) => setFolderPath(e.target.value)}
                 />
                 <button
+                  onClick={async () => {
+                    const p = await pickFolder(folderPath);
+                    if (p) setFolderPath(p);
+                  }}
+                  disabled={scanStatus === "running"}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 border rounded text-sm hover:bg-gray-200 disabled:opacity-50 whitespace-nowrap"
+                >
+                  📁 选择文件夹
+                </button>
+                <button
                   onClick={() => void handleScan()}
                   disabled={!folderPath.trim() || scanStatus === "running"}
-                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50 whitespace-nowrap"
                 >
                   {scanStatus === "running" ? "扫描中…" : "开始扫描"}
                 </button>
@@ -616,10 +644,10 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                           <tr className="border-t bg-blue-50">
                             <td colSpan={5} className="px-3 py-2">
                               <div className="flex gap-2 items-center">
-                                <span className="text-xs text-blue-700 whitespace-nowrap">📂 文件路径：</span>
+                                <span className="text-xs text-blue-700 whitespace-nowrap">📂 指定文件：</span>
                                 <input
                                   className="flex-1 border rounded px-2 py-1 text-xs"
-                                  placeholder="例如：D:\资料包\财务\审计报告2023.pdf"
+                                  placeholder="点击「选择文件」或手动输入路径"
                                   value={manualPath}
                                   onChange={(e) => setManualPath(e.target.value)}
                                   onKeyDown={(e) => {
@@ -627,6 +655,15 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                                   }}
                                   autoFocus
                                 />
+                                <button
+                                  onClick={async () => {
+                                    const p = await pickFile(folderPath || "");
+                                    if (p) setManualPath(p);
+                                  }}
+                                  className="text-xs px-2 py-1 bg-gray-100 border rounded text-gray-700 hover:bg-gray-200 whitespace-nowrap"
+                                >
+                                  📁 选择文件
+                                </button>
                                 <button
                                   onClick={() => void handleManualFile(item.id)}
                                   disabled={!manualPath.trim()}
@@ -653,14 +690,24 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
               <div className="flex gap-2 items-center pt-2">
                 <input
                   className="flex-1 border rounded px-3 py-2 text-sm"
-                  placeholder="导出文件夹路径，例如：D:\尽调材料包\XX机构"
+                  placeholder="点击「📁 选择」或手动输入导出路径"
                   value={outputDir}
                   onChange={(e) => setOutputDir(e.target.value)}
                 />
                 <button
+                  onClick={async () => {
+                    const p = await pickFolder(outputDir);
+                    if (p) setOutputDir(p);
+                  }}
+                  disabled={exporting}
+                  className="px-3 py-2 bg-gray-100 text-gray-700 border rounded text-sm hover:bg-gray-200 disabled:opacity-50 whitespace-nowrap"
+                >
+                  📁 选择
+                </button>
+                <button
                   onClick={() => void handleExport()}
                   disabled={exporting || !outputDir.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50 whitespace-nowrap"
                 >
                   {exporting ? "导出中…" : "导出文件夹"}
                 </button>
