@@ -104,7 +104,12 @@ async def start_indexing(req: ScanRequest, background_tasks: BackgroundTasks):
 
     def _do_scan():
         try:
-            result = scan_and_index_folder(req.folder_path, req.tenant_id)
+            def _progress(done: int, total: int) -> None:
+                """每处理50个文件回调，更新内存进度供前端轮询。"""
+                _scan_status[scan_id].update({"done": done, "total": total})
+
+            result = scan_and_index_folder(req.folder_path, req.tenant_id,
+                                           progress_callback=_progress)
             _scan_status[scan_id].update({"status": "done", **result})
         except Exception as e:
             _scan_status[scan_id] = {"status": "error", "error": str(e)}

@@ -48,6 +48,78 @@ function getUserName(): string {
   }
 }
 
+// ── 路演情报 HTML 导出按钮 ─────────────────────────────────────────────────────
+function RoadshowHtmlExport({ jobId }: { jobId: string }) {
+  const [state, setState] = useState<"idle" | "generating" | "done" | "error">("idle");
+  const [errMsg, setErrMsg] = useState("");
+
+  async function handleGenerate() {
+    setState("generating");
+    setErrMsg("");
+    try {
+      await api.post(`/api/v1/roadshow/jobs/${jobId}/html-report`);
+      setState("done");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrMsg(msg);
+      setState("error");
+    }
+  }
+
+  function handleDownload() {
+    window.open(`/api/v1/roadshow/jobs/${jobId}/html-report`, "_blank");
+  }
+
+  return (
+    <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan/70 mb-3">导出 HTML 报告</p>
+      {state === "idle" && (
+        <button
+          type="button"
+          onClick={() => void handleGenerate()}
+          className="rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2 text-xs text-cyan-300 hover:bg-cyan/20 transition-colors"
+        >
+          📄 生成 HTML 报告
+        </button>
+      )}
+      {state === "generating" && (
+        <p className="text-xs text-slate-400 animate-pulse">生成中…</p>
+      )}
+      {state === "done" && (
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-emerald-400">✅ 报告已生成</span>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-1.5 text-xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
+          >
+            ⬇ 下载 / 预览
+          </button>
+          <button
+            type="button"
+            onClick={() => { setState("idle"); }}
+            className="text-xs text-slate-500 hover:text-slate-400"
+          >
+            重新生成
+          </button>
+        </div>
+      )}
+      {state === "error" && (
+        <div>
+          <p className="text-xs text-rose-400 mb-2">生成失败：{errMsg}</p>
+          <button
+            type="button"
+            onClick={() => setState("idle")}
+            className="text-xs text-slate-400 hover:text-slate-300"
+          >
+            重试
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReviewWorkbench() {
   const { job_id: jobId = "" } = useParams<{ job_id: string }>();
   const navigate = useNavigate();
@@ -282,6 +354,8 @@ export default function ReviewWorkbench() {
               onSave={(updated) => void handleCommit(updated)}
               saving={committing}
             />
+            {/* HTML 报告导出 */}
+            <RoadshowHtmlExport jobId={jobId} />
           </div>
         </div>
       </AudioProvider>

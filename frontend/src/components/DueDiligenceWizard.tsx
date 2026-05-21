@@ -135,7 +135,8 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
       return;
     }
     let attempts = 0;
-    const MAX_SCAN = 120;
+    // 最多等 10 分钟（400 × 1.5s）—— 大文件夹（3000+文件）跳过 LLM 后仍需数分钟 IO
+    const MAX_SCAN = 400;
     pollRef.current = window.setInterval(async () => {
       attempts++;
       try {
@@ -145,7 +146,8 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
           clearInterval(pollRef.current!);
           pollRef.current = null;
           setScanStatus("done");
-          setScanResult(`✅ 扫描完成：共索引 ${s.indexed} 个文件，${s.failed} 个失败`);
+          const llmNote = s.total > 200 ? "（文件数较多，已跳过AI摘要，仅靠文件名匹配）" : "";
+          setScanResult(`✅ 扫描完成：共索引 ${s.indexed} 个文件，${s.failed} 个失败${llmNote}`);
         } else if (s.status === "error") {
           clearInterval(pollRef.current!);
           pollRef.current = null;
@@ -155,7 +157,11 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
           clearInterval(pollRef.current!);
           pollRef.current = null;
           setScanStatus("error");
-          setScanResult("❌ 扫描超时（超过3分钟），请检查文件夹或减少文件数量");
+          setScanResult("❌ 扫描超时（超过10分钟），请检查文件夹路径是否正确");
+        } else if (s.done !== undefined && s.total !== undefined && s.total > 0) {
+          // 展示实时进度
+          const pct = Math.round((s.done / s.total) * 100);
+          setScanResult(`⏳ 扫描中… ${s.done}/${s.total} 文件 (${pct}%)`);
         }
       } catch (_) {}
     }, 1500);
@@ -405,7 +411,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
               </p>
               <div className="flex gap-2">
                 <input
-                  className="flex-1 border rounded px-3 py-2 text-sm"
+                  className="flex-1 border rounded px-3 py-2 text-sm text-gray-900"
                   placeholder="点击「📁 选择文件夹」或手动输入路径"
                   value={folderPath}
                   onChange={(e) => setFolderPath(e.target.value)}
@@ -487,7 +493,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                   机构名称 <span className="text-gray-400 font-normal">（可选，自动更新 Pipeline 阶段为"尽调"）</span>
                 </label>
                 <input
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full border rounded px-3 py-2 text-sm text-gray-900"
                   placeholder="例如：高瓴资本、IDG资本"
                   value={institutionName}
                   onChange={(e) => setInstitutionName(e.target.value)}
@@ -509,7 +515,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">粘贴清单文字</label>
                 <textarea
-                  className="w-full border rounded px-3 py-2 text-sm h-32"
+                  className="w-full border rounded px-3 py-2 text-sm h-32 text-gray-900"
                   placeholder="直接粘贴机构发来的尽调需求列表文字…"
                   value={checklistText}
                   onChange={(e) => setChecklistText(e.target.value)}
@@ -646,7 +652,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                               <div className="flex gap-2 items-center">
                                 <span className="text-xs text-blue-700 whitespace-nowrap">📂 指定文件：</span>
                                 <input
-                                  className="flex-1 border rounded px-2 py-1 text-xs"
+                                  className="flex-1 border rounded px-2 py-1 text-xs text-gray-900"
                                   placeholder="点击「选择文件」或手动输入路径"
                                   value={manualPath}
                                   onChange={(e) => setManualPath(e.target.value)}
@@ -689,7 +695,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
 
               <div className="flex gap-2 items-center pt-2">
                 <input
-                  className="flex-1 border rounded px-3 py-2 text-sm"
+                  className="flex-1 border rounded px-3 py-2 text-sm text-gray-900"
                   placeholder="点击「📁 选择」或手动输入导出路径"
                   value={outputDir}
                   onChange={(e) => setOutputDir(e.target.value)}

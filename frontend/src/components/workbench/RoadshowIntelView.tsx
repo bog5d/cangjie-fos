@@ -63,7 +63,47 @@ function Badge({ cls, children }: { cls: string; children: React.ReactNode }) {
   );
 }
 
-function QuestionCard({ q, idx }: { q: IntelQuestion; idx: number }) {
+// ── 可编辑版卡片（editMode=true 时使用）────────────────────────────────────────
+
+function QuestionCard({
+  q, idx, editMode, onChange,
+}: {
+  q: IntelQuestion; idx: number;
+  editMode?: boolean;
+  onChange?: (updated: IntelQuestion) => void;
+}) {
+  if (editMode && onChange) {
+    return (
+      <Card className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono text-slate-600">#{idx + 1}</span>
+          <select
+            className="rounded border border-white/15 bg-black/35 px-2 py-0.5 text-[10px] text-slate-300 outline-none"
+            value={q.priority}
+            onChange={(e) => onChange({ ...q, priority: e.target.value as IntelQuestion["priority"] })}
+          >
+            <option value="high">核心</option>
+            <option value="medium">关注</option>
+            <option value="low">礼节</option>
+          </select>
+        </div>
+        <textarea
+          className={TA}
+          rows={2}
+          placeholder="原话"
+          value={q.verbatim}
+          onChange={(e) => onChange({ ...q, verbatim: e.target.value })}
+        />
+        <textarea
+          className={TA}
+          rows={2}
+          placeholder="背后关切"
+          value={q.underlying_concern}
+          onChange={(e) => onChange({ ...q, underlying_concern: e.target.value })}
+        />
+      </Card>
+    );
+  }
   return (
     <Card>
       <div className="flex items-start gap-2 mb-2">
@@ -86,7 +126,42 @@ function QuestionCard({ q, idx }: { q: IntelQuestion; idx: number }) {
   );
 }
 
-function SignalCard({ s }: { s: IntelSignal }) {
+function SignalCard({
+  s, editMode, onChange,
+}: {
+  s: IntelSignal;
+  editMode?: boolean;
+  onChange?: (updated: IntelSignal) => void;
+}) {
+  if (editMode && onChange) {
+    return (
+      <Card className="space-y-2">
+        <select
+          className="rounded border border-white/15 bg-black/35 px-2 py-0.5 text-[10px] text-slate-300 outline-none"
+          value={s.signal_type}
+          onChange={(e) => onChange({ ...s, signal_type: e.target.value as IntelSignal["signal_type"] })}
+        >
+          <option value="positive">正面信号</option>
+          <option value="concern">疑虑/抵触</option>
+          <option value="neutral">中性陈述</option>
+        </select>
+        <textarea
+          className={TA}
+          rows={2}
+          placeholder="原话"
+          value={s.verbatim}
+          onChange={(e) => onChange({ ...s, verbatim: e.target.value })}
+        />
+        <textarea
+          className={TA}
+          rows={2}
+          placeholder="信号解读"
+          value={s.interpretation}
+          onChange={(e) => onChange({ ...s, interpretation: e.target.value })}
+        />
+      </Card>
+    );
+  }
   return (
     <Card>
       <div className="flex items-center gap-2 mb-2">
@@ -105,7 +180,51 @@ function SignalCard({ s }: { s: IntelSignal }) {
   );
 }
 
-function ActionCard({ a }: { a: IntelAction }) {
+function ActionCard({
+  a, editMode, onChange,
+}: {
+  a: IntelAction;
+  editMode?: boolean;
+  onChange?: (updated: IntelAction) => void;
+}) {
+  if (editMode && onChange) {
+    return (
+      <div className="rounded-lg border border-white/10 bg-black/25 px-3 py-2 space-y-1.5">
+        <div className="flex gap-2">
+          <select
+            className="rounded border border-white/15 bg-black/35 px-2 py-0.5 text-[10px] text-slate-300 outline-none"
+            value={a.priority}
+            onChange={(e) => onChange({ ...a, priority: e.target.value as IntelAction["priority"] })}
+          >
+            <option value="urgent">紧急</option>
+            <option value="normal">正常</option>
+            <option value="optional">可选</option>
+          </select>
+          <select
+            className="rounded border border-white/15 bg-black/35 px-2 py-0.5 text-[10px] text-slate-300 outline-none"
+            value={a.source}
+            onChange={(e) => onChange({ ...a, source: e.target.value as IntelAction["source"] })}
+          >
+            <option value="commitment">已承诺</option>
+            <option value="suggestion">建议</option>
+          </select>
+        </div>
+        <textarea
+          className={TA}
+          rows={2}
+          placeholder="行动内容"
+          value={a.action}
+          onChange={(e) => onChange({ ...a, action: e.target.value })}
+        />
+        <input
+          className="w-full rounded border border-white/15 bg-black/35 px-3 py-1 text-xs text-white/90 outline-none"
+          placeholder="负责方（我方/对方）"
+          value={a.actor ?? ""}
+          onChange={(e) => onChange({ ...a, actor: e.target.value })}
+        />
+      </div>
+    );
+  }
   return (
     <div className="flex items-start gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2">
       <Badge cls={PRIORITY_BADGE[a.priority] ?? PRIORITY_BADGE.normal}>
@@ -216,7 +335,18 @@ export default function RoadshowIntelView({ report, interviewee, onSave, saving 
           <SectionTitle>对方关键问题 ({cur.key_questions.length})</SectionTitle>
           <div className="space-y-2">
             {cur.key_questions.map((q, i) => (
-              <QuestionCard key={i} q={q} idx={i} />
+              <QuestionCard
+                key={i}
+                q={q}
+                idx={i}
+                editMode={editMode}
+                onChange={(updated) =>
+                  setDraft((d) => ({
+                    ...d,
+                    key_questions: d.key_questions.map((x, j) => (j === i ? updated : x)),
+                  }))
+                }
+              />
             ))}
           </div>
         </>
@@ -228,7 +358,17 @@ export default function RoadshowIntelView({ report, interviewee, onSave, saving 
           <SectionTitle>兴趣信号 ({cur.interest_signals.length})</SectionTitle>
           <div className="space-y-2">
             {cur.interest_signals.map((s, i) => (
-              <SignalCard key={i} s={s} />
+              <SignalCard
+                key={i}
+                s={s}
+                editMode={editMode}
+                onChange={(updated) =>
+                  setDraft((d) => ({
+                    ...d,
+                    interest_signals: d.interest_signals.map((x, j) => (j === i ? updated : x)),
+                  }))
+                }
+              />
             ))}
           </div>
         </>
@@ -305,7 +445,17 @@ export default function RoadshowIntelView({ report, interviewee, onSave, saving 
           <SectionTitle>下一步行动 ({cur.next_actions.length})</SectionTitle>
           <div className="space-y-2">
             {cur.next_actions.map((a, i) => (
-              <ActionCard key={i} a={a} />
+              <ActionCard
+                key={i}
+                a={a}
+                editMode={editMode}
+                onChange={(updated) =>
+                  setDraft((d) => ({
+                    ...d,
+                    next_actions: d.next_actions.map((x, j) => (j === i ? updated : x)),
+                  }))
+                }
+              />
             ))}
           </div>
         </>
