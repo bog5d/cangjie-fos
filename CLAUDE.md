@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-18 | 当前版本：**v1.0.0** | 测试基线：**643+ passed** | 单仓库可运行：✅
+> 最后更新：2026-05-21 | 当前版本：**v1.1.0** | 测试基线：**660+ passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -14,7 +14,7 @@
 - **进入点**：`backend/src/cangjie_fos/main.py` — FastAPI app + lifespan
 - **外部依赖**：无 — `engine/` 子包已包含所有核心模块，AI_Pitch_Coach 是可选的历史归档
 
-### 最近做了什么（v0.5.3 → v0.7.0）
+### 最近做了什么（v0.5.3 → v1.1.0）
 
 | 版本 | 日期 | 主要内容 |
 |------|------|---------|
@@ -37,6 +37,7 @@
 | v0.8.0 | 05-16 | **尽调响应台全面升级**：分块解析/文件预筛/Session历史/批量确认/手动替换/机构联动/GitHub同步 |
 | v0.9.0 | 05-16 | **Bug修复**：Bug #10 资产搜索中文回归测试 + utcnow deprecation修复 |
 | v1.0.0 | 05-18 | **尽调响应台体验升级**：原生文件夹/文件选取框（tkinter），三处路径输入均支持 |
+| v1.1.0 | 05-21 | **5个同事Bug修复**：扫描超时+进度/向导白字/匹配全无效/路演全字段编辑/路演HTML导出 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -371,7 +372,25 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 
 ---
 
-### 待处理问题（v0.9.0 之后）
+### v1.1.0 改动文件清单（2026-05-21）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/dd_index_service.py` | Bug1：`MAX_LLM_SUMMARIZE_FILES=200`（超量跳过LLM仅记文件名）；`progress_callback` 每50文件触发；timeout从120s→600s |
+| `backend/src/cangjie_fos/services/dd_match_service.py` | Bug3：删除 `readable=1` 过滤条件，所有文件（含图片PDF/加密文件）参与匹配 |
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | Bug1：`scan_folder` 端点新增 progress 轮询支持；实时返回 scanned/total |
+| `frontend/src/components/DueDiligenceWizard.tsx` | Bug2：所有输入框 text 颜色改为 `text-gray-800`（修复白字看不清）；Bug1：扫描进度实时展示 |
+| `backend/src/cangjie_fos/api/routes/roadshow.py` | Bug4（路演）：新增 `_build_roadshow_html()` + `POST /jobs/{id}/html-report` + `GET /jobs/{id}/html-report` |
+| `frontend/src/pages/ReviewWorkbench.tsx` | Bug4（路演）：新增 `RoadshowHtmlExport` 组件（生成→下载/预览） |
+| `frontend/src/components/workbench/RoadshowIntelView.tsx` | Bug5（路演）：`key_questions` / `interest_signals` / `next_actions` 三组卡片接入 `editMode` + `onChange` 实现全字段内联编辑 |
+| `backend/tests/test_dd_file_parser.py` | 新增4个测试：大文件夹跳过LLM/小文件夹调用LLM/进度回调/unreadable文件参与匹配 |
+| `backend/tests/test_roadshow_api.py` | 新增6个测试：HTML报告生成200/文件写磁盘/无报告404/未知job404/生成前GET404/6节内容完整 |
+| `CHANGELOG.md` | 新增 v1.1.0 版本块 |
+| `packaging/本次更新说明.md` | 完全重写为 v1.1.0：5个修复说明 + 验收清单 |
+
+---
+
+### 待处理问题（v1.1.0 之后）
 
 | 类型 | 现象/目标 | 难度 | 建议入手文件 |
 |-----|------|------|------------|
