@@ -9,6 +9,7 @@ from cangjie_fos.services.institution_store import (
     create_institution,
     delete_institution,
     list_institutions,
+    sync_institutions_from_pitch_jobs,
     update_institution,
 )
 from cangjie_fos.services.pipeline_funnel import build_funnel_from_institutions
@@ -71,3 +72,13 @@ def pipeline_status(tenant_id: str = Query(..., min_length=1)) -> PipelineCounts
 def pipeline_funnel_debug(tenant_id: str = Query(..., min_length=1)) -> dict:
     """供联调：返回与 Dashboard 一致的漏斗 JSON。"""
     return build_funnel_from_institutions(tenant_id=tenant_id).model_dump()
+
+
+@router.post("/sync-institutions")
+def trigger_institution_sync() -> dict:
+    """
+    手动触发 institutions 补全（从 pitch_jobs 回溯）。
+    等价于重启时自动执行的逻辑，可随时调用，幂等。
+    """
+    result = sync_institutions_from_pitch_jobs()
+    return {"ok": True, **result}

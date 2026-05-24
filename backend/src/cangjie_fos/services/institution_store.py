@@ -257,6 +257,79 @@ def find_matching_names(*, tenant_id: str, text: str) -> list[InstitutionProfile
     return hits
 
 
+def sync_institutions_from_pitch_jobs() -> dict[str, int]:
+    """
+    从 pitch_jobs 表回溯补全 institutions 表（幂等，启动时自动执行）。
+
+    扫描所有 is_roadshow=1、status='completed'、institution_id 非空且非"待确认_"
+    的 pitch_jobs，对每个机构执行 upsert，stage 只升不降（pitched 为最低）。
+
+    返回：{"synced": 新增或更新数, "skipped": 跳过数, "errors": 出错数}
+    """
+    from cangjie_fos.services.db_base import _connect as _pitch_connect  # noqa: PLC0415
+    import logging as _logging  # noqa: PLC0415
+    import uuid as _uuid  # noqa: PLC0415
+
+    _log = _logging.getLogger(__name__)
+    _stage_order = {"targeted": 0, "pitched": 1, "dd": 2, "term_sheet": 3}
+
+    try:
+        rows = _pitch_connect().execute(
+            """SELECT tenant_id, institution_id, created_at
+               FROM pitch_jobs
+               WHERE is_roadshow = 1
+                 AND status = 'completed'
+                 AND institution_id != ''
+               ORDER BY created_at ASC"""
+        ).fetchall()
+    except Exception as e:  # noqa: BLE001
+        _log.warning("sync_institutions: pitch_jobs 读取失败: %s", e)
+        return {"synced": 0, "skipped": 0, "errors": 1}
+
+    synced = skipped = errors = 0
+    for row in rows:
+        tenant_id = row[0] or ""
+        inst_name = (row[1] or "").strip()
+        created_at = float(row[2] or 0)
+
+        if not inst_name or inst_name.startswith("待确认_") or not tenant_id:
+            skipped += 1
+            continue
+        try:
+            existing = get_by_name(tenant_id=tenant_id, name=inst_name)
+            existing_order = _stage_order.get(
+                existing.stage.value if existing else "", -1
+            )
+            pitched_order = _stage_order["pitched"]
+            # 只有当现有 stage 低于 pitched 时才写入；已有更高阶段的不降级
+            if existing and existing_order >= pitched_order:
+                skipped += 1
+                continue
+            profile = InstitutionProfile(
+                institution_id=existing.institution_id if existing else _uuid.uuid4().hex,
+                tenant_id=tenant_id,
+                name=inst_name,
+                stage=PipelineStage.PITCHED,
+                thermal=existing.thermal if existing else InstitutionThermal.WARM,
+                preferences=existing.preferences if existing else "",
+                concerns=existing.concerns if existing else "",
+                ai_summary=existing.ai_summary if existing else "",
+                updated_at=created_at,
+                source_trace_id="startup_sync",
+            )
+            upsert_institution(profile)
+            synced += 1
+        except Exception as e:  # noqa: BLE001
+            _log.warning("sync_institutions: upsert 失败 inst=%s: %s", inst_name, e)
+            errors += 1
+
+    _log.info(
+        "sync_institutions_from_pitch_jobs done: synced=%d skipped=%d errors=%d",
+        synced, skipped, errors,
+    )
+    return {"synced": synced, "skipped": skipped, "errors": errors}
+
+
 def update_stage_by_name(*, tenant_id: str, name: str, stage: str) -> bool:
     """
     按机构名查找并更新 Pipeline 阶段。

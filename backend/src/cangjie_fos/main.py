@@ -75,6 +75,20 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as _e:  # noqa: BLE001
         import logging as _log  # noqa: PLC0415
         _log.getLogger(__name__).warning("GitHub pull 启动失败（非致命）: %s", _e)
+    # 启动时补全 institutions 表（从 pitch_jobs 回溯）
+    # 修复：路演录音写入的机构数据因静默失败未能进 institutions.sqlite，
+    # 导致重启后 War Room 漏斗显示为空。此处幂等补全，不依赖 LLM。
+    try:
+        import threading as _threading  # noqa: PLC0415
+        from cangjie_fos.services.institution_store import sync_institutions_from_pitch_jobs  # noqa: PLC0415
+        _threading.Thread(
+            target=sync_institutions_from_pitch_jobs,
+            daemon=True,
+            name="institution-sync",
+        ).start()
+    except Exception as _e:  # noqa: BLE001
+        import logging as _log  # noqa: PLC0415
+        _log.getLogger(__name__).warning("institution startup sync 失败（非致命）: %s", _e)
     yield
     _scheduler.shutdown(wait=False)
     from cangjie_fos.services.npc_chat_graph import reset_compiled_npc_graph_for_tests
