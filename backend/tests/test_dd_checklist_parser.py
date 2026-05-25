@@ -211,3 +211,79 @@ def test_prefilter_passthrough_when_small_index():
     batch_items = [{"id": "1", "requirement": "营业执照"}]
     result = _prefilter_files_for_batch(batch_items, index_rows, top_n=50)
     assert len(result) == 30
+
+
+# ── clean_filename 单元测试 ──────────────────────────────────────
+
+def test_clean_filename_strips_extension():
+    from cangjie_fos.services.dd_index_service import clean_filename
+    assert clean_filename("验资报告.pdf") == "验资报告"
+
+
+def test_clean_filename_strips_date_and_version():
+    from cangjie_fos.services.dd_index_service import clean_filename
+    result = clean_filename("审计报告2024年06月最终版.pdf")
+    assert "2024" not in result
+    assert "最终版" not in result
+    assert "审计报告" in result
+
+
+def test_clean_filename_strips_version_tag():
+    from cangjie_fos.services.dd_index_service import clean_filename
+    result = clean_filename("股权结构图v2.1.xlsx")
+    assert "v2.1" not in result
+    assert "股权结构图" in result
+
+
+def test_clean_filename_improves_prefilter_match():
+    """clean_filename 使带年份的文件名也能匹配到相关需求。"""
+    from cangjie_fos.services.dd_match_service import _prefilter_files_for_batch
+    # 文件名含年份，不加 clean 时 bigram "审计" 无法命中
+    index_rows = [
+        {"filename": "2023年度审计报告_盖章版.pdf", "summary": None},
+        {"filename": "完全不相关文件.docx", "summary": None},
+    ] * 30  # 超过 top_n 阈值
+    batch_items = [{"id": "1", "requirement": "审计报告"}]
+    result = _prefilter_files_for_batch(batch_items, index_rows, top_n=30)
+    filenames = [r["filename"] for r in result]
+    assert "2023年度审计报告_盖章版.pdf" in filenames
+
+
+# ── Top-3 candidates 存储测试 ─────────────────────────────────────
+
+def test_run_matching_stores_candidates_json():
+    """匹配结果中应包含 candidates_json，且主文件为置信度最高的候选。"""
+    import json
+    from cangjie_fos.services.dd_match_service import create_match_session, run_matching, get_session_items
+
+    items = [{"item_no": "1", "category": "财务", "requirement": "审计报告"}]
+    session_id = create_match_session("test_tenant", "test.xlsx", "/folder", items)
+
+    fake_index = [
+        {"file_path": "/folder/审计.pdf", "filename": "审计.pdf", "summary": "审计报告"},
+        {"file_path": "/folder/备选.pdf", "filename": "备选.pdf", "summary": "备选"},
+    ]
+
+    def fake_batch_match(items, file_list_text, index_rows):
+        return {items[0]["id"]: {
+            "file_path": "/folder/审计.pdf",
+            "filename": "审计.pdf",
+            "confidence": 0.92,
+            "reason": "最佳匹配",
+            "candidates_json": json.dumps([
+                {"file_path": "/folder/审计.pdf", "filename": "审计.pdf", "confidence": 0.92, "reason": "最佳"},
+                {"file_path": "/folder/备选.pdf", "filename": "备选.pdf", "confidence": 0.65, "reason": "次选"},
+            ], ensure_ascii=False),
+        }}
+
+    from unittest.mock import patch
+    with patch("cangjie_fos.services.dd_match_service._llm_batch_match", side_effect=fake_batch_match):
+        with patch("cangjie_fos.services.dd_match_service._get_index_for_folder", return_value=fake_index):
+            run_matching(session_id, "/folder")
+
+    result = get_session_items(session_id)
+    assert result[0]["matched_filename"] == "审计.pdf"
+    assert result[0]["candidates_json"] is not None
+    cands = json.loads(result[0]["candidates_json"])
+    assert len(cands) == 2
+    assert cands[1]["filename"] == "备选.pdf"

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import logging
 import os
+import re
 import uuid
 import time
 from pathlib import Path
@@ -10,6 +11,18 @@ from cangjie_fos.services.dd_file_parser import extract_text, SUPPORTED_EXTENSIO
 from cangjie_fos.services.db_base import _connect
 
 logger = logging.getLogger(__name__)
+
+
+def clean_filename(name: str) -> str:
+    """去除文件名中的日期、版本号、噪音词，提升二元组预筛准确率。"""
+    name = re.sub(r'\.\w+$', '', name)
+    name = re.sub(r'20\d{2}[-年/]\d{0,2}[-月/]?\d{0,2}日?', '', name)
+    name = re.sub(r'20\d{2}', '', name)
+    name = re.sub(r'[vV]\d+(\.\d+)*', '', name)
+    for noise in ['最终版', '终稿', '副本', '扫描件', '盖章版', '签字版', '修订']:
+        name = name.replace(noise, '')
+    name = re.sub(r'[（(【\[].{0,10}[）)\]】]', '', name)
+    return name.strip()
 
 
 def scan_and_index_folder(folder_path: str, tenant_id: str) -> dict:

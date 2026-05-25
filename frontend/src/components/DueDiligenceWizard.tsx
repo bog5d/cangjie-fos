@@ -1,5 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 
+interface Candidate {
+  file_path: string;
+  filename: string;
+  confidence: number;
+  reason: string;
+}
+
 interface DDItem {
   id: string;
   item_no: string;
@@ -11,6 +18,8 @@ interface DDItem {
   match_reason: string | null;
   user_confirmed: number;
   user_skipped: number;
+  candidates_json: string | null;
+  extra_files_json: string | null;
 }
 
 interface SessionSummary {
@@ -53,6 +62,7 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
   // Step 3 state
   const [items, setItems] = useState<DDItem[]>([]);
   const [bulkConfirming, setBulkConfirming] = useState(false);
+  const [expandedCandidates, setExpandedCandidates] = useState<string | null>(null);
   const [manualInputItem, setManualInputItem] = useState<string | null>(null);
   const [manualPath, setManualPath] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -246,6 +256,30 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
     } finally {
       setBulkConfirming(false);
     }
+  }, [sessionId]);
+
+  // ── Step 3: 选用备选候选 ──────────────────────────────────────
+  const handleSelectCandidate = useCallback(async (itemId: string, cand: Candidate) => {
+    if (!sessionId) return;
+    try {
+      await fetch(`/api/v1/dd/sessions/${sessionId}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matched_file_path: cand.file_path,
+          matched_filename: cand.filename,
+          confidence: cand.confidence,
+        }),
+      });
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === itemId
+            ? { ...i, matched_file_path: cand.file_path, matched_filename: cand.filename, confidence: cand.confidence, match_reason: cand.reason }
+            : i
+        )
+      );
+      setExpandedCandidates(null);
+    } catch (_) {}
   }, [sessionId]);
 
   // ── Step 3: 手动指定文件 ──────────────────────────────────────
@@ -567,7 +601,23 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                           </td>
                           <td className="px-3 py-2">
                             {item.matched_filename ? (
-                              <span title={item.match_reason || ""}>{item.matched_filename}</span>
+                              <div>
+                                <span title={item.match_reason || ""}>{item.matched_filename}</span>
+                                {item.candidates_json && (() => {
+                                  try {
+                                    const cands: Candidate[] = JSON.parse(item.candidates_json);
+                                    if (cands.length > 1) return (
+                                      <button
+                                        onClick={() => setExpandedCandidates(expandedCandidates === item.id ? null : item.id)}
+                                        className="ml-2 text-xs text-indigo-500 hover:text-indigo-700"
+                                      >
+                                        {expandedCandidates === item.id ? "▲" : `▼ ${cands.length}个候选`}
+                                      </button>
+                                    );
+                                  } catch (_) {}
+                                  return null;
+                                })()}
+                              </div>
                             ) : (
                               <span className="text-gray-400 italic">无匹配</span>
                             )}
@@ -590,17 +640,16 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                                 >
                                   缺
                                 </button>
-                                {!item.matched_filename && (
-                                  <button
-                                    onClick={() => {
-                                      setManualInputItem(item.id);
-                                      setManualPath("");
-                                    }}
-                                    className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded"
-                                  >
-                                    📂
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => {
+                                    setManualInputItem(item.id);
+                                    setManualPath("");
+                                    setExpandedCandidates(null);
+                                  }}
+                                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded"
+                                >
+                                  📂
+                                </button>
                               </>
                             )}
                             {item.user_confirmed === 1 && (
@@ -611,6 +660,38 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
                             )}
                           </td>
                         </tr>
+                        {/* 备选候选展开行 */}
+                        {expandedCandidates === item.id && item.candidates_json && (() => {
+                          try {
+                            const cands: Candidate[] = JSON.parse(item.candidates_json);
+                            return (
+                              <tr className="border-t bg-indigo-50">
+                                <td colSpan={5} className="px-3 py-2">
+                                  <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（点击选用）：</p>
+                                  <div className="space-y-1">
+                                    {cands.map((cand, idx) => (
+                                      <div key={idx} className="flex items-center gap-2 text-xs">
+                                        <span className={`w-8 text-center rounded px-1 ${cand.confidence >= 0.8 ? "bg-green-100 text-green-700" : cand.confidence >= 0.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-600"}`}>
+                                          {Math.round(cand.confidence * 100)}%
+                                        </span>
+                                        <span className="flex-1 text-gray-700" title={cand.reason}>{cand.filename}</span>
+                                        {idx > 0 && (
+                                          <button
+                                            onClick={() => void handleSelectCandidate(item.id, cand)}
+                                            className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
+                                          >
+                                            选用
+                                          </button>
+                                        )}
+                                        {idx === 0 && <span className="text-gray-400 italic">（当前）</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          } catch (_) { return null; }
+                        })()}
                         {/* 手动指定文件的内联输入行 */}
                         {manualInputItem === item.id && (
                           <tr className="border-t bg-blue-50">

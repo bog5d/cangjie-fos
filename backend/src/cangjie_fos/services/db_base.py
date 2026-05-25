@@ -297,7 +297,9 @@ CREATE TABLE IF NOT EXISTS dd_match_items (
     confidence        REAL,
     match_reason      TEXT,
     user_confirmed    INTEGER NOT NULL DEFAULT 0,
-    user_skipped      INTEGER NOT NULL DEFAULT 0
+    user_skipped      INTEGER NOT NULL DEFAULT 0,
+    candidates_json   TEXT,
+    extra_files_json  TEXT
 );
 """
 
@@ -317,6 +319,8 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (10, "ALTER TABLE pitch_jobs ADD COLUMN confirmed_speakers_json TEXT"),
     (11, "ALTER TABLE pitch_jobs ADD COLUMN referrer TEXT NOT NULL DEFAULT ''"),
     (12, "ALTER TABLE dd_match_sessions ADD COLUMN institution_name TEXT NOT NULL DEFAULT ''"),
+    (13, "ALTER TABLE dd_match_items ADD COLUMN candidates_json TEXT"),
+    (14, "ALTER TABLE dd_match_items ADD COLUMN extra_files_json TEXT"),
 ]
 
 
