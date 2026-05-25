@@ -3,7 +3,6 @@ import { api, getSession, clearSession, type FosSession } from "./api/client";
 import { LoginPage } from "./components/LoginPage";
 import { AchievementFlash } from "./components/AchievementFlash";
 import { DoctorPanel } from "./components/DoctorPanel";
-import { ExpHud } from "./components/ExpHud";
 import { NPCPanel } from "./components/NPCPanel";
 import { ScoreToastStack, type ScoreToastItem } from "./components/ScoreToast";
 import { PitchJobHistory, type JobRow } from "./components/PitchJobHistory";
@@ -343,7 +342,6 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
         subtitle="团队材料结构已跨过关键水位，继续保持迭代节奏。"
         onClose={() => setAchOpen(false)}
       />
-      <ExpHud totalExp={totalExp} lastHint={expHint} />
       <ScoreToastStack items={toasts} onDone={dismissToast} />
 
       <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
