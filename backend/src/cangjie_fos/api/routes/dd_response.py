@@ -57,8 +57,10 @@ def pick_folder(initial_dir: str = ""):
         from tkinter import filedialog
         root = tk.Tk()
         root.withdraw()
+        root.lift()
         root.attributes("-topmost", True)
-        kwargs: dict = {"title": "选择材料库文件夹"}
+        root.focus_force()
+        kwargs: dict = {"title": "选择材料库文件夹", "parent": root}
         if initial_dir and Path(initial_dir).exists():
             kwargs["initialdir"] = initial_dir
         selected = filedialog.askdirectory(**kwargs)
@@ -78,10 +80,13 @@ def pick_file(initial_dir: str = ""):
         from tkinter import filedialog
         root = tk.Tk()
         root.withdraw()
+        root.lift()
         root.attributes("-topmost", True)
+        root.focus_force()
         kwargs: dict = {
             "title": "选择文件",
             "filetypes": [("所有文件", "*.*")],
+            "parent": root,
         }
         if initial_dir and Path(initial_dir).exists():
             kwargs["initialdir"] = initial_dir
