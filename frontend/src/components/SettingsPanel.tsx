@@ -14,6 +14,7 @@ interface KeyStatus {
   DEEPSEEK_API_KEY: boolean;
   DASHSCOPE_API_KEY: boolean;
   KIMI_API_KEY: boolean;
+  COACH_DATA_GITHUB_TOKEN: boolean;
 }
 
 interface TestResult {
@@ -26,6 +27,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   // 当前填写的值（空字符串 = 不修改已有的）
+  const [githubToken, setGithubToken] = useState("");
   const [deepseekKey, setDeepseekKey] = useState("");
   const [dashscopeKey, setDashscopeKey] = useState("");
   const [kimiKey, setKimiKey] = useState("");
@@ -34,10 +36,12 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
   const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
 
   // 测试结果
+  const [githubTest, setGithubTest] = useState<TestResult | null>(null);
   const [deepseekTest, setDeepseekTest] = useState<TestResult | null>(null);
   const [dashscopeTest, setDashscopeTest] = useState<TestResult | null>(null);
 
   const [saving, setSaving] = useState(false);
+  const [testingGithub, setTestingGithub] = useState(false);
   const [testingDeepseek, setTestingDeepseek] = useState(false);
   const [testingDashscope, setTestingDashscope] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -54,6 +58,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
   useEffect(() => {
     if (open) {
       void loadStatus();
+      setGithubTest(null);
       setDeepseekTest(null);
       setDashscopeTest(null);
       setSavedMsg("");
@@ -76,6 +81,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
     setSaving(true);
     setSavedMsg("");
     const keys: Record<string, string> = {};
+    if (githubToken.trim()) keys["COACH_DATA_GITHUB_TOKEN"] = githubToken.trim();
     if (deepseekKey.trim()) keys["DEEPSEEK_API_KEY"] = deepseekKey.trim();
     if (dashscopeKey.trim()) keys["DASHSCOPE_API_KEY"] = dashscopeKey.trim();
     if (kimiKey.trim()) keys["KIMI_API_KEY"] = kimiKey.trim();
@@ -88,6 +94,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
 
     try {
       await api.post("/api/v1/settings/api-keys", { keys });
+      setGithubToken("");
       setDeepseekKey("");
       setDashscopeKey("");
       setKimiKey("");
@@ -99,6 +106,26 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
     } finally {
       setSaving(false);
       setTimeout(() => setSavedMsg(""), 4000);
+    }
+  };
+
+  const handleTestGithub = async () => {
+    setTestingGithub(true);
+    setGithubTest(null);
+    if (githubToken.trim()) {
+      try {
+        await api.post("/api/v1/settings/api-keys", {
+          keys: { COACH_DATA_GITHUB_TOKEN: githubToken.trim() },
+        });
+      } catch { /* ignore */ }
+    }
+    try {
+      const r = await api.post<TestResult>("/api/v1/settings/api-keys/test-github");
+      setGithubTest(r.data);
+    } catch {
+      setGithubTest({ ok: false, message: "请求失败，请检查网络" });
+    } finally {
+      setTestingGithub(false);
     }
   };
 
@@ -167,13 +194,53 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-white/15 bg-slate-900 p-5 shadow-2xl"
+          className="absolute right-0 top-full z-50 mt-2 w-96 rounded-xl border border-white/15 bg-slate-900 p-5 shadow-2xl"
         >
           <h3 className="mb-4 font-display text-sm font-bold uppercase tracking-widest text-white">
             API Key 配置
           </h3>
 
           <div className="space-y-4">
+            {/* GitHub 同步 Token */}
+            <div>
+              <div className="mb-1 flex items-center gap-2">
+                {statusDot(keyStatus?.COACH_DATA_GITHUB_TOKEN)}
+                <label className="text-xs font-semibold text-slate-300">
+                  GitHub 同步 Token
+                </label>
+                <span className="ml-auto text-[10px] text-slate-500">
+                  {keyStatus?.COACH_DATA_GITHUB_TOKEN ? "已配置" : "未配置"}
+                </span>
+              </div>
+              <p className="mb-1.5 text-[10px] text-slate-500">
+                用于拉取/推送路演数据到 coach_data 仓库。填写后同步按钮自动生效。
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  placeholder="ghp_xxxx（GitHub Fine-grained PAT）"
+                  className="flex-1 rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-600"
+                />
+                <button
+                  type="button"
+                  disabled={testingGithub}
+                  onClick={() => void handleTestGithub()}
+                  className="rounded-lg border border-cyan/30 px-2 py-1.5 text-[11px] text-cyan-400 hover:bg-cyan/10 disabled:opacity-50"
+                >
+                  {testingGithub ? "…" : "测试"}
+                </button>
+              </div>
+              {githubTest && (
+                <p className={`mt-1 text-[11px] ${githubTest.ok ? "text-emerald-400" : "text-red-400"}`}>
+                  {githubTest.message}
+                </p>
+              )}
+            </div>
+
+            <hr className="border-white/10" />
+
             {/* DeepSeek */}
             <div>
               <div className="mb-1 flex items-center gap-2">
