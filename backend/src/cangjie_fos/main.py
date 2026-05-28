@@ -57,8 +57,11 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: PLC0415
     from cangjie_fos.services.nightly_settle import nightly_settle_all_tenants  # noqa: PLC0415
 
+    from cangjie_fos.services.proactive_interviewer import run_proactive_interview_all_tenants  # noqa: PLC0415
+
     _scheduler = AsyncIOScheduler()
     _scheduler.add_job(nightly_settle_all_tenants, "cron", hour=2, minute=0)
+    _scheduler.add_job(run_proactive_interview_all_tenants, "cron", hour=18, minute=0)
     try:
         import logging as _logging  # noqa: PLC0415
         from cangjie_fos.services.wiki_consolidator import consolidate_wiki  # noqa: PLC0415

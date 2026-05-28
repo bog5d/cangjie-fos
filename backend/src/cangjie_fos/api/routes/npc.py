@@ -29,6 +29,18 @@ def ingest_chat_log(
     return _ingest(raw_text, tenant_id=tenant_id, persist=persist)
 
 
+@router.post("/v1/npc/proactive-interview", summary="手动触发反向访谈（立即扫描停滞机构）")
+def trigger_proactive_interview(
+    tenant_id: str = Body(..., embed=True, description="租户 ID"),
+) -> dict:
+    """
+    手动触发一次反向访谈扫描。
+    正常由 APScheduler 每天 18:00 自动运行，此端点供手动测试和紧急触发使用。
+    """
+    from cangjie_fos.services.proactive_interviewer import run_proactive_interview
+    return run_proactive_interview(tenant_id=tenant_id)
+
+
 @router.get("/npc/poll")
 def npc_poll(cursor: int = Query(0, ge=0)) -> dict:
     lines, next_cursor = peek_lines_after(cursor)
