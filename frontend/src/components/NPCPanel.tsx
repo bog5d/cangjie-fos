@@ -52,8 +52,55 @@ export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName
   const [reportModalJobId, setReportModalJobId] = useState<string | null>(null);
   const [correcting, setCorrecting] = useState<ChatLine | null>(null);
   const [correctionText, setCorrectionText] = useState("");
-  /** 实时通道：不向聊天流写入底层错误；首帧即「连接中」避免误显示「重连」 */
   const [wsPhase, setWsPhase] = useState<"connecting" | "open" | "closed">("connecting");
+
+  // ── 群消息摄入 ──────────────────────────────────────────────────────
+  const [chatLogOpen, setChatLogOpen] = useState(false);
+  const [chatLogText, setChatLogText] = useState("");
+  const [chatLogBusy, setChatLogBusy] = useState(false);
+
+  const submitChatLog = useCallback(async () => {
+    if (!chatLogText.trim()) return;
+    setChatLogBusy(true);
+    try {
+      const { data } = await api.post<{
+        institution_updates: { name: string; note: string }[];
+        followup_items: { action: string; institution: string }[];
+        summary: string;
+      }>("/api/v1/npc/ingest-chat-log", {
+        raw_text: chatLogText,
+        tenant_id: tenantId,
+        persist: true,
+      });
+      const summary = data.summary || "";
+      const instCount = data.institution_updates?.length ?? 0;
+      const followCount = data.followup_items?.length ?? 0;
+      setLines((prev: ChatLine[]) => [
+        ...prev,
+        {
+          id: `chatlog-${Date.now()}`,
+          role: "系统",
+          text: `📥 群消息摄入完成\n${summary}\n更新机构 ${instCount} 家 · 新增行动项 ${followCount} 条`,
+          isAi: false,
+        },
+      ]);
+      setChatLogText("");
+      setChatLogOpen(false);
+      onPipelineDataChanged?.();
+    } catch (e) {
+      setLines((prev: ChatLine[]) => [
+        ...prev,
+        {
+          id: `chatlog-err-${Date.now()}`,
+          role: "系统",
+          text: `群消息摄入失败：${e instanceof Error ? e.message : String(e)}`,
+          isAi: false,
+        },
+      ]);
+    } finally {
+      setChatLogBusy(false);
+    }
+  }, [chatLogText, tenantId, onPipelineDataChanged]);
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -484,7 +531,48 @@ export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName
           >
             上传录音
           </button>
+          <button
+            type="button"
+            onClick={() => setChatLogOpen((v) => !v)}
+            className="rounded-lg border border-cyan/30 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20"
+            title="粘贴微信工作群聊天记录，AI 自动提取融资进展入库"
+          >
+            {chatLogOpen ? "收起群消息" : "📋 群消息入库"}
+          </button>
         </div>
+
+        {chatLogOpen && (
+          <div className="mb-3 flex flex-col gap-2 rounded-xl border border-cyan/20 bg-cyan/5 p-3">
+            <p className="text-[10px] text-slate-400">
+              在微信群按 <kbd className="rounded bg-white/10 px-1 py-0.5 font-mono">Ctrl+A</kbd>{" "}
+              全选后 <kbd className="rounded bg-white/10 px-1 py-0.5 font-mono">Ctrl+C</kbd> 复制，粘贴到下方：
+            </p>
+            <textarea
+              className="h-28 w-full resize-none rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan/50"
+              placeholder="粘贴原始群聊记录…（含时间戳、人名、噪声均可）"
+              value={chatLogText}
+              onChange={(e) => setChatLogText(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setChatLogOpen(false); setChatLogText(""); }}
+                className="rounded-lg border border-white/15 px-3 py-1 text-xs text-slate-400 hover:text-white"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                disabled={chatLogBusy || !chatLogText.trim()}
+                onClick={() => void submitChatLog()}
+                className="rounded-lg bg-cyan/80 px-4 py-1 text-xs font-bold text-black disabled:opacity-40"
+              >
+                {chatLogBusy ? "解析中…" : "提交解析"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-2">
           <input
             className="min-w-0 flex-1 rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-slate-600"
