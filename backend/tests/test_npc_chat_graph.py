@@ -381,3 +381,59 @@ class TestNpcToolExecutors:
         assert "6" in result  # 2+1+3 总计
         assert "due_diligence" in result
         assert "测试机构" in result
+
+    def test_list_recent_roadshows_with_data(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        fake_jobs = [
+            ("job1", {"institution_id": "红杉资本", "status": "completed",
+                      "exp_delta": 3, "created_at": 1716825600.0}),
+            ("job2", {"institution_id": "高瓴", "status": "completed",
+                      "exp_delta": None, "created_at": 1716739200.0}),
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_for_tenant",
+            lambda tenant_id, limit: fake_jobs,
+        )
+        result = npc_tools.execute_tool("list_recent_roadshows", {"limit": 5}, tenant_id="t1")
+        assert "红杉资本" in result
+        assert "高瓴" in result
+        assert "completed" in result
+
+    def test_list_recent_roadshows_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_for_tenant",
+            lambda tenant_id, limit: [],
+        )
+        result = npc_tools.execute_tool("list_recent_roadshows", {}, tenant_id="t1")
+        assert "暂无" in result
+
+    def test_list_pending_followups_with_data(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        fake_items = [
+            {"actor": "我方", "action": "发送尽调清单", "priority": "high",
+             "institution_id": "红杉资本"},
+            {"actor": "对方", "action": "反馈 TS 意见", "priority": "normal",
+             "institution_id": "高瓴"},
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_follow_up_list",
+            lambda tenant_id, limit, include_done: fake_items,
+        )
+        result = npc_tools.execute_tool("list_pending_followups", {}, tenant_id="t1")
+        assert "发送尽调清单" in result
+        assert "反馈 TS 意见" in result
+        assert "红杉资本" in result
+
+    def test_list_pending_followups_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_follow_up_list",
+            lambda tenant_id, limit, include_done: [],
+        )
+        result = npc_tools.execute_tool("list_pending_followups", {}, tenant_id="t1")
+        assert "没有" in result
