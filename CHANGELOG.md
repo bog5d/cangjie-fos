@@ -4,6 +4,23 @@
 
 ---
 
+## [1.1.0] — 2026-05-21  同事反馈5个Bug全修复
+
+> 测试基线：643+ passed（新增17个，41 in modified files pass）
+
+### Fixed
+- **尽调扫描超时（Bug 1）**：`dd_index_service` 新增 `MAX_LLM_SUMMARIZE_FILES=200`，文件数 >200 时跳过 LLM 摘要仅记录文件名；新增 `progress_callback` 参数每50文件上报进度；前端扫描轮询超时从 120s → 400s（10分钟），并实时显示扫描进度百分比
+- **尽调向导白色文字（Bug 2）**：`DueDiligenceWizard.tsx` 5处 `input/textarea` 补 `text-gray-900`，解决 App 根节点 `text-white` 继承导致字不可见的问题
+- **匹配完全无效（Bug 3）**：`dd_match_service._get_index_for_folder` 移除 `AND readable=1` 过滤，图片型PDF/加密文件等不可读文件现在通过文件名参与匹配
+- **路演报告字段无法编辑（路演 Bug 5）**：`RoadshowIntelView` 的 `key_questions`、`interest_signals`、`next_actions` 渲染循环补传 `editMode` 和 `onChange` 回调，点击「✏️ 编辑摘要」后条目级全部可内联修改
+- **路演无法生成HTML报告（路演 Bug 4）**：`roadshow.py` 新增 `POST/GET /api/v1/roadshow/jobs/{id}/html-report`，生成自包含暗色中文 HTML 报告（含所有章节）；`ReviewWorkbench` 路演视图底部新增 `RoadshowHtmlExport` 组件
+
+### Changed
+- `auth.py` `sync_pull_route` 改为异步后台执行（避免 GitHub 同步30秒超时卡死前端）
+- 测试：`test_dd_file_parser.py` 新增7个（大文件夹跳LLM/进度回调/不可读文件匹配）；`test_roadshow_api.py` 新增6个（HTML报告生成/文件内容/章节/404错误）
+
+---
+
 ## [1.0.0] — 2026-05-18  尽调响应台体验升级：原生文件夹选取
 
 > 测试基线：643 passed（不变）

@@ -221,7 +221,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
                   value={githubToken}
                   onChange={(e) => setGithubToken(e.target.value)}
                   placeholder="ghp_xxxx（GitHub Fine-grained PAT）"
-                  className="flex-1 rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-600"
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-gray-800 placeholder:text-gray-400"
                 />
                 <button
                   type="button"
@@ -258,7 +258,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
                   value={deepseekKey}
                   onChange={(e) => setDeepseekKey(e.target.value)}
                   placeholder="sk-xxxx（填写以覆盖现有值）"
-                  className="flex-1 rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-600"
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-gray-800 placeholder:text-gray-400"
                 />
                 <button
                   type="button"
@@ -293,7 +293,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
                   value={dashscopeKey}
                   onChange={(e) => setDashscopeKey(e.target.value)}
                   placeholder="sk-xxxx（填写以覆盖现有值）"
-                  className="flex-1 rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-600"
+                  className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-gray-800 placeholder:text-gray-400"
                 />
                 <button
                   type="button"
@@ -327,7 +327,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
                 value={kimiKey}
                 onChange={(e) => setKimiKey(e.target.value)}
                 placeholder="sk-xxxx（填写以覆盖现有值）"
-                className="w-full rounded-lg border border-white/10 bg-black/40 px-2 py-1.5 text-xs text-white placeholder:text-slate-600"
+                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-gray-800 placeholder:text-gray-400"
               />
             </div>
           </div>
