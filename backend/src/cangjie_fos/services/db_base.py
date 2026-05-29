@@ -383,11 +383,12 @@ def _connect() -> sqlite3.Connection:
         db_path_str = _pjdb._db_path()
     else:
         db_path_str = _db_path()
-    conn = sqlite3.connect(db_path_str, check_same_thread=False)
+    conn = sqlite3.connect(db_path_str, check_same_thread=False, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-32000")
+    conn.execute("PRAGMA busy_timeout=5000")  # 锁冲突时等待最多5秒再失败（防测试 flaky）
     _init_db(conn)
     return conn
 

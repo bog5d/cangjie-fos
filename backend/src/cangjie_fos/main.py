@@ -76,28 +76,30 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as _e:  # noqa: BLE001
         _logging.getLogger(__name__).warning("wiki_consolidator 注册失败（非致命）: %s", _e)
     _scheduler.start()
-    # GitHub 同步：启动时拉取最新数据（后台线程，不阻塞启动）
-    try:
-        import threading as _threading  # noqa: PLC0415
-        from cangjie_fos.services.github_sync import pull_latest  # noqa: PLC0415
-        _threading.Thread(target=pull_latest, daemon=True, name="github-pull").start()
-    except Exception as _e:  # noqa: BLE001
-        import logging as _log  # noqa: PLC0415
-        _log.getLogger(__name__).warning("GitHub pull 启动失败（非致命）: %s", _e)
-    # 启动时补全 institutions 表（从 pitch_jobs 回溯）
-    # 修复：路演录音写入的机构数据因静默失败未能进 institutions.sqlite，
-    # 导致重启后 War Room 漏斗显示为空。此处幂等补全，不依赖 LLM。
-    try:
-        import threading as _threading  # noqa: PLC0415
-        from cangjie_fos.services.institution_store import sync_institutions_from_pitch_jobs  # noqa: PLC0415
-        _threading.Thread(
-            target=sync_institutions_from_pitch_jobs,
-            daemon=True,
-            name="institution-sync",
-        ).start()
-    except Exception as _e:  # noqa: BLE001
-        import logging as _log  # noqa: PLC0415
-        _log.getLogger(__name__).warning("institution startup sync 失败（非致命）: %s", _e)
+    # GitHub 同步 + 机构补全：启动时后台拉取（测试环境跳过，避免线程竞争 SQLite）
+    # CANGJIE_DISABLE_STARTUP_SYNC=1 由 conftest.py 自动设置，生产环境不设置。
+    if os.getenv("CANGJIE_DISABLE_STARTUP_SYNC", "").strip().lower() not in {"1", "true", "yes"}:
+        try:
+            import threading as _threading  # noqa: PLC0415
+            from cangjie_fos.services.github_sync import pull_latest  # noqa: PLC0415
+            _threading.Thread(target=pull_latest, daemon=True, name="github-pull").start()
+        except Exception as _e:  # noqa: BLE001
+            import logging as _log  # noqa: PLC0415
+            _log.getLogger(__name__).warning("GitHub pull 启动失败（非致命）: %s", _e)
+        # 启动时补全 institutions 表（从 pitch_jobs 回溯）
+        # 修复：路演录音写入的机构数据因静默失败未能进 institutions.sqlite，
+        # 导致重启后 War Room 漏斗显示为空。此处幂等补全，不依赖 LLM。
+        try:
+            import threading as _threading  # noqa: PLC0415
+            from cangjie_fos.services.institution_store import sync_institutions_from_pitch_jobs  # noqa: PLC0415
+            _threading.Thread(
+                target=sync_institutions_from_pitch_jobs,
+                daemon=True,
+                name="institution-sync",
+            ).start()
+        except Exception as _e:  # noqa: BLE001
+            import logging as _log  # noqa: PLC0415
+            _log.getLogger(__name__).warning("institution startup sync 失败（非致命）: %s", _e)
     yield
     _scheduler.shutdown(wait=False)
     from cangjie_fos.services.npc_chat_graph import reset_compiled_npc_graph_for_tests

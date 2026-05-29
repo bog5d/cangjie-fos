@@ -84,3 +84,10 @@ def _isolate_db_per_test(request, tmp_path, monkeypatch):
 
     db_file = tmp_path / "test_fos.db"
     monkeypatch.setattr(db_module, "_db_path", lambda: str(db_file))
+
+    # ── 阻止后台线程在测试期间访问 DB（防 "database is locked" flaky 失败）──────
+    # main.py lifespan 检查 CANGJIE_DISABLE_STARTUP_SYNC=1 时跳过 github-pull 和
+    # institution-sync 两个 daemon 线程的启动。这两个线程调用 _connect() 访问 DB，
+    # 与测试主线程竞争同一 tmp SQLite 文件，导致 PRAGMA journal_mode=WAL 锁冲突。
+    # 环境变量方案不影响直接测试这两个函数的测试文件（它们不走 lifespan）。
+    monkeypatch.setenv("CANGJIE_DISABLE_STARTUP_SYNC", "1")
