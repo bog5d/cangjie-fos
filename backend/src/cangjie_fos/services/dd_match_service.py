@@ -7,6 +7,7 @@ import uuid
 import time
 
 from cangjie_fos.services.db_base import _connect
+from cangjie_fos.services.dd_index_service import clean_filename
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +82,11 @@ def run_matching(session_id: str, folder_root: str) -> None:
                 conn.execute(
                     """UPDATE dd_match_items
                        SET matched_file_path = ?, matched_filename = ?,
-                           confidence = ?, match_reason = ?
+                           confidence = ?, match_reason = ?, candidates_json = ?
                        WHERE id = ?""",
                     (result.get("file_path"), result.get("filename"),
                      result.get("confidence", 0.0), result.get("reason", ""),
+                     result.get("candidates_json"),
                      item_id),
                 )
             # —— 把 LLM 未返回的项显式标为 confidence=0.0 ——
@@ -152,7 +154,8 @@ def _prefilter_files_for_batch(
 
     scored: list[tuple[int, dict]] = []
     for row in index_rows:
-        text = f"{row.get('filename', '')} {row.get('summary') or ''}".lower()
+        raw_name = row.get('filename', '')
+        text = f"{clean_filename(raw_name)} {raw_name} {row.get('summary') or ''}".lower()
         score = sum(1 for kw in all_keywords if kw in text)
         scored.append((score, row))
 
@@ -198,22 +201,23 @@ def _llm_batch_match(
 以下是机构的尽调需求：
 {req_lines}
 
-为每条需求找最匹配的文件（用文件编号[N]表示）。没有匹配的填 null。
+为每条需求找最多3个最匹配的文件（按相关性降序）。没有匹配的该条 candidates 填 []。
 返回 JSON（key 是需求 ID）：
 {{
-  "需求ID": {{"file_index": N或null, "confidence": 0到1的小数, "reason": "一句话说明"}}
+  "需求ID": {{
+    "candidates": [
+      {{"file_index": N, "confidence": 0到1的小数, "reason": "一句话说明"}},
+      {{"file_index": M, "confidence": 0到1的小数, "reason": "一句话说明"}}
+    ]
+  }}
 }}
 只返回 JSON："""
 
-        # ── v0.7.2: 带重试的 LLM 调用 ──
-        # 原 v0.7.0 中 except Exception: batch_results = {} 意味着
-        # 一次网络超时就丢弃整批30条，用户看到全「无匹配」会很困惑。
-        # 现在改为 3 次重试后才投降。
         def _do_batch_call() -> dict:
             resp = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=2000,
+                max_tokens=3000,
                 temperature=0,
             )
             raw = resp.choices[0].message.content.strip()
@@ -231,22 +235,40 @@ def _llm_batch_match(
 
         for item in batch:
             item_result = batch_results.get(item["id"], {})
-            file_idx = item_result.get("file_index")
-            if file_idx is not None and isinstance(file_idx, int) and 0 <= file_idx < len(batch_rows):
-                matched = batch_rows[file_idx]
+            raw_candidates = item_result.get("candidates", [])
+
+            # 兼容旧格式（LLM 偶尔返回 file_index 直接在顶层）
+            if not raw_candidates and "file_index" in item_result:
+                raw_candidates = [item_result]
+
+            resolved_candidates: list[dict] = []
+            for cand in raw_candidates:
+                file_idx = cand.get("file_index")
+                if file_idx is not None and isinstance(file_idx, int) and 0 <= file_idx < len(batch_rows):
+                    matched = batch_rows[file_idx]
+                    resolved_candidates.append({
+                        "file_path": matched["file_path"],
+                        "filename": matched["filename"],
+                        "confidence": float(cand.get("confidence", 0.5)),
+                        "reason": str(cand.get("reason", "")),
+                    })
+
+            if resolved_candidates:
+                best = resolved_candidates[0]
                 results[item["id"]] = {
-                    "file_path": matched["file_path"],
-                    "filename": matched["filename"],
-                    "confidence": float(item_result.get("confidence", 0.5)),
-                    "reason": str(item_result.get("reason", "")),
+                    "file_path": best["file_path"],
+                    "filename": best["filename"],
+                    "confidence": best["confidence"],
+                    "reason": best["reason"],
+                    "candidates_json": json.dumps(resolved_candidates, ensure_ascii=False),
                 }
             else:
-                # ── 即使 LLM 没返回这个 ID，也显式输出 confidence=0.0 ──
                 results[item["id"]] = {
                     "file_path": None,
                     "filename": None,
                     "confidence": 0.0,
                     "reason": "无匹配文件",
+                    "candidates_json": None,
                 }
 
     return results

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import logging
 import os
+import re
 import uuid
 import time
 from pathlib import Path
@@ -14,6 +15,17 @@ logger = logging.getLogger(__name__)
 
 # 超过此数量的文件夹不做 LLM 摘要，只索引文件名+类型，避免几小时的 API 调用
 MAX_LLM_SUMMARIZE_FILES = 200
+
+def clean_filename(name: str) -> str:
+    """去除文件名中的日期、版本号、噪音词，提升二元组预筛准确率。"""
+    name = re.sub(r'\.\w+$', '', name)
+    name = re.sub(r'20\d{2}[-年/]\d{0,2}[-月/]?\d{0,2}日?', '', name)
+    name = re.sub(r'20\d{2}', '', name)
+    name = re.sub(r'[vV]\d+(\.\d+)*', '', name)
+    for noise in ['最终版', '终稿', '副本', '扫描件', '盖章版', '签字版', '修订']:
+        name = name.replace(noise, '')
+    name = re.sub(r'[（(【\[].{0,10}[）)\]】]', '', name)
+    return name.strip()
 
 
 def scan_and_index_folder(

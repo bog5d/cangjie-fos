@@ -1,6 +1,7 @@
 """NPC 对话 LangGraph + Sqlite Checkpointer + 租户上下文注入（Phase 4）。"""
 from __future__ import annotations
 
+import json
 import logging
 import os
 import uuid
@@ -244,14 +245,63 @@ def _call_llm(state: NpcGraphState) -> dict[str, Sequence[BaseMessage]]:
                 plain.append({"role": "user", "content": str(m.content)})
         max_out = int((os.getenv("CANGJIE_NPC_MAX_OUTPUT_TOKENS") or "1200").strip() or "1200")
         max_out = max(256, min(4000, max_out))
-        r = client.chat.completions.create(
-            model=model,
-            temperature=0.35,
-            messages=plain,
-            max_tokens=max_out,
-        )
-        text = (r.choices[0].message.content or "").strip()
-        return {"messages": [AIMessage(content=text)]}
+
+        from cangjie_fos.services.npc_tools import PHASE1_TOOLS, execute_tool
+        tid = (state.get("tenant_id") or "unknown")
+
+        # ── Tool-call 循环（最多 5 轮，防止无限递归）────────────────────────
+        for _loop in range(5):
+            r = client.chat.completions.create(
+                model=model,
+                temperature=0.35,
+                messages=plain,
+                max_tokens=max_out,
+                tools=PHASE1_TOOLS,
+                tool_choice="auto",
+            )
+            choice = r.choices[0]
+            msg = choice.message
+
+            # 无工具调用 → 正常文本回复，退出循环
+            if not msg.tool_calls:
+                text = (msg.content or "").strip()
+                return {"messages": [AIMessage(content=text)]}
+
+            # 有工具调用 → 执行每个 tool_call，把结果追加进 plain，继续循环
+            # 先把 assistant 的 tool_calls 消息加入历史
+            plain.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in msg.tool_calls
+                ],
+            })
+
+            for tc in msg.tool_calls:
+                try:
+                    args = json.loads(tc.function.arguments or "{}")
+                except Exception:
+                    args = {}
+                tool_result = execute_tool(tc.function.name, args, tenant_id=tid)
+                logger.info("npc_tool_call: %s(%s) → %s…", tc.function.name, args,
+                            tool_result[:80])
+                plain.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": tool_result,
+                })
+
+        # 超过5轮仍未收敛，直接返回最后一次文本（防止死循环）
+        fallback = (r.choices[0].message.content or "【工具调用超出轮次限制】").strip()
+        return {"messages": [AIMessage(content=fallback)]}
     except Exception as e:  # noqa: BLE001
         logger.warning("npc_llm_failed: %s", e)
         # OS/网络错误（如 [Errno 2]）给出可操作提示；其他错误保留原始信息

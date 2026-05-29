@@ -224,3 +224,216 @@ class TestExportThreadMessages:
                 os.environ["DEEPSEEK_API_KEY"] = old_ds
             if old_oa is not None:
                 os.environ["OPENAI_API_KEY"] = old_oa
+
+
+# ── Tool Use 测试 ────────────────────────────────────────────────────────────
+
+class TestNpcToolUse:
+    """验证 _call_llm 能正确处理 tool_call 并把结果喂回 LLM。"""
+
+    def setup_method(self):
+        reset_compiled_npc_graph_for_tests()
+
+    def test_tool_call_triggers_execute_and_returns_text(self, monkeypatch):
+        """LLM 第一轮返回 tool_call，第二轮返回正常文本，最终应得到文本回复。"""
+        import json
+        from unittest.mock import MagicMock, patch
+
+        # 第一次调用：返回 tool_call（查"红杉"）
+        tc = MagicMock()
+        tc.id = "call_abc123"
+        tc.function.name = "get_institution_detail"
+        tc.function.arguments = json.dumps({"institution_name": "红杉"})
+
+        first_msg = MagicMock()
+        first_msg.content = ""
+        first_msg.tool_calls = [tc]
+        first_choice = MagicMock()
+        first_choice.message = first_msg
+
+        # 第二次调用：返回正常文本
+        second_msg = MagicMock()
+        second_msg.content = "红杉目前处于尽调阶段，关注点是 ARR 增速。"
+        second_msg.tool_calls = []
+        second_choice = MagicMock()
+        second_choice.message = second_msg
+
+        mock_create = MagicMock(side_effect=[
+            MagicMock(choices=[first_choice]),
+            MagicMock(choices=[second_choice]),
+        ])
+
+        fake_tool_result = "机构：红杉资本\n阶段：due_diligence\n热度：warm\nAI画像：专注早期消费和科技"
+
+        with patch("cangjie_fos.services.npc_tools.execute_tool", return_value=fake_tool_result) as mock_exec:
+            with patch("openai.OpenAI") as MockOpenAI:
+                MockOpenAI.return_value.chat.completions.create = mock_create
+                os.environ["DEEPSEEK_API_KEY"] = "fake-key-for-test"
+                try:
+                    reply, _, _ = invoke_npc_chat(
+                        tenant_id="test-tenant",
+                        user_message="红杉那边情况怎样？",
+                        thread_id="tool-test-001",
+                    )
+                finally:
+                    del os.environ["DEEPSEEK_API_KEY"]
+
+        # LLM 被调用了两次（第一次 tool_call，第二次正常回复）
+        assert mock_create.call_count == 2
+        # execute_tool 被调用了一次，参数正确
+        mock_exec.assert_called_once_with(
+            "get_institution_detail",
+            {"institution_name": "红杉"},
+            tenant_id="test-tenant",
+        )
+        # 最终回复是第二轮的文本
+        assert "红杉" in reply
+
+    def test_no_tool_call_returns_direct_text(self, monkeypatch):
+        """LLM 不触发工具时，直接返回文本，execute_tool 不应被调用。"""
+        from unittest.mock import MagicMock, patch
+
+        msg = MagicMock()
+        msg.content = "今天天气不错，继续加油！"
+        msg.tool_calls = []
+        choice = MagicMock()
+        choice.message = msg
+        mock_create = MagicMock(return_value=MagicMock(choices=[choice]))
+
+        with patch("cangjie_fos.services.npc_tools.execute_tool") as mock_exec:
+            with patch("openai.OpenAI") as MockOpenAI:
+                MockOpenAI.return_value.chat.completions.create = mock_create
+                os.environ["DEEPSEEK_API_KEY"] = "fake-key-for-test"
+                try:
+                    reply, _, _ = invoke_npc_chat(
+                        tenant_id="test-tenant",
+                        user_message="随便说点什么",
+                        thread_id="tool-test-002",
+                    )
+                finally:
+                    del os.environ["DEEPSEEK_API_KEY"]
+
+        mock_exec.assert_not_called()
+        assert reply == "今天天气不错，继续加油！"
+
+
+class TestNpcToolExecutors:
+    """直接测试 npc_tools.py 里的执行器函数。"""
+
+    def test_get_institution_detail_found(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        class FakeInst:
+            name = "红杉资本"
+            stage = type("S", (), {"value": "due_diligence"})()
+            thermal = type("T", (), {"value": "warm"})()
+            ai_summary = "专注早期科技"
+            concerns = "ARR增速"
+            preferences = "SaaS"
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.find_matching_names",
+            lambda *, tenant_id, text: [FakeInst()],
+        )
+        result = npc_tools.execute_tool(
+            "get_institution_detail", {"institution_name": "红杉"}, tenant_id="t1"
+        )
+        assert "红杉资本" in result
+        assert "due_diligence" in result
+        assert "ARR增速" in result
+
+    def test_get_institution_detail_not_found(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.find_matching_names",
+            lambda *, tenant_id, text: [],
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: [],
+        )
+        result = npc_tools.execute_tool(
+            "get_institution_detail", {"institution_name": "不存在机构"}, tenant_id="t1"
+        )
+        assert "未找到" in result
+
+    def test_query_pipeline_overview(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.count_by_stage",
+            lambda *, tenant_id: {"due_diligence": 2, "ts_negotiation": 1, "contact": 3},
+        )
+
+        class FakeInst:
+            name = "测试机构"
+            stage = type("S", (), {"value": "contact"})()
+            thermal = type("T", (), {"value": "cold"})()
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: [FakeInst()],
+        )
+        result = npc_tools.execute_tool(
+            "query_pipeline_overview", {}, tenant_id="t1"
+        )
+        assert "6" in result  # 2+1+3 总计
+        assert "due_diligence" in result
+        assert "测试机构" in result
+
+    def test_list_recent_roadshows_with_data(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        fake_jobs = [
+            ("job1", {"institution_id": "红杉资本", "status": "completed",
+                      "exp_delta": 3, "created_at": 1716825600.0}),
+            ("job2", {"institution_id": "高瓴", "status": "completed",
+                      "exp_delta": None, "created_at": 1716739200.0}),
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_for_tenant",
+            lambda tenant_id, limit: fake_jobs,
+        )
+        result = npc_tools.execute_tool("list_recent_roadshows", {"limit": 5}, tenant_id="t1")
+        assert "红杉资本" in result
+        assert "高瓴" in result
+        assert "completed" in result
+
+    def test_list_recent_roadshows_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_for_tenant",
+            lambda tenant_id, limit: [],
+        )
+        result = npc_tools.execute_tool("list_recent_roadshows", {}, tenant_id="t1")
+        assert "暂无" in result
+
+    def test_list_pending_followups_with_data(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        fake_items = [
+            {"actor": "我方", "action": "发送尽调清单", "priority": "high",
+             "institution_id": "红杉资本"},
+            {"actor": "对方", "action": "反馈 TS 意见", "priority": "normal",
+             "institution_id": "高瓴"},
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_follow_up_list",
+            lambda tenant_id, limit, include_done: fake_items,
+        )
+        result = npc_tools.execute_tool("list_pending_followups", {}, tenant_id="t1")
+        assert "发送尽调清单" in result
+        assert "反馈 TS 意见" in result
+        assert "红杉资本" in result
+
+    def test_list_pending_followups_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_follow_up_list",
+            lambda tenant_id, limit, include_done: [],
+        )
+        result = npc_tools.execute_tool("list_pending_followups", {}, tenant_id="t1")
+        assert "没有" in result

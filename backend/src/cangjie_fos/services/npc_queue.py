@@ -37,3 +37,11 @@ def line_by_index(idx: int) -> NpcLine | None:
     if 0 <= idx < len(_LINES):
         return _LINES[idx]
     return None
+
+
+def push_line(*, role: str, text: str, proactive: bool = True) -> NpcLine:
+    """动态追加一条 NPC 消息（用于定时反向访谈、主动推送等）。"""
+    new_id = _LINES[-1].id + 1 if _LINES else 0
+    line = NpcLine(id=new_id, role=role, text=text, proactive=proactive)
+    _LINES.append(line)
+    return line

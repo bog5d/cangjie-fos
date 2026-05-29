@@ -108,3 +108,97 @@ def test_cors_allows_vite_origin_on_dashboard() -> None:
     )
     assert r.status_code == 200
     assert r.headers.get("access-control-allow-origin") == "http://127.0.0.1:5173"
+
+
+# ── /api/dashboard/live 战情地图 ──────────────────────────────────────────────
+
+def test_live_intel_returns_correct_shape():
+    """GET /api/dashboard/live 应返回三个 key 且结构正确。"""
+    c = TestClient(app)
+    r = c.get("/api/dashboard/live", params={"tenant_id": "t-live-test"})
+    assert r.status_code == 200
+    body = r.json()
+    assert "pipeline_counts" in body
+    assert "recent_roadshows" in body
+    assert "pending_followups" in body
+    assert isinstance(body["pipeline_counts"], list)
+    assert isinstance(body["recent_roadshows"], list)
+    assert isinstance(body["pending_followups"], list)
+
+
+def test_live_intel_pipeline_counts_structure(monkeypatch):
+    """pipeline_counts 每条应有 stage / label / count 三个字段。"""
+    from cangjie_fos.services import institution_store
+
+    monkeypatch.setattr(
+        institution_store,
+        "count_by_stage",
+        lambda *, tenant_id: {"dd": 2, "term_sheet": 1, "targeted": 0, "pitched": 3},
+    )
+    c = TestClient(app)
+    r = c.get("/api/dashboard/live", params={"tenant_id": "t1"})
+    assert r.status_code == 200
+    counts = r.json()["pipeline_counts"]
+    # targeted=0 应被过滤掉
+    stages = {c["stage"] for c in counts}
+    assert "targeted" not in stages
+    assert "dd" in stages
+    for entry in counts:
+        assert "stage" in entry
+        assert "label" in entry
+        assert "count" in entry
+
+
+def test_live_intel_recent_roadshows_structure(monkeypatch):
+    """recent_roadshows 每条应有 institution / status / date 字段。"""
+    from cangjie_fos.services import pitch_job_db
+
+    fake_jobs = [
+        ("job1", {
+            "institution_id": "红杉资本",
+            "status": "completed",
+            "created_at": 1716825600.0,
+            "exp_delta": 3,
+            "interviewee": "张总",
+        }),
+    ]
+    monkeypatch.setattr(
+        pitch_job_db,
+        "db_job_list_for_tenant",
+        lambda tenant_id, limit: fake_jobs,
+    )
+    c = TestClient(app)
+    r = c.get("/api/dashboard/live", params={"tenant_id": "t1"})
+    roadshows = r.json()["recent_roadshows"]
+    assert len(roadshows) == 1
+    assert roadshows[0]["institution"] == "红杉资本"
+    assert roadshows[0]["status"] == "completed"
+    assert roadshows[0]["exp_delta"] == 3
+    assert "date" in roadshows[0]
+
+
+def test_live_intel_pending_followups_structure(monkeypatch):
+    """pending_followups 每条应有 actor / action / priority / institution 字段。"""
+    from cangjie_fos.services import pitch_job_db
+
+    fake_items = [
+        {
+            "id": "item1",
+            "actor": "我方",
+            "action": "发送尽调清单",
+            "priority": "high",
+            "institution_id": "红杉资本",
+        },
+    ]
+    monkeypatch.setattr(
+        pitch_job_db,
+        "db_follow_up_list",
+        lambda tenant_id, limit, include_done: fake_items,
+    )
+    c = TestClient(app)
+    r = c.get("/api/dashboard/live", params={"tenant_id": "t1"})
+    followups = r.json()["pending_followups"]
+    assert len(followups) == 1
+    assert followups[0]["action"] == "发送尽调清单"
+    assert followups[0]["priority"] == "high"
+    assert followups[0]["institution"] == "红杉资本"

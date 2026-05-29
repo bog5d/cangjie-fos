@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { api } from "../api/client";
 import type { DashboardStatus } from "../types/dashboard";
@@ -12,11 +12,46 @@ interface Props {
   onRequestRefresh?: () => void;
 }
 
+interface PipelineCount {
+  stage: string;
+  label: string;
+  count: number;
+}
+
+interface RecentRoadshow {
+  institution: string;
+  status: string;
+  date: string;
+  exp_delta: number;
+  interviewee: string;
+}
+
+interface PendingFollowup {
+  id: string;
+  actor: string;
+  action: string;
+  priority: string;
+  institution: string;
+}
+
+interface LiveIntel {
+  pipeline_counts: PipelineCount[];
+  recent_roadshows: RecentRoadshow[];
+  pending_followups: PendingFollowup[];
+}
+
 const STAGE_TOOLTIP: Record<string, string> = {
   teaser: "Teaser：初步接触阶段，向投资机构发送初步材料并完成首次沟通",
   dd: "DD（Due Diligence）：尽职调查，投资机构深度核查阶段，通常为签约前最后一步",
   term_sheet: "Term Sheet：投资意向书，机构表达投资意向并协商条款",
   closed: "Closed：已签约完成，资金到账",
+};
+
+const STATUS_ROADSHOW: Record<string, string> = {
+  completed: "✅",
+  pending: "⏳",
+  processing: "🔄",
+  failed: "❌",
 };
 
 export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefresh }: Props) {
@@ -25,6 +60,29 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
   const [settleGuideline, setSettleGuideline] = useState("");
   const [settleProcessed, setSettleProcessed] = useState(0);
 
+  const [liveIntel, setLiveIntel] = useState<LiveIntel | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  const fetchLiveIntel = useCallback(async () => {
+    if (!tenantId) return;
+    setLiveLoading(true);
+    try {
+      const { data } = await api.get<LiveIntel>("/api/dashboard/live", {
+        params: { tenant_id: tenantId },
+      });
+      setLiveIntel(data);
+    } catch {
+      // 静默失败，不破坏主体显示
+    } finally {
+      setLiveLoading(false);
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    void fetchLiveIntel();
+  }, [fetchLiveIntel]);
+
+  // 当父组件刷新时，同步刷新 live intel
   const runReflectionSettle = useCallback(async () => {
     setSettleOpen(true);
     setSettleBusy(true);
@@ -39,12 +97,14 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
       setSettleGuideline(String(data.guideline ?? ""));
       setSettleProcessed(typeof data.processed === "number" ? data.processed : 0);
       onRequestRefresh?.();
+      void fetchLiveIntel();
     } catch (e) {
       setSettleGuideline(e instanceof Error ? e.message : "结算请求失败");
     } finally {
       setSettleBusy(false);
     }
-  }, [tenantId, onRequestRefresh]);
+  }, [tenantId, onRequestRefresh, fetchLiveIntel]);
+
   if (loading) {
     return (
       <div className="flex h-full min-h-[420px] items-center justify-center rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
@@ -62,9 +122,12 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
   if (!dashboard) return null;
 
   const data = dashboard.funnel;
+  const totalInstitutions = liveIntel
+    ? liveIntel.pipeline_counts.reduce((s, c) => s + c.count, 0)
+    : null;
 
   return (
-    <div className="relative flex h-full flex-col gap-6 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-6 shadow-2xl backdrop-blur-xl">
+    <div className="relative flex h-full flex-col gap-5 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-6 shadow-2xl backdrop-blur-xl">
       <ReflectionSettleModal
         open={settleOpen}
         busy={settleBusy}
@@ -72,6 +135,8 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
         processed={settleProcessed}
         onClose={() => setSettleOpen(false)}
       />
+
+      {/* ── Header ── */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="font-display text-xs uppercase tracking-[0.35em] text-cyan/90">
@@ -87,6 +152,11 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
             <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-xs text-cyan">
               {data.tenant_id}
             </span>
+            {totalInstitutions !== null && (
+              <span className="ml-2 text-slate-500">
+                · 共 <span className="text-white">{totalInstitutions}</span> 家机构在库
+              </span>
+            )}
           </p>
         </div>
         <button
@@ -98,6 +168,7 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
         </button>
       </header>
 
+      {/* ── 资料健康度 ── */}
       <section className="grid gap-3 rounded-2xl border border-white/10 bg-black/25 p-4 md:grid-cols-2">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
@@ -154,7 +225,8 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
         ) : null}
       </section>
 
-      <div className="flex flex-1 flex-col gap-3">
+      {/* ── Pipeline 漏斗 ── */}
+      <div className="flex flex-col gap-3">
         {data.stages.map((s, idx) => (
           <div
             key={s.key}
@@ -188,6 +260,117 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
         ))}
       </div>
 
+      {/* ── 实战情报区块（Live Intel）── */}
+      {liveLoading && !liveIntel && (
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="h-3 w-3 animate-spin rounded-full border border-cyan/40 border-t-cyan" />
+          加载实战情报…
+        </div>
+      )}
+
+      {liveIntel && (
+        <div className="flex flex-col gap-4">
+          {/* 机构阶段分布 */}
+          {liveIntel.pipeline_counts.length > 0 && (
+            <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                机构分布
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {liveIntel.pipeline_counts.map((c) => (
+                  <div
+                    key={c.stage}
+                    className="rounded-xl border border-white/10 bg-white/5 p-3 text-center"
+                  >
+                    <p className="font-display text-2xl font-bold text-white">{c.count}</p>
+                    <p className="mt-1 text-[10px] text-slate-400">{c.label}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 最近路演 */}
+          {liveIntel.recent_roadshows.length > 0 && (
+            <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                最近路演
+              </p>
+              <div className="flex flex-col gap-2">
+                {liveIntel.recent_roadshows.map((r, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{STATUS_ROADSHOW[r.status] ?? "📋"}</span>
+                      <div>
+                        <p className="text-sm font-medium text-white">{r.institution}</p>
+                        {r.interviewee && (
+                          <p className="text-[10px] text-slate-500">{r.interviewee}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-right">
+                      {r.exp_delta !== 0 && (
+                        <span
+                          className={`text-xs font-bold ${r.exp_delta > 0 ? "text-emerald-400" : "text-red-400"}`}
+                        >
+                          {r.exp_delta > 0 ? "+" : ""}{r.exp_delta}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-slate-500">{r.date}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* 待办行动项 */}
+          {liveIntel.pending_followups.length > 0 && (
+            <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                待办行动{" "}
+                <span className="ml-1 rounded-full bg-red-500/20 px-2 py-0.5 text-red-300">
+                  {liveIntel.pending_followups.length}
+                </span>
+              </p>
+              <div className="flex flex-col gap-2">
+                {liveIntel.pending_followups.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-start gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2"
+                  >
+                    <span className="mt-0.5 text-sm">
+                      {f.priority === "high" ? "🔴" : "⚪"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-white">
+                        <span className="text-slate-400">{f.actor}：</span>
+                        {f.action}
+                      </p>
+                      {f.institution && (
+                        <p className="mt-0.5 text-[10px] text-slate-500">{f.institution}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {liveIntel.pipeline_counts.length === 0 &&
+            liveIntel.recent_roadshows.length === 0 &&
+            liveIntel.pending_followups.length === 0 && (
+              <p className="text-center text-xs text-slate-600">
+                暂无机构数据 · 通过 Pipeline 或 NPC 对话录入后自动更新
+              </p>
+            )}
+        </div>
+      )}
+
+      {/* ── 战局势能 ── */}
       <footer className="flex items-center justify-between rounded-2xl border border-cyan/25 bg-cyan/10 px-4 py-3">
         <span className="text-sm text-slate-300">战局势能</span>
         <div className="flex items-center gap-2">
