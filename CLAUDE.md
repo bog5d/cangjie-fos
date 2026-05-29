@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-21 | 当前版本：**v1.1.0** | 测试基线：**660+ passed** | 单仓库可运行：✅
+> 最后更新：2026-05-29 | 当前版本：**v1.1.2** | 测试基线：**660+ passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -38,6 +38,8 @@
 | v0.9.0 | 05-16 | **Bug修复**：Bug #10 资产搜索中文回归测试 + utcnow deprecation修复 |
 | v1.0.0 | 05-18 | **尽调响应台体验升级**：原生文件夹/文件选取框（tkinter），三处路径输入均支持 |
 | v1.1.0 | 05-21 | **5个同事Bug修复**：扫描超时+进度/向导白字/匹配全无效/路演全字段编辑/路演HTML导出 |
+| v1.1.1 | 05-21 | **同事支持**：load_dotenv()修复重启Token丢失；GitHub Token设置UI；tkinter弹窗置顶修复；EXP HUD移除 |
+| v1.1.2 | 05-29 | **SettingsPanel白字修复**：4个输入框 text-white→text-gray-800；venv重建；CHANGELOG补全 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -387,6 +389,18 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 | `backend/tests/test_roadshow_api.py` | 新增6个测试：HTML报告生成200/文件写磁盘/无报告404/未知job404/生成前GET404/6节内容完整 |
 | `CHANGELOG.md` | 新增 v1.1.0 版本块 |
 | `packaging/本次更新说明.md` | 完全重写为 v1.1.0：5个修复说明 + 验收清单 |
+
+---
+
+### v1.1.1–v1.1.2 改动文件清单（2026-05-21 ~ 05-29）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/main.py` | lifespan 开头加 `load_dotenv(override=False)`，修复重启后 .env Token 丢失 |
+| `backend/src/cangjie_fos/api/routes/settings.py` | 新增 `COACH_DATA_GITHUB_TOKEN` 到 `_KEY_NAMES`；新增 `POST /api-keys/test-github` 端点 |
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | `pick_folder` / `pick_file`：tkinter root 添加 `lift()` + `attributes("-topmost", True)` + `focus_force()`，修复弹窗被遮挡问题 |
+| `frontend/src/components/SettingsPanel.tsx` | 新增 GitHub Token 配置区块；4个输入框 `text-white bg-black/40` → `text-gray-800 bg-white`（修复白字不可读） |
+| `frontend/src/App.tsx` | 移除 `<ExpHud>` 导入和 JSX 实例（EXP 130 徽章遮挡按钮） |
 
 ---
 
