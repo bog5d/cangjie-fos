@@ -3,18 +3,51 @@
 使用场景：
   用户从微信工作群 Ctrl+A + Ctrl+C 复制一整天的聊天记录，
   粘贴到系统后，LLM 自动提取机构进展更新和行动项。
+
+结构化输出实现：
+  使用 Pydantic BaseModel + model_json_schema() 注入精确 JSON Schema，
+  LLM 的输出被枚举值约束（stage/thermal/priority），
+  解析时用 model_validate_json() 强校验，杜绝幻觉字段。
 """
 from __future__ import annotations
 
 import json
 import logging
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+from cangjie_fos.schemas.institution import InstitutionThermal, PipelineStage
 
 logger = logging.getLogger(__name__)
 
-# LLM 提取的数据模型（返回给调用方，调用方决定是否入库）
-# institution_updates: [{"name": str, "stage": str|None, "note": str, "thermal": str|None}]
-# followup_items:      [{"actor": str, "action": str, "priority": str, "institution": str}]
 
+# ── Pydantic 结构化输出模型 ────────────────────────────────────────────────────
+
+class InstitutionUpdate(BaseModel):
+    """单家机构的进展更新。"""
+    name: str = Field(..., description="机构常用名，如 红杉资本")
+    stage: PipelineStage | None = Field(None, description="融资阶段，无法判断填 null")
+    thermal: InstitutionThermal | None = Field(None, description="沟通热度，无法判断填 null")
+    note: str = Field("", max_length=60, description="最新进展一句话（60字以内）")
+
+
+class FollowupItem(BaseModel):
+    """行动项（待办事项）。"""
+    actor: str = Field(..., description="责任方：我方 / 对方 / 具体人名")
+    action: str = Field(..., max_length=40, description="具体行动（40字以内）")
+    priority: Literal["high", "normal", "low"] = "normal"
+    institution: str = Field("", description="关联机构名称，无法判断填空字符串")
+
+
+class ChatLogExtraction(BaseModel):
+    """LLM 从群聊提取的完整结果。"""
+    institution_updates: list[InstitutionUpdate] = []
+    followup_items: list[FollowupItem] = []
+    summary: str = Field("", max_length=100, description="整体进展一句话总结（100字以内）")
+
+
+# ── 公开接口 ──────────────────────────────────────────────────────────────────
 
 def ingest_chat_log(
     raw_text: str,
@@ -48,10 +81,16 @@ def ingest_chat_log(
     }
 
 
+# ── 内部实现 ──────────────────────────────────────────────────────────────────
+
 def _llm_extract_from_chat(raw_text: str) -> dict:
     """
     调用 LLM 从聊天记录中提取结构化情报。
-    raw_text 可能很长（一整天群聊），最多截取前 6000 字。
+
+    使用 Pydantic Structured Output：
+    - 将 ChatLogExtraction.model_json_schema() 注入 system prompt
+    - LLM 输出被枚举值约束（stage/thermal/priority 不能乱填）
+    - 用 model_validate_json() 解析并强校验，返回 model_dump()
     """
     from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
 
@@ -60,60 +99,51 @@ def _llm_extract_from_chat(raw_text: str) -> dict:
     if len(raw_text) > 6000:
         truncated += f"\n…（原文共 {len(raw_text)} 字，已截取前 6000 字）"
 
-    prompt = f"""你是一级市场融资助手。以下是工作群的原始聊天记录（含时间戳、人名、系统消息等噪声）：
+    # 自动生成精确 JSON Schema，注入 system prompt
+    schema = ChatLogExtraction.model_json_schema()
+    schema_str = json.dumps(schema, ensure_ascii=False, indent=2)
 
----
-{truncated}
----
+    system_prompt = f"""你是一级市场融资助手。从聊天记录中提取与融资推进相关的信息。
 
-请从中提取与"融资推进"相关的信息，输出 JSON：
-{{
-  "institution_updates": [
-    {{
-      "name": "机构名称",
-      "stage": "targeted|pitched|dd|term_sheet 或 null（无法判断时填 null）",
-      "thermal": "cold|warm|hot 或 null",
-      "note": "一句话描述最新进展（30字以内）"
-    }}
-  ],
-  "followup_items": [
-    {{
-      "actor": "我方 或 对方 或 具体人名",
-      "action": "具体行动（20字以内）",
-      "priority": "high|normal|low",
-      "institution": "关联机构名称，无法判断填空字符串"
-    }}
-  ],
-  "summary": "整体进展一句话总结（50字以内）"
-}}
+你必须且只能输出严格符合以下 JSON Schema 的 JSON 对象，不允许有任何额外字段：
+
+{schema_str}
 
 规则：
 - 只提取与投融资有关的信息，忽略闲聊、表情、系统消息
 - institution_updates 和 followup_items 可以为空数组
+- stage 字段只能是 "targeted"/"pitched"/"dd"/"term_sheet"/null，不能用其他值
+- thermal 字段只能是 "cold"/"warm"/"hot"/null
+- priority 字段只能是 "high"/"normal"/"low"
 - 只返回 JSON，不要任何解释"""
 
     def _call() -> dict:
         resp = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": truncated},
+            ],
             response_format={"type": "json_object"},
             max_tokens=1500,
             temperature=0,
         )
         raw = resp.choices[0].message.content or "{}"
-        return json.loads(raw)
+        # Pydantic 强校验：枚举值非法会抛 ValidationError，不会默默通过
+        validated = ChatLogExtraction.model_validate_json(raw)
+        return validated.model_dump()
 
     try:
         return call_with_retry(_call, max_retries=2)
     except Exception as e:
         logger.error("chat_log_llm_failed: %s", e)
-        return {"institution_updates": [], "followup_items": [], "summary": f"LLM 解析失败：{e}"}
+        return ChatLogExtraction().model_dump() | {"summary": f"LLM 解析失败：{e}"}
 
 
 def _persist_updates(extracted: dict, *, tenant_id: str) -> None:
     """将提取结果写入数据库：更新机构档案 + 插入行动项。"""
+    from cangjie_fos.schemas.institution import InstitutionProfileUpdate
     from cangjie_fos.services.institution_store import get_by_name, update_institution
-    from cangjie_fos.schemas.institution import InstitutionProfileUpdate, PipelineStage, InstitutionThermal
     from cangjie_fos.services.pitch_job_db import db_follow_up_insert
 
     # ── 机构更新 ──────────────────────────────────────────────────────
@@ -129,15 +159,9 @@ def _persist_updates(extracted: dict, *, tenant_id: str) -> None:
 
             patch: dict = {}
             if upd.get("stage"):
-                try:
-                    patch["stage"] = PipelineStage(upd["stage"]).value
-                except ValueError:
-                    pass
+                patch["stage"] = upd["stage"]  # 已由 Pydantic 校验为合法枚举值
             if upd.get("thermal"):
-                try:
-                    patch["thermal"] = InstitutionThermal(upd["thermal"]).value
-                except ValueError:
-                    pass
+                patch["thermal"] = upd["thermal"]
             if upd.get("note"):
                 existing = inst.ai_summary or ""
                 patch["ai_summary"] = (upd["note"] + ("；" + existing if existing else ""))[:300]

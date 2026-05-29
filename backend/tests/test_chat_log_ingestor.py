@@ -158,3 +158,39 @@ def test_api_ingest_returns_correct_shape(monkeypatch):
     assert "followup_items" in body
     assert "summary" in body
     assert body["institution_updates"][0]["name"] == "高瓴"
+
+
+# ── Pydantic 结构化输出校验 ─────────────────────────────────────────────────
+
+def test_pydantic_models_reject_invalid_stage():
+    """非法的 stage 值应被 Pydantic 拒绝（ValidationError），不会默默入库。"""
+    import pytest
+    from pydantic import ValidationError
+    from cangjie_fos.services.chat_log_ingestor import ChatLogExtraction
+
+    bad_json = '{"institution_updates": [{"name": "红杉", "stage": "due_diligence", "thermal": null, "note": ""}], "followup_items": [], "summary": ""}'
+    with pytest.raises(ValidationError):
+        ChatLogExtraction.model_validate_json(bad_json)
+
+
+def test_pydantic_models_accept_valid_extraction():
+    """合法的提取结果应通过 Pydantic 校验并可正确访问字段。"""
+    from cangjie_fos.services.chat_log_ingestor import ChatLogExtraction
+
+    good_json = '{"institution_updates": [{"name": "高瓴", "stage": "term_sheet", "thermal": "hot", "note": "TS 谈妥了"}], "followup_items": [{"actor": "我方", "action": "催签署", "priority": "high", "institution": "高瓴"}], "summary": "TS 推进顺利"}'
+    result = ChatLogExtraction.model_validate_json(good_json)
+    assert result.institution_updates[0].name == "高瓴"
+    assert result.institution_updates[0].stage.value == "term_sheet"
+    assert result.followup_items[0].priority == "high"
+    assert result.summary == "TS 推进顺利"
+
+
+def test_pydantic_models_reject_invalid_priority():
+    """非法的 priority 值应被拒绝。"""
+    import pytest
+    from pydantic import ValidationError
+    from cangjie_fos.services.chat_log_ingestor import ChatLogExtraction
+
+    bad_json = '{"institution_updates": [], "followup_items": [{"actor": "我方", "action": "催一下", "priority": "urgent", "institution": ""}], "summary": ""}'
+    with pytest.raises(ValidationError):
+        ChatLogExtraction.model_validate_json(bad_json)
