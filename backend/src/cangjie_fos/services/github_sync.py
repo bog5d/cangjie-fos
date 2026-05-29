@@ -20,6 +20,7 @@ import logging
 import os
 import time
 import urllib.error
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -120,6 +121,26 @@ def _list_folder(folder: str) -> list[dict]:
     except (urllib.error.URLError, OSError, ValueError) as e:
         logger.warning("GitHub 列目录异常 %s: %s", folder, e)
         return []
+
+
+def _list_folder_recursive(folder: str) -> list[dict]:
+    """递归列举目录下所有 JSON 文件（含子目录）。"""
+    result = []
+    import urllib.request as _ur
+    cfg = _cfg()
+    url = f"https://api.github.com/repos/{cfg['repo']}/contents/{folder}"
+    req = _ur.Request(url, headers=_headers())
+    try:
+        with _ur.urlopen(req, timeout=15) as resp:
+            items = json.loads(resp.read())
+    except Exception:  # noqa: BLE001
+        return []
+    for item in items:
+        if item.get("type") == "file":
+            result.append(item)
+        elif item.get("type") == "dir":
+            result.extend(_list_folder_recursive(item["path"]))
+    return result
 
 
 def _download_json(download_url: str) -> dict | None:
@@ -294,7 +315,7 @@ def push_roadshow_report(job_id: str) -> bool:
 
     export = {
         "session_id": job_id,
-        "generated_at": _dt.datetime.utcnow().isoformat(),
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
         "type": "roadshow_intel",
         "version": "FOS_V7.5",
         "fos_source": "cangjie_fos",
@@ -354,10 +375,26 @@ def pull_latest() -> dict[str, int]:
     for tdir in tenant_dirs:
         if tdir.get("type") != "dir":
             continue
-        files = _list_folder(tdir["path"])
-        for f in files:
+        # 递归处理子目录（如 analytics/zt/dd/）
+        sub_files = _list_folder_recursive(tdir["path"])
+        for f in sub_files:
             if not f["name"].endswith(".json"):
                 continue
+            # ── 用文件名前8位快速判重，跳过已有记录（避免下载）──
+            fname = f["name"]  # e.g. "2026-05-16_be3a6c4e.json" or "roadshow_20260515_7db16569.json"
+            parts = fname.replace(".json", "").split("_")
+            id_hint = parts[-1] if parts else ""  # 取最后一段（8位 job_id 前缀）
+            if len(id_hint) >= 8:
+                conn = _connect()
+                try:
+                    pre_exists = conn.execute(
+                        "SELECT 1 FROM pitch_jobs WHERE job_id LIKE ?", (id_hint + "%",)
+                    ).fetchone()
+                finally:
+                    conn.close()
+                if pre_exists:
+                    continue  # 本地已有，跳过下载
+
             data = _download_json(f["download_url"])
             if not data:
                 continue
@@ -367,7 +404,7 @@ def pull_latest() -> dict[str, int]:
             # fos_source 为 cangjie_fos 的才导入（跳过 FSS 旧数据）
             if data.get("fos_source") != "cangjie_fos":
                 continue
-            # 检查本地是否已有
+            # 精确判重
             conn = _connect()
             try:
                 exists = conn.execute(
@@ -376,7 +413,6 @@ def pull_latest() -> dict[str, int]:
             finally:
                 conn.close()
             if not exists:
-                # 这台机器没有这条记录 → 记录为"外部同步"占位（只存元数据，不存音频）
                 _import_remote_pitch(data)
                 pitch_count += 1
 
@@ -422,7 +458,7 @@ def pull_latest() -> dict[str, int]:
 # ─── 导入辅助 ─────────────────────────────────────────────────────────────────
 
 def _import_remote_pitch(data: dict) -> None:
-    """把远端 pitch JSON 作为只读记录写入本地 pitch_jobs。"""
+    """把远端 pitch JSON 作为只读记录写入本地 pitch_jobs，并同步创建机构记录。"""
     from cangjie_fos.services.pitch_job_db import _connect  # type: ignore
 
     job_id = data["session_id"]
@@ -433,26 +469,98 @@ def _import_remote_pitch(data: dict) -> None:
     except (ValueError, TypeError):
         ts = time.time()
 
+    # 路演情报 JSON 用 institution 字段；普通复盘 JSON 用 institution_canonical
+    is_roadshow = data.get("type") == "roadshow_intel"
+    institution_name = (
+        data.get("institution") if is_roadshow
+        else data.get("institution_canonical", "")
+    ) or ""
+
     # 重建最小化 report 以便 UI 能展示
     report = {
         "total_score": data.get("total_score", 0),
         "risk_breakdown": data.get("risk_breakdown", {}),
-        "institution": data.get("institution_canonical", ""),
+        "institution": institution_name,
         "fos_source": "remote_sync",
     }
     conn = _connect()
     try:
         conn.execute(
             """INSERT OR IGNORE INTO pitch_jobs
-               (job_id, tenant_id, status, created_at, original_report, interviewee, substatus)
-               VALUES (?, ?, 'locked', ?, ?, ?, 'synced_from_remote')""",
+               (job_id, tenant_id, status, created_at, original_report, interviewee,
+                substatus, institution_id)
+               VALUES (?, ?, 'locked', ?, ?, ?, 'synced_from_remote', ?)""",
             (
                 job_id, tenant_id, ts,
                 json.dumps(report, ensure_ascii=False),
                 data.get("interviewee", ""),
+                institution_name,
             ),
         )
         conn.commit()
+    finally:
+        conn.close()
+
+    # ── 同步创建机构记录（INSERT OR IGNORE — 不覆盖用户已有编辑）─────────────────
+    if institution_name.strip():
+        _ensure_institution(tenant_id, institution_name, data, is_roadshow)
+
+
+def _ensure_institution(
+    tenant_id: str, name: str, data: dict, is_roadshow: bool
+) -> None:
+    """在 institutions 表中 INSERT OR IGNORE 一条机构记录（仅首次创建，不覆盖）。"""
+    import sqlite3 as _sqlite3
+    from cangjie_fos.core import paths as _paths
+
+    db_path = _paths.get_backend_root() / "data" / "institutions.sqlite"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 推断阶段和热度
+    stage = "pitched"   # 有了路演/复盘记录，至少是 pitched 阶段
+    atmosphere = data.get("meeting_atmosphere", "")
+    if atmosphere == "hot":
+        thermal = "hot"
+    elif atmosphere == "warm":
+        thermal = "warm"
+    else:
+        thermal = "cold"
+
+    institution_id = str(uuid.uuid4()).replace("-", "")[:16]
+
+    conn = _sqlite3.connect(str(db_path), check_same_thread=False)
+    try:
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS institutions (
+                institution_id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                stage TEXT NOT NULL,
+                thermal TEXT NOT NULL,
+                preferences TEXT NOT NULL DEFAULT '',
+                concerns TEXT NOT NULL DEFAULT '',
+                ai_summary TEXT NOT NULL DEFAULT '',
+                updated_at REAL NOT NULL,
+                source_trace_id TEXT,
+                UNIQUE(tenant_id, name)
+            )"""
+        )
+        conn.execute(
+            """INSERT OR IGNORE INTO institutions
+               (institution_id, tenant_id, name, stage, thermal,
+                preferences, concerns, ai_summary, updated_at, source_trace_id)
+               VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?)""",
+            (
+                institution_id, tenant_id, name, stage, thermal,
+                f"从 GitHub 同步（{'路演情报' if is_roadshow else '复盘分析'}）",
+                time.time(),
+                data.get("session_id", ""),
+            ),
+        )
+        conn.commit()
+        logger.info("✅ 机构记录同步: tenant=%s name=%s stage=%s", tenant_id, name, stage)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("_ensure_institution 写入失败: %s", e)
     finally:
         conn.close()
 

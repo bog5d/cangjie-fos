@@ -4,7 +4,7 @@
 
 ## 🟢 接手速览（新 AI / 新人第一眼看这里）
 
-> 最后更新：2026-05-16 | 当前版本：**v0.8.0** | 测试基线：**641+ passed** | 单仓库可运行：✅
+> 最后更新：2026-05-21 | 当前版本：**v1.1.0** | 测试基线：**660+ passed** | 单仓库可运行：✅
 
 ### 项目是什么
 仓颉 FOS（融资作战操作系统）= 一个帮 VC/FA 管理融资流程的内部工具。
@@ -14,7 +14,7 @@
 - **进入点**：`backend/src/cangjie_fos/main.py` — FastAPI app + lifespan
 - **外部依赖**：无 — `engine/` 子包已包含所有核心模块，AI_Pitch_Coach 是可选的历史归档
 
-### 最近做了什么（v0.5.3 → v0.7.0）
+### 最近做了什么（v0.5.3 → v1.1.0）
 
 | 版本 | 日期 | 主要内容 |
 |------|------|---------|
@@ -35,6 +35,9 @@
 | v0.7.1 | 05-15 | **红队加固**：修复7个尽调响应台崩溃点（临时文件泄漏/空结果404级联/session永不完成/fetch无错误处理/轮询无超时/空结果强跳Step3/interval内存泄漏）|
 | v0.7.2 | 05-16 | **稳定性加固**：统一 LLM 客户端 + 重试/显式NULL标记/服务重启DB fallback/导出大小上限 |
 | v0.8.0 | 05-16 | **尽调响应台全面升级**：分块解析/文件预筛/Session历史/批量确认/手动替换/机构联动/GitHub同步 |
+| v0.9.0 | 05-16 | **Bug修复**：Bug #10 资产搜索中文回归测试 + utcnow deprecation修复 |
+| v1.0.0 | 05-18 | **尽调响应台体验升级**：原生文件夹/文件选取框（tkinter），三处路径输入均支持 |
+| v1.1.0 | 05-21 | **5个同事Bug修复**：扫描超时+进度/向导白字/匹配全无效/路演全字段编辑/路演HTML导出 |
 
 ### 同事反馈的13个问题——当前处理状态
 
@@ -347,16 +350,55 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 
 ---
 
-### 待处理问题（v0.7.1+ 方向）
+### v1.0.0 改动文件清单（2026-05-18）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | 新增 `GET /pick-folder` 和 `GET /pick-file`，调用 `tkinter.filedialog` 弹出系统原生对话框并返回路径 |
+| `frontend/src/components/DueDiligenceWizard.tsx` | 新增 `pickFolder()` / `pickFile()` 工具函数；Step1 材料库路径、Step3 导出路径、手动指定文件三处加「📁 选择」按钮 |
+| `packaging/本次更新说明.md` | 版本号 → v1.0.0，更新内容说明 |
+| `CHANGELOG.md` | 新增 v1.0.0 版本块 |
+
+---
+
+### v0.9.0 改动文件清单（2026-05-16）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/github_sync.py` | `push_roadshow_report` 中 `datetime.utcnow()` → `datetime.now(timezone.utc)`（修复 deprecation 警告） |
+| `backend/tests/test_assets_api.py` | 新增 `test_search_sqlite_chinese_filename` + `test_search_sqlite_chinese_tag`（Bug #10 回归测试） |
+| `CHANGELOG.md` | 新增 v0.9.0 版本块 |
+| `CLAUDE.md`（本文件） | 版本号 v0.9.0、测试基线 643+、版本历史表新增行、改动文件清单 |
+
+---
+
+### v1.1.0 改动文件清单（2026-05-21）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/dd_index_service.py` | Bug1：`MAX_LLM_SUMMARIZE_FILES=200`（超量跳过LLM仅记文件名）；`progress_callback` 每50文件触发；timeout从120s→600s |
+| `backend/src/cangjie_fos/services/dd_match_service.py` | Bug3：删除 `readable=1` 过滤条件，所有文件（含图片PDF/加密文件）参与匹配 |
+| `backend/src/cangjie_fos/api/routes/dd_response.py` | Bug1：`scan_folder` 端点新增 progress 轮询支持；实时返回 scanned/total |
+| `frontend/src/components/DueDiligenceWizard.tsx` | Bug2：所有输入框 text 颜色改为 `text-gray-800`（修复白字看不清）；Bug1：扫描进度实时展示 |
+| `backend/src/cangjie_fos/api/routes/roadshow.py` | Bug4（路演）：新增 `_build_roadshow_html()` + `POST /jobs/{id}/html-report` + `GET /jobs/{id}/html-report` |
+| `frontend/src/pages/ReviewWorkbench.tsx` | Bug4（路演）：新增 `RoadshowHtmlExport` 组件（生成→下载/预览） |
+| `frontend/src/components/workbench/RoadshowIntelView.tsx` | Bug5（路演）：`key_questions` / `interest_signals` / `next_actions` 三组卡片接入 `editMode` + `onChange` 实现全字段内联编辑 |
+| `backend/tests/test_dd_file_parser.py` | 新增4个测试：大文件夹跳过LLM/小文件夹调用LLM/进度回调/unreadable文件参与匹配 |
+| `backend/tests/test_roadshow_api.py` | 新增6个测试：HTML报告生成200/文件写磁盘/无报告404/未知job404/生成前GET404/6节内容完整 |
+| `CHANGELOG.md` | 新增 v1.1.0 版本块 |
+| `packaging/本次更新说明.md` | 完全重写为 v1.1.0：5个修复说明 + 验收清单 |
+
+---
+
+### 待处理问题（v1.1.0 之后）
 
 | 类型 | 现象/目标 | 难度 | 建议入手文件 |
 |-----|------|------|------------|
-| Bug #1 | 录音片段不完整，ASR 截取有问题 | 高风险，ASR 核心逻辑 | `backend/src/cangjie_fos/engine/transcriber.py` |
-| Bug #10 | 资产台账搜索不到 | 需调查扫描逻辑 | `backend/src/cangjie_fos/engine/asset_bridge.py` |
-| **DD v2** | 尽调响应台扩展：重新扫描单文件、手动替换匹配、历史 session 列表 | 中等 | `backend/src/cangjie_fos/services/dd_*.py` + `DueDiligenceWizard.tsx` |
+| ~~Bug #1~~ | ✅ **已修复**（commit `46c7f79`，2026-05-15）：缺词级时间戳时用句子级兜底+线性插值，`test_transcriber.py` 10个测试覆盖 | — | — |
 
-**尽调响应台现状（v0.7.0 已完成）**：
+**尽调响应台现状（v0.8.0 全面升级后）**：
 - ✅ 3步向导：扫描材料库 → 上传清单（Excel/Word/PDF/文字）→ AI 匹配 → 表格审核 → 导出
-- ✅ 7个 API 端点：`/api/v1/dd/index`、`/api/v1/dd/sessions`、`/api/v1/dd/sessions/{id}/match` 等
-- ✅ 置信度颜色：🟢≥80% / 🟡50-80% / 🔴<50%，低置信排前
-- ⚠️ 尚未支持：重新触发单文件扫描、session 历史列表页、多机构清单同时处理
+- ✅ 11个 API 端点：索引/session创建/触发匹配/获取items/更新item/导出/Session历史/批量确认 等
+- ✅ 清单分块解析（4000字/块）、大材料库预筛（top-50）、Session历史恢复、批量确认、手动文件替换
+- ✅ 机构名联动：创建Session时自动推进机构Pipeline阶段到"DD"
+- ✅ GitHub自动同步：导出后推送到 `analytics/{tenant}/dd/`

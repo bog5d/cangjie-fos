@@ -3,7 +3,6 @@ import { api, getSession, clearSession, type FosSession } from "./api/client";
 import { LoginPage } from "./components/LoginPage";
 import { AchievementFlash } from "./components/AchievementFlash";
 import { DoctorPanel } from "./components/DoctorPanel";
-import { ExpHud } from "./components/ExpHud";
 import { NPCPanel } from "./components/NPCPanel";
 import { ScoreToastStack, type ScoreToastItem } from "./components/ScoreToast";
 import { PitchJobHistory, type JobRow } from "./components/PitchJobHistory";
@@ -96,7 +95,25 @@ export default function App() {
       .catch(() => setAccountsConfigured(false));
   }, []);
 
-  const handleLogin = (s: FosSession, _commanderName: string) => setSession(s);
+  const [syncNotice, setSyncNotice] = useState<string>("");
+
+  const handleLogin = (s: FosSession, _commanderName: string) => {
+    setSession(s);
+    // 登录后触发 GitHub 同步，并给用户一个可见提示
+    setSyncNotice("⏳ 正在从 GitHub 同步最新数据…");
+    api.post<{ ok: boolean; pitch_imported: number; match_imported: number }>("/api/sync/pull")
+      .then(r => {
+        const d = r.data;
+        if (d.ok) {
+          const n = d.pitch_imported + d.match_imported;
+          setSyncNotice(n > 0 ? `✅ 已同步 ${n} 条新数据` : "✅ 数据已是最新");
+        } else {
+          setSyncNotice("");
+        }
+      })
+      .catch(() => setSyncNotice(""))
+      .finally(() => setTimeout(() => setSyncNotice(""), 4000));
+  };
   const handleLogout = () => {
     void api.post("/api/auth/logout").catch(() => {});
     clearSession();
@@ -111,11 +128,11 @@ export default function App() {
   // 等待配置检查完成（短暂空白过渡）
   if (accountsConfigured === null) return null;
 
-  return <MainApp session={session} onLogout={handleLogout} />;
+  return <MainApp session={session} onLogout={handleLogout} syncNotice={syncNotice} />;
 }
 
 // ── 主应用：所有业务 hooks 都在这里，永远不会有条件返回在 hooks 之前 ──────────
-function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: () => void }) {
+function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null; onLogout: () => void; syncNotice?: string }) {
   const [dashboard, setDashboard] = useState<DashboardStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -325,7 +342,6 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
         subtitle="团队材料结构已跨过关键水位，继续保持迭代节奏。"
         onClose={() => setAchOpen(false)}
       />
-      <ExpHud totalExp={totalExp} lastHint={expHint} />
       <ScoreToastStack items={toasts} onDone={dismissToast} />
 
       <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -401,6 +417,11 @@ function MainApp({ session, onLogout }: { session: FosSession | null; onLogout: 
           <SettingsPanel onKeySaved={fetchReady} />
           {session && (
             <div className="flex items-center gap-2">
+              {syncNotice && (
+                <span className="text-[11px] text-cyan-300 animate-pulse">
+                  {syncNotice}
+                </span>
+              )}
               <span className="text-xs text-slate-500">
                 👤 {session.username}
               </span>

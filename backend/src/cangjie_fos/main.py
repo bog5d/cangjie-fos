@@ -28,7 +28,13 @@ _SPA_EXCLUDE_PREFIXES = ("/api/", "/health", "/reports/", "/docs", "/openapi")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
-    # 注入内置默认配置（.env 里有值时不覆盖）
+    # 1. 先加载 .env（用户自己填的 Key/Token 优先，不覆盖已有环境变量）
+    try:
+        from dotenv import load_dotenv  # noqa: PLC0415
+        load_dotenv(dotenv_path=get_backend_root() / ".env", override=False)
+    except Exception:  # noqa: BLE001
+        pass
+    # 2. 再注入内置默认配置（仅填补 .env 和系统环境变量都没有的项）
     try:
         from cangjie_fos.core._embedded import inject_defaults  # noqa: PLC0415
         inject_defaults()

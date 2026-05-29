@@ -17,7 +17,12 @@ from cangjie_fos.core.paths import get_backend_root
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
 # 允许在界面配置的 Key 白名单
-_KEY_NAMES: set[str] = {"DEEPSEEK_API_KEY", "DASHSCOPE_API_KEY", "KIMI_API_KEY"}
+_KEY_NAMES: set[str] = {
+    "DEEPSEEK_API_KEY",
+    "DASHSCOPE_API_KEY",
+    "KIMI_API_KEY",
+    "COACH_DATA_GITHUB_TOKEN",
+}
 
 
 class KeysPayload(BaseModel):
@@ -89,6 +94,32 @@ def test_deepseek() -> dict[str, object]:
         return {"ok": False, "message": f"HTTP {resp.status_code}：{resp.text[:200]}"}
     except httpx.TimeoutException:
         return {"ok": False, "message": "连接超时（15s），请检查网络或稍后重试"}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "message": f"连接异常：{str(e)[:200]}"}
+
+
+@router.post("/api-keys/test-github")
+def test_github() -> dict[str, object]:
+    """测试 COACH_DATA_GITHUB_TOKEN 是否有效（访问 coach_data 仓库元数据）。"""
+    token = (os.getenv("COACH_DATA_GITHUB_TOKEN") or "").strip()
+    repo  = (os.getenv("COACH_DATA_GITHUB_REPO") or "bog5d/coach_data").strip()
+    if not token:
+        return {"ok": False, "message": "GitHub Token 尚未填写"}
+    try:
+        resp = httpx.get(
+            f"https://api.github.com/repos/{repo}",
+            headers={"Authorization": f"token {token}", "Accept": "application/vnd.github+json"},
+            timeout=10.0,
+        )
+        if resp.status_code == 200:
+            return {"ok": True, "message": f"GitHub 连接正常，仓库 {repo} 可访问 ✅"}
+        if resp.status_code == 401:
+            return {"ok": False, "message": "Token 无效（401），请重新生成 PAT"}
+        if resp.status_code == 404:
+            return {"ok": False, "message": f"仓库 {repo} 不存在或 Token 无权限访问（404）"}
+        return {"ok": False, "message": f"HTTP {resp.status_code}：{resp.text[:200]}"}
+    except httpx.TimeoutException:
+        return {"ok": False, "message": "连接超时（10s），请检查网络"}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "message": f"连接异常：{str(e)[:200]}"}
 

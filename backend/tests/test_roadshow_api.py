@@ -388,3 +388,156 @@ class TestTranscriptParser:
         words = parse_transcript_to_words(text)
         assert all(w.start_time == 0.0 for w in words)
         assert all(w.end_time == 0.0 for w in words)
+
+
+# ── Bug 4 回归测试：路演情报 HTML 报告导出 ────────────────────────────────────
+
+# 使用真实报告数据结构的 _COMPLETED_ROW（key_questions 等字段用 RoadshowIntelReport 格式）
+_ROADSHOW_INTEL_ROW: dict[str, Any] = {
+    "job_id": _JOB_ID,
+    "tenant_id": _TENANT,
+    "status": "completed",
+    "interviewee": "路演_2026-05-11_某VC",
+    "referrer": "红杉推荐",
+    "created_at": 1_715_000_000.0,
+    "original_report": {
+        "report_type": "roadshow_intel",
+        "meeting_atmosphere": "warm",
+        "meeting_stage": "first_contact",
+        "atmosphere_summary": "整体氛围积极，投资方展现了较强的兴趣。",
+        "key_questions": [
+            {
+                "verbatim": "你们的IRR预期是多少？",
+                "underlying_concern": "对回报预期的担忧",
+                "priority": "high",
+                "speaker_id": "0",
+            }
+        ],
+        "interest_signals": [
+            {
+                "verbatim": "这个AI技术壁垒我们很感兴趣",
+                "signal_type": "positive",
+                "interpretation": "对技术壁垒的认可",
+                "speaker_id": "0",
+            }
+        ],
+        "hidden_concerns": ["市场规模可能被高估"],
+        "key_verbatim_moments": ["这个赛道IRR回报怎么算？"],
+        "institution_update": "该机构重点看AI+SaaS赛道",
+        "next_actions": [
+            {
+                "action": "发送财务模型",
+                "actor": "企业方",
+                "priority": "urgent",
+                "source": "commitment",
+            }
+        ],
+        "referrer": "红杉推荐",
+        "dominant_speaker": "0",
+        "competitor_mentions": [],
+        "timeline_signals": "Q3前完成决策",
+    },
+    "edited_report": None,
+    "html_report_path": None,
+}
+
+
+class TestRoadshowHtmlReport:
+    """Roadshow Bug 4 — HTML 报告生成和下载。"""
+
+    def test_generate_html_report_returns_ok(self, monkeypatch, tmp_path):
+        """POST /html-report：生成后返回 ok=True 和路径。"""
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_get",
+            lambda jid: _ROADSHOW_INTEL_ROW if jid == _JOB_ID else None,
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_update", lambda *a, **kw: None
+        )
+        # 重定向输出目录到 tmp_path
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.get_backend_root",
+            lambda: tmp_path,
+        )
+        resp = client.post(f"/api/v1/roadshow/jobs/{_JOB_ID}/html-report")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is True
+        assert "html_path" in data
+        assert "generated_at" in data
+
+    def test_generate_html_creates_file_on_disk(self, monkeypatch, tmp_path):
+        """生成后 HTML 文件应确实写入磁盘。"""
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_get",
+            lambda jid: _ROADSHOW_INTEL_ROW if jid == _JOB_ID else None,
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_update", lambda *a, **kw: None
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.get_backend_root",
+            lambda: tmp_path,
+        )
+        client.post(f"/api/v1/roadshow/jobs/{_JOB_ID}/html-report")
+        html_file = tmp_path / "data" / "html_reports" / f"{_JOB_ID}.html"
+        assert html_file.exists()
+        content = html_file.read_text(encoding="utf-8")
+        # 内容应包含机构名、关键词
+        assert "路演情报报告" in content
+        assert "IRR" in content  # 来自 key_questions.verbatim
+
+    def test_generate_html_report_404_no_report(self, monkeypatch):
+        """无 original_report 时返回 404。"""
+        row = {**_ROADSHOW_INTEL_ROW, "original_report": None}
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_get", lambda jid: row
+        )
+        resp = client.post(f"/api/v1/roadshow/jobs/{_JOB_ID}/html-report")
+        assert resp.status_code == 404
+
+    def test_generate_html_report_404_unknown_job(self, monkeypatch):
+        """未知 job 返回 404。"""
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_get", lambda jid: None
+        )
+        resp = client.post(f"/api/v1/roadshow/jobs/unknown/html-report")
+        assert resp.status_code == 404
+
+    def test_get_html_report_404_before_generation(self, monkeypatch, tmp_path):
+        """生成前 GET 请求应返回 404。"""
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.get_backend_root",
+            lambda: tmp_path,
+        )
+        resp = client.get(f"/api/v1/roadshow/jobs/{_JOB_ID}/html-report")
+        assert resp.status_code == 404
+
+    def test_html_content_includes_all_sections(self, monkeypatch, tmp_path):
+        """生成的 HTML 应包含所有报告章节。"""
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_get",
+            lambda jid: _ROADSHOW_INTEL_ROW if jid == _JOB_ID else None,
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_update", lambda *a, **kw: None
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.get_backend_root",
+            lambda: tmp_path,
+        )
+        client.post(f"/api/v1/roadshow/jobs/{_JOB_ID}/html-report")
+        html_file = tmp_path / "data" / "html_reports" / f"{_JOB_ID}.html"
+        content = html_file.read_text(encoding="utf-8")
+
+        # 各章节标题
+        assert "对方关键问题" in content
+        assert "兴趣信号" in content
+        assert "隐性顾虑" in content
+        assert "关键原声" in content
+        assert "机构档案更新建议" in content
+        assert "下一步行动" in content
+        # 数据内容
+        assert "某VC" in content or "路演_2026-05-11" in content
+        assert "市场规模可能被高估" in content
+        assert "发送财务模型" in content

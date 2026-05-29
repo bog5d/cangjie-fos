@@ -110,9 +110,13 @@ def run_matching(session_id: str, folder_root: str) -> None:
 
 
 def _get_index_for_folder(folder_root: str) -> list[dict]:
+    """返回文件夹下所有已索引文件。
+    注意：不再过滤 readable=1，确保图片型PDF、加密文件等仍通过文件名参与匹配。
+    summary 为 NULL 时 prefilter 仍可用文件名做关键词匹配。
+    """
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT file_path, filename, summary FROM dd_asset_index WHERE folder_root = ? AND readable = 1",
+            "SELECT file_path, filename, summary FROM dd_asset_index WHERE folder_root = ?",
             (folder_root,),
         ).fetchall()
     return [dict(r) for r in rows]

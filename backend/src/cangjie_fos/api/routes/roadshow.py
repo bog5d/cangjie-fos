@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from cangjie_fos.core.paths import get_backend_root, get_audio_dir
@@ -371,3 +371,232 @@ def roadshow_report(job_id: str) -> dict[str, Any]:
         "interviewee": row.get("interviewee", ""),
         "created_at": row.get("created_at", 0.0),
     }
+
+
+# ── HTML 报告生成 ──────────────────────────────────────────────────────────────
+
+def _build_roadshow_html(report: dict, meta: dict) -> str:
+    """根据 RoadshowIntelReport dict 生成自包含 HTML 字符串。"""
+    import html as _html
+
+    def e(v: Any) -> str:
+        """HTML 转义辅助。"""
+        return _html.escape(str(v or ""), quote=True)
+
+    atmosphere_map = {
+        "hot": ("🔥 高度积极", "#f97316"),
+        "warm": ("✅ 正常推进", "#10b981"),
+        "cold": ("❄️ 兴趣不足", "#64748b"),
+    }
+    stage_map = {
+        "first_contact": "初次路演",
+        "deep_discussion": "深度沟通",
+        "pre_dd": "准尽调",
+        "unknown": "阶段未知",
+    }
+    priority_color = {
+        "high": "#f43f5e", "medium": "#f59e0b", "low": "#64748b",
+        "urgent": "#f43f5e", "normal": "#06b6d4", "optional": "#64748b",
+    }
+    signal_color = {
+        "positive": "#10b981", "concern": "#f43f5e", "neutral": "#64748b",
+    }
+    signal_label = {
+        "positive": "正面信号", "concern": "疑虑/抵触", "neutral": "中性陈述",
+    }
+
+    atm_text, atm_color = atmosphere_map.get(
+        report.get("meeting_atmosphere", "warm"), ("✅ 正常推进", "#10b981")
+    )
+    stage_text = stage_map.get(report.get("meeting_stage", "unknown"), "阶段未知")
+    interviewee = e(meta.get("interviewee", ""))
+    referrer = e(meta.get("referrer", ""))
+    created_at = meta.get("created_at", 0.0)
+    from datetime import datetime  # noqa: PLC0415
+    try:
+        date_str = datetime.fromtimestamp(float(created_at)).strftime("%Y-%m-%d %H:%M")
+    except Exception:  # noqa: BLE001
+        date_str = ""
+
+    sections: list[str] = []
+
+    # ── 关键问题 ──────────────────────────────────────────────────────────────
+    key_questions = report.get("key_questions") or []
+    if key_questions:
+        rows = ""
+        for i, q in enumerate(key_questions, 1):
+            pri = q.get("priority", "medium")
+            col = priority_color.get(pri, "#f59e0b")
+            pri_label = {"high": "核心", "medium": "关注", "low": "礼节"}.get(pri, pri)
+            speaker = f'<span class="tag">{e(q["speaker_id"])}</span> ' if q.get("speaker_id") else ""
+            rows += (
+                f"<tr><td>{i}</td><td>{speaker}"
+                f'<span class="tag" style="background:{col}22;color:{col};border-color:{col}44">{e(pri_label)}</span>'
+                f"</td>"
+                f"<td>「{e(q.get('verbatim',''))}」</td>"
+                f"<td>{e(q.get('underlying_concern',''))}</td></tr>"
+            )
+        sections.append(
+            f'<h2>对方关键问题 ({len(key_questions)})</h2>'
+            f'<table><thead><tr><th>#</th><th>优先级</th><th>原话</th><th>背后关切</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table>'
+        )
+
+    # ── 兴趣信号 ──────────────────────────────────────────────────────────────
+    interest_signals = report.get("interest_signals") or []
+    if interest_signals:
+        rows = ""
+        for s in interest_signals:
+            st = s.get("signal_type", "neutral")
+            col = signal_color.get(st, "#64748b")
+            lbl = signal_label.get(st, st)
+            speaker = f'<span class="tag">{e(s["speaker_id"])}</span> ' if s.get("speaker_id") else ""
+            rows += (
+                f"<tr><td>{speaker}"
+                f'<span class="tag" style="background:{col}22;color:{col};border-color:{col}44">{e(lbl)}</span>'
+                f"</td>"
+                f"<td>「{e(s.get('verbatim',''))}」</td>"
+                f"<td>{e(s.get('interpretation',''))}</td></tr>"
+            )
+        sections.append(
+            f'<h2>兴趣信号 ({len(interest_signals)})</h2>'
+            f'<table><thead><tr><th>类型</th><th>原话</th><th>解读</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table>'
+        )
+
+    # ── 隐性顾虑 ──────────────────────────────────────────────────────────────
+    hidden_concerns = report.get("hidden_concerns") or []
+    if hidden_concerns:
+        items = "".join(f"<li>⚠ {e(c)}</li>" for c in hidden_concerns)
+        sections.append(f'<h2>隐性顾虑</h2><ul class="concerns">{items}</ul>')
+
+    # ── 关键原声 ──────────────────────────────────────────────────────────────
+    key_verbatim = report.get("key_verbatim_moments") or []
+    if key_verbatim:
+        items = "".join(f"<li>{e(m)}</li>" for m in key_verbatim)
+        sections.append(f'<h2>关键原声</h2><ul class="verbatim">{items}</ul>')
+
+    # ── 机构档案更新建议 ───────────────────────────────────────────────────────
+    institution_update = report.get("institution_update") or ""
+    if institution_update:
+        sections.append(
+            f'<h2>机构档案更新建议</h2><p class="text-block">{e(institution_update)}</p>'
+        )
+
+    # ── 下一步行动 ────────────────────────────────────────────────────────────
+    next_actions = report.get("next_actions") or []
+    if next_actions:
+        rows = ""
+        for a in next_actions:
+            pri = a.get("priority", "normal")
+            col = priority_color.get(pri, "#06b6d4")
+            pri_label = {"urgent": "紧急", "normal": "正常", "optional": "可选"}.get(pri, pri)
+            src_label = "已承诺" if a.get("source") == "commitment" else "建议"
+            rows += (
+                f'<tr><td><span class="tag" style="background:{col}22;color:{col};border-color:{col}44">'
+                f'{e(pri_label)}</span></td>'
+                f"<td>{e(src_label)}</td>"
+                f"<td>{e(a.get('action',''))}</td>"
+                f"<td>{e(a.get('actor',''))}</td></tr>"
+            )
+        sections.append(
+            f'<h2>下一步行动 ({len(next_actions)})</h2>'
+            f'<table><thead><tr><th>优先级</th><th>性质</th><th>行动</th><th>负责方</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table>'
+        )
+
+    body = "\n".join(sections)
+
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>路演情报报告 — {interviewee}</title>
+<style>
+  body{{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#0d0d1a;color:#e2e8f0;margin:0;padding:24px}}
+  .header{{background:linear-gradient(135deg,#0f172a,#1e3a4a);border:1px solid #1e3a5f;border-radius:12px;padding:24px;margin-bottom:24px}}
+  .header h1{{margin:0 0 8px;font-size:1.4em;color:#67e8f9}}
+  .meta{{font-size:.85em;color:#94a3b8;margin:4px 0}}
+  .atm-badge{{display:inline-block;padding:4px 12px;border-radius:6px;font-weight:bold;font-size:.9em;margin:8px 8px 8px 0;border:1px solid}}
+  .stage-badge{{display:inline-block;padding:4px 10px;border-radius:6px;font-size:.8em;border:1px solid #334155;background:#1e293b;color:#94a3b8}}
+  .summary{{margin-top:12px;color:#cbd5e1;line-height:1.7;font-size:.9em}}
+  h2{{color:#67e8f9;font-size:1em;text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid #1e3a5f;padding-bottom:6px;margin:24px 0 12px}}
+  table{{width:100%;border-collapse:collapse;font-size:.85em;margin-bottom:16px}}
+  th{{background:#1e293b;color:#94a3b8;text-align:left;padding:8px 10px;font-weight:600;font-size:.75em;text-transform:uppercase;letter-spacing:.05em}}
+  td{{padding:8px 10px;border-bottom:1px solid #1e293b;vertical-align:top;line-height:1.6}}
+  tr:hover td{{background:#ffffff08}}
+  .tag{{display:inline-block;padding:1px 6px;border-radius:4px;font-size:.75em;font-weight:bold;border:1px solid;margin-right:4px}}
+  ul.concerns{{list-style:none;padding:0;margin:0 0 16px}}
+  ul.concerns li{{padding:6px 10px;margin:4px 0;border-left:3px solid #f59e0b;background:#f59e0b11;color:#fde68a;border-radius:0 6px 6px 0;font-size:.88em}}
+  ul.verbatim{{list-style:none;padding:0;margin:0 0 16px}}
+  ul.verbatim li{{padding:8px 12px;margin:6px 0;border-left:3px solid #06b6d4;background:#06b6d411;color:#e2e8f0;border-radius:0 6px 6px 0;font-size:.88em;line-height:1.7}}
+  .text-block{{background:#1e293b;border-radius:8px;padding:12px 16px;color:#cbd5e1;font-size:.88em;line-height:1.7;margin-bottom:16px}}
+  .footer{{text-align:center;color:#334155;font-size:.75em;margin-top:32px;padding-top:16px;border-top:1px solid #1e293b}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎯 路演情报报告</h1>
+  {"<p class='meta'>路演场次：" + interviewee + "</p>" if interviewee else ""}
+  {"<p class='meta'>引荐方：" + referrer + "</p>" if referrer else ""}
+  {"<p class='meta'>生成时间：" + date_str + "</p>" if date_str else ""}
+  <div style="margin-top:12px">
+    <span class="atm-badge" style="background:{atm_color}22;color:{atm_color};border-color:{atm_color}44">{atm_text}</span>
+    <span class="stage-badge">{e(stage_text)}</span>
+  </div>
+  <p class="summary">{e(report.get('atmosphere_summary',''))}</p>
+</div>
+{body}
+<div class="footer">仓颉 FOS · 路演情报报告 · 内部使用</div>
+</body>
+</html>"""
+
+
+@router.post("/jobs/{job_id}/html-report")
+def generate_roadshow_html_report(job_id: str) -> dict[str, Any]:
+    """生成路演情报 HTML 报告，保存到 data/html_reports/ 并返回路径。"""
+    row = db_job_get(job_id)
+    if not row:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    report = row.get("edited_report") or row.get("original_report")
+    if not report:
+        raise HTTPException(404, f"Job {job_id} has no report data")
+
+    # 生成 HTML
+    meta = {
+        "interviewee": row.get("interviewee", ""),
+        "referrer": row.get("referrer", ""),
+        "created_at": row.get("created_at", 0.0),
+    }
+    html_content = _build_roadshow_html(report, meta)
+
+    # 保存到标准位置（与常规报告共享目录）
+    output_dir = get_backend_root() / "data" / "html_reports"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{job_id}.html"
+    output_path.write_text(html_content, encoding="utf-8")
+
+    # 持久化路径
+    db_job_update(job_id, html_report_path=str(output_path))
+
+    import time as _time  # noqa: PLC0415
+    return {
+        "ok": True,
+        "html_path": str(output_path),
+        "generated_at": _time.time(),
+    }
+
+
+@router.get("/jobs/{job_id}/html-report")
+def get_roadshow_html_report(job_id: str) -> FileResponse:
+    """下载/预览已生成的路演情报 HTML 报告。"""
+    report_path = get_backend_root() / "data" / "html_reports" / f"{job_id}.html"
+    if not report_path.exists():
+        raise HTTPException(404, "HTML report not yet generated. Call POST first.")
+    return FileResponse(
+        path=str(report_path),
+        media_type="text/html",
+        filename=f"roadshow_report_{job_id[:8]}.html",
+    )

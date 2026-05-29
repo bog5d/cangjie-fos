@@ -44,6 +44,61 @@ class ItemUpdateRequest(BaseModel):
     user_skipped: bool | None = None
 
 
+# ── 原生文件夹/文件选取 ──────────────────────────────────────
+
+@router.get("/pick-folder")
+def pick_folder(initial_dir: str = ""):
+    """弹出系统原生文件夹选择框，返回用户选取的路径。
+
+    仅在有 GUI 显示的本地运行环境可用（Windows/macOS/Linux Desktop）。
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.lift()
+        root.attributes("-topmost", True)
+        root.focus_force()
+        kwargs: dict = {"title": "选择材料库文件夹", "parent": root}
+        if initial_dir and Path(initial_dir).exists():
+            kwargs["initialdir"] = initial_dir
+        selected = filedialog.askdirectory(**kwargs)
+        root.destroy()
+        if not selected:
+            return {"path": "", "cancelled": True}
+        return {"path": str(Path(selected)), "cancelled": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"无法打开文件夹选择框：{e}")
+
+
+@router.get("/pick-file")
+def pick_file(initial_dir: str = ""):
+    """弹出系统原生文件选择框，返回用户选取的文件路径。"""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.lift()
+        root.attributes("-topmost", True)
+        root.focus_force()
+        kwargs: dict = {
+            "title": "选择文件",
+            "filetypes": [("所有文件", "*.*")],
+            "parent": root,
+        }
+        if initial_dir and Path(initial_dir).exists():
+            kwargs["initialdir"] = initial_dir
+        selected = filedialog.askopenfilename(**kwargs)
+        root.destroy()
+        if not selected:
+            return {"path": "", "cancelled": True}
+        return {"path": str(Path(selected)), "cancelled": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"无法打开文件选择框：{e}")
+
+
 # ── 索引相关 ────────────────────────────────────────────────
 
 @router.post("/index")
@@ -54,7 +109,12 @@ async def start_indexing(req: ScanRequest, background_tasks: BackgroundTasks):
 
     def _do_scan():
         try:
-            result = scan_and_index_folder(req.folder_path, req.tenant_id)
+            def _progress(done: int, total: int) -> None:
+                """每处理50个文件回调，更新内存进度供前端轮询。"""
+                _scan_status[scan_id].update({"done": done, "total": total})
+
+            result = scan_and_index_folder(req.folder_path, req.tenant_id,
+                                           progress_callback=_progress)
             _scan_status[scan_id].update({"status": "done", **result})
         except Exception as e:
             _scan_status[scan_id] = {"status": "error", "error": str(e)}
