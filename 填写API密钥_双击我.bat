@@ -28,9 +28,9 @@ if not exist "%ENVFILE%" (
         echo DASHSCOPE_API_KEY=
         echo.
         echo # 登录账号（格式：账号:密码:tenant_id，多账号逗号分隔）
-        echo # 示例：FOS_ACCOUNTS=zt001:123456:zt001
-        echo # 留空 = 使用内置默认账号
-        echo FOS_ACCOUNTS=
+        echo # 每个 tenant_id 数据完全隔离，互不影响
+        echo # 示例（两位同事）：FOS_ACCOUNTS=zt001:123456:zt,gk001:123456:gk
+        echo FOS_ACCOUNTS=zt001:123456:zt,gk001:123456:gk
     ) > "%ENVFILE%"
     echo  配置文件已创建。
 )
