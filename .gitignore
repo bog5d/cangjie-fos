@@ -4,6 +4,7 @@
 # ─── 环境变量 / API Keys（严禁入库）─────────────────────────
 backend/.env
 backend/.env.*
+!backend/.env.example
 .env
 .env.*
 
