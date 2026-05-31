@@ -42,11 +42,12 @@ class InstitutionProfile(BaseModel):
     probability: int = Field(0, ge=0, le=100, description="成功概率 0-100")
     legal_status: str = Field("", description="法务进度备注")
     # 里程碑字段（v1.3.0）
-    nda_signed: bool = Field(False, description="已签署 NDA")
-    offline_meeting_count: int = Field(0, ge=0, description="线下见面次数")
+    nda_signed: bool = Field(False, description="已签署保密协议 NDA")
+    offline_meeting_count: int = Field(0, ge=0, description="线下见面次数（家数）")
     project_approved: bool = Field(False, description="已完成立项")
-    committee_approved: bool = Field(False, description="已通过投委会")
-    onsite_dd_done: bool = Field(False, description="已完成线下尽调")
+    committee_approved: bool = Field(False, description="已通过投决会")
+    onsite_dd_done: bool = Field(False, description="已完成线下内部尽调（高管拜访）")
+    external_dd_done: bool = Field(False, description="已完成线下外部尽调")
     agreement_signed: bool = Field(False, description="已签署投资协议")
     deal_closed: bool = Field(False, description="已完成交割")
     referral_source: str = Field("", description="引荐方/来源 FA")
@@ -72,6 +73,7 @@ class InstitutionProfileCreate(BaseModel):
     project_approved: bool = False
     committee_approved: bool = False
     onsite_dd_done: bool = False
+    external_dd_done: bool = False
     agreement_signed: bool = False
     deal_closed: bool = False
     referral_source: str = ""
@@ -97,6 +99,7 @@ class InstitutionProfileUpdate(BaseModel):
     project_approved: bool | None = None
     committee_approved: bool | None = None
     onsite_dd_done: bool | None = None
+    external_dd_done: bool | None = None
     agreement_signed: bool | None = None
     deal_closed: bool | None = None
     referral_source: str | None = None

@@ -53,6 +53,7 @@ def _conn() -> sqlite3.Connection:
         "project_approved INTEGER NOT NULL DEFAULT 0",
         "committee_approved INTEGER NOT NULL DEFAULT 0",
         "onsite_dd_done INTEGER NOT NULL DEFAULT 0",
+        "external_dd_done INTEGER NOT NULL DEFAULT 0",
         "agreement_signed INTEGER NOT NULL DEFAULT 0",
         "deal_closed INTEGER NOT NULL DEFAULT 0",
         "referral_source TEXT NOT NULL DEFAULT ''",
@@ -73,8 +74,8 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 preferences, concerns, ai_summary, updated_at, source_trace_id,
                 contact_name, contact_title, valuation, deal_size, probability, legal_status,
                 nda_signed, offline_meeting_count, project_approved, committee_approved,
-                onsite_dd_done, agreement_signed, deal_closed, referral_source
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(tenant_id, name) DO UPDATE SET
                 stage=excluded.stage,
                 thermal=excluded.thermal,
@@ -94,6 +95,7 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 project_approved=excluded.project_approved,
                 committee_approved=excluded.committee_approved,
                 onsite_dd_done=excluded.onsite_dd_done,
+                external_dd_done=excluded.external_dd_done,
                 agreement_signed=excluded.agreement_signed,
                 deal_closed=excluded.deal_closed,
                 referral_source=excluded.referral_source
@@ -120,6 +122,7 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 int(row.project_approved),
                 int(row.committee_approved),
                 int(row.onsite_dd_done),
+                int(row.external_dd_done),
                 int(row.agreement_signed),
                 int(row.deal_closed),
                 row.referral_source,
@@ -153,7 +156,7 @@ def list_institutions(*, tenant_id: str, limit: int = 200) -> list[InstitutionPr
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
                       contact_name, contact_title, valuation, deal_size, probability, legal_status,
                       nda_signed, offline_meeting_count, project_approved, committee_approved,
-                      onsite_dd_done, agreement_signed, deal_closed, referral_source
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
                FROM institutions WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?""",  # noqa: E501
             (tenant_id, limit),
         )
@@ -208,6 +211,7 @@ def update_institution(
     project_approved: bool | None = None,
     committee_approved: bool | None = None,
     onsite_dd_done: bool | None = None,
+    external_dd_done: bool | None = None,
     agreement_signed: bool | None = None,
     deal_closed: bool | None = None,
     referral_source: str | None = None,
@@ -249,6 +253,8 @@ def update_institution(
         updates["committee_approved"] = int(committee_approved)
     if onsite_dd_done is not None:
         updates["onsite_dd_done"] = int(onsite_dd_done)
+    if external_dd_done is not None:
+        updates["external_dd_done"] = int(external_dd_done)
     if agreement_signed is not None:
         updates["agreement_signed"] = int(agreement_signed)
     if deal_closed is not None:
@@ -272,7 +278,7 @@ def update_institution(
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
                       contact_name, contact_title, valuation, deal_size, probability, legal_status,
                       nda_signed, offline_meeting_count, project_approved, committee_approved,
-                      onsite_dd_done, agreement_signed, deal_closed, referral_source
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
                FROM institutions WHERE tenant_id = ? AND institution_id = ?""",
             (tenant_id, institution_id),
         ).fetchone()
@@ -302,10 +308,26 @@ def row_to_profile(row: tuple[Any, ...]) -> InstitutionProfile:
         project_approved=bool(row[18]) if len(row) > 18 else False,
         committee_approved=bool(row[19]) if len(row) > 19 else False,
         onsite_dd_done=bool(row[20]) if len(row) > 20 else False,
-        agreement_signed=bool(row[21]) if len(row) > 21 else False,
-        deal_closed=bool(row[22]) if len(row) > 22 else False,
-        referral_source=row[23] if len(row) > 23 else "",
+        external_dd_done=bool(row[21]) if len(row) > 21 else False,
+        agreement_signed=bool(row[22]) if len(row) > 22 else False,
+        deal_closed=bool(row[23]) if len(row) > 23 else False,
+        referral_source=row[24] if len(row) > 24 else "",
     )
+
+
+def get_by_id(*, institution_id: str) -> InstitutionProfile | None:
+    with _conn() as c:
+        cur = c.execute(
+            """SELECT institution_id, tenant_id, name, stage, thermal,
+                      preferences, concerns, ai_summary, updated_at, source_trace_id,
+                      contact_name, contact_title, valuation, deal_size, probability, legal_status,
+                      nda_signed, offline_meeting_count, project_approved, committee_approved,
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
+               FROM institutions WHERE institution_id = ? LIMIT 1""",
+            (institution_id,),
+        )
+        row = cur.fetchone()
+    return row_to_profile(row) if row else None
 
 
 def get_by_name(*, tenant_id: str, name: str) -> InstitutionProfile | None:
@@ -318,7 +340,7 @@ def get_by_name(*, tenant_id: str, name: str) -> InstitutionProfile | None:
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
                       contact_name, contact_title, valuation, deal_size, probability, legal_status,
                       nda_signed, offline_meeting_count, project_approved, committee_approved,
-                      onsite_dd_done, agreement_signed, deal_closed, referral_source
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
                FROM institutions WHERE tenant_id = ? AND name = ? LIMIT 1""",
             (tenant_id, name),
         )
@@ -440,8 +462,8 @@ def get_milestone_stats(*, tenant_id: str) -> dict[str, Any]:
     with _conn() as c:
         rows = c.execute(
             """SELECT nda_signed, offline_meeting_count, project_approved,
-                      committee_approved, onsite_dd_done, agreement_signed,
-                      deal_closed, referral_source
+                      committee_approved, onsite_dd_done, external_dd_done,
+                      agreement_signed, deal_closed, referral_source
                FROM institutions WHERE tenant_id = ?""",
             (tenant_id,),
         ).fetchall()
@@ -450,18 +472,19 @@ def get_milestone_stats(*, tenant_id: str) -> dict[str, Any]:
         ).fetchone()[0]
 
     nda = sum(1 for r in rows if r[0])
-    meetings = sum(1 for r in rows if int(r[1] or 0) > 0)
+    # 线下交流：按家数（有过线下见面的机构数）
+    offline_met = sum(1 for r in rows if int(r[1] or 0) > 0)
     proj = sum(1 for r in rows if r[2])
     comm = sum(1 for r in rows if r[3])
-    dd = sum(1 for r in rows if r[4])
-    agr = sum(1 for r in rows if r[5])
-    closed = sum(1 for r in rows if r[6])
+    internal_dd = sum(1 for r in rows if r[4])
+    external_dd = sum(1 for r in rows if r[5])
+    agr = sum(1 for r in rows if r[6])
+    closed = sum(1 for r in rows if r[7])
 
-    # 引荐方排行：统计来源 + 到达的最高阶段
     from collections import Counter
     ref_counter: Counter[str] = Counter()
     for r in rows:
-        src = (r[7] or "").strip()
+        src = (r[8] or "").strip()
         if src:
             ref_counter[src] += 1
     top_referrals = [
@@ -472,10 +495,11 @@ def get_milestone_stats(*, tenant_id: str) -> dict[str, Any]:
     return {
         "total_contacted": total,
         "nda_signed": nda,
-        "offline_meetings": meetings,
+        "offline_meetings": offline_met,
         "project_approved": proj,
+        "onsite_dd_done": internal_dd,
+        "external_dd_done": external_dd,
         "committee_approved": comm,
-        "onsite_dd_done": dd,
         "agreement_signed": agr,
         "deal_closed": closed,
         "top_referrals": top_referrals,

@@ -22,6 +22,7 @@ def test_milestone_fields_default_values(monkeypatch, tmp_path):
     assert inst.project_approved is False
     assert inst.committee_approved is False
     assert inst.onsite_dd_done is False
+    assert inst.external_dd_done is False
     assert inst.agreement_signed is False
     assert inst.deal_closed is False
     assert inst.referral_source == ""
@@ -129,7 +130,55 @@ def test_milestone_stats_endpoint(monkeypatch, tmp_path):
     assert body["total_contacted"] == 3
     assert body["nda_signed"] == 2
     assert body["committee_approved"] == 1
+    assert "external_dd_done" in body
     assert "top_referrals" in body
+
+
+def test_external_dd_done_field(monkeypatch, tmp_path):
+    """external_dd_done 字段应能持久化，且出现在 milestone_stats 中。"""
+    import cangjie_fos.services.institution_store as store
+    monkeypatch.setattr(store, "_db_path", lambda: str(tmp_path / "inst.sqlite"))
+
+    from cangjie_fos.schemas.institution import InstitutionProfileCreate, PipelineStage, InstitutionThermal
+    inst = store.create_institution(InstitutionProfileCreate(
+        tenant_id="t1", name="外部尽调机构",
+        stage=PipelineStage.DD, thermal=InstitutionThermal.HOT,
+    ))
+    updated = store.update_institution(
+        tenant_id="t1", institution_id=inst.institution_id,
+        external_dd_done=True,
+    )
+    assert updated is not None
+    assert updated.external_dd_done is True
+
+    stats = store.get_milestone_stats(tenant_id="t1")
+    assert stats["external_dd_done"] == 1
+    assert stats["onsite_dd_done"] == 0
+
+
+def test_funnel_uses_milestone_data(monkeypatch, tmp_path):
+    """pipeline_funnel 漏斗应基于里程碑字段，不依赖旧的 stage 枚举计数。"""
+    import cangjie_fos.services.institution_store as store
+    monkeypatch.setattr(store, "_db_path", lambda: str(tmp_path / "inst.sqlite"))
+
+    from cangjie_fos.schemas.institution import InstitutionProfileCreate, PipelineStage, InstitutionThermal
+    inst = store.create_institution(InstitutionProfileCreate(
+        tenant_id="t1", name="漏斗测试机构",
+        stage=PipelineStage.PITCHED, thermal=InstitutionThermal.WARM,
+    ))
+    store.update_institution(
+        tenant_id="t1", institution_id=inst.institution_id,
+        nda_signed=True, project_approved=True,
+    )
+
+    from cangjie_fos.services.pipeline_funnel import build_funnel_from_institutions
+    funnel = build_funnel_from_institutions(tenant_id="t1")
+    # 路演接触 = 1 (total)，progress = 100%
+    assert funnel.stages[0].title == "路演接触"
+    assert funnel.stages[0].progress_pct == 100
+    # NDA 阶段 subtitle 应含 "1 家"
+    assert "1" in funnel.stages[1].subtitle
+    assert funnel.stages[1].title == "NDA 签署"
 
 
 def test_api_patch_milestone_fields(monkeypatch, tmp_path):

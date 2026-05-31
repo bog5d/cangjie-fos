@@ -147,6 +147,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
   const [ddOpen, setDdOpen] = useState(false);
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
+  const [milestoneRefreshKey, setMilestoneRefreshKey] = useState(0);
   // ── 参与人确认弹层 ─────────────────────────────────────────────────────────
   const [confirmJob, setConfirmJob] = useState<{ jobId: string; interviewee: string | null } | null>(null);
   const [skippedJobs, setSkippedJobs] = useState<Set<string>>(() => {
@@ -446,6 +447,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
             error={err}
             tenantId={tenant}
             onRequestRefresh={() => void refreshWarData()}
+            milestoneRefreshKey={milestoneRefreshKey}
           />
         </Suspense>
         <NPCPanel
@@ -456,7 +458,11 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
           onOpenWizard={() => setWizardOpen(true)}
         />
       </div>
-      <InstitutionList tenantId={tenant} items={institutions} />
+      <InstitutionList
+        tenantId={tenant}
+        items={institutions}
+        onMilestonesChanged={() => setMilestoneRefreshKey((k) => k + 1)}
+      />
       <PitchJobHistory
         tenantId={tenant}
         onPendingConfirm={(jobId, interviewee) => setConfirmJob({ jobId, interviewee })}
