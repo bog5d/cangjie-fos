@@ -149,6 +149,13 @@ def accounts_configured_route() -> dict[str, bool]:
     return {"configured": bool(_load_accounts())}
 
 
+@router.get("/api/sync/status", tags=["auth"])
+def sync_status_route() -> dict[str, Any]:
+    """返回最近一次 GitHub 同步的状态（无需认证，供 UI 状态栏使用）。"""
+    from cangjie_fos.services.github_sync import get_sync_status  # noqa: PLC0415
+    return get_sync_status()
+
+
 @router.post("/api/sync/pull", tags=["auth"])
 async def sync_pull_route(request: Request, background_tasks: BackgroundTasks) -> dict[str, Any]:
     """手动触发 GitHub 数据同步（异步后台执行，立即返回，避免超时）。"""

@@ -47,6 +47,15 @@ def _conn() -> sqlite3.Connection:
         "deal_size TEXT NOT NULL DEFAULT ''",
         "probability INTEGER NOT NULL DEFAULT 0",
         "legal_status TEXT NOT NULL DEFAULT ''",
+        # 里程碑字段（v1.3.0）
+        "nda_signed INTEGER NOT NULL DEFAULT 0",
+        "offline_meeting_count INTEGER NOT NULL DEFAULT 0",
+        "project_approved INTEGER NOT NULL DEFAULT 0",
+        "committee_approved INTEGER NOT NULL DEFAULT 0",
+        "onsite_dd_done INTEGER NOT NULL DEFAULT 0",
+        "agreement_signed INTEGER NOT NULL DEFAULT 0",
+        "deal_closed INTEGER NOT NULL DEFAULT 0",
+        "referral_source TEXT NOT NULL DEFAULT ''",
     ]:
         try:
             c.execute(f"ALTER TABLE institutions ADD COLUMN {col_def}")  # noqa: S608
@@ -62,8 +71,10 @@ def upsert_institution(row: InstitutionProfile) -> None:
             """INSERT INTO institutions (
                 institution_id, tenant_id, name, stage, thermal,
                 preferences, concerns, ai_summary, updated_at, source_trace_id,
-                contact_name, contact_title, valuation, deal_size, probability, legal_status
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                contact_name, contact_title, valuation, deal_size, probability, legal_status,
+                nda_signed, offline_meeting_count, project_approved, committee_approved,
+                onsite_dd_done, agreement_signed, deal_closed, referral_source
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(tenant_id, name) DO UPDATE SET
                 stage=excluded.stage,
                 thermal=excluded.thermal,
@@ -77,7 +88,15 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 valuation=excluded.valuation,
                 deal_size=excluded.deal_size,
                 probability=excluded.probability,
-                legal_status=excluded.legal_status
+                legal_status=excluded.legal_status,
+                nda_signed=excluded.nda_signed,
+                offline_meeting_count=excluded.offline_meeting_count,
+                project_approved=excluded.project_approved,
+                committee_approved=excluded.committee_approved,
+                onsite_dd_done=excluded.onsite_dd_done,
+                agreement_signed=excluded.agreement_signed,
+                deal_closed=excluded.deal_closed,
+                referral_source=excluded.referral_source
             """,
             (
                 row.institution_id,
@@ -96,6 +115,14 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 row.deal_size,
                 row.probability,
                 row.legal_status,
+                int(row.nda_signed),
+                row.offline_meeting_count,
+                int(row.project_approved),
+                int(row.committee_approved),
+                int(row.onsite_dd_done),
+                int(row.agreement_signed),
+                int(row.deal_closed),
+                row.referral_source,
             ),
         )
         c.commit()
@@ -124,8 +151,10 @@ def list_institutions(*, tenant_id: str, limit: int = 200) -> list[InstitutionPr
         cur = c.execute(
             """SELECT institution_id, tenant_id, name, stage, thermal,
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
-                      contact_name, contact_title, valuation, deal_size, probability, legal_status
-               FROM institutions WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?""",
+                      contact_name, contact_title, valuation, deal_size, probability, legal_status,
+                      nda_signed, offline_meeting_count, project_approved, committee_approved,
+                      onsite_dd_done, agreement_signed, deal_closed, referral_source
+               FROM institutions WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?""",  # noqa: E501
             (tenant_id, limit),
         )
         rows = cur.fetchall()
@@ -174,6 +203,14 @@ def update_institution(
     deal_size: str | None = None,
     probability: int | None = None,
     legal_status: str | None = None,
+    nda_signed: bool | None = None,
+    offline_meeting_count: int | None = None,
+    project_approved: bool | None = None,
+    committee_approved: bool | None = None,
+    onsite_dd_done: bool | None = None,
+    agreement_signed: bool | None = None,
+    deal_closed: bool | None = None,
+    referral_source: str | None = None,
 ) -> InstitutionProfile | None:
     """部分更新机构字段，返回更新后的档案；找不到则返回 None。"""
     import time as _time
@@ -202,6 +239,22 @@ def update_institution(
         updates["probability"] = max(0, min(100, int(probability)))
     if legal_status is not None:
         updates["legal_status"] = legal_status
+    if nda_signed is not None:
+        updates["nda_signed"] = int(nda_signed)
+    if offline_meeting_count is not None:
+        updates["offline_meeting_count"] = max(0, int(offline_meeting_count))
+    if project_approved is not None:
+        updates["project_approved"] = int(project_approved)
+    if committee_approved is not None:
+        updates["committee_approved"] = int(committee_approved)
+    if onsite_dd_done is not None:
+        updates["onsite_dd_done"] = int(onsite_dd_done)
+    if agreement_signed is not None:
+        updates["agreement_signed"] = int(agreement_signed)
+    if deal_closed is not None:
+        updates["deal_closed"] = int(deal_closed)
+    if referral_source is not None:
+        updates["referral_source"] = referral_source
     if not updates:
         return None
     set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -217,7 +270,9 @@ def update_institution(
         row = c.execute(
             """SELECT institution_id, tenant_id, name, stage, thermal,
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
-                      contact_name, contact_title, valuation, deal_size, probability, legal_status
+                      contact_name, contact_title, valuation, deal_size, probability, legal_status,
+                      nda_signed, offline_meeting_count, project_approved, committee_approved,
+                      onsite_dd_done, agreement_signed, deal_closed, referral_source
                FROM institutions WHERE tenant_id = ? AND institution_id = ?""",
             (tenant_id, institution_id),
         ).fetchone()
@@ -242,6 +297,14 @@ def row_to_profile(row: tuple[Any, ...]) -> InstitutionProfile:
         deal_size=row[13] if len(row) > 13 else "",
         probability=int(row[14] or 0) if len(row) > 14 else 0,
         legal_status=row[15] if len(row) > 15 else "",
+        nda_signed=bool(row[16]) if len(row) > 16 else False,
+        offline_meeting_count=int(row[17] or 0) if len(row) > 17 else 0,
+        project_approved=bool(row[18]) if len(row) > 18 else False,
+        committee_approved=bool(row[19]) if len(row) > 19 else False,
+        onsite_dd_done=bool(row[20]) if len(row) > 20 else False,
+        agreement_signed=bool(row[21]) if len(row) > 21 else False,
+        deal_closed=bool(row[22]) if len(row) > 22 else False,
+        referral_source=row[23] if len(row) > 23 else "",
     )
 
 
@@ -253,7 +316,9 @@ def get_by_name(*, tenant_id: str, name: str) -> InstitutionProfile | None:
         cur = c.execute(
             """SELECT institution_id, tenant_id, name, stage, thermal,
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
-                      contact_name, contact_title, valuation, deal_size, probability, legal_status
+                      contact_name, contact_title, valuation, deal_size, probability, legal_status,
+                      nda_signed, offline_meeting_count, project_approved, committee_approved,
+                      onsite_dd_done, agreement_signed, deal_closed, referral_source
                FROM institutions WHERE tenant_id = ? AND name = ? LIMIT 1""",
             (tenant_id, name),
         )
@@ -368,6 +433,53 @@ def sync_institutions_from_pitch_jobs() -> dict[str, int]:
         synced, skipped, errors,
     )
     return {"synced": synced, "skipped": skipped, "errors": errors}
+
+
+def get_milestone_stats(*, tenant_id: str) -> dict[str, Any]:
+    """返回里程碑计数 + 引荐方排行，供大屏使用。"""
+    with _conn() as c:
+        rows = c.execute(
+            """SELECT nda_signed, offline_meeting_count, project_approved,
+                      committee_approved, onsite_dd_done, agreement_signed,
+                      deal_closed, referral_source
+               FROM institutions WHERE tenant_id = ?""",
+            (tenant_id,),
+        ).fetchall()
+        total = c.execute(
+            "SELECT COUNT(*) FROM institutions WHERE tenant_id = ?", (tenant_id,)
+        ).fetchone()[0]
+
+    nda = sum(1 for r in rows if r[0])
+    meetings = sum(1 for r in rows if int(r[1] or 0) > 0)
+    proj = sum(1 for r in rows if r[2])
+    comm = sum(1 for r in rows if r[3])
+    dd = sum(1 for r in rows if r[4])
+    agr = sum(1 for r in rows if r[5])
+    closed = sum(1 for r in rows if r[6])
+
+    # 引荐方排行：统计来源 + 到达的最高阶段
+    from collections import Counter
+    ref_counter: Counter[str] = Counter()
+    for r in rows:
+        src = (r[7] or "").strip()
+        if src:
+            ref_counter[src] += 1
+    top_referrals = [
+        {"source": src, "count": cnt}
+        for src, cnt in ref_counter.most_common(5)
+    ]
+
+    return {
+        "total_contacted": total,
+        "nda_signed": nda,
+        "offline_meetings": meetings,
+        "project_approved": proj,
+        "committee_approved": comm,
+        "onsite_dd_done": dd,
+        "agreement_signed": agr,
+        "deal_closed": closed,
+        "top_referrals": top_referrals,
+    }
 
 
 def update_stage_by_name(*, tenant_id: str, name: str, stage: str) -> bool:

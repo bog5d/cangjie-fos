@@ -8,6 +8,7 @@ from cangjie_fos.services.institution_store import (
     count_by_stage,
     create_institution,
     delete_institution,
+    get_milestone_stats,
     list_institutions,
     sync_institutions_from_pitch_jobs,
     update_institution,
@@ -34,7 +35,7 @@ def patch_institution(
     body: InstitutionProfileUpdate,
     tenant_id: str = Query(..., min_length=1),
 ) -> InstitutionProfile:
-    """部分更新机构档案字段（ai_summary, concerns, preferences, stage, thermal）。"""
+    """部分更新机构档案字段。"""
     updated = update_institution(
         tenant_id=tenant_id,
         institution_id=institution_id,
@@ -50,6 +51,14 @@ def patch_institution(
         deal_size=body.deal_size,
         probability=body.probability,
         legal_status=body.legal_status,
+        nda_signed=body.nda_signed,
+        offline_meeting_count=body.offline_meeting_count,
+        project_approved=body.project_approved,
+        committee_approved=body.committee_approved,
+        onsite_dd_done=body.onsite_dd_done,
+        agreement_signed=body.agreement_signed,
+        deal_closed=body.deal_closed,
+        referral_source=body.referral_source,
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="not_found")
@@ -72,6 +81,12 @@ def pipeline_status(tenant_id: str = Query(..., min_length=1)) -> PipelineCounts
     c = count_by_stage(tenant_id=tenant_id)
     total = sum(c.values())
     return PipelineCountsResponse(tenant_id=tenant_id, counts=c, total=total)
+
+
+@router.get("/milestone-stats")
+def milestone_stats(tenant_id: str = Query(..., min_length=1)) -> dict:
+    """返回里程碑计数 + 引荐方排行，供征途成就墙使用。"""
+    return get_milestone_stats(tenant_id=tenant_id)
 
 
 @router.get("/funnel-debug")
