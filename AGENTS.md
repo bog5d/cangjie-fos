@@ -17,12 +17,19 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v0.7.2，2026-05-16）
+## 🔴 Codex 自动测试任务收件箱
+
+> **Codex 每次拉取仓库更新后，必须先读 [`CODEX_TASKS.md`](./CODEX_TASKS.md) 再执行测试。**
+> 该文件包含：自动化测试命令、人工冒烟测试清单（A-G）、评分标准、历史记录。
+
+---
+
+## 当前状态（v1.3.0，2026-05-31）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v0.7.2** |
-| 测试基线 | **630 passed**（625 + 5 新增），0 failed（预存的 3 个 wizard 429 限流不计入） |
+| 版本 | **v1.3.0** |
+| 测试基线 | **723 passed**，0 failed |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
