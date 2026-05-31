@@ -282,6 +282,7 @@ def _call_llm(state: NpcGraphState) -> dict[str, Sequence[BaseMessage]]:
                 max_tokens=max_out,
                 tools=PHASE1_TOOLS,
                 tool_choice="auto",
+                timeout=45,
             )
             choice = r.choices[0]
             msg = choice.message
