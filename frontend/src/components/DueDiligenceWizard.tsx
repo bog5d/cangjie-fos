@@ -79,6 +79,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [parsing, setParsing] = useState(false);
   const [matchStatus, setMatchStatus] = useState<string>("idle");
   const [matchError, setMatchError] = useState<string>("");
+  const [matchProgress, setMatchProgress] = useState<{ done: number; total: number } | null>(null);
   const pollMatchRef = useRef<number | null>(null);
 
   // Step 3 state
@@ -221,6 +222,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     setSessionId(sessionData.session_id);
     setParsing(false);
     setMatchStatus("running");
+    setMatchProgress(null);
     try {
       const matchResp = await fetch(
         `/api/v1/dd/sessions/${sessionData.session_id}/match?folder_root=${encodeURIComponent(folderPath.trim())}`,
@@ -237,11 +239,42 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       return;
     }
     let attempts = 0;
-    const MAX_MATCH = 30;
+    const MAX_MATCH = 120;  // 最多等 4 分钟（120 × 2s）
     const sid = sessionData.session_id;
     pollMatchRef.current = window.setInterval(async () => {
       attempts++;
       try {
+        // 先拉进度（不等 items 全部完成）
+        const progressResp = await fetch(`/api/v1/dd/sessions/${sid}/match-status`);
+        if (progressResp.ok) {
+          const ps: { status: string; done: number; total: number } = await progressResp.json();
+          if (ps.total > 0) {
+            setMatchProgress({ done: ps.done, total: ps.total });
+          }
+          if (ps.status === "done") {
+            clearInterval(pollMatchRef.current!);
+            pollMatchRef.current = null;
+            // 拉最终结果
+            const r = await fetch(`/api/v1/dd/sessions/${sid}/items`);
+            if (!r.ok) {
+              setMatchStatus("error");
+              setMatchError("⚠️ 匹配完成但加载结果失败，请刷新后重试");
+              return;
+            }
+            const itemList: DDItem[] = await r.json();
+            if (itemList.length === 0) {
+              setMatchStatus("error");
+              setMatchError("⚠️ 未解析到任何需求项，请检查清单格式后重试");
+            } else {
+              setItems(itemList);
+              setMatchStatus("done");
+              setMatchProgress(null);
+              setStep(3);
+            }
+            return;
+          }
+        }
+        // 降级：match-status 不可用时回退到查 items 是否有结果
         const r = await fetch(`/api/v1/dd/sessions/${sid}/items`);
         if (!r.ok) {
           if (attempts >= MAX_MATCH) {
@@ -263,6 +296,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
           } else {
             setItems(itemList);
             setMatchStatus("done");
+            setMatchProgress(null);
             setStep(3);
           }
         }
@@ -587,7 +621,13 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   disabled={parsing || matchStatus === "running" || (!checklistFile && !checklistText.trim())}
                   className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
                 >
-                  {parsing ? "解析中…" : matchStatus === "running" ? "AI 匹配中…" : "解析 & 开始匹配"}
+                  {parsing
+                    ? "解析中…"
+                    : matchStatus === "running"
+                      ? matchProgress && matchProgress.total > 0
+                        ? `匹配中… ${matchProgress.done}/${matchProgress.total} 项`
+                        : "AI 匹配中…"
+                      : "解析 & 开始匹配"}
                 </button>
                 {matchStatus === "error" && (
                   <button

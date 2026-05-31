@@ -91,7 +91,7 @@ def test_run_matching_updates_confidence():
 
     fake_index = [{"file_path": "/folder/验资.pdf", "filename": "验资.pdf", "summary": "验资报告"}]
 
-    def fake_batch_match(items, file_list_text, index_rows):
+    def fake_batch_match(items, file_list_text, index_rows, **kwargs):
         return {items[0]["id"]: {"file_path": "/folder/验资.pdf", "filename": "验资.pdf",
                                   "confidence": 0.92, "reason": "文件名匹配"}}
 
@@ -264,7 +264,7 @@ def test_run_matching_stores_candidates_json():
         {"file_path": "/folder/备选.pdf", "filename": "备选.pdf", "summary": "备选"},
     ]
 
-    def fake_batch_match(items, file_list_text, index_rows):
+    def fake_batch_match(items, file_list_text, index_rows, **kwargs):
         return {items[0]["id"]: {
             "file_path": "/folder/审计.pdf",
             "filename": "审计.pdf",

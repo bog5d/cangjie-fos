@@ -69,6 +69,9 @@ router = APIRouter(prefix="/api/v1/dd", tags=["due-diligence"])
 # 内存扫描进度（简单实现，足够单机使用）
 _scan_status: dict[str, dict] = {}
 
+# 内存匹配进度（session_id → {status, done, total}）
+_match_status: dict[str, dict] = {}
+
 
 class ScanRequest(BaseModel):
     folder_path: str
@@ -264,9 +267,30 @@ async def trigger_matching(
     folder_root: str,
     background_tasks: BackgroundTasks,
 ):
-    """后台触发 AI 批量匹配。"""
-    background_tasks.add_task(run_matching, session_id, folder_root)
+    """后台触发 AI 批量匹配。进度通过 GET /sessions/{id}/match-status 轮询。"""
+    _match_status[session_id] = {"status": "running", "done": 0, "total": 0}
+
+    def _do_match():
+        def _progress(done: int, total: int) -> None:
+            _match_status[session_id].update({"done": done, "total": total})
+
+        try:
+            run_matching(session_id, folder_root, progress_callback=_progress)
+        finally:
+            status = _match_status.get(session_id, {})
+            total = status.get("total", 0)
+            _match_status[session_id] = {"status": "done", "done": total, "total": total}
+
+    background_tasks.add_task(_do_match)
     return {"status": "matching_started", "session_id": session_id}
+
+
+@router.get("/sessions/{session_id}/match-status")
+def get_match_status(session_id: str):
+    """轮询匹配进度。返回 {status, done, total}。status 为 running/done/not_found。"""
+    if session_id in _match_status:
+        return _match_status[session_id]
+    return {"status": "not_found", "done": 0, "total": 0}
 
 
 @router.get("/sessions/{session_id}/items")
