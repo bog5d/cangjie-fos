@@ -652,7 +652,11 @@ function BundleForm({ files, onDone, onCancel }: {
 
 type ViewMode = "list" | "semantic" | "dir";
 
-export function AssetLibrary() {
+interface AssetLibraryProps {
+  onLaunchDD?: (reqText: string, institution: string) => void;
+}
+
+export function AssetLibrary({ onLaunchDD }: AssetLibraryProps = {}) {
   const [data, setData] = useState<AssetIndexResponse | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -985,7 +989,7 @@ export function AssetLibrary() {
 
       {/* 子面板 */}
       <AssetHealthPanel />
-      <MatchMakerPanel />
+      <MatchMakerPanel onLaunchDD={onLaunchDD} />
       <InstitutionArchivePanel />
 
       <AssetScanConfigModal

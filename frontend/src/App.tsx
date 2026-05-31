@@ -145,6 +145,8 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
   const [wizardOpen, setWizardOpen] = useState(false);
   const [roadshowOpen, setRoadshowOpen] = useState(false);
   const [ddOpen, setDdOpen] = useState(false);
+  const [ddInitChecklist, setDdInitChecklist] = useState("");
+  const [ddInitInstitution, setDdInitInstitution] = useState("");
   const [doctorOpen, setDoctorOpen] = useState(false);
   const [ready, setReady] = useState<ReadyPayload | null | undefined>(undefined);
   const [milestoneRefreshKey, setMilestoneRefreshKey] = useState(0);
@@ -469,7 +471,11 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
       />
       <FollowUpWidget tenantId={tenant} />
       <Suspense fallback={<div className="text-slate-500 text-xs p-2">加载资料库…</div>}>
-        <AssetLibrary />
+        <AssetLibrary onLaunchDD={(text, inst) => {
+          setDdInitChecklist(text);
+          setDdInitInstitution(inst);
+          setDdOpen(true);
+        }} />
       </Suspense>
       <PitchUploadWizard
         open={wizardOpen}
@@ -488,7 +494,12 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
         institutions={institutions.map((i) => i.name).filter(Boolean)}
       />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
-      <DueDiligenceWizard open={ddOpen} onClose={() => setDdOpen(false)} />
+      <DueDiligenceWizard
+        open={ddOpen}
+        onClose={() => { setDdOpen(false); setDdInitChecklist(""); setDdInitInstitution(""); }}
+        initialChecklistText={ddInitChecklist}
+        initialInstitution={ddInitInstitution}
+      />
       {confirmJob ? (
         <ParticipantConfirmModal
           jobId={confirmJob.jobId}

@@ -82,8 +82,9 @@ def _index_single_file(file_path: Path, folder_root: str, use_llm: bool = True) 
     # 只在 use_llm=True 且文件可读时才调用 LLM；否则 summary=None，依靠文件名匹配
     summary = _llm_summarize(file_path.name, text) if (use_llm and readable and text) else None
 
+    now = time.time()
     with _connect() as conn:
-        # 用 file_path 做 upsert（同一文件重复扫描不重复插入）
+        # ── 写入 dd_asset_index（DD 专用索引，用于本次会话匹配）──────────────
         existing = conn.execute(
             "SELECT id FROM dd_asset_index WHERE file_path = ?", (str(file_path),)
         ).fetchone()
@@ -92,7 +93,7 @@ def _index_single_file(file_path: Path, folder_root: str, use_llm: bool = True) 
                 """UPDATE dd_asset_index
                    SET summary = ?, readable = ?, indexed_at = ?
                    WHERE file_path = ?""",
-                (summary, 1 if readable else 0, time.time(), str(file_path)),
+                (summary, 1 if readable else 0, now, str(file_path)),
             )
         else:
             conn.execute(
@@ -107,9 +108,34 @@ def _index_single_file(file_path: Path, folder_root: str, use_llm: bool = True) 
                     file_path.suffix.lower(),
                     summary,
                     1 if readable else 0,
-                    time.time(),
+                    now,
                 ),
             )
+
+        # ── 同步写入共享 assets 表（供轻量匹配器 MatchMaker 读取）────────────
+        # 用相对路径作为唯一键；已有更优摘要时不覆盖（CASE WHEN）
+        try:
+            rel_path = str(file_path.relative_to(Path(folder_root)))
+        except ValueError:
+            rel_path = file_path.name
+        try:
+            mtime = str(file_path.stat().st_mtime)
+        except OSError:
+            mtime = ""
+        conn.execute(
+            """INSERT INTO assets (filename, relative_path, full_path, last_modified,
+                                   summary, tags, scan_dir, indexed_at)
+               VALUES (?, ?, ?, ?, ?, '[]', ?, ?)
+               ON CONFLICT(relative_path) DO UPDATE SET
+                   full_path     = excluded.full_path,
+                   last_modified = excluded.last_modified,
+                   summary       = CASE WHEN excluded.summary != '' THEN excluded.summary
+                                        ELSE assets.summary END,
+                   scan_dir      = excluded.scan_dir,
+                   indexed_at    = excluded.indexed_at""",
+            (file_path.name, rel_path, str(file_path), mtime,
+             summary or "", folder_root, now),
+        )
 
 
 def _llm_summarize(filename: str, content: str) -> str:

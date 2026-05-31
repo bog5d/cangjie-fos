@@ -263,3 +263,119 @@ class TestDDGitHubSync:
         assert export_resp.status_code == 200
         # BackgroundTask 在 TestClient 中同步执行
         assert session_id in push_calls
+
+
+class TestFlywheel:
+    """Step 1 验证：DD 确认写入 match_outcomes 学习飞轮。"""
+
+    def test_bulk_confirm_writes_match_outcomes(self, client, tmp_path):
+        """bulk-confirm 后 match_outcomes 表应有对应记录。"""
+        src = tmp_path / "验资报告.pdf"
+        src.write_bytes(b"fake")
+
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=_MOCK_ITEMS):
+            resp = client.post("/api/v1/dd/sessions", data={
+                "text": "dummy", "tenant_id": "fw_test", "folder_root": str(tmp_path),
+                "institution_name": "飞轮测试机构",
+            })
+        sid = resp.json()["session_id"]
+        items = client.get(f"/api/v1/dd/sessions/{sid}/items").json()
+
+        # 设置文件路径 + 高置信度
+        from cangjie_fos.services.db_base import _connect
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE dd_match_items SET matched_file_path = ?, matched_filename = ?, confidence = 0.95 WHERE id = ?",
+                (str(src), "验资报告.pdf", items[0]["id"]),
+            )
+
+        confirm_resp = client.post(
+            f"/api/v1/dd/sessions/{sid}/items/bulk-confirm?min_confidence=0.8"
+        )
+        assert confirm_resp.status_code == 200
+
+        # BackgroundTask 在 TestClient 中同步执行，检查 match_outcomes 写入
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT was_selected FROM match_outcomes WHERE session_id = ?", (sid,)
+            ).fetchall()
+        assert len(rows) >= 1
+        assert any(r[0] == 1 for r in rows)
+
+    def test_individual_confirm_writes_match_outcomes(self, client, tmp_path):
+        """PATCH user_confirmed=True 后 match_outcomes 应有记录。"""
+        src = tmp_path / "审计报告.pdf"
+        src.write_bytes(b"fake")
+
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=[{"item_no": "1", "category": "财务", "requirement": "审计报告"}]):
+            resp = client.post("/api/v1/dd/sessions", data={
+                "text": "dummy", "tenant_id": "fw2", "folder_root": str(tmp_path),
+                "institution_name": "单项确认机构",
+            })
+        sid = resp.json()["session_id"]
+        items = client.get(f"/api/v1/dd/sessions/{sid}/items").json()
+        item_id = items[0]["id"]
+
+        from cangjie_fos.services.db_base import _connect
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE dd_match_items SET matched_file_path = ?, matched_filename = ? WHERE id = ?",
+                (str(src), "审计报告.pdf", item_id),
+            )
+
+        resp = client.patch(f"/api/v1/dd/sessions/{sid}/items/{item_id}",
+                            json={"user_confirmed": True})
+        assert resp.status_code == 200
+
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT institution FROM match_outcomes WHERE session_id = ?", (sid,)
+            ).fetchone()
+        assert row is not None
+        assert row[0] == "单项确认机构"
+
+
+class TestDDScanSyncToAssets:
+    """Step 3 验证：DD 扫描同步写入 assets 共享表。"""
+
+    def test_scan_writes_to_assets_table(self, client, tmp_path):
+        """扫描完成后 assets 表中应能查到被扫描的文件。"""
+        (tmp_path / "营业执照.txt").write_text("营业执照原件", encoding="utf-8")
+        (tmp_path / "财务报告.txt").write_text("2023年财务报告", encoding="utf-8")
+
+        with patch("cangjie_fos.services.dd_index_service._llm_summarize", return_value="测试摘要"):
+            from cangjie_fos.services.dd_index_service import scan_and_index_folder
+            result = scan_and_index_folder(str(tmp_path), "test_sync")
+
+        assert result["indexed"] == 2
+
+        from cangjie_fos.services.db_base import _connect
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT filename, summary FROM assets WHERE scan_dir = ?", (str(tmp_path),)
+            ).fetchall()
+        filenames = {r[0] for r in rows}
+        assert "营业执照.txt" in filenames
+        assert "财务报告.txt" in filenames
+        # 摘要应被写入
+        assert any(r[1] == "测试摘要" for r in rows)
+
+    def test_scan_upserts_existing_asset(self, client, tmp_path):
+        """重复扫描同一文件不应创建重复记录（upsert 幂等）。"""
+        f = tmp_path / "合同.txt"
+        f.write_text("合同正文", encoding="utf-8")
+
+        with patch("cangjie_fos.services.dd_index_service._llm_summarize", return_value="合同摘要"):
+            from cangjie_fos.services.dd_index_service import scan_and_index_folder
+            scan_and_index_folder(str(tmp_path), "t_upsert")
+            scan_and_index_folder(str(tmp_path), "t_upsert")
+
+        from cangjie_fos.services.db_base import _connect
+        with _connect() as conn:
+            count = conn.execute(
+                "SELECT COUNT(*) FROM assets WHERE filename = '合同.txt' AND scan_dir = ?",
+                (str(tmp_path),),
+            ).fetchone()[0]
+        assert count == 1  # 不应重复
