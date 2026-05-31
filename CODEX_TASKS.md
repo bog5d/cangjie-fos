@@ -69,6 +69,10 @@ npm run build
 
 **FAIL 判定**：只有 📂 图标无文字 / 点击无反应
 
+> ✅ **已加自动化兜底**：`frontend/src/components/__tests__/DueDiligenceWizard.step3.test.tsx`
+> 通过「恢复历史会话」喂入一条未确认 item，断言「✓」「缺」「📂 替换」三按钮齐全且点替换展开输入行。
+> 浏览器只恢复到已确认 session 时可跳过本节，以该 vitest 用例为准。
+
 ---
 
 ### D — 【本轮修复】成就墙保存后即时刷新
@@ -81,6 +85,11 @@ npm run build
 
 **FAIL 判定**：数字不变，需手动刷新才更新
 
+> ✅ **已加自动化兜底**（编辑保存路径，不只创建机构）：
+> - `frontend/src/components/__tests__/InstitutionList.save.test.tsx`：编辑保存后断言 `onMilestonesChanged` 被调用。
+> - `frontend/src/components/__tests__/WarRoomMap.refresh.test.tsx`：`milestoneRefreshKey` +1 时断言重新拉取 `/api/v1/pipeline/milestone-stats`。
+> in-app 浏览器对编辑弹层滚动不稳定时，以这两条 vitest 用例为准。
+
 ---
 
 ### E — 【本轮新增】DD 学习飞轮接通
@@ -88,10 +97,12 @@ npm run build
 | 步骤 | 操作 | 期望结果 |
 |------|------|---------|
 | E1 | 完成一次完整 DD 流程：扫描→匹配→Step3 批量确认 | 确认成功 |
-| E2 | 访问 `http://localhost:8000/api/v1/institutions/{机构名}/briefing` | JSON 里 `preferred_files` 数组有值 |
+| E2 | 访问 `http://localhost:8000/api/v1/institutions/{机构名}/briefing` | JSON 里 `has_history=true` 且 `preferred_paths` 数组有值 |
 | E3 | 若机构名留空，检查 Step2 机构名输入框旁边是否有黄色提示 | 出现「⚠️ 建议填写 — 确认记录将关联此机构...」 |
 
-**FAIL 判定**：preferred_files 始终为空 / 无任何警告提示
+> ⚠️ **字段口径**：briefing API 真实字段是 `preferred_paths`（不是 `preferred_files`）+ `has_history`。
+
+**FAIL 判定**：has_history 始终 false / preferred_paths 始终为空 / 无任何警告提示
 
 ---
 
