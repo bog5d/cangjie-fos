@@ -72,8 +72,18 @@ def _last_user_text(state: NpcGraphState) -> str:
     return ""
 
 
-def _infer_memory_tag_from_user_text(_text: str) -> str:
-    """REFACTOR_PLAN 首版：恒为 default；第二版再做机构名→tag。"""
+def _infer_memory_tag_from_user_text(text: str, *, tenant_id: str = "unknown") -> str:
+    """从用户消息中匹配机构名，找到则返回机构名作为记忆 tag。"""
+    if not text.strip():
+        return "default"
+    try:
+        from cangjie_fos.services.institution_store import list_institutions
+        insts = list_institutions(tenant_id=tenant_id, limit=200)
+        for inst in insts:
+            if inst.name and inst.name in text:
+                return inst.name
+    except Exception:
+        pass
     return "default"
 
 
@@ -93,13 +103,27 @@ def _inject_narrative(state: NpcGraphState) -> dict[str, str]:
     if meeting:
         block = f"{block}\n\n{meeting}"
     ut = _last_user_text(state)
-    mem_tag = _infer_memory_tag_from_user_text(ut)
+    mem_tag = _infer_memory_tag_from_user_text(ut, tenant_id=tid)
     epi = build_episodic_memory_snippet_for_npc(tenant_id=tid, tag=mem_tag, limit=5)
     if epi:
         block = f"{block}\n\n[错题本 Top-N 命中]\n{epi}"
     asset_snippet = build_relevant_asset_snippet(ut)
     if asset_snippet:
         block = f"{block}\n\n{asset_snippet}"
+    # 上下文感知：注入当前对话涉及的机构信息
+    if mem_tag != "default":
+        try:
+            from cangjie_fos.services.institution_store import get_by_name  # noqa: PLC0415
+            inst = get_by_name(tenant_id=tid, name=mem_tag)
+            if inst:
+                ctx_parts = [f"当前对话涉及机构：{inst.name}（stage={inst.stage.value}, thermal={inst.thermal.value}）"]
+                if inst.ai_summary:
+                    ctx_parts.append(f"画像：{inst.ai_summary}")
+                if inst.concerns:
+                    ctx_parts.append(f"核心疑虑：{inst.concerns}")
+                block = f"{block}\n\n[机构上下文]\n" + "\n".join(ctx_parts)
+        except Exception:
+            pass
     return {"narrative": block}
 
 

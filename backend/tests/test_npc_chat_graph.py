@@ -437,3 +437,91 @@ class TestNpcToolExecutors:
         )
         result = npc_tools.execute_tool("list_pending_followups", {}, tenant_id="t1")
         assert "没有" in result
+
+    def test_suggest_pitch_improvements_with_risks(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        fake_report = {
+            "total_score": 72,
+            "risk_points": [
+                {"problem_summary": "估值说不清楚", "suggestion": "补充同类公司估值对标"},
+                {"problem_summary": "团队背景薄弱", "suggestion": "强调核心成员的行业资源"},
+            ],
+        }
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_get",
+            lambda job_id: {"original_report": fake_report, "status": "done"},
+        )
+        result = npc_tools.execute_tool("suggest_pitch_improvements", {"job_id": "job-001"}, tenant_id="t1")
+        assert "72" in result
+        assert "估值" in result or "团队" in result
+
+    def test_suggest_pitch_improvements_no_job(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_get",
+            lambda job_id: None,
+        )
+        result = npc_tools.execute_tool("suggest_pitch_improvements", {"job_id": "nonexistent"}, tenant_id="t1")
+        assert "未找到" in result
+
+    def test_get_deal_probability_found(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+        from cangjie_fos.schemas.institution import InstitutionProfile, PipelineStage, InstitutionThermal
+
+        fake_inst = InstitutionProfile(
+            institution_id="inst00001",
+            tenant_id="t1",
+            name="高瓴资本",
+            stage=PipelineStage.TERM_SHEET,
+            thermal=InstitutionThermal.HOT,
+            probability=82,
+            valuation="10亿",
+            legal_status="TS已发出",
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.find_matching_names",
+            lambda *, tenant_id, text: [fake_inst],
+        )
+        result = npc_tools.execute_tool("get_deal_probability", {"institution_name": "高瓴"}, tenant_id="t1")
+        assert "82%" in result
+        assert "高瓴" in result
+        assert "10亿" in result
+
+    def test_get_deal_probability_not_found(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.find_matching_names",
+            lambda *, tenant_id, text: [],
+        )
+        result = npc_tools.execute_tool("get_deal_probability", {"institution_name": "不存在机构"}, tenant_id="t1")
+        assert "未找到" in result
+
+    def test_memory_tag_matches_institution(self, monkeypatch):
+        from cangjie_fos.services import npc_chat_graph
+        from cangjie_fos.schemas.institution import InstitutionProfile, PipelineStage, InstitutionThermal
+
+        fake_insts = [
+            InstitutionProfile(
+                institution_id="inst00001", tenant_id="t1", name="红杉资本",
+                stage=PipelineStage.DD, thermal=InstitutionThermal.WARM,
+            )
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: fake_insts,
+        )
+        tag = npc_chat_graph._infer_memory_tag_from_user_text("红杉资本最近有什么反馈？", tenant_id="t1")
+        assert tag == "红杉资本"
+
+    def test_memory_tag_defaults_when_no_match(self, monkeypatch):
+        from cangjie_fos.services import npc_chat_graph
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: [],
+        )
+        tag = npc_chat_graph._infer_memory_tag_from_user_text("今天天气怎么样", tenant_id="t1")
+        assert tag == "default"

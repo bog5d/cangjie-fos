@@ -95,12 +95,82 @@ LIST_PENDING_FOLLOWUPS: dict = {
     },
 }
 
-# 全量四个工具
+SUGGEST_PITCH_IMPROVEMENTS: dict = {
+    "type": "function",
+    "function": {
+        "name": "suggest_pitch_improvements",
+        "description": (
+            "基于某场路演的评分报告，提炼 3 条具体改进建议。"
+            "当用户询问如何改进路演、下次该注意什么、怎么提升评分时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string",
+                    "description": "路演任务 job_id，前端会传入当前复盘任务 ID",
+                }
+            },
+            "required": ["job_id"],
+        },
+    },
+}
+
+GENERATE_FOLLOWUP_MESSAGE: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_followup_message",
+        "description": (
+            "为某家机构生成一段跟进话术（微信/邮件均适用，100字以内）。"
+            "当用户要求起草跟进消息、催进度、或不知道怎么跟对方说时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "机构名称",
+                },
+                "context": {
+                    "type": "string",
+                    "description": "最新进展或背景，一句话，如「上周刚开了视频会」",
+                },
+            },
+            "required": ["institution_name"],
+        },
+    },
+}
+
+GET_DEAL_PROBABILITY: dict = {
+    "type": "function",
+    "function": {
+        "name": "get_deal_probability",
+        "description": (
+            "查询某家机构的成交概率评分（0-100）及当前关键指标。"
+            "当用户询问某家机构成功率、胜算、这家有没有希望时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "机构名称",
+                }
+            },
+            "required": ["institution_name"],
+        },
+    },
+}
+
+# 全量七个工具
 ALL_TOOLS = [
     GET_INSTITUTION_DETAIL,
     QUERY_PIPELINE_OVERVIEW,
     LIST_RECENT_ROADSHOWS,
     LIST_PENDING_FOLLOWUPS,
+    SUGGEST_PITCH_IMPROVEMENTS,
+    GENERATE_FOLLOWUP_MESSAGE,
+    GET_DEAL_PROBABILITY,
 ]
 
 # 向后兼容别名
@@ -123,6 +193,12 @@ def execute_tool(tool_name: str, arguments: dict, *, tenant_id: str) -> str:
             return _exec_list_recent_roadshows(arguments, tenant_id=tenant_id)
         if tool_name == "list_pending_followups":
             return _exec_list_pending_followups(arguments, tenant_id=tenant_id)
+        if tool_name == "suggest_pitch_improvements":
+            return _exec_suggest_pitch_improvements(arguments)
+        if tool_name == "generate_followup_message":
+            return _exec_generate_followup_message(arguments, tenant_id=tenant_id)
+        if tool_name == "get_deal_probability":
+            return _exec_get_deal_probability(arguments, tenant_id=tenant_id)
         return f"未知工具：{tool_name}"
     except Exception as e:
         logger.warning("npc_tool_exec_failed tool=%s: %s", tool_name, e)
@@ -235,5 +311,137 @@ def _exec_list_pending_followups(args: dict, *, tenant_id: str) -> str:
         inst_str = f"[{institution}] " if institution else ""
         priority_mark = "🔴" if priority == "high" else "⚪"
         lines.append(f"  {priority_mark} {inst_str}{actor}：{action}")
+
+    return "\n".join(lines)
+
+
+def _exec_suggest_pitch_improvements(args: dict) -> str:
+    """从路演报告风险点提炼3条改进建议，不需调 LLM。"""
+    job_id = (args.get("job_id") or "").strip()
+    if not job_id:
+        return "请提供 job_id。"
+    try:
+        from cangjie_fos.services.pitch_job_db import db_job_get
+        row = db_job_get(job_id)
+    except Exception as e:
+        return f"获取路演报告失败：{e}"
+    if not row:
+        return f"未找到 job_id={job_id} 的路演记录。"
+
+    report = row.get("original_report") or {}
+    if not isinstance(report, dict):
+        return "路演报告格式异常，无法解析。"
+
+    risk_points = report.get("risk_points") or []
+    if not risk_points:
+        total = report.get("total_score", "未知")
+        return f"该路演（总分 {total}）暂无风险点记录，建议先完成路演评估。"
+
+    suggestions = []
+    for rp in risk_points[:5]:
+        problem = rp.get("problem_summary") or rp.get("issue") or rp.get("description") or ""
+        suggestion = rp.get("suggestion") or rp.get("improvement") or ""
+        if not problem and not suggestion:
+            continue
+        if suggestion:
+            suggestions.append(f"• 针对「{problem}」：{suggestion}")
+        else:
+            suggestions.append(f"• 建议改善「{problem}」这个环节，准备更具体的数据或案例支撑")
+        if len(suggestions) >= 3:
+            break
+
+    if not suggestions:
+        return "风险点记录不含建议文字，请在审查台手动补充改进方向。"
+
+    total_score = report.get("total_score", "未知")
+    lines = [f"本场路演评分 {total_score}，建议重点改进："] + suggestions
+    return "\n".join(lines)
+
+
+def _exec_generate_followup_message(args: dict, *, tenant_id: str) -> str:
+    """用 DeepSeek 生成 100 字以内的跟进话术。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    name = (args.get("institution_name") or "").strip()
+    context = (args.get("context") or "").strip()
+    if not name:
+        return "请提供机构名称。"
+
+    stage_info = ""
+    try:
+        from cangjie_fos.services.institution_store import find_matching_names
+        hits = find_matching_names(tenant_id=tenant_id, text=name)
+        if hits:
+            inst = hits[0]
+            stage_info = f"当前阶段：{inst.stage.value}，热度：{inst.thermal.value}"
+            if inst.ai_summary:
+                stage_info += f"，背景：{inst.ai_summary}"
+    except Exception:
+        pass
+
+    prompt_parts = [f"请为融资方起草一段针对「{name}」的简短跟进消息（微信/邮件均适用，100字以内，语气专业友好）。"]
+    if stage_info:
+        prompt_parts.append(f"机构信息：{stage_info}")
+    if context:
+        prompt_parts.append(f"最新背景：{context}")
+    prompt_parts.append("直接给出消息正文，不要任何解释。")
+
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": "\n".join(prompt_parts)}],
+            max_tokens=200,
+            temperature=0.7,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    try:
+        return call_with_retry(_call, max_retries=2)
+    except Exception as e:
+        return f"生成失败：{e}"
+
+
+def _exec_get_deal_probability(args: dict, *, tenant_id: str) -> str:
+    """从机构档案读取成功概率及关键指标。"""
+    name = (args.get("institution_name") or "").strip()
+    if not name:
+        return "请提供机构名称。"
+
+    from cangjie_fos.services.institution_store import find_matching_names
+    import time as _time
+
+    hits = find_matching_names(tenant_id=tenant_id, text=name)
+    if not hits:
+        return f"未找到名称包含「{name}」的机构，请先在 Pipeline 中添加。"
+
+    inst = hits[0]
+    prob = inst.probability if hasattr(inst, "probability") else 0
+    days_stale = 0
+    if inst.updated_at:
+        days_stale = int((_time.time() - inst.updated_at) / 86400)
+
+    lines = [
+        f"机构：{inst.name}",
+        f"成功概率：{prob}%",
+        f"当前阶段：{inst.stage.value}  热度：{inst.thermal.value}",
+        f"最后更新：{days_stale} 天前",
+    ]
+    if hasattr(inst, "valuation") and inst.valuation:
+        lines.append(f"估值：{inst.valuation}")
+    if hasattr(inst, "deal_size") and inst.deal_size:
+        lines.append(f"目标融资：{inst.deal_size}")
+    if hasattr(inst, "legal_status") and inst.legal_status:
+        lines.append(f"法务进度：{inst.legal_status}")
+
+    if prob == 0:
+        lines.append("（概率未设置，请在机构档案中手动更新）")
+    elif prob >= 70:
+        lines.append("判断：胜算较高，建议加速推进 TS 谈判。")
+    elif prob >= 40:
+        lines.append("判断：中等概率，需持续跟进并解决核心疑虑。")
+    else:
+        lines.append("判断：概率偏低，建议复盘卡点或考虑重新激活策略。")
 
     return "\n".join(lines)

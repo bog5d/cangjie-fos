@@ -11,4 +11,10 @@ export interface InstitutionProfile {
   ai_summary: string;
   updated_at: number;
   source_trace_id?: string | null;
+  contact_name: string;
+  contact_title: string;
+  valuation: string;
+  deal_size: string;
+  probability: number;
+  legal_status: string;
 }

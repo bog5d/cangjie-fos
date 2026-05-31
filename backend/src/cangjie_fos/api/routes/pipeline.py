@@ -44,6 +44,12 @@ def patch_institution(
         preferences=body.preferences,
         concerns=body.concerns,
         ai_summary=body.ai_summary,
+        contact_name=body.contact_name,
+        contact_title=body.contact_title,
+        valuation=body.valuation,
+        deal_size=body.deal_size,
+        probability=body.probability,
+        legal_status=body.legal_status,
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="not_found")

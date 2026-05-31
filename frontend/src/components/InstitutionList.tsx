@@ -51,6 +51,12 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
     preferences: item.preferences,
     stage: item.stage,
     thermal: item.thermal,
+    contact_name: item.contact_name ?? "",
+    contact_title: item.contact_title ?? "",
+    valuation: item.valuation ?? "",
+    deal_size: item.deal_size ?? "",
+    probability: item.probability ?? 0,
+    legal_status: item.legal_status ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -136,6 +142,66 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
                 <option value="cold">❄️ 冷</option>
               </select>
             </div>
+          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className={label}>联系人姓名</label>
+              <input
+                className={input}
+                value={draft.contact_name}
+                onChange={(e) => setDraft((d) => ({ ...d, contact_name: e.target.value }))}
+                placeholder="如：张总"
+              />
+            </div>
+            <div className="flex-1">
+              <label className={label}>职位</label>
+              <input
+                className={input}
+                value={draft.contact_title}
+                onChange={(e) => setDraft((d) => ({ ...d, contact_title: e.target.value }))}
+                placeholder="如：合伙人"
+              />
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className={label}>估值</label>
+              <input
+                className={input}
+                value={draft.valuation}
+                onChange={(e) => setDraft((d) => ({ ...d, valuation: e.target.value }))}
+                placeholder="如：2亿"
+              />
+            </div>
+            <div className="flex-1">
+              <label className={label}>目标融资规模</label>
+              <input
+                className={input}
+                value={draft.deal_size}
+                onChange={(e) => setDraft((d) => ({ ...d, deal_size: e.target.value }))}
+                placeholder="如：3000万"
+              />
+            </div>
+          </div>
+          <div>
+            <label className={label}>成功概率：{draft.probability}%</label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={draft.probability}
+              onChange={(e) => setDraft((d) => ({ ...d, probability: Number(e.target.value) }))}
+              className="w-full accent-cyan-400"
+            />
+          </div>
+          <div>
+            <label className={label}>法务进度</label>
+            <input
+              className={input}
+              value={draft.legal_status}
+              onChange={(e) => setDraft((d) => ({ ...d, legal_status: e.target.value }))}
+              placeholder="如：NDA已签，等待TS草稿"
+            />
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">

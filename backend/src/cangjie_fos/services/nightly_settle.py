@@ -145,6 +145,20 @@ async def nightly_settle_for_tenant(tenant_id: str) -> int:
             log.warning("nightly_suggestion_insert_failed", error=str(exc))
 
     log.info("nightly_settle_done", tenant_id=tenant_id, suggested=count)
+
+    # 推送结算摘要到 NPC 消息队列，下次用户打开面板时可见
+    try:
+        from cangjie_fos.services.npc_queue import push_line  # noqa: PLC0415
+        from datetime import datetime as _dt  # noqa: PLC0415
+        ts = _dt.now().strftime("%m/%d %H:%M")
+        push_line(
+            role="assistant",
+            text=f"【{ts} 夜间沉淀完成】今晚为 {tenant_id} 提炼了 {count} 条进化建议，请查看「夜间建议」面板。",
+            proactive=True,
+        )
+    except Exception as exc:
+        log.warning("nightly_settle_push_line_failed", error=str(exc))
+
     return count
 
 
