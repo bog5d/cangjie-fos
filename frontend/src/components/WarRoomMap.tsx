@@ -11,6 +11,7 @@ interface Props {
   error: string | null;
   tenantId: string;
   onRequestRefresh?: () => void;
+  milestoneRefreshKey?: number;
 }
 
 interface PipelineCount {
@@ -55,7 +56,7 @@ const STATUS_ROADSHOW: Record<string, string> = {
   failed: "❌",
 };
 
-export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefresh }: Props) {
+export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefresh, milestoneRefreshKey }: Props) {
   const [settleOpen, setSettleOpen] = useState(false);
   const [settleBusy, setSettleBusy] = useState(false);
   const [settleGuideline, setSettleGuideline] = useState("");
@@ -85,7 +86,7 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
 
   useEffect(() => {
     void fetchLiveIntel();
-  }, [fetchLiveIntel]);
+  }, [fetchLiveIntel, milestoneRefreshKey]);
 
   // 当父组件刷新时，同步刷新 live intel
   const runReflectionSettle = useCallback(async () => {
@@ -192,16 +193,17 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
           <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-amber-400/70">
             征途成就墙
           </p>
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-9">
             {[
-              { label: "已接触", value: milestoneStats.total_contacted, icon: "🤝" },
-              { label: "NDA", value: milestoneStats.nda_signed, icon: "📝" },
+              { label: "路演接触", value: milestoneStats.total_contacted, icon: "🎤" },
+              { label: "NDA 签署", value: milestoneStats.nda_signed, icon: "📝" },
+              { label: "线下交流", value: milestoneStats.offline_meetings, icon: "☕", suffix: "家" },
               { label: "立项", value: milestoneStats.project_approved, icon: "✅" },
-              { label: "线下尽调", value: milestoneStats.onsite_dd_done, icon: "🔍" },
-              { label: "过会", value: milestoneStats.committee_approved, icon: "🏛️" },
-              { label: "签协议", value: milestoneStats.agreement_signed, icon: "✍️" },
+              { label: "内部尽调", value: milestoneStats.onsite_dd_done, icon: "🔍" },
+              { label: "外部尽调", value: milestoneStats.external_dd_done, icon: "🏢" },
+              { label: "投决过会", value: milestoneStats.committee_approved, icon: "🏛️" },
+              { label: "协议签署", value: milestoneStats.agreement_signed, icon: "✍️" },
               { label: "交割", value: milestoneStats.deal_closed, icon: "🎯" },
-              { label: "线下见面", value: milestoneStats.offline_meetings, icon: "☕" },
             ].map((m) => (
               <div
                 key={m.label}

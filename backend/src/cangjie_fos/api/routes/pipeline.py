@@ -1,7 +1,7 @@
 """Phase 6：机构 Pipeline API。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
 from cangjie_fos.schemas.institution import InstitutionProfile, InstitutionProfileCreate, InstitutionProfileUpdate, PipelineCountsResponse
 from cangjie_fos.services.institution_store import (
@@ -16,6 +16,14 @@ from cangjie_fos.services.institution_store import (
 from cangjie_fos.services.pipeline_funnel import build_funnel_from_institutions
 
 router = APIRouter(prefix="/api/v1/pipeline", tags=["pipeline"])
+
+
+def _push_institution_bg(institution_id: str) -> None:
+    try:
+        from cangjie_fos.services.github_sync import push_institution  # noqa: PLC0415
+        push_institution(institution_id)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 @router.get("/institutions", response_model=list[InstitutionProfile])
@@ -34,8 +42,9 @@ def patch_institution(
     institution_id: str,
     body: InstitutionProfileUpdate,
     tenant_id: str = Query(..., min_length=1),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> InstitutionProfile:
-    """部分更新机构档案字段。"""
+    """部分更新机构档案字段，更新后异步推送到 GitHub。"""
     updated = update_institution(
         tenant_id=tenant_id,
         institution_id=institution_id,
@@ -56,12 +65,14 @@ def patch_institution(
         project_approved=body.project_approved,
         committee_approved=body.committee_approved,
         onsite_dd_done=body.onsite_dd_done,
+        external_dd_done=body.external_dd_done,
         agreement_signed=body.agreement_signed,
         deal_closed=body.deal_closed,
         referral_source=body.referral_source,
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="not_found")
+    background_tasks.add_task(_push_institution_bg, updated.institution_id)
     return updated
 
 

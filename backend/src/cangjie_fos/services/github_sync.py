@@ -501,8 +501,35 @@ def _pull_latest_inner() -> dict[str, int]:
                 _import_remote_match(data)
                 match_count += 1
 
-    if pitch_count or match_count:
-        logger.info("✅ GitHub pull: 新增 pitch=%d, match=%d", pitch_count, match_count)
+    # ── 拉取 institutions/ 里程碑档案 ────────────────────────────────────────────
+    institution_count = 0
+    import urllib.request as _ur2
+    for tdir in tenant_dirs:
+        if tdir.get("type") != "dir":
+            continue
+        tenant_name = tdir["name"]
+        inst_path = f"analytics/{tenant_name}/institutions"
+        try:
+            url_i = f"https://api.github.com/repos/{cfg['repo']}/contents/{inst_path}"
+            req_i = _ur2.Request(url_i, headers=_headers())
+            with _ur2.urlopen(req_i, timeout=10) as r_i:
+                inst_files = json.loads(r_i.read())
+        except (urllib.error.URLError, OSError, ValueError):
+            continue
+        for f in inst_files:
+            if not f["name"].endswith(".json"):
+                continue
+            data = _download_json(f["download_url"])
+            if not data or data.get("fos_source") != "cangjie_fos":
+                continue
+            _merge_institution_from_cloud(data)
+            institution_count += 1
+
+    if pitch_count or match_count or institution_count:
+        logger.info(
+            "✅ GitHub pull: 新增 pitch=%d, match=%d, institution_merged=%d",
+            pitch_count, match_count, institution_count,
+        )
     return {"pitch_imported": pitch_count, "match_imported": match_count}
 
 
@@ -555,6 +582,36 @@ def _import_remote_pitch(data: dict) -> None:
     # ── 同步创建机构记录（INSERT OR IGNORE — 不覆盖用户已有编辑）─────────────────
     if institution_name.strip():
         _ensure_institution(tenant_id, institution_name, data, is_roadshow)
+
+
+def _merge_institution_from_cloud(data: dict) -> None:
+    """将 push_institution 推送的完整档案合并回本地（按 updated_at 新者覆盖）。"""
+    try:
+        from cangjie_fos.services.institution_store import get_by_id, update_institution  # noqa: PLC0415
+        institution_id = data.get("institution_id", "")
+        tenant_id = data.get("tenant_id", "")
+        if not institution_id or not tenant_id:
+            return
+        local = get_by_id(institution_id=institution_id)
+        remote_ts = float(data.get("updated_at") or 0)
+        local_ts = float(local.updated_at) if local else 0
+        if remote_ts <= local_ts:
+            return  # 本地更新，不覆盖
+        update_institution(
+            tenant_id=tenant_id,
+            institution_id=institution_id,
+            nda_signed=data.get("nda_signed"),
+            offline_meeting_count=data.get("offline_meeting_count"),
+            project_approved=data.get("project_approved"),
+            committee_approved=data.get("committee_approved"),
+            onsite_dd_done=data.get("onsite_dd_done"),
+            external_dd_done=data.get("external_dd_done"),
+            agreement_signed=data.get("agreement_signed"),
+            deal_closed=data.get("deal_closed"),
+            referral_source=data.get("referral_source"),
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("_merge_institution_from_cloud failed: %s", e)
 
 
 def _ensure_institution(
@@ -614,6 +671,32 @@ def _ensure_institution(
         logger.warning("_ensure_institution 写入失败: %s", e)
     finally:
         conn.close()
+
+
+def push_institution(institution_id: str) -> bool:
+    """推送机构里程碑档案到 analytics/{tenant}/institutions/{institution_id}.json。
+    在 PATCH /institutions/{id} 成功后作为 background_task 调用。
+    """
+    if not is_configured():
+        return False
+    try:
+        from cangjie_fos.services.institution_store import get_by_id  # noqa: PLC0415
+        prof = get_by_id(institution_id=institution_id)
+        if not prof:
+            logger.warning("push_institution: 机构不存在 %s", institution_id)
+            return False
+        cfg = _cfg()
+        tenant = prof.tenant_id or cfg["tenant"]
+        path = f"analytics/{tenant}/institutions/{institution_id}.json"
+        payload = prof.model_dump()
+        payload["fos_source"] = "cangjie_fos"
+        ok = _put_file(path, payload, f"institution: {prof.name}")
+        if ok:
+            logger.info("✅ GitHub sync institution: %s (%s)", prof.name, institution_id)
+        return ok
+    except Exception as e:  # noqa: BLE001
+        logger.warning("push_institution failed: %s", e)
+        return False
 
 
 def push_dd_session(session_id: str) -> bool:

@@ -6,6 +6,7 @@ interface Props {
   tenantId: string;
   items: InstitutionProfile[];
   onUpdate?: (updated: InstitutionProfile) => void;
+  onMilestonesChanged?: () => void;
 }
 
 interface PitchStat {
@@ -62,6 +63,7 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
     project_approved: item.project_approved ?? false,
     committee_approved: item.committee_approved ?? false,
     onsite_dd_done: item.onsite_dd_done ?? false,
+    external_dd_done: item.external_dd_done ?? false,
     agreement_signed: item.agreement_signed ?? false,
     deal_closed: item.deal_closed ?? false,
     referral_source: item.referral_source ?? "",
@@ -235,12 +237,13 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
             <label className={label}>融资里程碑</label>
             <div className="grid grid-cols-2 gap-2 mt-1">
               {([
-                ["nda_signed", "已签 NDA"],
+                ["nda_signed", "NDA 已签"],
                 ["project_approved", "已立项"],
-                ["committee_approved", "已过会"],
-                ["onsite_dd_done", "已线下尽调"],
-                ["agreement_signed", "已签协议"],
-                ["deal_closed", "已完成交割"],
+                ["onsite_dd_done", "内部尽调完成"],
+                ["external_dd_done", "外部尽调完成"],
+                ["committee_approved", "投决会已过"],
+                ["agreement_signed", "协议已签"],
+                ["deal_closed", "交割完成"],
               ] as [keyof typeof draft, string][]).map(([key, lbl]) => (
                 <label key={key} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                   <input
@@ -277,7 +280,7 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
   );
 }
 
-export function InstitutionList({ tenantId, items, onUpdate }: Props) {
+export function InstitutionList({ tenantId, items, onUpdate, onMilestonesChanged }: Props) {
   const [pitchStats, setPitchStats] = useState<Map<string, PitchStat>>(new Map());
   const [editTarget, setEditTarget] = useState<InstitutionProfile | null>(null);
   const [localItems, setLocalItems] = useState<InstitutionProfile[]>(items);
@@ -304,6 +307,7 @@ export function InstitutionList({ tenantId, items, onUpdate }: Props) {
   function handleSaved(updated: InstitutionProfile) {
     setLocalItems((prev) => prev.map((it) => it.institution_id === updated.institution_id ? updated : it));
     onUpdate?.(updated);
+    onMilestonesChanged?.();
   }
 
   return (
