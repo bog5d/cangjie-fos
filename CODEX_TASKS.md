@@ -5,21 +5,32 @@
 
 ---
 
-## 当前版本：v1.3.0 | 最后更新：2026-05-31
+## 当前版本：v1.4.0 | 最后更新：2026-05-31
 
 ---
 
 ## 第一步：自动化基线（必须全绿才算通）
 
 ```bash
+# ── 后端 ──────────────────────────────────────────────────────────
 cd backend
-
-# 1. 后端全量测试
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 # 期望：723+ passed, 0 failed
 
-# 2. 前端 TypeScript 编译
+# ── 前端 ──────────────────────────────────────────────────────────
 cd ../frontend
+
+# ⚠️ 每次 git pull 后必须先检查依赖是否有变化再跑测试/编译
+# 若 package.json 或 package-lock.json 有更新，先执行：
+npm install
+# （新增依赖不阻塞，audit vulnerability 当前不影响测试，可忽略）
+
+# 3. 前端单元测试（含 vitest 兜底用例）
+npm test
+# 注意：使用 Vitest，不支持 Jest 的 --runInBand 参数，不要传
+# 期望：18+ passed, 0 failed
+
+# 4. TypeScript 编译
 npm run build
 # 期望：exit code 0，无 error（warning 忽略）
 ```
@@ -153,4 +164,5 @@ npm run build
 | 版本 | 日期 | 主要内容 | 结果 |
 |------|------|---------|------|
 | v1.2.0 | 2026-05-31 | 里程碑重排、飞轮接通、升级按钮、共享索引 | PASS 23 / PARTIAL 3 / FAIL 1 / BLOCKED 4 |
-| v1.3.0 | 2026-05-31 | 新增机构入口、家/次双显、替换按钮、create修复 | 待验 |
+| v1.3.0 | 2026-05-31 | 新增机构入口、家/次双显、替换按钮、create修复 | PASS A/B/E/F/G · PARTIAL C/D（浏览器滚动不稳定） |
+| v1.4.0 | 2026-05-31 | vitest 兜底 C/D + 修 briefing 字段口径 + 前端依赖安装说明 | 待验 |
