@@ -17,4 +17,25 @@ export interface InstitutionProfile {
   deal_size: string;
   probability: number;
   legal_status: string;
+  // 里程碑字段（v1.3.0）
+  nda_signed: boolean;
+  offline_meeting_count: number;
+  project_approved: boolean;
+  committee_approved: boolean;
+  onsite_dd_done: boolean;
+  agreement_signed: boolean;
+  deal_closed: boolean;
+  referral_source: string;
+}
+
+export interface MilestoneStats {
+  total_contacted: number;
+  nda_signed: number;
+  offline_meetings: number;
+  project_approved: number;
+  committee_approved: number;
+  onsite_dd_done: number;
+  agreement_signed: number;
+  deal_closed: number;
+  top_referrals: Array<{ source: string; count: number }>;
 }

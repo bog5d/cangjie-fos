@@ -68,6 +68,11 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     _scheduler = AsyncIOScheduler()
     _scheduler.add_job(nightly_settle_all_tenants, "cron", hour=2, minute=0)
     _scheduler.add_job(run_proactive_interview_all_tenants, "cron", hour=18, minute=0)
+    # 每 10 分钟自动重试 GitHub 拉取（补偿启动时网络抖动导致的拉取失败）
+    def _bg_pull():
+        import threading as _t
+        _t.Thread(target=__import__("cangjie_fos.services.github_sync", fromlist=["pull_latest"]).pull_latest, daemon=True, name="github-auto-pull").start()
+    _scheduler.add_job(_bg_pull, "interval", minutes=10)
     try:
         import logging as _logging  # noqa: PLC0415
         from cangjie_fos.services.wiki_consolidator import consolidate_wiki  # noqa: PLC0415

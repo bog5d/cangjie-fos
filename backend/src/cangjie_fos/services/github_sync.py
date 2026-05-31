@@ -26,7 +26,38 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ─── 配置读取 ─────────────────────────────────────────────────────────────────
+# ─── 同步状态追踪 ──────────────────────────────────────────────────────────────
+
+_sync_state: dict[str, Any] = {
+    "is_syncing": False,
+    "last_synced_at": None,   # float timestamp
+    "last_result": None,       # {"pitch_imported": N, "match_imported": M}
+    "last_error": None,        # str | None
+}
+
+
+def _reset_sync_state() -> None:
+    """测试用：重置同步状态。"""
+    global _sync_state
+    _sync_state = {
+        "is_syncing": False,
+        "last_synced_at": None,
+        "last_result": None,
+        "last_error": None,
+    }
+
+
+def get_sync_status() -> dict[str, Any]:
+    """返回当前同步状态快照（供 API 端点使用）。"""
+    return {
+        "configured": is_configured(),
+        "is_syncing": _sync_state["is_syncing"],
+        "last_synced_at": _sync_state["last_synced_at"],
+        "last_result": _sync_state["last_result"],
+        "last_error": _sync_state["last_error"],
+    }
+
+
 
 def _cfg() -> dict[str, str]:
     return {
@@ -350,9 +381,29 @@ def pull_latest() -> dict[str, int]:
     启动时调用：拉取 analytics/ 和 match_sessions/ 下的新文件，
     返回 {"pitch_imported": N, "match_imported": M}。
     新文件定义：本地 pitch_jobs 或 match_sessions 表中不存在的 session_id。
+    同步状态写入 _sync_state 供 get_sync_status() 查询。
     """
+    _sync_state["is_syncing"] = True
+    _sync_state["last_error"] = None
     if not is_configured():
+        _sync_state["is_syncing"] = False
+        _sync_state["last_synced_at"] = time.time()
+        _sync_state["last_result"] = {"pitch_imported": 0, "match_imported": 0}
         return {"pitch_imported": 0, "match_imported": 0}
+    try:
+        result = _pull_latest_inner()
+        _sync_state["last_result"] = result
+        _sync_state["last_synced_at"] = time.time()
+        return result
+    except Exception as e:
+        _sync_state["last_error"] = str(e)
+        logger.warning("pull_latest 失败: %s", e)
+        return {"pitch_imported": 0, "match_imported": 0}
+    finally:
+        _sync_state["is_syncing"] = False
+
+
+def _pull_latest_inner() -> dict[str, int]:
 
     from cangjie_fos.services.pitch_job_db import _connect  # type: ignore
 

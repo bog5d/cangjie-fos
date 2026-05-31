@@ -57,6 +57,14 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
     deal_size: item.deal_size ?? "",
     probability: item.probability ?? 0,
     legal_status: item.legal_status ?? "",
+    nda_signed: item.nda_signed ?? false,
+    offline_meeting_count: item.offline_meeting_count ?? 0,
+    project_approved: item.project_approved ?? false,
+    committee_approved: item.committee_approved ?? false,
+    onsite_dd_done: item.onsite_dd_done ?? false,
+    agreement_signed: item.agreement_signed ?? false,
+    deal_closed: item.deal_closed ?? false,
+    referral_source: item.referral_source ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -202,6 +210,49 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
               onChange={(e) => setDraft((d) => ({ ...d, legal_status: e.target.value }))}
               placeholder="如：NDA已签，等待TS草稿"
             />
+          </div>
+          <div>
+            <label className={label}>引荐方/来源FA</label>
+            <input
+              className={input}
+              value={draft.referral_source}
+              onChange={(e) => setDraft((d) => ({ ...d, referral_source: e.target.value }))}
+              placeholder="如：张 FA、李中介"
+            />
+          </div>
+          <div>
+            <label className={label}>线下会面次数</label>
+            <input
+              className={input}
+              type="number"
+              min={0}
+              value={draft.offline_meeting_count}
+              onChange={(e) => setDraft((d) => ({ ...d, offline_meeting_count: Number(e.target.value) }))}
+            />
+          </div>
+          {/* 里程碑勾选 */}
+          <div className="col-span-2">
+            <label className={label}>融资里程碑</label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              {([
+                ["nda_signed", "已签 NDA"],
+                ["project_approved", "已立项"],
+                ["committee_approved", "已过会"],
+                ["onsite_dd_done", "已线下尽调"],
+                ["agreement_signed", "已签协议"],
+                ["deal_closed", "已完成交割"],
+              ] as [keyof typeof draft, string][]).map(([key, lbl]) => (
+                <label key={key} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!draft[key]}
+                    onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.checked }))}
+                    className="accent-cyan-400 w-4 h-4"
+                  />
+                  {lbl}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-5">

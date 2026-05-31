@@ -41,6 +41,15 @@ class InstitutionProfile(BaseModel):
     deal_size: str = Field("", description="目标融资规模，如「3000万」")
     probability: int = Field(0, ge=0, le=100, description="成功概率 0-100")
     legal_status: str = Field("", description="法务进度备注")
+    # 里程碑字段（v1.3.0）
+    nda_signed: bool = Field(False, description="已签署 NDA")
+    offline_meeting_count: int = Field(0, ge=0, description="线下见面次数")
+    project_approved: bool = Field(False, description="已完成立项")
+    committee_approved: bool = Field(False, description="已通过投委会")
+    onsite_dd_done: bool = Field(False, description="已完成线下尽调")
+    agreement_signed: bool = Field(False, description="已签署投资协议")
+    deal_closed: bool = Field(False, description="已完成交割")
+    referral_source: str = Field("", description="引荐方/来源 FA")
 
 
 class InstitutionProfileCreate(BaseModel):
@@ -58,6 +67,14 @@ class InstitutionProfileCreate(BaseModel):
     deal_size: str = ""
     probability: int = 0
     legal_status: str = ""
+    nda_signed: bool = False
+    offline_meeting_count: int = 0
+    project_approved: bool = False
+    committee_approved: bool = False
+    onsite_dd_done: bool = False
+    agreement_signed: bool = False
+    deal_closed: bool = False
+    referral_source: str = ""
 
 
 class InstitutionProfileUpdate(BaseModel):
@@ -75,6 +92,14 @@ class InstitutionProfileUpdate(BaseModel):
     deal_size: str | None = None
     probability: int | None = None
     legal_status: str | None = None
+    nda_signed: bool | None = None
+    offline_meeting_count: int | None = None
+    project_approved: bool | None = None
+    committee_approved: bool | None = None
+    onsite_dd_done: bool | None = None
+    agreement_signed: bool | None = None
+    deal_closed: bool | None = None
+    referral_source: str | None = None
 
 
 class PipelineCountsResponse(BaseModel):
