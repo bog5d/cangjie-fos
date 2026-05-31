@@ -698,9 +698,10 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                                     setManualPath("");
                                     setExpandedCandidates(null);
                                   }}
-                                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded"
+                                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded whitespace-nowrap"
+                                  title="手动指定要替换的文件"
                                 >
-                                  📂
+                                  📂 替换
                                 </button>
                               </>
                             )}

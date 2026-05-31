@@ -144,6 +144,21 @@ def create_institution(body: InstitutionProfileCreate) -> InstitutionProfile:
         ai_summary=body.ai_summary,
         updated_at=now,
         source_trace_id=body.source_trace_id,
+        contact_name=body.contact_name,
+        contact_title=body.contact_title,
+        valuation=body.valuation,
+        deal_size=body.deal_size,
+        probability=body.probability,
+        legal_status=body.legal_status,
+        nda_signed=body.nda_signed,
+        offline_meeting_count=body.offline_meeting_count,
+        project_approved=body.project_approved,
+        committee_approved=body.committee_approved,
+        onsite_dd_done=body.onsite_dd_done,
+        external_dd_done=body.external_dd_done,
+        agreement_signed=body.agreement_signed,
+        deal_closed=body.deal_closed,
+        referral_source=body.referral_source,
     )
     upsert_institution(prof)
     return prof
@@ -472,8 +487,9 @@ def get_milestone_stats(*, tenant_id: str) -> dict[str, Any]:
         ).fetchone()[0]
 
     nda = sum(1 for r in rows if r[0])
-    # 线下交流：按家数（有过线下见面的机构数）
+    # 线下交流：家数（有过线下见面的机构数）+ 总次数（所有机构 offline_meeting_count 之和）
     offline_met = sum(1 for r in rows if int(r[1] or 0) > 0)
+    meeting_sum = sum(int(r[1] or 0) for r in rows)
     proj = sum(1 for r in rows if r[2])
     comm = sum(1 for r in rows if r[3])
     internal_dd = sum(1 for r in rows if r[4])
@@ -496,6 +512,7 @@ def get_milestone_stats(*, tenant_id: str) -> dict[str, Any]:
         "total_contacted": total,
         "nda_signed": nda,
         "offline_meetings": offline_met,
+        "offline_meeting_sum": meeting_sum,
         "project_approved": proj,
         "onsite_dd_done": internal_dd,
         "external_dd_done": external_dd,

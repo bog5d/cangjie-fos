@@ -33,6 +33,7 @@ export interface MilestoneStats {
   total_contacted: number;
   nda_signed: number;
   offline_meetings: number;
+  offline_meeting_sum: number;
   project_approved: number;
   onsite_dd_done: number;
   external_dd_done: number;

@@ -280,9 +280,105 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
   );
 }
 
+function CreateModal({
+  tenantId,
+  onClose,
+  onCreated,
+}: {
+  tenantId: string;
+  onClose: () => void;
+  onCreated: (p: InstitutionProfile) => void;
+}) {
+  const [name, setName] = useState("");
+  const [stage, setStage] = useState<InstitutionProfile["stage"]>("pitched");
+  const [thermal, setThermal] = useState<InstitutionProfile["thermal"]>("warm");
+  const [referral, setReferral] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const input = "w-full bg-white/5 border border-white/15 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-cyan-400/50";
+  const lbl = "block text-[11px] text-slate-400 mb-1";
+
+  async function handleCreate() {
+    if (!name.trim()) { setErr("机构名称不能为空"); return; }
+    setSaving(true);
+    setErr("");
+    try {
+      const { data } = await api.post<InstitutionProfile>("/api/v1/pipeline/institutions", {
+        tenant_id: tenantId,
+        name: name.trim(),
+        stage,
+        thermal,
+        referral_source: referral.trim(),
+      });
+      onCreated(data);
+      onClose();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "创建失败，请重试");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="relative w-full max-w-sm rounded-2xl border border-white/15 bg-[#0d0d1a] p-6 shadow-2xl">
+        <h2 className="font-display text-sm font-bold text-white mb-4">➕ 新增机构</h2>
+        <div className="space-y-3">
+          <div>
+            <label className={lbl}>机构名称 <span className="text-red-400">*</span></label>
+            <input
+              className={input}
+              placeholder="如：红杉资本、高瓴资本"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className={lbl}>Pipeline 阶段</label>
+              <select className={input} value={stage} onChange={(e) => setStage(e.target.value as InstitutionProfile["stage"])}>
+                <option value="targeted">触达</option>
+                <option value="pitched">路演</option>
+                <option value="dd">尽调</option>
+                <option value="term_sheet">TS</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className={lbl}>热度</label>
+              <select className={input} value={thermal} onChange={(e) => setThermal(e.target.value as InstitutionProfile["thermal"])}>
+                <option value="hot">🔥 热</option>
+                <option value="warm">☀️ 暖</option>
+                <option value="cold">❄️ 冷</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className={lbl}>引荐方 / 来源 FA（可选）</label>
+            <input className={input} placeholder="如：张 FA" value={referral} onChange={(e) => setReferral(e.target.value)} />
+          </div>
+          {err && <p className="text-xs text-red-400">{err}</p>}
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <button type="button" onClick={onClose}
+            className="text-xs text-slate-400 hover:text-slate-300 border border-white/10 rounded-lg px-4 py-1.5 transition-colors">
+            取消
+          </button>
+          <button type="button" onClick={() => void handleCreate()} disabled={saving}
+            className="text-xs text-cyan-300 border border-cyan-400/40 bg-cyan-900/30 hover:bg-cyan-800/50 rounded-lg px-4 py-1.5 transition-colors disabled:opacity-40">
+            {saving ? "创建中…" : "✅ 创建机构"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function InstitutionList({ tenantId, items, onUpdate, onMilestonesChanged }: Props) {
   const [pitchStats, setPitchStats] = useState<Map<string, PitchStat>>(new Map());
   const [editTarget, setEditTarget] = useState<InstitutionProfile | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [localItems, setLocalItems] = useState<InstitutionProfile[]>(items);
 
   // Sync when parent items change
@@ -310,6 +406,12 @@ export function InstitutionList({ tenantId, items, onUpdate, onMilestonesChanged
     onMilestonesChanged?.();
   }
 
+  function handleCreated(created: InstitutionProfile) {
+    setLocalItems((prev) => [created, ...prev]);
+    onUpdate?.(created);
+    onMilestonesChanged?.();
+  }
+
   return (
     <>
       <section className="mt-8 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-black/30 p-6 shadow-xl backdrop-blur-xl">
@@ -319,9 +421,18 @@ export function InstitutionList({ tenantId, items, onUpdate, onMilestonesChanged
             <h2 className="font-display text-lg font-bold text-white">机构 Pipeline 看板</h2>
             <p className="text-xs text-slate-500">tenant {tenantId}</p>
           </div>
-          <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[10px] text-slate-400">
-            {localItems.length} active
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[10px] text-slate-400">
+              {localItems.length} active
+            </span>
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="rounded-full border border-cyan-400/40 bg-cyan-900/30 px-3 py-1 text-[10px] text-cyan-300 hover:bg-cyan-800/50 transition-colors"
+            >
+              ➕ 新增机构
+            </button>
+          </div>
         </div>
         {localItems.length === 0 ? (
           <p className="text-sm text-slate-500">
@@ -397,6 +508,13 @@ export function InstitutionList({ tenantId, items, onUpdate, onMilestonesChanged
           tenantId={tenantId}
           onClose={() => setEditTarget(null)}
           onSaved={handleSaved}
+        />
+      )}
+      {createOpen && (
+        <CreateModal
+          tenantId={tenantId}
+          onClose={() => setCreateOpen(false)}
+          onCreated={handleCreated}
         />
       )}
     </>
