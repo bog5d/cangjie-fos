@@ -109,11 +109,14 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       .then((r) => (r.ok ? r.json() : []))
       .then((data: SessionSummary[]) => setRecentSessions(data))
       .catch(() => {});
-    // 如果从轻量匹配器"升级"进来，预填清单文本和机构名，并直接跳到 Step 2
     if (initialChecklistText) {
+      // 从轻量匹配器"升级"进来：预填清单文本和机构名，跳到 Step 2
       setChecklistText(initialChecklistText);
       if (initialInstitution) setInstitutionName(initialInstitution);
       setStep(2);
+    } else {
+      // 正常打开：重置到 Step 1，避免残留上次进度
+      setStep(1);
     }
   }, [open, initialChecklistText, initialInstitution]);
 
@@ -531,10 +534,15 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                 上传机构发来的尽调清单（支持 Excel/Word/PDF），或直接粘贴文字。
               </p>
 
-              {/* 机构名称（可选） */}
+              {/* 机构名称（影响飞轮学习效果，建议填写） */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  机构名称 <span className="text-gray-400 font-normal">（可选，自动更新 Pipeline 阶段为"尽调"）</span>
+                  机构名称
+                  {!institutionName.trim() && (
+                    <span className="ml-1 text-amber-500 font-normal text-xs">
+                      ⚠️ 建议填写 — 确认记录将关联此机构，未填则不进入学习飞轮
+                    </span>
+                  )}
                 </label>
                 <input
                   className="w-full border rounded px-3 py-2 text-sm text-gray-900"
@@ -690,9 +698,10 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                                     setManualPath("");
                                     setExpandedCandidates(null);
                                   }}
-                                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded"
+                                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded whitespace-nowrap"
+                                  title="手动指定要替换的文件"
                                 >
-                                  📂
+                                  📂 替换
                                 </button>
                               </>
                             )}

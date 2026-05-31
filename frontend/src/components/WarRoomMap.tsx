@@ -195,15 +195,22 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
           </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-9">
             {[
-              { label: "路演接触", value: milestoneStats.total_contacted, icon: "🎤" },
-              { label: "NDA 签署", value: milestoneStats.nda_signed, icon: "📝" },
-              { label: "线下交流", value: milestoneStats.offline_meetings, icon: "☕", suffix: "家" },
-              { label: "立项", value: milestoneStats.project_approved, icon: "✅" },
-              { label: "内部尽调", value: milestoneStats.onsite_dd_done, icon: "🔍" },
-              { label: "外部尽调", value: milestoneStats.external_dd_done, icon: "🏢" },
-              { label: "投决过会", value: milestoneStats.committee_approved, icon: "🏛️" },
-              { label: "协议签署", value: milestoneStats.agreement_signed, icon: "✍️" },
-              { label: "交割", value: milestoneStats.deal_closed, icon: "🎯" },
+              { label: "路演接触", value: milestoneStats.total_contacted, icon: "🎤", sub: "" },
+              { label: "NDA 签署", value: milestoneStats.nda_signed, icon: "📝", sub: "" },
+              {
+                label: "线下交流",
+                value: milestoneStats.offline_meetings,
+                icon: "☕",
+                sub: milestoneStats.offline_meeting_sum > 0
+                  ? `${milestoneStats.offline_meeting_sum}次`
+                  : "",
+              },
+              { label: "立项", value: milestoneStats.project_approved, icon: "✅", sub: "" },
+              { label: "内部尽调", value: milestoneStats.onsite_dd_done, icon: "🔍", sub: "" },
+              { label: "外部尽调", value: milestoneStats.external_dd_done, icon: "🏢", sub: "" },
+              { label: "投决过会", value: milestoneStats.committee_approved, icon: "🏛️", sub: "" },
+              { label: "协议签署", value: milestoneStats.agreement_signed, icon: "✍️", sub: "" },
+              { label: "交割", value: milestoneStats.deal_closed, icon: "🎯", sub: "" },
             ].map((m) => (
               <div
                 key={m.label}
@@ -211,8 +218,11 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
               >
                 <span className="text-base">{m.icon}</span>
                 <span className="mt-1 font-display text-xl font-bold text-amber-200">
-                  {m.value}
+                  {m.value}<span className="text-[10px] font-normal text-amber-400/60">家</span>
                 </span>
+                {m.sub && (
+                  <span className="text-[9px] text-amber-400/40">（{m.sub}）</span>
+                )}
                 <span className="mt-0.5 text-center text-[9px] text-amber-400/60">{m.label}</span>
               </div>
             ))}

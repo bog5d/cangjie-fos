@@ -131,7 +131,49 @@ def test_milestone_stats_endpoint(monkeypatch, tmp_path):
     assert body["nda_signed"] == 2
     assert body["committee_approved"] == 1
     assert "external_dd_done" in body
+    assert "offline_meeting_sum" in body
     assert "top_referrals" in body
+
+
+def test_offline_meeting_sum_in_stats(monkeypatch, tmp_path):
+    """offline_meeting_sum 应等于所有机构 offline_meeting_count 之和（不是家数）。"""
+    import cangjie_fos.services.institution_store as store
+    monkeypatch.setattr(store, "_db_path", lambda: str(tmp_path / "inst.sqlite"))
+
+    from cangjie_fos.schemas.institution import InstitutionProfileCreate, PipelineStage, InstitutionThermal
+    for name, cnt in [("机构X", 2), ("机构Y", 3), ("机构Z", 0)]:
+        inst = store.create_institution(InstitutionProfileCreate(
+            tenant_id="t_sum", name=name,
+            stage=PipelineStage.PITCHED, thermal=InstitutionThermal.WARM,
+        ))
+        store.update_institution(
+            tenant_id="t_sum", institution_id=inst.institution_id,
+            offline_meeting_count=cnt,
+        )
+    stats = store.get_milestone_stats(tenant_id="t_sum")
+    assert stats["offline_meetings"] == 2   # 家数：有见面记录的机构数
+    assert stats["offline_meeting_sum"] == 5  # 总次数：2+3+0=5
+
+
+def test_create_institution_api(monkeypatch, tmp_path):
+    """POST /api/v1/pipeline/institutions 应新建机构并返回完整档案。"""
+    import cangjie_fos.services.institution_store as store
+    monkeypatch.setattr(store, "_db_path", lambda: str(tmp_path / "inst.sqlite"))
+
+    c = TestClient(app)
+    r = c.post("/api/v1/pipeline/institutions", json={
+        "tenant_id": "t_create",
+        "name": "新机构测试",
+        "stage": "targeted",
+        "thermal": "warm",
+        "referral_source": "测试FA",
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert body["name"] == "新机构测试"
+    assert body["stage"] == "targeted"
+    assert body["referral_source"] == "测试FA"
+    assert "institution_id" in body
 
 
 def test_external_dd_done_field(monkeypatch, tmp_path):
