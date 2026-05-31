@@ -20,6 +20,49 @@ from cangjie_fos.services.dd_match_service import (
 from cangjie_fos.services.db_base import _connect
 from cangjie_fos.services.github_sync import push_dd_session
 
+
+def _write_dd_outcomes(session_id: str) -> None:
+    """把 session 中已确认的 dd_match_items 写入 match_outcomes 学习飞轮。"""
+    try:
+        from cangjie_fos.services.asset_db import db_match_outcome_batch_save  # noqa: PLC0415
+        with _connect() as conn:
+            session_row = conn.execute(
+                "SELECT institution_name FROM dd_match_sessions WHERE session_id = ?",
+                (session_id,),
+            ).fetchone()
+            if not session_row:
+                return
+            institution = (session_row["institution_name"] or "").strip()
+            items = conn.execute(
+                """SELECT matched_file_path, matched_filename
+                   FROM dd_match_items
+                   WHERE session_id = ? AND user_confirmed = 1
+                     AND matched_file_path IS NOT NULL AND matched_file_path != ''""",
+                (session_id,),
+            ).fetchall()
+            skipped = conn.execute(
+                """SELECT matched_file_path, matched_filename
+                   FROM dd_match_items
+                   WHERE session_id = ? AND user_skipped = 1
+                     AND matched_file_path IS NOT NULL AND matched_file_path != ''""",
+                (session_id,),
+            ).fetchall()
+        selected_paths = [r["matched_file_path"] for r in items]
+        selected_names = [r["matched_filename"] or "" for r in items]
+        candidate_paths = selected_paths + [r["matched_file_path"] for r in skipped]
+        candidate_names = selected_names + [r["matched_filename"] or "" for r in skipped]
+        if selected_paths or candidate_paths:
+            db_match_outcome_batch_save(
+                session_id=session_id,
+                institution=institution,
+                selected_paths=selected_paths,
+                candidate_paths=candidate_paths,
+                selected_names=selected_names,
+                candidate_names=candidate_names,
+            )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("_write_dd_outcomes failed for session %s: %s", session_id, e)
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/dd", tags=["due-diligence"])
 
@@ -236,8 +279,8 @@ def list_session_items(session_id: str):
 
 
 @router.patch("/sessions/{session_id}/items/{item_id}")
-def update_item(session_id: str, item_id: str, req: ItemUpdateRequest):
-    """用户手动修改某一项的匹配结果（确认 / 替换 / 标记缺失）。"""
+def update_item(session_id: str, item_id: str, req: ItemUpdateRequest, background_tasks: BackgroundTasks = BackgroundTasks()):
+    """用户手动修改某一项的匹配结果（确认 / 替换 / 标记缺失）。确认操作写入学习飞轮。"""
     updates: dict = {}
     if req.matched_file_path is not None:
         updates["matched_file_path"] = req.matched_file_path
@@ -259,14 +302,18 @@ def update_item(session_id: str, item_id: str, req: ItemUpdateRequest):
             f"UPDATE dd_match_items SET {set_clause} WHERE id = ? AND session_id = ?",
             (*updates.values(), item_id, session_id),
         )
+    # 任何确认/跳过操作都触发飞轮同步（幂等写入 match_outcomes）
+    if req.user_confirmed is not None or req.user_skipped is not None:
+        background_tasks.add_task(_write_dd_outcomes, session_id)
     return {"ok": True}
 
 
 @router.post("/sessions/{session_id}/export")
 def export_session(session_id: str, req: ExportRequest, background_tasks: BackgroundTasks):
-    """将已确认的匹配文件导出到本地文件夹，生成缺失清单，并异步同步到 GitHub。"""
+    """将已确认的匹配文件导出到本地文件夹，生成缺失清单，并异步同步到 GitHub 和学习飞轮。"""
     result = export_to_folder(session_id, req.output_dir)
     background_tasks.add_task(push_dd_session, session_id)
+    background_tasks.add_task(_write_dd_outcomes, session_id)
     return result
 
 
@@ -291,8 +338,8 @@ def list_sessions_route(tenant_id: str = "default", limit: int = 10):
 
 
 @router.post("/sessions/{session_id}/items/bulk-confirm")
-def bulk_confirm_items(session_id: str, min_confidence: float = 0.8):
-    """一键确认所有置信度 >= min_confidence 的未确认、未跳过项。"""
+def bulk_confirm_items(session_id: str, min_confidence: float = 0.8, background_tasks: BackgroundTasks = BackgroundTasks()):
+    """一键确认所有置信度 >= min_confidence 的未确认、未跳过项，并写入学习飞轮。"""
     with _connect() as conn:
         conn.execute(
             """UPDATE dd_match_items
@@ -305,4 +352,5 @@ def bulk_confirm_items(session_id: str, min_confidence: float = 0.8):
             "SELECT COUNT(*) FROM dd_match_items WHERE session_id = ? AND user_confirmed = 1",
             (session_id,),
         ).fetchone()
+    background_tasks.add_task(_write_dd_outcomes, session_id)
     return {"ok": True, "confirmed_count": row[0] if row else 0}

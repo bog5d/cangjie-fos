@@ -35,6 +35,10 @@ interface SessionSummary {
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** 从轻量匹配器升级时预填的清单文本 */
+  initialChecklistText?: string;
+  /** 从轻量匹配器升级时预填的机构名称 */
+  initialInstitution?: string;
 }
 
 type Step = 1 | 2 | 3;
@@ -57,7 +61,7 @@ async function pickFile(initialDir = ""): Promise<string> {
   return data.cancelled ? "" : data.path;
 }
 
-export default function DueDiligenceWizard({ open, onClose }: Props) {
+export default function DueDiligenceWizard({ open, onClose, initialChecklistText, initialInstitution }: Props) {
   // Step 1 state
   const [folderPath, setFolderPath] = useState("");
   const [scanStatus, setScanStatus] = useState<string>("idle");
@@ -98,14 +102,20 @@ export default function DueDiligenceWizard({ open, onClose }: Props) {
     };
   }, []);
 
-  // ── 向导打开时加载历史会话 ───────────────────────────────────
+  // ── 向导打开时加载历史会话 + 预填来自轻量匹配器的数据 ───────────
   useEffect(() => {
     if (!open) return;
     fetch("/api/v1/dd/sessions?tenant_id=default&limit=5")
       .then((r) => (r.ok ? r.json() : []))
       .then((data: SessionSummary[]) => setRecentSessions(data))
       .catch(() => {});
-  }, [open]);
+    // 如果从轻量匹配器"升级"进来，预填清单文本和机构名，并直接跳到 Step 2
+    if (initialChecklistText) {
+      setChecklistText(initialChecklistText);
+      if (initialInstitution) setInstitutionName(initialInstitution);
+      setStep(2);
+    }
+  }, [open, initialChecklistText, initialInstitution]);
 
   // ── 恢复历史会话 ─────────────────────────────────────────────
   const handleRestoreSession = useCallback(async (sid: string) => {

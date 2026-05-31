@@ -165,7 +165,12 @@ function ResultRow({
 
 // ─── 主面板 ──────────────────────────────────────────────────────────────────
 
-export function MatchMakerPanel() {
+interface MatchMakerPanelProps {
+  /** 匹配结果出来后点击「发起正式尽调」回调，携带需求文本和机构名 */
+  onLaunchDD?: (reqText: string, institution: string) => void;
+}
+
+export function MatchMakerPanel({ onLaunchDD }: MatchMakerPanelProps = {}) {
   const [institution, setInstitution] = useState("");
   const [reqText, setReqText] = useState("");
   const [session, setSession] = useState<MatchSessionResponse | null>(null);
@@ -281,6 +286,16 @@ export function MatchMakerPanel() {
               className="rounded-xl border border-cyan-400/40 px-5 py-2 text-sm text-cyan-300 hover:border-cyan-400 disabled:opacity-40"
             >
               {confirming ? "提交中…" : `提交确认（${checkedCount}）`}
+            </button>
+          )}
+          {session && onLaunchDD && (
+            <button
+              type="button"
+              onClick={() => onLaunchDD(reqText, institution)}
+              className="rounded-xl border border-violet-400/40 px-5 py-2 text-sm text-violet-300 hover:border-violet-400"
+              title="进入三步向导，扫描材料库并完整导出交付包"
+            >
+              📋 发起正式尽调
             </button>
           )}
         </div>
