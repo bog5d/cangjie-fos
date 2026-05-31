@@ -1,6 +1,8 @@
 """LangGraph 融资评估 REST 桥接（Phase 2 SPEC A5）+ Phase 3 对话/上传。"""
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import time
 import uuid
@@ -8,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from cangjie_fos.api.upload_io import stream_upload_to_path
 from cangjie_fos.core.paths import get_backend_root, get_audio_dir
@@ -167,6 +169,47 @@ def pitch_chat(body: PitchChatRequest) -> PitchChatResponse:
         graph_invoked=True,
         exp_delta=12,
         exp_reason="完成一轮 NPC 对话",
+    )
+
+
+@router.post("/chat/stream")
+async def pitch_chat_stream(body: PitchChatRequest) -> StreamingResponse:
+    """SSE 流式 NPC 对话。前端立即收到「思考中」事件，LLM 返回后逐词推送。"""
+
+    async def _generate():
+        yield f"data: {json.dumps({'type': 'thinking'}, ensure_ascii=False)}\n\n"
+
+        loop = asyncio.get_event_loop()
+        try:
+            reply, tr, tid = await loop.run_in_executor(
+                None,
+                lambda: invoke_npc_chat(
+                    tenant_id=body.tenant_id,
+                    user_message=body.message,
+                    thread_id=body.thread_id,
+                    user_name=(body.user_name or "").strip() or None,
+                    active_job_id=body.active_job_id,
+                ),
+            )
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'text': str(exc)}, ensure_ascii=False)}\n\n"
+            return
+
+        upsert_thread(thread_id=tid, tenant_id=body.tenant_id, preview=body.message)
+
+        # 逐词推送——给用户"逐字吐出"的视觉感受
+        words = reply.split(" ")
+        for i, word in enumerate(words):
+            chunk = word + ("" if i == len(words) - 1 else " ")
+            yield f"data: {json.dumps({'type': 'chunk', 'text': chunk}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.018)
+
+        yield f"data: {json.dumps({'type': 'done', 'thread_id': tid, 'trace_id': tr, 'exp_delta': 12, 'exp_reason': '完成一轮 NPC 对话'}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

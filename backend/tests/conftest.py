@@ -91,3 +91,12 @@ def _isolate_db_per_test(request, tmp_path, monkeypatch):
     # 与测试主线程竞争同一 tmp SQLite 文件，导致 PRAGMA journal_mode=WAL 锁冲突。
     # 环境变量方案不影响直接测试这两个函数的测试文件（它们不走 lifespan）。
     monkeypatch.setenv("CANGJIE_DISABLE_STARTUP_SYNC", "1")
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """每个测试前清空限流器的请求记录，防止全套测试时误触发 429。"""
+    import cangjie_fos.middleware.request_context as _mw  # noqa: PLC0415
+    _mw._rate_hits.clear()
+    yield
+    _mw._rate_hits.clear()

@@ -287,44 +287,74 @@ export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName
     setInput("");
     pushLine({ id: `u-${Date.now()}`, role: "你", text: t, isAi: false });
     setUiState("thinking");
+
+    const streamMsgId = `ai-${Date.now()}`;
+    let streamBuf = "";
+    let finalised = false;
+
     try {
-      const { data } = await api.post<{
-        reply: string;
-        trace_id: string;
-        thread_id: string;
-        exp_delta: number;
-        exp_reason: string;
-      }>("/api/pitch/chat", {
-        tenant_id: tenantId,
-        message: t,
-        ...(threadId ? { thread_id: threadId } : {}),
-        ...(userName.trim() ? { user_name: userName.trim() } : {}),
+      const resp = await fetch("/api/pitch/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          message: t,
+          ...(threadId ? { thread_id: threadId } : {}),
+          ...(userName.trim() ? { user_name: userName.trim() } : {}),
+        }),
       });
-      if (data.thread_id) {
-        setThreadId(data.thread_id);
-        try {
-          localStorage.setItem(threadStorageKey(tenantId), data.thread_id);
-        } catch {
-          /* ignore */
+      if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}`);
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const evt = JSON.parse(line.slice(6)) as {
+              type: string; text?: string; thread_id?: string;
+              trace_id?: string; exp_delta?: number; exp_reason?: string;
+            };
+            if (evt.type === "thinking") {
+              pushLine({ id: streamMsgId, role: NPC_DISPLAY_NAME, text: "▌", isAi: true });
+            } else if (evt.type === "chunk" && evt.text) {
+              streamBuf += evt.text;
+              setLines((prev: ChatLine[]) => prev.map((ln: ChatLine) =>
+                ln.id === streamMsgId ? { ...ln, text: streamBuf + "▌" } : ln
+              ));
+            } else if (evt.type === "done") {
+              finalised = true;
+              const tid2 = evt.thread_id ?? "";
+              const tr2 = evt.trace_id ?? streamMsgId;
+              if (tid2) {
+                setThreadId(tid2);
+                try { localStorage.setItem(threadStorageKey(tenantId), tid2); } catch { /* ignore */ }
+              }
+              setLines((prev: ChatLine[]) => prev.map((ln: ChatLine) =>
+                ln.id === streamMsgId ? { ...ln, text: streamBuf, traceId: tr2 } : ln
+              ));
+              if (evt.exp_delta) onExpEvent(evt.exp_delta, evt.exp_reason ?? "");
+            } else if (evt.type === "error") {
+              throw new Error(evt.text ?? "流式对话失败");
+            }
+          } catch { /* ignore malformed SSE line */ }
         }
       }
-      pushLine({
-        id: data.trace_id,
-        role: NPC_DISPLAY_NAME,
-        text: data.reply,
-        isAi: true,
-        traceId: data.trace_id,
-      });
-      if (data.exp_delta) {
-        onExpEvent(data.exp_delta, data.exp_reason);
-      }
     } catch (e) {
-      pushLine({
-        id: `e-${Date.now()}`,
-        role: "系统",
-        text: e instanceof Error ? e.message : "对话请求失败",
-        isAi: false,
-      });
+      if (!finalised && streamBuf) {
+        setLines((prev: ChatLine[]) => prev.map((ln: ChatLine) =>
+          ln.id === streamMsgId ? { ...ln, text: streamBuf } : ln
+        ));
+      } else if (!finalised) {
+        pushLine({ id: `e-${Date.now()}`, role: "系统", text: e instanceof Error ? e.message : "对话请求失败", isAi: false });
+      }
     } finally {
       setUiState("listening");
     }
