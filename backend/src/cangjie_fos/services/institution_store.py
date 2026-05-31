@@ -39,6 +39,19 @@ def _conn() -> sqlite3.Connection:
         )"""
     )
     c.execute("CREATE INDEX IF NOT EXISTS idx_institutions_tenant ON institutions(tenant_id)")
+    # CRM 扩展字段 migration（幂等）
+    for col_def in [
+        "contact_name TEXT NOT NULL DEFAULT ''",
+        "contact_title TEXT NOT NULL DEFAULT ''",
+        "valuation TEXT NOT NULL DEFAULT ''",
+        "deal_size TEXT NOT NULL DEFAULT ''",
+        "probability INTEGER NOT NULL DEFAULT 0",
+        "legal_status TEXT NOT NULL DEFAULT ''",
+    ]:
+        try:
+            c.execute(f"ALTER TABLE institutions ADD COLUMN {col_def}")  # noqa: S608
+        except sqlite3.OperationalError:
+            pass  # column already exists
     c.commit()
     return c
 
@@ -48,8 +61,9 @@ def upsert_institution(row: InstitutionProfile) -> None:
         c.execute(
             """INSERT INTO institutions (
                 institution_id, tenant_id, name, stage, thermal,
-                preferences, concerns, ai_summary, updated_at, source_trace_id
-            ) VALUES (?,?,?,?,?,?,?,?,?,?)
+                preferences, concerns, ai_summary, updated_at, source_trace_id,
+                contact_name, contact_title, valuation, deal_size, probability, legal_status
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(tenant_id, name) DO UPDATE SET
                 stage=excluded.stage,
                 thermal=excluded.thermal,
@@ -57,7 +71,13 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 concerns=excluded.concerns,
                 ai_summary=excluded.ai_summary,
                 updated_at=excluded.updated_at,
-                source_trace_id=excluded.source_trace_id
+                source_trace_id=excluded.source_trace_id,
+                contact_name=excluded.contact_name,
+                contact_title=excluded.contact_title,
+                valuation=excluded.valuation,
+                deal_size=excluded.deal_size,
+                probability=excluded.probability,
+                legal_status=excluded.legal_status
             """,
             (
                 row.institution_id,
@@ -70,6 +90,12 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 row.ai_summary,
                 row.updated_at,
                 row.source_trace_id,
+                row.contact_name,
+                row.contact_title,
+                row.valuation,
+                row.deal_size,
+                row.probability,
+                row.legal_status,
             ),
         )
         c.commit()
@@ -97,27 +123,15 @@ def list_institutions(*, tenant_id: str, limit: int = 200) -> list[InstitutionPr
     with _conn() as c:
         cur = c.execute(
             """SELECT institution_id, tenant_id, name, stage, thermal,
-                      preferences, concerns, ai_summary, updated_at, source_trace_id
+                      preferences, concerns, ai_summary, updated_at, source_trace_id,
+                      contact_name, contact_title, valuation, deal_size, probability, legal_status
                FROM institutions WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?""",
             (tenant_id, limit),
         )
         rows = cur.fetchall()
     out: list[InstitutionProfile] = []
     for r in rows:
-        out.append(
-            InstitutionProfile(
-                institution_id=r[0],
-                tenant_id=r[1],
-                name=r[2],
-                stage=PipelineStage(r[3]),
-                thermal=InstitutionThermal(r[4]),
-                preferences=r[5] or "",
-                concerns=r[6] or "",
-                ai_summary=r[7] or "",
-                updated_at=float(r[8] or 0),
-                source_trace_id=r[9],
-            )
-        )
+        out.append(row_to_profile(r))
     return out
 
 
@@ -154,6 +168,12 @@ def update_institution(
     preferences: str | None = None,
     concerns: str | None = None,
     ai_summary: str | None = None,
+    contact_name: str | None = None,
+    contact_title: str | None = None,
+    valuation: str | None = None,
+    deal_size: str | None = None,
+    probability: int | None = None,
+    legal_status: str | None = None,
 ) -> InstitutionProfile | None:
     """部分更新机构字段，返回更新后的档案；找不到则返回 None。"""
     import time as _time
@@ -170,6 +190,18 @@ def update_institution(
         updates["concerns"] = concerns
     if ai_summary is not None:
         updates["ai_summary"] = ai_summary
+    if contact_name is not None:
+        updates["contact_name"] = contact_name
+    if contact_title is not None:
+        updates["contact_title"] = contact_title
+    if valuation is not None:
+        updates["valuation"] = valuation
+    if deal_size is not None:
+        updates["deal_size"] = deal_size
+    if probability is not None:
+        updates["probability"] = max(0, min(100, int(probability)))
+    if legal_status is not None:
+        updates["legal_status"] = legal_status
     if not updates:
         return None
     set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -184,7 +216,8 @@ def update_institution(
             return None
         row = c.execute(
             """SELECT institution_id, tenant_id, name, stage, thermal,
-                      preferences, concerns, ai_summary, updated_at, source_trace_id
+                      preferences, concerns, ai_summary, updated_at, source_trace_id,
+                      contact_name, contact_title, valuation, deal_size, probability, legal_status
                FROM institutions WHERE tenant_id = ? AND institution_id = ?""",
             (tenant_id, institution_id),
         ).fetchone()
@@ -203,6 +236,12 @@ def row_to_profile(row: tuple[Any, ...]) -> InstitutionProfile:
         ai_summary=row[7] or "",
         updated_at=float(row[8] or 0),
         source_trace_id=row[9],
+        contact_name=row[10] if len(row) > 10 else "",
+        contact_title=row[11] if len(row) > 11 else "",
+        valuation=row[12] if len(row) > 12 else "",
+        deal_size=row[13] if len(row) > 13 else "",
+        probability=int(row[14] or 0) if len(row) > 14 else 0,
+        legal_status=row[15] if len(row) > 15 else "",
     )
 
 
@@ -213,7 +252,8 @@ def get_by_name(*, tenant_id: str, name: str) -> InstitutionProfile | None:
     with _conn() as c:
         cur = c.execute(
             """SELECT institution_id, tenant_id, name, stage, thermal,
-                      preferences, concerns, ai_summary, updated_at, source_trace_id
+                      preferences, concerns, ai_summary, updated_at, source_trace_id,
+                      contact_name, contact_title, valuation, deal_size, probability, legal_status
                FROM institutions WHERE tenant_id = ? AND name = ? LIMIT 1""",
             (tenant_id, name),
         )

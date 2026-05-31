@@ -452,7 +452,7 @@ export function NPCPanel({ tenantId, onExpEvent, onPipelineDataChanged, userName
                 >
                   <div className="mb-1 flex items-center justify-between gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      {ln.role}
+                      {ln.proactive ? "🔔 豆豆追问" : ln.role}
                     </span>
                     {ln.isAi ? (
                       <button
