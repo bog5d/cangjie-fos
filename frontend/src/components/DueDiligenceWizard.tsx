@@ -92,6 +92,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [exportResult, setExportResult] = useState<string>("");
   const [exportError, setExportError] = useState<string>("");
   const [outputDir, setOutputDir] = useState("");
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const [step, setStep] = useState<Step>(1);
 
@@ -644,194 +645,244 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
           {/* ── Step 3 ── */}
           {step === 3 && (
             <div className="space-y-4">
-              {/* 统计栏 + 批量操作 */}
-              <div className="flex items-center gap-3 text-sm text-gray-600 flex-wrap">
-                <span>共 <b>{items.length}</b> 条需求</span>
-                <span className="text-green-600">
-                  🟢 高置信 {items.filter((i) => (i.confidence ?? 0) >= 0.8).length}
-                </span>
-                <span className="text-yellow-600">
-                  🟡 待确认 {items.filter((i) => (i.confidence ?? 0) >= 0.5 && (i.confidence ?? 0) < 0.8).length}
-                </span>
-                <span className="text-red-500">
-                  🔴 未匹配 {items.filter((i) => (i.confidence ?? 0) < 0.5).length}
-                </span>
-                {highConfCount > 0 && (
-                  <button
-                    onClick={() => void handleBulkConfirm()}
-                    disabled={bulkConfirming}
-                    className="ml-auto px-3 py-1 bg-green-600 text-white rounded text-xs disabled:opacity-50 hover:bg-green-700"
-                  >
-                    {bulkConfirming ? "确认中…" : `✓ 一键确认高置信（${highConfCount}条）`}
-                  </button>
-                )}
-              </div>
+              {/* ── 缺口摘要 header ── */}
+              {(() => {
+                const confirmed = items.filter((i) => i.user_confirmed === 1).length;
+                const missing = items.filter((i) => i.user_skipped === 1 || ((i.confidence ?? 0) === 0 && !i.matched_filename)).length;
+                const pending = items.length - confirmed - missing;
+                const pct = items.length > 0 ? Math.round((confirmed / items.length) * 100) : 0;
+                return (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 space-y-2">
+                    <div className="flex items-center gap-4 text-sm flex-wrap">
+                      <span className="flex items-center gap-1.5 font-medium text-green-700">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
+                        已确认 {confirmed} 条
+                      </span>
+                      <span className="flex items-center gap-1.5 font-medium text-amber-600">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
+                        需人工 {pending} 条
+                      </span>
+                      <span className="flex items-center gap-1.5 font-medium text-red-600">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-400" />
+                        无材料 {missing} 条
+                      </span>
+                      <span className="ml-auto text-xs text-gray-500">共 {items.length} 条</span>
+                    </div>
+                    {/* 进度条 */}
+                    <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-green-500 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">确认进度 {pct}%</span>
+                      {highConfCount > 0 && (
+                        <button
+                          onClick={() => void handleBulkConfirm()}
+                          disabled={bulkConfirming}
+                          className="px-3 py-1 bg-green-600 text-white rounded text-xs disabled:opacity-50 hover:bg-green-700"
+                        >
+                          {bulkConfirming ? "确认中…" : `✓ 一键确认高置信（${highConfCount}条）`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
-              <div className="border rounded overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-500 text-xs">
+              {/* ── 分类折叠表格 ── */}
+              {(() => {
+                // 按 category 分组，保持原有 sort 顺序
+                const catOrder: string[] = [];
+                const catMap = new Map<string, DDItem[]>();
+                for (const item of sortedItems) {
+                  const cat = item.category?.trim() || "其他";
+                  if (!catMap.has(cat)) { catMap.set(cat, []); catOrder.push(cat); }
+                  catMap.get(cat)!.push(item);
+                }
+                // 单分类时不显示折叠头，直接展平（避免只有"其他"时多余层级）
+                const showGroups = catOrder.length > 1;
+
+                const renderItemRows = (item: DDItem) => (
+                  <React.Fragment key={item.id}>
+                    <tr className={`border-t ${item.user_skipped ? "opacity-40" : ""}`}>
+                      <td className="px-3 py-2 text-gray-400 text-xs">{item.item_no}</td>
+                      <td className="px-3 py-2">
+                        <div className="text-sm font-medium text-gray-800">{item.requirement}</div>
+                      </td>
+                      <td className="px-3 py-2 text-sm">
+                        {item.matched_filename ? (
+                          <div>
+                            <span className="text-gray-700" title={item.match_reason || ""}>{item.matched_filename}</span>
+                            {item.candidates_json && (() => {
+                              try {
+                                const cands: Candidate[] = JSON.parse(item.candidates_json);
+                                if (cands.length > 1) return (
+                                  <button
+                                    onClick={() => setExpandedCandidates(expandedCandidates === item.id ? null : item.id)}
+                                    className="ml-2 text-xs text-indigo-500 hover:text-indigo-700"
+                                  >
+                                    {expandedCandidates === item.id ? "▲" : `▼ ${cands.length}个候选`}
+                                  </button>
+                                );
+                              } catch (_) {}
+                              return null;
+                            })()}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">无匹配</span>
+                        )}
+                      </td>
+                      {/* 置信度彩色徽章 */}
+                      <td className="px-3 py-2 text-center">
+                        {item.user_confirmed === 1 ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">已确认</span>
+                        ) : item.user_skipped === 1 ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">缺失</span>
+                        ) : item.confidence === null || item.confidence === undefined ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-400">—</span>
+                        ) : item.confidence >= 0.8 ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{Math.round(item.confidence * 100)}%</span>
+                        ) : item.confidence >= 0.5 ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">{Math.round(item.confidence * 100)}%</span>
+                        ) : (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">{Math.round(item.confidence * 100)}%</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center space-x-1">
+                        {!item.user_skipped && !item.user_confirmed && (
+                          <>
+                            <button onClick={() => void handleConfirm(item.id)} className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">✓</button>
+                            <button onClick={() => void handleSkip(item.id)} className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded">缺</button>
+                            <button
+                              onClick={() => { setManualInputItem(item.id); setManualPath(""); setExpandedCandidates(null); }}
+                              className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded whitespace-nowrap"
+                              title="手动指定要替换的文件"
+                            >📂 替换</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                    {/* 备选候选展开行 */}
+                    {expandedCandidates === item.id && item.candidates_json && (() => {
+                      try {
+                        const cands: Candidate[] = JSON.parse(item.candidates_json);
+                        return (
+                          <tr className="border-t bg-indigo-50">
+                            <td colSpan={5} className="px-3 py-2">
+                              <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（点击选用）：</p>
+                              <div className="space-y-1">
+                                {cands.map((cand, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 text-xs">
+                                    <span className={`w-8 text-center rounded px-1 ${cand.confidence >= 0.8 ? "bg-green-100 text-green-700" : cand.confidence >= 0.5 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-600"}`}>
+                                      {Math.round(cand.confidence * 100)}%
+                                    </span>
+                                    <span className="flex-1 text-gray-700" title={cand.reason}>{cand.filename}</span>
+                                    {idx > 0 && (
+                                      <button onClick={() => void handleSelectCandidate(item.id, cand)} className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">选用</button>
+                                    )}
+                                    {idx === 0 && <span className="text-gray-400 italic">（当前）</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      } catch (_) { return null; }
+                    })()}
+                    {/* 手动指定文件的内联输入行 */}
+                    {manualInputItem === item.id && (
+                      <tr className="border-t bg-blue-50">
+                        <td colSpan={5} className="px-3 py-2">
+                          <div className="flex gap-2 items-center">
+                            <span className="text-xs text-blue-700 whitespace-nowrap">📂 指定文件：</span>
+                            <input
+                              className="flex-1 border rounded px-2 py-1 text-xs text-gray-900"
+                              placeholder="点击「选择文件」或手动输入路径"
+                              value={manualPath}
+                              onChange={(e) => setManualPath(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") void handleManualFile(item.id); }}
+                              autoFocus
+                            />
+                            <button
+                              onClick={async () => { const p = await pickFile(folderPath || ""); if (p) setManualPath(p); }}
+                              className="text-xs px-2 py-1 bg-gray-100 border rounded text-gray-700 hover:bg-gray-200 whitespace-nowrap"
+                            >📁 选择文件</button>
+                            <button onClick={() => void handleManualFile(item.id)} disabled={!manualPath.trim()} className="text-xs px-2 py-1 bg-blue-600 text-white rounded disabled:opacity-50">确认</button>
+                            <button onClick={() => setManualInputItem(null)} className="text-xs px-2 py-1 border rounded text-gray-500">取消</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+
+                const tableHead = (
+                  <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left w-8">#</th>
                       <th className="px-3 py-2 text-left">需求</th>
                       <th className="px-3 py-2 text-left">匹配文件</th>
-                      <th className="px-3 py-2 text-center w-20">置信度</th>
+                      <th className="px-3 py-2 text-center w-24">置信度</th>
                       <th className="px-3 py-2 text-center w-32">操作</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {sortedItems.map((item) => (
-                      <React.Fragment key={item.id}>
-                        <tr
-                          className={`border-t ${item.user_skipped ? "opacity-40" : ""} ${confidenceColor(item.confidence)}`}
-                        >
-                          <td className="px-3 py-2 text-gray-400">{item.item_no}</td>
-                          <td className="px-3 py-2">
-                            <div className="font-medium">{item.requirement}</div>
-                            {item.category && (
-                              <div className="text-xs text-gray-400">{item.category}</div>
+                );
+
+                if (!showGroups) {
+                  return (
+                    <div className="border rounded overflow-hidden">
+                      <table className="w-full text-sm">{tableHead}<tbody>{sortedItems.map(renderItemRows)}</tbody></table>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {catOrder.map((cat) => {
+                      const catItems = catMap.get(cat)!;
+                      const catConfirmed = catItems.filter((i) => i.user_confirmed === 1).length;
+                      const catMissing = catItems.filter((i) => i.user_skipped === 1 || ((i.confidence ?? 0) === 0 && !i.matched_filename)).length;
+                      const isCollapsed = collapsedCategories.has(cat);
+                      return (
+                        <div key={cat} className="border rounded overflow-hidden">
+                          {/* 分类折叠头 */}
+                          <button
+                            type="button"
+                            onClick={() => setCollapsedCategories((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(cat)) next.delete(cat); else next.add(cat);
+                              return next;
+                            })}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-left text-sm font-medium text-gray-700 transition-colors"
+                          >
+                            <span className="text-gray-400 text-xs w-3">{isCollapsed ? "▶" : "▼"}</span>
+                            <span className="flex-1">{cat}</span>
+                            <span className="text-xs text-gray-500">{catItems.length} 条</span>
+                            {catConfirmed > 0 && (
+                              <span className="text-xs text-green-600 font-medium">✓ {catConfirmed}/{catItems.length}</span>
                             )}
-                          </td>
-                          <td className="px-3 py-2">
-                            {item.matched_filename ? (
-                              <div>
-                                <span title={item.match_reason || ""}>{item.matched_filename}</span>
-                                {item.candidates_json && (() => {
-                                  try {
-                                    const cands: Candidate[] = JSON.parse(item.candidates_json);
-                                    if (cands.length > 1) return (
-                                      <button
-                                        onClick={() => setExpandedCandidates(expandedCandidates === item.id ? null : item.id)}
-                                        className="ml-2 text-xs text-indigo-500 hover:text-indigo-700"
-                                      >
-                                        {expandedCandidates === item.id ? "▲" : `▼ ${cands.length}个候选`}
-                                      </button>
-                                    );
-                                  } catch (_) {}
-                                  return null;
-                                })()}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 italic">无匹配</span>
+                            {catMissing > 0 && (
+                              <span className="text-xs text-red-500">缺 {catMissing}</span>
                             )}
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            {item.confidence !== null ? `${Math.round(item.confidence * 100)}%` : "—"}
-                          </td>
-                          <td className="px-3 py-2 text-center space-x-1">
-                            {!item.user_skipped && !item.user_confirmed && (
-                              <>
-                                <button
-                                  onClick={() => void handleConfirm(item.id)}
-                                  className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded"
-                                >
-                                  ✓
-                                </button>
-                                <button
-                                  onClick={() => void handleSkip(item.id)}
-                                  className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded"
-                                >
-                                  缺
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setManualInputItem(item.id);
-                                    setManualPath("");
-                                    setExpandedCandidates(null);
-                                  }}
-                                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded whitespace-nowrap"
-                                  title="手动指定要替换的文件"
-                                >
-                                  📂 替换
-                                </button>
-                              </>
-                            )}
-                            {item.user_confirmed === 1 && (
-                              <span className="text-xs text-green-600">已确认</span>
-                            )}
-                            {item.user_skipped === 1 && (
-                              <span className="text-xs text-gray-400">标记缺失</span>
-                            )}
-                          </td>
-                        </tr>
-                        {/* 备选候选展开行 */}
-                        {expandedCandidates === item.id && item.candidates_json && (() => {
-                          try {
-                            const cands: Candidate[] = JSON.parse(item.candidates_json);
-                            return (
-                              <tr className="border-t bg-indigo-50">
-                                <td colSpan={5} className="px-3 py-2">
-                                  <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（点击选用）：</p>
-                                  <div className="space-y-1">
-                                    {cands.map((cand, idx) => (
-                                      <div key={idx} className="flex items-center gap-2 text-xs">
-                                        <span className={`w-8 text-center rounded px-1 ${cand.confidence >= 0.8 ? "bg-green-100 text-green-700" : cand.confidence >= 0.5 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-600"}`}>
-                                          {Math.round(cand.confidence * 100)}%
-                                        </span>
-                                        <span className="flex-1 text-gray-700" title={cand.reason}>{cand.filename}</span>
-                                        {idx > 0 && (
-                                          <button
-                                            onClick={() => void handleSelectCandidate(item.id, cand)}
-                                            className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
-                                          >
-                                            选用
-                                          </button>
-                                        )}
-                                        {idx === 0 && <span className="text-gray-400 italic">（当前）</span>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          } catch (_) { return null; }
-                        })()}
-                        {/* 手动指定文件的内联输入行 */}
-                        {manualInputItem === item.id && (
-                          <tr className="border-t bg-blue-50">
-                            <td colSpan={5} className="px-3 py-2">
-                              <div className="flex gap-2 items-center">
-                                <span className="text-xs text-blue-700 whitespace-nowrap">📂 指定文件：</span>
-                                <input
-                                  className="flex-1 border rounded px-2 py-1 text-xs text-gray-900"
-                                  placeholder="点击「选择文件」或手动输入路径"
-                                  value={manualPath}
-                                  onChange={(e) => setManualPath(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") void handleManualFile(item.id);
-                                  }}
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={async () => {
-                                    const p = await pickFile(folderPath || "");
-                                    if (p) setManualPath(p);
-                                  }}
-                                  className="text-xs px-2 py-1 bg-gray-100 border rounded text-gray-700 hover:bg-gray-200 whitespace-nowrap"
-                                >
-                                  📁 选择文件
-                                </button>
-                                <button
-                                  onClick={() => void handleManualFile(item.id)}
-                                  disabled={!manualPath.trim()}
-                                  className="text-xs px-2 py-1 bg-blue-600 text-white rounded disabled:opacity-50"
-                                >
-                                  确认
-                                </button>
-                                <button
-                                  onClick={() => setManualInputItem(null)}
-                                  className="text-xs px-2 py-1 border rounded text-gray-500"
-                                >
-                                  取消
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            {/* 分类内迷你进度条 */}
+                            <div className="w-16 h-1 rounded-full bg-gray-200 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-green-400"
+                                style={{ width: `${Math.round((catConfirmed / catItems.length) * 100)}%` }}
+                              />
+                            </div>
+                          </button>
+                          {!isCollapsed && (
+                            <table className="w-full text-sm">{tableHead}<tbody>{catItems.map(renderItemRows)}</tbody></table>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-2 items-center pt-2">
                 <input
