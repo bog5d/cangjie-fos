@@ -26,10 +26,16 @@ router = APIRouter()
 _sessions: dict[str, dict[str, Any]] = {}
 _TOKEN_TTL = 72 * 3600  # 72小时
 
+# 内置默认账号：两个租户数据完全隔离（tenant=zt / tenant=gk）
+# .env 里的 FOS_ACCOUNTS 会覆盖此默认值；未配置时自动生效
+_BUILTIN_ACCOUNTS = "zt001:123456:zt,gk001:123456:gk"
+
 
 def _load_accounts() -> dict[str, dict[str, str]]:
-    """从环境变量读取账号表。格式：账号:密码:tenant_id，逗号分隔。"""
-    raw = os.getenv("FOS_ACCOUNTS", "").strip()
+    """从环境变量读取账号表。格式：账号:密码:tenant_id，逗号分隔。
+    未配置 FOS_ACCOUNTS 时使用内置默认账号（zt001/gk001）。
+    """
+    raw = os.getenv("FOS_ACCOUNTS", _BUILTIN_ACCOUNTS).strip()
     accounts: dict[str, dict[str, str]] = {}
     if not raw:
         return accounts
@@ -91,18 +97,6 @@ class MeResponse(BaseModel):
 def login_route(body: LoginRequest, background_tasks: BackgroundTasks) -> LoginResponse:
     """登录。成功后后台拉取 GitHub 最新数据。"""
     accounts = _load_accounts()
-
-    # 开发模式：无账号配置时任意登录（方便本地调试）
-    if not accounts:
-        logger.warning("FOS_ACCOUNTS 未配置，使用开发模式放行登录")
-        token = str(uuid.uuid4())
-        _sessions[token] = {
-            "username": body.username,
-            "tenant_id": "default",
-            "login_at": time.time(),
-        }
-        return LoginResponse(token=token, username=body.username, tenant_id="default")
-
     account = accounts.get(body.username)
     if not account or account["password"] != body.password:
         raise HTTPException(status_code=401, detail="账号或密码错误")
