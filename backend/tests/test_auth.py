@@ -13,11 +13,12 @@ def client():
 
 # ─── accounts-configured ──────────────────────────────────────────────────────
 
-def test_accounts_configured_false_when_no_env(client, monkeypatch):
+def test_accounts_configured_true_when_no_env(client, monkeypatch):
+    """未配置 FOS_ACCOUNTS 时仍返回 configured=True（内置默认账号生效）。"""
     monkeypatch.delenv("FOS_ACCOUNTS", raising=False)
     r = client.get("/api/auth/accounts-configured")
     assert r.status_code == 200
-    assert r.json()["configured"] is False
+    assert r.json()["configured"] is True
 
 
 def test_accounts_configured_true_when_env_set(client, monkeypatch):
@@ -51,12 +52,15 @@ def test_login_unknown_user(client, monkeypatch):
     assert r.status_code == 401
 
 
-def test_login_dev_mode_no_accounts(client, monkeypatch):
-    """无账号配置时，开发模式放行任意登录。"""
+def test_login_builtin_accounts_when_no_env(client, monkeypatch):
+    """未配置 FOS_ACCOUNTS 时，内置默认账号 zt001/gk001 均可登录。"""
     monkeypatch.delenv("FOS_ACCOUNTS", raising=False)
-    r = client.post("/api/auth/login", json={"username": "dev", "password": "anything"})
-    assert r.status_code == 200
-    assert r.json()["tenant_id"] == "default"
+    r_zt = client.post("/api/auth/login", json={"username": "zt001", "password": "123456"})
+    r_gk = client.post("/api/auth/login", json={"username": "gk001", "password": "123456"})
+    assert r_zt.status_code == 200
+    assert r_zt.json()["tenant_id"] == "zt"
+    assert r_gk.status_code == 200
+    assert r_gk.json()["tenant_id"] == "gk"
 
 
 # ─── me ───────────────────────────────────────────────────────────────────────
