@@ -68,7 +68,13 @@ def run_matching(
     v1.1.3 改进：
       - 新增 progress_callback(done, total) 参数，每批完成后触发
       - 批内结果即时写入 DB（不在所有批完成后才提交），减少部分失败损失
+
+    v1.6.0 加固（P0）：
+      - 内部抛异常时 session 标记为 'failed'（而非沿用旧的一律 'matched'），
+        前端/导出据此区分"真完成"与"中途崩溃"，避免把残缺结果当成功结果。
+      - 早退（无索引文件）等正常路径仍标记 'matched'。
     """
+    failed = False
     try:
         index_rows = _get_index_for_folder(folder_root)
         if not index_rows:
@@ -119,10 +125,15 @@ def run_matching(
 
     except Exception as e:
         logger.error("匹配任务异常 session=%s: %s", session_id, e)
+        failed = True
     finally:
-        # 无论成功/失败/异常，都必须将 session 标记为完成
-        # 否则前端轮询会永久挂起
-        _mark_session_done(session_id)
+        # 无论成功/失败，都必须给 session 一个终态，否则前端轮询会永久挂起。
+        # 区分 failed / matched：失败时前端可提示"匹配中断，请重试"，
+        # 导出逻辑也不会把残缺结果当作已完成结果。
+        if failed:
+            _mark_session_failed(session_id)
+        else:
+            _mark_session_done(session_id)
 
 
 def _get_index_for_folder(folder_root: str) -> list[dict]:
@@ -146,6 +157,35 @@ def _mark_session_done(session_id: str) -> None:
         )
 
 
+def _mark_session_failed(session_id: str) -> None:
+    """匹配中途崩溃时调用：标记 'failed'，前端据此提示重试，导出不当成已完成。"""
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE dd_match_sessions SET status = 'failed', completed_at = ? WHERE session_id = ?",
+            (time.time(), session_id),
+        )
+
+
+# 关键词匹配用停用字（语义稀薄、对匹配无区分度）
+_STOP_CHARS = set("的和与或等及提供相关情况说明文件资料证明（）、，。是有无")
+
+
+def _requirement_bigrams(req: str) -> set[str]:
+    """从需求文本提取汉字二元组关键词（剔除含停用字的组合）。"""
+    keywords: set[str] = set()
+    for i in range(len(req) - 1):
+        bigram = req[i : i + 2]
+        if not any(c in _STOP_CHARS for c in bigram):
+            keywords.add(bigram)
+    return keywords
+
+
+def _row_search_text(row: dict) -> str:
+    """文件行的可搜索文本（清洗后文件名 + 原文件名 + 摘要，统一小写）。"""
+    raw_name = row.get("filename", "")
+    return f"{clean_filename(raw_name)} {raw_name} {row.get('summary') or ''}".lower()
+
+
 def _prefilter_files_for_batch(
     batch_items: list[dict],
     index_rows: list[dict],
@@ -159,24 +199,56 @@ def _prefilter_files_for_batch(
     if len(index_rows) <= top_n:
         return index_rows
 
-    stop_chars = set("的和与或等及提供相关情况说明文件资料证明（）、，。是有无")
     all_keywords: set[str] = set()
     for item in batch_items:
-        req = item.get("requirement", "")
-        for i in range(len(req) - 1):
-            bigram = req[i : i + 2]
-            if not any(c in stop_chars for c in bigram):
-                all_keywords.add(bigram)
+        all_keywords |= _requirement_bigrams(item.get("requirement", ""))
 
     scored: list[tuple[int, dict]] = []
     for row in index_rows:
-        raw_name = row.get('filename', '')
-        text = f"{clean_filename(raw_name)} {raw_name} {row.get('summary') or ''}".lower()
+        text = _row_search_text(row)
         score = sum(1 for kw in all_keywords if kw in text)
         scored.append((score, row))
 
     scored.sort(key=lambda x: -x[0])
     return [row for _, row in scored[:top_n]]
+
+
+def _keyword_fallback_match(
+    batch: list[dict],
+    batch_rows: list[dict],
+) -> dict[str, dict]:
+    """LLM 全失败（重试耗尽）时的降级匹配。
+
+    用汉字 bigram 关键词为每条需求在 batch_rows 中找单个最相关文件，
+    返回与 LLM 输出同构的 dict（{item_id: {"candidates": [...]}}），
+    使下游解析逻辑无需改动即可复用。
+
+    - 命中（score>0）：给一个降级置信度 0.3（UI 显示红色低置信徽章），
+      reason 标注"⚠️ AI暂不可用，关键词匹配"，让用户清楚这不是 AI 判断。
+    - 无任何关键词命中：返回空 candidates（不硬塞错误文件）。
+    """
+    results: dict[str, dict] = {}
+    for item in batch:
+        keywords = _requirement_bigrams(item.get("requirement", ""))
+        best_idx: int | None = None
+        best_score = 0
+        for idx, row in enumerate(batch_rows):
+            text = _row_search_text(row)
+            score = sum(1 for kw in keywords if kw in text)
+            if score > best_score:
+                best_score = score
+                best_idx = idx
+        if best_idx is not None and best_score > 0:
+            results[item["id"]] = {
+                "candidates": [{
+                    "file_index": best_idx,
+                    "confidence": 0.3,
+                    "reason": "⚠️ AI暂不可用，关键词匹配",
+                }]
+            }
+        else:
+            results[item["id"]] = {"candidates": []}
+    return results
 
 
 def _try_partial_json_parse(raw: str) -> dict:
@@ -308,8 +380,10 @@ def _llm_batch_match(
         try:
             batch_results: dict = call_with_retry(_do_batch_call, max_retries=3)
         except Exception as e:
-            logger.error("LLM 批量匹配失败（重试3次后）: %s", e)
-            batch_results = {}
+            # LLM 三次重试全失败（服务宕机/持续超时）→ 降级为关键词匹配，
+            # 而非整批静默归零。让相关项仍有低置信度匹配，并明确标注 AI 不可用。
+            logger.error("LLM 批量匹配失败（重试3次后），降级关键词匹配: %s", e)
+            batch_results = _keyword_fallback_match(batch, batch_rows)
 
         # ── 解析并写入本批结果（即时写入，不等所有批完成）──
         batch_item_results: dict[str, dict] = {}

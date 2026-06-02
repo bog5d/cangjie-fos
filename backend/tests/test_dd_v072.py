@@ -83,10 +83,12 @@ class TestLLMEdgeCases:
 
     def test_match_session_completes_on_error(self, client, tmp_path):
         """
-        v0.7.1 关键修复验证：LLM 抛异常后，
-        finally 块必须执行 _mark_session_done，保证前端轮询不挂死。
+        v0.7.1 关键修复验证：LLM 抛异常后，session 必须到达终态，
+        finally 块保证前端轮询不挂死（不会停在 pending/matching）。
 
-        这个测试确认该修复仍然有效（防止回归）。
+        v1.6.0 加固：终态从一律 'matched' 改为 'failed'（更准确地区分
+        "真完成"与"中途崩溃"）。本测试断言更新为 'failed'，
+        同时仍验证核心保证——session 不会卡在非终态导致前端永久轮询。
         """
         src = tmp_path / "test.txt"
         src.write_text("test", encoding="utf-8")
@@ -114,17 +116,18 @@ class TestLLMEdgeCases:
             except RuntimeError:
                 pass  # 预期异常被内部 catch 了
 
-        # 关键断言：session 必须标记为 matched
+        # 关键断言：session 必须到达终态（failed），不能停在 pending/matching
         from cangjie_fos.services.db_base import _connect
         with _connect() as conn:
             status = conn.execute(
                 "SELECT status FROM dd_match_sessions WHERE session_id = ?",
                 (sid,),
             ).fetchone()["status"]
-        assert status == "matched", (
-            f"v0.7.1 回归！LLM崩溃后 session 状态={status}，"
-            "前端轮询会永久挂起。"
+        assert status == "failed", (
+            f"LLM崩溃后 session 状态={status}，应为终态 'failed'。"
+            "若停在 pending/matching，前端轮询会永久挂起（v0.7.1 回归）。"
         )
+        assert status not in ("pending", "matching"), "session 不应停留在非终态"
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：v1.5.0 | 最后更新：2026-05-31
+## 当前版本：v1.6.0 | 最后更新：2026-06-02
 
 ---
 
@@ -15,7 +15,7 @@
 # ── 后端 ──────────────────────────────────────────────────────────
 cd backend
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
-# 期望：733+ passed, 0 failed
+# 期望：744+ passed, 0 failed
 
 # ── 前端 ──────────────────────────────────────────────────────────
 cd ../frontend
@@ -167,6 +167,7 @@ npm run build
 | v1.3.0 | 2026-05-31 | 新增机构入口、家/次双显、替换按钮、create修复 | PASS A/B/E/F/G · PARTIAL C/D（浏览器滚动不稳定） |
 | v1.4.0 | 2026-05-31 | vitest 兜底 C/D + 修 briefing 字段口径 + 前端依赖安装说明 | PASS（自动化全绿）|
 | v1.5.0 | 2026-05-31 | DD 大批量修复：token 溢出/进度条/截断兜底/逐批存储，733 passed | 待验 |
+| v1.6.0 | 2026-06-02 | P0 稳健性三补丁：SQLite每日快照备份/匹配异常标failed/LLM宕机降级关键词，744 passed | 待验 |
 
 ---
 
@@ -236,3 +237,59 @@ npm run build
 ```
 
 **FAIL 判定**：匹配中无进度显示 / 50 条全部 confidence=0（匹配全失败）/ 进入 Step3 时页面崩溃
+
+---
+
+### I — 【v1.6.0 新增】P0 稳健性三补丁
+
+> 本组以**自动化测试为权威**（`backend/tests/test_dd_robustness_p0.py`，11 条）。
+> 浏览器层面只需确认未引入回归（DD 流程仍可正常跑通一遍即可）。
+
+**自动化验证（必跑）**：
+```bash
+cd backend
+uv run --extra dev pytest tests/test_dd_robustness_p0.py -v
+# 期望：11 passed
+```
+
+#### I-1 — SQLite 每日快照备份（防数据丢失）
+
+| 检查项 | 期望 |
+|--------|------|
+| `db_backup.create_snapshot()` | 用 SQLite 在线备份 API 生成一致副本，源库继续写入不影响已生成快照 |
+| `db_backup.prune_snapshots(keep=7)` | 超过 7 份时删除最旧的，仅保留最新 7 份 |
+| 服务启动后 | APScheduler 注册 `daily_db_backup`（每日 03:00），快照落在 `backend/data/backups/` |
+
+**人工冒烟（可选）**：服务跑起来后，手动调用
+`python -c "from cangjie_fos.services.db_backup import run_daily_backup; print(run_daily_backup())"`，
+确认 `backend/data/backups/fos_snapshot_*.sqlite` 生成。
+
+**FAIL 判定**：快照不生成 / 快照打不开 / prune 删错文件（删了最新的）
+
+#### I-2 — 匹配中途崩溃标记 failed（不再误当完成）
+
+| 步骤 | 操作 | 期望结果 |
+|------|------|---------|
+| I2-1 | 正常完成一次匹配 | `dd_match_sessions.status = 'matched'` |
+| I2-2 | 匹配过程内部抛异常（自动化用 mock 模拟） | `status = 'failed'`，**不是** 'matched' |
+| I2-3 | 无已索引文件的空文件夹匹配 | `status = 'matched'`（合法的"无可匹配"，非失败） |
+
+**关键点**：异常时 session 仍到达**终态**（前端轮询不挂死），但终态是 `failed` 而非 `matched`，
+便于区分"真完成"与"中途崩溃"。
+
+**FAIL 判定**：异常后 status 仍为 'matched' / 或停在 'pending'/'matching'（前端永久轮询）
+
+#### I-3 — LLM 宕机降级关键词匹配（不再整批归零）
+
+| 步骤 | 操作 | 期望结果 |
+|------|------|---------|
+| I3-1 | LLM 三次重试全失败（自动化 mock client 持续抛异常） | 相关需求项仍被关键词兜底匹配，不是全部 confidence=0 |
+| I3-2 | 查看降级匹配项 | confidence ≈ 0.3（红色低置信徽章），reason 含"⚠️ AI暂不可用，关键词匹配" |
+| I3-3 | 完全无关键词命中的需求 | 返回空候选（不硬塞错误文件） |
+
+**FAIL 判定**：LLM 宕机时 50 条全部 confidence=0 / 无关键词标注 / 把无关文件硬匹配上去
+
+**自动化兜底文件**：`backend/tests/test_dd_robustness_p0.py`
+- 备份：`test_create_snapshot_*` / `test_prune_*` / `test_run_daily_backup_*`
+- 失败标记：`test_matching_exception_marks_failed` / `test_matching_success_marks_matched` / `test_matching_no_index_marks_matched`
+- 关键词降级：`test_keyword_fallback_unit` / `test_llm_down_falls_back_to_keyword`
