@@ -68,6 +68,13 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     _scheduler = AsyncIOScheduler()
     _scheduler.add_job(nightly_settle_all_tenants, "cron", hour=2, minute=0)
     _scheduler.add_job(run_proactive_interview_all_tenants, "cron", hour=18, minute=0)
+    # 每日凌晨 03:00 生成 SQLite 一致快照并保留最近 7 份（P0：防单文件损坏/误删丢全部数据）
+    try:
+        from cangjie_fos.services.db_backup import run_daily_backup  # noqa: PLC0415
+        _scheduler.add_job(run_daily_backup, "cron", hour=3, minute=0, id="daily_db_backup")
+    except Exception as _e:  # noqa: BLE001
+        import logging as _logging  # noqa: PLC0415
+        _logging.getLogger(__name__).warning("每日备份任务注册失败（非致命）: %s", _e)
     # 每 10 分钟自动重试 GitHub 拉取（补偿启动时网络抖动导致的拉取失败）
     def _bg_pull():
         import threading as _t

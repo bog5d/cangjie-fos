@@ -4,6 +4,25 @@
 
 ---
 
+## [1.6.0] — 2026-06-02  P0 稳健性三补丁
+
+> 测试基线：744 passed（新增11个 `test_dd_robustness_p0.py`）
+> 来源：全系统稳健性扫描后确认的三个 P0 真实脆弱点（已排除2个误报：SQL注入/路径穿越在桌面内网单租户场景下不成立）
+
+### Added
+- **SQLite 每日快照备份**（`services/db_backup.py`，新建）：此前单文件零备份，损坏/误删即全部机构与尽调数据不可恢复。新增基于 SQLite 在线备份 API 的一致快照（并发写入下也不会复制脏页），落在 `backend/data/backups/`，自动保留最近 7 份。由 lifespan 的 APScheduler 每日 03:00 调度（`daily_db_backup`）。
+
+### Fixed
+- **匹配中途崩溃误标"完成"**（`dd_match_service.run_matching`）：此前任何异常都在 finally 一律 `_mark_session_done`（matched），前端/导出把残缺结果当成功。现新增 `_mark_session_failed`，异常时标记 `failed`；正常路径（含"无可匹配文件"早退）仍标 `matched`。session 始终到达终态，前端轮询不挂死。
+- **LLM 宕机整批静默归零**（`dd_match_service._llm_batch_match`）：此前 DeepSeek 三次重试全失败后 `batch_results = {}`，50 条需求全部 confidence=0，与"真的没材料"无法区分。现新增 `_keyword_fallback_match`，LLM 不可用时用汉字 bigram 关键词兜底匹配，相关项给降级置信度 0.3 并标注「⚠️ AI暂不可用，关键词匹配」。
+
+### Changed
+- `dd_match_service` 抽出共享的 `_requirement_bigrams` / `_row_search_text` 辅助（预筛与降级匹配复用，消除重复）
+- `CODEX_TASKS.md` v1.6.0：新增 I 节（P0 三补丁测试方案，以 `test_dd_robustness_p0.py` 11 条为权威）
+- 测试：新增 `backend/tests/test_dd_robustness_p0.py`（11 条）；`test_dd_v072.py::test_match_session_completes_on_error` 断言更新为终态 `failed`
+
+---
+
 ## [1.1.0] — 2026-05-21  同事反馈5个Bug全修复
 
 > 测试基线：643+ passed（新增17个，41 in modified files pass）
