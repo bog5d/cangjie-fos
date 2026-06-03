@@ -6,6 +6,7 @@ v0.7.2 改进：
   - 累计导出大小超过 MB_LIMIT_TOTAL 时终止全部导出，返回错误
 """
 from __future__ import annotations
+import json
 import shutil
 import logging
 from pathlib import Path
@@ -103,6 +104,86 @@ def export_to_folder(session_id: str, output_dir: str) -> dict:
 
     return {
         "exported": len(exported),
+        "missing": len(missing),
+        "output_path": str(out),
+    }
+
+
+def export_by_question(
+    session_id: str,
+    output_dir: str,
+    folder_name_overrides: dict | None = None,
+) -> dict:
+    """
+    F2 + F5：按问题归档导出。
+
+    每条有匹配文件的需求 → 一个「问题NN_需求名」子文件夹；
+    无匹配 → 不建空文件夹，追加到缺失清单.txt。
+    多文件（extra_files_json）全部拷入同一子文件夹。
+    folder_name_overrides: {item_id: 自定义文件夹名} 用于 F5 命名确认。
+
+    返回：{"exported": 文件数, "missing": 缺失需求数, "output_path": str}
+    """
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    overrides = folder_name_overrides or {}
+
+    with _connect() as conn:
+        items = [dict(r) for r in conn.execute(
+            """SELECT id, item_no, category, requirement,
+                      matched_file_path, matched_filename,
+                      confidence, user_skipped, extra_files_json
+               FROM dd_match_items
+               WHERE session_id = ?
+               ORDER BY item_no""",
+            (session_id,),
+        ).fetchall()]
+
+    exported_files = 0
+    missing: list[dict] = []
+
+    for item in items:
+        if item["user_skipped"]:
+            missing.append(item)
+            continue
+
+        src = item["matched_file_path"]
+        if not src or not Path(src).is_file():
+            missing.append(item)
+            continue
+
+        # ── 确定文件夹名 ─────────────────────────────────────────
+        if item["id"] in overrides:
+            folder_name = _safe_dirname(overrides[item["id"]])
+        else:
+            folder_name = _safe_dirname(
+                f"问题{item['item_no']}_{item['requirement']}"
+            )
+
+        q_dir = out / folder_name
+        q_dir.mkdir(exist_ok=True)
+
+        # ── 主匹配文件 ────────────────────────────────────────────
+        shutil.copy2(src, q_dir / Path(src).name)
+        exported_files += 1
+
+        # ── 额外文件（extra_files_json） ─────────────────────────
+        extra_raw = item.get("extra_files_json")
+        if extra_raw:
+            try:
+                extra_list = json.loads(extra_raw)
+            except (json.JSONDecodeError, TypeError):
+                extra_list = []
+            for ef in extra_list:
+                ep = ef.get("file_path", "")
+                if ep and Path(ep).is_file():
+                    shutil.copy2(ep, q_dir / Path(ep).name)
+                    exported_files += 1
+
+    _write_gap_report(out, missing)
+
+    return {
+        "exported": exported_files,
         "missing": len(missing),
         "output_path": str(out),
     }

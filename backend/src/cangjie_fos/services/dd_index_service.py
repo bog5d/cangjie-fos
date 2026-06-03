@@ -48,10 +48,20 @@ def scan_and_index_folder(
     if not root.is_dir():
         raise ValueError(f"Not a directory: {folder_path}")
 
+    from cangjie_fos.services.dd_gk_service import (  # noqa: PLC0415
+        detect_folder_layout, is_file_encrypted,
+    )
+    layout = detect_folder_layout(str(root))
+
     files = [
         f for f in root.rglob("*")
         if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
     ]
+
+    # per_institution 布局：同名文件跨机构子文件夹去重，只留 mtime 最新一份
+    if layout == "per_institution":
+        files = _dedup_keep_newest(files)
+
     total = len(files)
     use_llm = total <= MAX_LLM_SUMMARIZE_FILES
     if not use_llm:
@@ -60,11 +70,19 @@ def scan_and_index_folder(
             folder_path, total, MAX_LLM_SUMMARIZE_FILES,
         )
 
-    results = {"total": total, "indexed": 0, "failed": 0, "folder_root": str(root)}
+    results = {
+        "total": total, "indexed": 0, "failed": 0,
+        "folder_root": str(root), "folder_layout": layout,
+    }
 
     for i, file_path in enumerate(files):
         try:
-            _index_single_file(file_path, str(root), use_llm=use_llm)
+            subfolder = _institution_subfolder(file_path, root)
+            encrypted = is_file_encrypted(file_path)
+            _index_single_file(
+                file_path, str(root), use_llm=use_llm,
+                institution_subfolder=subfolder, is_encrypted=encrypted,
+            )
             results["indexed"] += 1
         except Exception as e:
             logger.warning("索引失败 %s: %s", file_path.name, e)
@@ -77,12 +95,50 @@ def scan_and_index_folder(
     return results
 
 
-def _index_single_file(file_path: Path, folder_root: str, use_llm: bool = True) -> None:
+def _institution_subfolder(file_path: Path, root: Path) -> str:
+    """文件来源的机构子文件夹名（根直属那一层）；平铺在根下的文件返回空串。"""
+    try:
+        parts = file_path.relative_to(root).parts
+    except ValueError:
+        return ""
+    return parts[0] if len(parts) > 1 else ""
+
+
+def _dedup_keep_newest(files: list[Path]) -> list[Path]:
+    """同名文件去重，保留 mtime 最新的一份。"""
+    best: dict[str, Path] = {}
+    for f in files:
+        try:
+            mt = f.stat().st_mtime
+        except OSError:
+            mt = 0.0
+        cur = best.get(f.name)
+        if cur is None:
+            best[f.name] = f
+        else:
+            cur_mt = cur.stat().st_mtime if cur.exists() else 0.0
+            if mt > cur_mt:
+                best[f.name] = f
+    return list(best.values())
+
+
+def _index_single_file(
+    file_path: Path,
+    folder_root: str,
+    use_llm: bool = True,
+    institution_subfolder: str = "",
+    is_encrypted: bool = False,
+) -> None:
     text, readable = extract_text(file_path)
     # 只在 use_llm=True 且文件可读时才调用 LLM；否则 summary=None，依靠文件名匹配
     summary = _llm_summarize(file_path.name, text) if (use_llm and readable and text) else None
 
     now = time.time()
+    try:
+        mtime_val = file_path.stat().st_mtime
+    except OSError:
+        mtime_val = None
+    enc = 1 if is_encrypted else 0
     with _connect() as conn:
         # ── 写入 dd_asset_index（DD 专用索引，用于本次会话匹配）──────────────
         existing = conn.execute(
@@ -91,15 +147,18 @@ def _index_single_file(file_path: Path, folder_root: str, use_llm: bool = True) 
         if existing:
             conn.execute(
                 """UPDATE dd_asset_index
-                   SET summary = ?, readable = ?, indexed_at = ?
+                   SET summary = ?, readable = ?, indexed_at = ?,
+                       institution_subfolder = ?, is_encrypted = ?, mtime = ?
                    WHERE file_path = ?""",
-                (summary, 1 if readable else 0, now, str(file_path)),
+                (summary, 1 if readable else 0, now,
+                 institution_subfolder, enc, mtime_val, str(file_path)),
             )
         else:
             conn.execute(
                 """INSERT INTO dd_asset_index
-                   (id, folder_root, file_path, filename, file_type, summary, readable, indexed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (id, folder_root, file_path, filename, file_type, summary,
+                    readable, indexed_at, institution_subfolder, is_encrypted, mtime)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     str(uuid.uuid4()),
                     folder_root,
@@ -109,6 +168,9 @@ def _index_single_file(file_path: Path, folder_root: str, use_llm: bool = True) 
                     summary,
                     1 if readable else 0,
                     now,
+                    institution_subfolder,
+                    enc,
+                    mtime_val,
                 ),
             )
 
