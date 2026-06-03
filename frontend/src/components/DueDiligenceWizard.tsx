@@ -100,6 +100,12 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [byQuestionMode, setByQuestionMode] = useState(false);
   const [folderNames, setFolderNames] = useState<Record<string, string>>({});
   const [extraSelections, setExtraSelections] = useState<Record<string, Set<string>>>({});
+  // F4 历史问答复用
+  const [qaExtracting, setQaExtracting] = useState(false);
+  const [qaExtractMsg, setQaExtractMsg] = useState("");
+  const [draftItem, setDraftItem] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, { text: string; matched: boolean; confidence: number; source: string }>>({});
+  const [draftLoading, setDraftLoading] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const [step, setStep] = useState<Step>(1);
@@ -531,6 +537,49 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     }
   }, [sessionId, outputDir, folderNames]);
 
+  // ── Step 3: F4 历史问答复用 ───────────────────────────────────
+  /** 从材料库的「补充/问答/答复」类文件扒取历史问答对，存入知识库。 */
+  const handleExtractQA = useCallback(async () => {
+    if (!folderPath.trim()) { setQaExtractMsg("⚠️ 缺少材料库路径，无法扒取"); return; }
+    setQaExtracting(true);
+    setQaExtractMsg("");
+    try {
+      const resp = await fetch("/api/v1/dd/qa/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_root: folderPath.trim(), tenant_id: "default" }),
+      });
+      if (!resp.ok) { setQaExtractMsg("❌ 扒取失败，请重试"); return; }
+      const r = await resp.json();
+      setQaExtractMsg(`✅ 已从历史资料扒取 ${r.extracted} 条问答，可点各需求「💬 草稿」生成答复`);
+    } catch (e) {
+      setQaExtractMsg(`❌ 网络错误：${e instanceof Error ? e.message : "扒取失败"}`);
+    } finally {
+      setQaExtracting(false);
+    }
+  }, [folderPath]);
+
+  /** 为某需求生成答复草稿（命中历史问答带出答案+置信度，无命中留空待人工）。 */
+  const handleLoadDraft = useCallback(async (item: DDItem) => {
+    if (draftItem === item.id) { setDraftItem(null); return; }
+    setDraftItem(item.id);
+    if (drafts[item.id]) return;  // 已加载过，直接展开
+    setDraftLoading(true);
+    try {
+      const params = new URLSearchParams({ requirement: item.requirement, folder_root: folderPath.trim() });
+      const resp = await fetch(`/api/v1/dd/qa/draft?${params.toString()}`);
+      if (!resp.ok) return;
+      const d: { matched: boolean; answer: string; confidence: number; source_question: string } = await resp.json();
+      setDrafts((prev) => ({
+        ...prev,
+        [item.id]: { text: d.answer, matched: d.matched, confidence: d.confidence, source: d.source_question },
+      }));
+    } catch (_) {
+    } finally {
+      setDraftLoading(false);
+    }
+  }, [draftItem, drafts, folderPath]);
+
   // ── 置信度颜色 ────────────────────────────────────────────────
   const confidenceColor = (conf: number | null): string => {
     if (conf === null) return "bg-gray-100 text-gray-500";
@@ -788,16 +837,27 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-400">确认进度 {pct}%</span>
-                      {highConfCount > 0 && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => void handleBulkConfirm()}
-                          disabled={bulkConfirming}
-                          className="px-3 py-1 bg-green-600 text-white rounded text-xs disabled:opacity-50 hover:bg-green-700"
+                          onClick={() => void handleExtractQA()}
+                          disabled={qaExtracting}
+                          className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs disabled:opacity-50 hover:bg-purple-200"
+                          title="从历史补充资料扒取问答，供「💬 草稿」复用"
                         >
-                          {bulkConfirming ? "确认中…" : `✓ 一键确认高置信（${highConfCount}条）`}
+                          {qaExtracting ? "扒取中…" : "🔍 扒取历史问答"}
                         </button>
-                      )}
+                        {highConfCount > 0 && (
+                          <button
+                            onClick={() => void handleBulkConfirm()}
+                            disabled={bulkConfirming}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-xs disabled:opacity-50 hover:bg-green-700"
+                          >
+                            {bulkConfirming ? "确认中…" : `✓ 一键确认高置信（${highConfCount}条）`}
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {qaExtractMsg && <p className="text-xs text-gray-500">{qaExtractMsg}</p>}
                   </div>
                 );
               })()}
@@ -882,6 +942,11 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                             >📂 替换</button>
                           </>
                         )}
+                        <button
+                          onClick={() => void handleLoadDraft(item)}
+                          className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded whitespace-nowrap"
+                          title="从历史问答生成答复草稿"
+                        >💬 草稿</button>
                       </td>
                     </tr>
                     {/* 备选候选展开行 */}
@@ -974,6 +1039,45 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                             <button onClick={() => void handleManualFile(item.id)} disabled={!manualPath.trim()} className="text-xs px-2 py-1 bg-blue-600 text-white rounded disabled:opacity-50">确认</button>
                             <button onClick={() => setManualInputItem(null)} className="text-xs px-2 py-1 border rounded text-gray-500">取消</button>
                           </div>
+                        </td>
+                      </tr>
+                    )}
+                    {/* F4 答复草稿审核行 */}
+                    {draftItem === item.id && (
+                      <tr className="border-t bg-purple-50">
+                        <td colSpan={5} className="px-3 py-2">
+                          {draftLoading && !drafts[item.id] ? (
+                            <p className="text-xs text-purple-600">⏳ 正在生成草稿…</p>
+                          ) : (() => {
+                            const d = drafts[item.id];
+                            if (!d) return <p className="text-xs text-gray-400">无草稿</p>;
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className="font-medium text-purple-700">💬 答复草稿</span>
+                                  {d.matched ? (
+                                    <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                                      命中历史 · 置信 {Math.round(d.confidence * 100)}%
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                                      无历史命中，请人工填写
+                                    </span>
+                                  )}
+                                  {d.matched && d.source && (
+                                    <span className="text-gray-400" title={d.source}>来源问：{d.source.slice(0, 20)}…</span>
+                                  )}
+                                </div>
+                                <textarea
+                                  aria-label={`草稿-${item.item_no}`}
+                                  className="w-full border rounded px-2 py-1 text-xs text-gray-900 h-20"
+                                  placeholder="可编辑答复草稿…"
+                                  value={d.text}
+                                  onChange={(e) => setDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], text: e.target.value } }))}
+                                />
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     )}
