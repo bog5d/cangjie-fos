@@ -10,7 +10,11 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Uploa
 from pydantic import BaseModel
 
 from cangjie_fos.services.dd_checklist_parser import parse_checklist
-from cangjie_fos.services.dd_export_service import export_to_folder
+from cangjie_fos.services.dd_export_service import export_to_folder, export_by_question
+from cangjie_fos.services.dd_qa_service import (
+    extract_qa_pairs_from_folder,
+    generate_answer_draft,
+)
 from cangjie_fos.services.dd_index_service import get_index_by_folder, scan_and_index_folder
 from cangjie_fos.services.dd_match_service import (
     create_match_session,
@@ -91,6 +95,16 @@ class ScanRequest(BaseModel):
 
 class ExportRequest(BaseModel):
     output_dir: str
+
+
+class ExportByQuestionRequest(BaseModel):
+    output_dir: str
+    folder_name_overrides: dict[str, str] | None = None
+
+
+class QAExtractRequest(BaseModel):
+    folder_root: str
+    tenant_id: str = "default"
 
 
 class ItemUpdateRequest(BaseModel):
@@ -363,6 +377,35 @@ def export_session(session_id: str, req: ExportRequest, background_tasks: Backgr
     background_tasks.add_task(push_dd_session, session_id)
     background_tasks.add_task(_write_dd_outcomes, session_id)
     return result
+
+
+@router.post("/sessions/{session_id}/export-by-question")
+def export_session_by_question(
+    session_id: str, req: ExportByQuestionRequest, background_tasks: BackgroundTasks,
+):
+    """F2/F5：按问题归档导出（每条需求一个「问题NN_xxx」文件夹），可自定义命名。"""
+    result = export_by_question(
+        session_id, req.output_dir,
+        folder_name_overrides=req.folder_name_overrides,
+    )
+    background_tasks.add_task(push_dd_session, session_id)
+    background_tasks.add_task(_write_dd_outcomes, session_id)
+    return result
+
+
+@router.post("/qa/extract")
+def qa_extract(req: QAExtractRequest, background_tasks: BackgroundTasks):
+    """F4：从历史补充资料扒取问答对，存入 dd_qa_pairs。"""
+    try:
+        return extract_qa_pairs_from_folder(req.folder_root, req.tenant_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/qa/draft")
+def qa_draft(requirement: str, folder_root: str):
+    """F4：为新需求生成答复草稿（命中历史问答带出答案+置信度）。"""
+    return generate_answer_draft(requirement, folder_root)
 
 
 @router.get("/sessions")
