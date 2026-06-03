@@ -97,6 +97,8 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [exportResult, setExportResult] = useState<string>("");
   const [exportError, setExportError] = useState<string>("");
   const [outputDir, setOutputDir] = useState("");
+  const [byQuestionMode, setByQuestionMode] = useState(false);
+  const [folderNames, setFolderNames] = useState<Record<string, string>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const [step, setStep] = useState<Step>(1);
@@ -457,6 +459,46 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       setExporting(false);
     }
   }, [sessionId, outputDir]);
+
+  // ── Step 3: 按问题归档导出（F2/F5）─────────────────────────────
+  /** 进入命名确认：用「问题NN_需求」预填每条有匹配项的文件夹名。 */
+  const enterByQuestionMode = useCallback(() => {
+    const defaults: Record<string, string> = {};
+    for (const it of items) {
+      if (it.matched_filename && !it.user_skipped) {
+        defaults[it.id] = `问题${it.item_no}_${it.requirement}`.slice(0, 40);
+      }
+    }
+    setFolderNames(defaults);
+    setByQuestionMode(true);
+  }, [items]);
+
+  const handleExportByQuestion = useCallback(async () => {
+    if (!sessionId || !outputDir.trim()) return;
+    setExporting(true);
+    setExportError("");
+    try {
+      const resp = await fetch(`/api/v1/dd/sessions/${sessionId}/export-by-question`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ output_dir: outputDir.trim(), folder_name_overrides: folderNames }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        setExportError(`❌ 导出失败：${err.detail || resp.statusText}`);
+        return;
+      }
+      const result = await resp.json();
+      setExportResult(
+        `✅ 按问题归档完成：${result.exported} 个文件，${result.missing} 条缺失。文件夹：${result.output_path}`
+      );
+      setByQuestionMode(false);
+    } catch (e) {
+      setExportError(`❌ 网络错误：${e instanceof Error ? e.message : "导出失败"}`);
+    } finally {
+      setExporting(false);
+    }
+  }, [sessionId, outputDir, folderNames]);
 
   // ── 置信度颜色 ────────────────────────────────────────────────
   const confidenceColor = (conf: number | null): string => {
@@ -972,10 +1014,64 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   onClick={() => void handleExport()}
                   disabled={exporting || !outputDir.trim()}
                   className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50 whitespace-nowrap"
+                  title="按材料分类归档（默认）"
                 >
-                  {exporting ? "导出中…" : "导出文件夹"}
+                  {exporting ? "导出中…" : "按分类导出"}
+                </button>
+                <button
+                  onClick={enterByQuestionMode}
+                  disabled={exporting}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded text-sm disabled:opacity-50 whitespace-nowrap"
+                  title="每条机构问题一个文件夹，可统一改名"
+                >
+                  📁 按问题归档…
                 </button>
               </div>
+
+              {/* ── F5 命名确认表 ── */}
+              {byQuestionMode && (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-indigo-700">📁 命名确认 — 每条问题一个文件夹（可改名为对方问题原话）</p>
+                    <button onClick={() => setByQuestionMode(false)} className="text-xs text-gray-400 hover:text-gray-600">✕ 收起</button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto border rounded bg-white">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                        <tr>
+                          <th className="px-2 py-1.5 text-left w-8">#</th>
+                          <th className="px-2 py-1.5 text-left">我方需求</th>
+                          <th className="px-2 py-1.5 text-left">导出文件夹名（可编辑）</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.filter((i) => i.matched_filename && !i.user_skipped).map((i) => (
+                          <tr key={i.id} className="border-t">
+                            <td className="px-2 py-1.5 text-gray-400">{i.item_no}</td>
+                            <td className="px-2 py-1.5 text-gray-600">{i.requirement}</td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                aria-label={`文件夹名-${i.item_no}`}
+                                className="w-full border rounded px-2 py-1 text-xs text-gray-900"
+                                value={folderNames[i.id] ?? ""}
+                                onChange={(e) => setFolderNames((prev) => ({ ...prev, [i.id]: e.target.value }))}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    onClick={() => void handleExportByQuestion()}
+                    disabled={exporting || !outputDir.trim()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded text-sm disabled:opacity-50"
+                  >
+                    {exporting ? "导出中…" : "✅ 确认并按问题导出"}
+                  </button>
+                  {!outputDir.trim() && <span className="ml-2 text-xs text-amber-500">请先在上方填写导出路径</span>}
+                </div>
+              )}
               {exportResult && <p className="text-sm text-green-600">{exportResult}</p>}
               {exportError && <p className="text-sm text-red-500">{exportError}</p>}
             </div>
