@@ -169,6 +169,20 @@ def _mark_session_failed(session_id: str) -> None:
 # 关键词匹配用停用字（语义稀薄、对匹配无区分度）
 _STOP_CHARS = set("的和与或等及提供相关情况说明文件资料证明（）、，。是有无")
 
+# 单条文件摘要的最大字符数，超出截断以防 LLM 上下文溢出
+_MAX_SUMMARY_CHARS = 150
+
+
+def _build_file_list_text(rows: list[dict]) -> str:
+    """构建发给 LLM 的文件列表文本，超长摘要截断到 _MAX_SUMMARY_CHARS。"""
+    lines = []
+    for i, r in enumerate(rows):
+        summary = r.get("summary") or "无摘要"
+        if len(summary) > _MAX_SUMMARY_CHARS:
+            summary = summary[:_MAX_SUMMARY_CHARS] + "…"
+        lines.append(f"[{i}] 文件名：{r['filename']}  摘要：{summary}")
+    return "\n".join(lines)
+
 
 def _requirement_bigrams(req: str) -> set[str]:
     """从需求文本提取汉字二元组关键词（剔除含停用字的组合）。"""
@@ -324,10 +338,7 @@ def _llm_batch_match(
     for start in range(0, len(items), batch_size):
         batch = items[start: start + batch_size]
         batch_rows = _prefilter_files_for_batch(batch, index_rows, top_n=50)
-        batch_file_list_text = "\n".join(
-            f"[{i}] 文件名：{r['filename']}  摘要：{r['summary'] or '无摘要'}"
-            for i, r in enumerate(batch_rows)
-        )
+        batch_file_list_text = _build_file_list_text(batch_rows)
         req_lines = "\n".join(
             f"需求{i + 1}（ID:{item['id']}）：{item['requirement']}"
             for i, item in enumerate(batch)

@@ -321,6 +321,13 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (12, "ALTER TABLE dd_match_sessions ADD COLUMN institution_name TEXT NOT NULL DEFAULT ''"),
     (13, "ALTER TABLE dd_match_items ADD COLUMN candidates_json TEXT"),
     (14, "ALTER TABLE dd_match_items ADD COLUMN extra_files_json TEXT"),
+    (15, """CREATE TABLE IF NOT EXISTS fos_sessions (
+        token      TEXT PRIMARY KEY,
+        username   TEXT NOT NULL,
+        tenant_id  TEXT NOT NULL,
+        login_at   REAL NOT NULL,
+        expires_at REAL NOT NULL
+    )"""),
 ]
 
 
