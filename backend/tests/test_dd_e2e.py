@@ -399,3 +399,128 @@ class TestDDScanSyncToAssets:
                 (str(tmp_path),),
             ).fetchone()[0]
         assert count == 1  # 不应重复
+
+
+_TEMPLATE_TEXT = """一、基本信息
+1、项目名称：
+公司总资产人民币【 】万元，净资产人民币【 】万元。
+三、核心能力分析（不少于500字）
+"""
+
+_PI_ITEMS = [
+    {"item_no": "1", "category": "一、基本信息", "requirement": "项目名称", "field_kind": "field"},
+    {"item_no": "2", "category": "一、基本信息",
+     "requirement": "公司总资产人民币【 】万元，净资产人民币【 】万元。（第1/2个空格）",
+     "field_kind": "blank"},
+    {"item_no": "3", "category": "一、基本信息",
+     "requirement": "公司总资产人民币【 】万元，净资产人民币【 】万元。（第2/2个空格）",
+     "field_kind": "blank"},
+    {"item_no": "4", "category": "三、核心能力分析（不少于500字）",
+     "requirement": "三、核心能力分析（不少于500字）",
+     "field_kind": "narrative"},
+]
+
+
+class TestPostInvestmentScenario:
+    """投后场景：create_session 支持 scenario=post_investment，可填充并导出初稿。"""
+
+    def test_create_pi_session_from_text(self, client, tmp_path):
+        """scenario=post_investment 应解析模板待填项，不走 dd_checklist_parser。"""
+        resp = client.post("/api/v1/dd/sessions", data={
+            "text": _TEMPLATE_TEXT,
+            "tenant_id": "pi_test",
+            "folder_root": str(tmp_path),
+            "scenario": "post_investment",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["scenario"] == "post_investment"
+        assert data["count"] >= 2  # 至少有空格项
+
+    def test_pi_session_has_field_kind(self, client, tmp_path):
+        """投后 session 的 items 应有 field_kind 字段。"""
+        resp = client.post("/api/v1/dd/sessions", data={
+            "text": _TEMPLATE_TEXT,
+            "tenant_id": "pi_fk",
+            "folder_root": str(tmp_path),
+            "scenario": "post_investment",
+        })
+        sid = resp.json()["session_id"]
+        items = client.get(f"/api/v1/dd/sessions/{sid}/items").json()
+        assert any(i.get("field_kind") for i in items)
+
+    def test_pi_session_in_list_with_scenario(self, client, tmp_path):
+        """list sessions 应包含 scenario 字段。"""
+        client.post("/api/v1/dd/sessions", data={
+            "text": _TEMPLATE_TEXT,
+            "tenant_id": "pi_list",
+            "folder_root": str(tmp_path),
+            "scenario": "post_investment",
+        })
+        sessions = client.get("/api/v1/dd/sessions?tenant_id=pi_list").json()
+        assert any(s.get("scenario") == "post_investment" for s in sessions)
+
+    def test_export_report_fills_blanks(self, client, tmp_path):
+        """export-report 应用 draft_answer 填充模板，生成初稿文件。"""
+        resp = client.post("/api/v1/dd/sessions", data={
+            "text": _TEMPLATE_TEXT,
+            "tenant_id": "pi_exp",
+            "folder_root": str(tmp_path),
+            "scenario": "post_investment",
+        })
+        sid = resp.json()["session_id"]
+
+        # 手动写入 draft_answer 模拟填充结果
+        from cangjie_fos.services.db_base import _connect
+        with _connect() as conn:
+            blank_items = conn.execute(
+                "SELECT id FROM dd_match_items WHERE session_id = ? AND field_kind = 'blank'",
+                (sid,),
+            ).fetchall()
+            for i, row in enumerate(blank_items):
+                conn.execute(
+                    "UPDATE dd_match_items SET draft_answer = ? WHERE id = ?",
+                    (f"测试值{i + 1}", row[0]),
+                )
+
+        output_file = str(tmp_path / "季报初稿.txt")
+        resp2 = client.post(f"/api/v1/dd/sessions/{sid}/export-report",
+                            json={"output_path": output_file})
+        assert resp2.status_code == 200
+        result = resp2.json()
+        assert result["ok"] is True
+        assert result["filled"] >= 1
+        assert (tmp_path / "季报初稿.txt").exists()
+
+        content = (tmp_path / "季报初稿.txt").read_text(encoding="utf-8")
+        assert "测试值1" in content
+
+    def test_draft_fill_runs_after_matching(self, client, tmp_path):
+        """投后场景触发 match 后，fill service 自动运行（mock LLM）。"""
+        # 创建索引文件
+        (tmp_path / "财务报告.txt").write_text("总资产5000万元，净资产3000万元", encoding="utf-8")
+        with patch("cangjie_fos.services.dd_index_service._llm_summarize",
+                   return_value="总资产5000万元，净资产3000万元"):
+            from cangjie_fos.services.dd_index_service import scan_and_index_folder
+            scan_and_index_folder(str(tmp_path), "pi_fill")
+
+        resp = client.post("/api/v1/dd/sessions", data={
+            "text": _TEMPLATE_TEXT,
+            "tenant_id": "pi_fill",
+            "folder_root": str(tmp_path),
+            "scenario": "post_investment",
+        })
+        sid = resp.json()["session_id"]
+
+        fill_calls: list = []
+
+        def mock_fill(session_id: str) -> None:
+            fill_calls.append(session_id)
+
+        with patch("cangjie_fos.api.routes.dd_response.run_draft_fill", side_effect=mock_fill), \
+             patch("cangjie_fos.services.dd_match_service._llm_batch_match", return_value={}):
+            client.post(
+                f"/api/v1/dd/sessions/{sid}/match?folder_root={str(tmp_path)}"
+            )
+
+        assert sid in fill_calls

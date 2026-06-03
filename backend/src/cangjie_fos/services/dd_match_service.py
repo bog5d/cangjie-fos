@@ -21,23 +21,28 @@ def create_match_session(
     folder_root: str,
     items: list[dict],
     institution_name: str = "",
+    scenario: str = "dd",
+    template_text: str = "",
 ) -> str:
     """创建匹配会话，存储清单需求项。返回 session_id。"""
     session_id = str(uuid.uuid4())
     with _connect() as conn:
         conn.execute(
             """INSERT INTO dd_match_sessions
-               (session_id, tenant_id, checklist_name, folder_root, institution_name, status, created_at)
-               VALUES (?, ?, ?, ?, ?, 'pending', ?)""",
-            (session_id, tenant_id, checklist_name, folder_root, institution_name, time.time()),
+               (session_id, tenant_id, checklist_name, folder_root, institution_name,
+                status, created_at, scenario, template_text)
+               VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)""",
+            (session_id, tenant_id, checklist_name, folder_root, institution_name,
+             time.time(), scenario, template_text),
         )
         for item in items:
             conn.execute(
                 """INSERT INTO dd_match_items
-                   (id, session_id, item_no, category, requirement)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   (id, session_id, item_no, category, requirement, field_kind)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
                 (str(uuid.uuid4()), session_id, item["item_no"],
-                 item.get("category", ""), item["requirement"]),
+                 item.get("category", ""), item["requirement"],
+                 item.get("field_kind", "")),
             )
     return session_id
 

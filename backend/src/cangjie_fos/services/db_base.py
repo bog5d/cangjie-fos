@@ -289,7 +289,8 @@ CREATE TABLE IF NOT EXISTS dd_match_sessions (
     created_at       REAL NOT NULL,
     completed_at     REAL,
     folder_layout    TEXT NOT NULL DEFAULT 'flat',
-    scenario         TEXT NOT NULL DEFAULT 'dd'
+    scenario         TEXT NOT NULL DEFAULT 'dd',
+    template_text    TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_items (
@@ -305,7 +306,9 @@ CREATE TABLE IF NOT EXISTS dd_match_items (
     user_confirmed    INTEGER NOT NULL DEFAULT 0,
     user_skipped      INTEGER NOT NULL DEFAULT 0,
     candidates_json   TEXT,
-    extra_files_json  TEXT
+    extra_files_json  TEXT,
+    field_kind        TEXT NOT NULL DEFAULT '',
+    draft_answer      TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS dd_qa_pairs (
@@ -364,6 +367,9 @@ _MIGRATIONS: list[tuple[int, str]] = [
         created_at            REAL NOT NULL
     )"""),
     (22, "ALTER TABLE dd_asset_index ADD COLUMN unlock_password TEXT NOT NULL DEFAULT ''"),
+    (23, "ALTER TABLE dd_match_sessions ADD COLUMN template_text TEXT NOT NULL DEFAULT ''"),
+    (24, "ALTER TABLE dd_match_items ADD COLUMN field_kind TEXT NOT NULL DEFAULT ''"),
+    (25, "ALTER TABLE dd_match_items ADD COLUMN draft_answer TEXT NOT NULL DEFAULT ''"),
 ]
 
 

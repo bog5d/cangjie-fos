@@ -12,10 +12,12 @@ interface DDItem {
   item_no: string;
   category: string;
   requirement: string;
+  field_kind: string;
   matched_file_path: string | null;
   matched_filename: string | null;
   confidence: number | null;
   match_reason: string | null;
+  draft_answer: string;
   user_confirmed: number;
   user_skipped: number;
   candidates_json: string | null;
@@ -23,6 +25,8 @@ interface DDItem {
   is_encrypted?: number;
   unlock_password?: string;
 }
+
+type Scenario = "dd" | "post_investment";
 
 interface SessionSummary {
   session_id: string;
@@ -32,6 +36,7 @@ interface SessionSummary {
   created_at: number;
   item_count: number;
   confirmed_count: number;
+  scenario?: string;
 }
 
 interface Props {
@@ -109,6 +114,11 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const [step, setStep] = useState<Step>(1);
+  const [scenario, setScenario] = useState<Scenario>("dd");
+  const [reportOutputPath, setReportOutputPath] = useState("");
+  const [reportExporting, setReportExporting] = useState(false);
+  const [reportExportResult, setReportExportResult] = useState("");
+  const [reportExportError, setReportExportError] = useState("");
 
   // ── 清理所有 interval（组件卸载时）──────────────────────────
   useEffect(() => {
@@ -218,6 +228,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     formData.append("tenant_id", "default");
     formData.append("folder_root", folderPath.trim());
     formData.append("institution_name", institutionName.trim());
+    formData.append("scenario", scenario);
     if (checklistFile) {
       formData.append("file", checklistFile);
     } else {
@@ -328,7 +339,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
         }
       }
     }, 2000);
-  }, [folderPath, checklistFile, checklistText, institutionName]);
+  }, [folderPath, checklistFile, checklistText, institutionName, scenario]);
 
   // ── Step 3: 批量确认 ──────────────────────────────────────────
   const handleBulkConfirm = useCallback(async () => {
@@ -580,6 +591,48 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     }
   }, [draftItem, drafts, folderPath]);
 
+  // ── 切换场景（重置向导状态）────────────────────────────────────
+  const handleScenarioChange = useCallback((s: Scenario) => {
+    setScenario(s);
+    setStep(1);
+    setSessionId(null);
+    setItems([]);
+    setMatchStatus("idle");
+    setMatchError("");
+    setChecklistText("");
+    setChecklistFile(null);
+    setReportOutputPath("");
+    setReportExportResult("");
+    setReportExportError("");
+  }, []);
+
+  // ── Step 3 (投后): 导出季报初稿 ────────────────────────────────
+  const handleExportReport = useCallback(async () => {
+    if (!sessionId || !reportOutputPath.trim()) return;
+    setReportExporting(true);
+    setReportExportError("");
+    try {
+      const resp = await fetch(`/api/v1/dd/sessions/${sessionId}/export-report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ output_path: reportOutputPath.trim() }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        setReportExportError(`❌ 导出失败：${err.detail || resp.statusText}`);
+        return;
+      }
+      const result = await resp.json();
+      setReportExportResult(
+        `✅ 季报初稿已生成：已填 ${result.filled}/${result.total} 个空格。路径：${result.output_path}`
+      );
+    } catch (e) {
+      setReportExportError(`❌ 网络错误：${e instanceof Error ? e.message : "导出失败"}`);
+    } finally {
+      setReportExporting(false);
+    }
+  }, [sessionId, reportOutputPath]);
+
   // ── 置信度颜色 ────────────────────────────────────────────────
   const confidenceColor = (conf: number | null): string => {
     if (conf === null) return "bg-gray-100 text-gray-500";
@@ -606,7 +659,34 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-800">📋 尽调响应台</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-gray-800">
+              {scenario === "post_investment" ? "📄 投后响应台" : "📋 尽调响应台"}
+            </h2>
+            {/* 场景切换 */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+              <button
+                onClick={() => handleScenarioChange("dd")}
+                className={`px-3 py-1.5 transition-colors ${
+                  scenario === "dd"
+                    ? "bg-blue-600 text-white font-medium"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                尽调
+              </button>
+              <button
+                onClick={() => handleScenarioChange("post_investment")}
+                className={`px-3 py-1.5 border-l border-gray-200 transition-colors ${
+                  scenario === "post_investment"
+                    ? "bg-blue-600 text-white font-medium"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                投后
+              </button>
+            </div>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
         </div>
 
@@ -624,7 +704,11 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
               >
                 {step > s ? "✓" : s}
               </span>
-              {s === 1 ? "扫描材料库" : s === 2 ? "上传清单" : "审核 & 导出"}
+              {s === 1
+                ? "扫描材料库"
+                : s === 2
+                  ? scenario === "post_investment" ? "上传季报模板" : "上传清单"
+                  : scenario === "post_investment" ? "填充审核 & 导出" : "审核 & 导出"}
             </div>
           ))}
         </div>
@@ -686,7 +770,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   onClick={() => setStep(2)}
                   className="mt-2 px-4 py-2 bg-blue-600 text-white rounded text-sm"
                 >
-                  下一步：上传清单 →
+                  {scenario === "post_investment" ? "下一步：上传季报模板 →" : "下一步：上传清单 →"}
                 </button>
               )}
 
@@ -726,7 +810,9 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
           {step === 2 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                上传机构发来的尽调清单（支持 Excel/Word/PDF），或直接粘贴文字。
+                {scenario === "post_investment"
+                  ? "上传投后季报模板（支持 Word/PDF/文字），系统将提取所有【】空格和填写项。"
+                  : "上传机构发来的尽调清单（支持 Excel/Word/PDF），或直接粘贴文字。"}
               </p>
 
               {/* 机构名称（影响飞轮学习效果，建议填写） */}
@@ -748,10 +834,12 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">上传文件</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {scenario === "post_investment" ? "上传季报模板文件" : "上传文件"}
+                </label>
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.docx,.doc,.pdf"
+                  accept={scenario === "post_investment" ? ".docx,.doc,.pdf" : ".xlsx,.xls,.docx,.doc,.pdf"}
                   onChange={(e) => setChecklistFile(e.target.files?.[0] || null)}
                   className="block text-sm text-gray-600"
                 />
@@ -760,10 +848,16 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                 <hr className="flex-1" /> 或 <hr className="flex-1" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">粘贴清单文字</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {scenario === "post_investment" ? "粘贴季报模板文字" : "粘贴清单文字"}
+                </label>
                 <textarea
                   className="w-full border rounded px-3 py-2 text-sm h-32 text-gray-900"
-                  placeholder="直接粘贴机构发来的尽调需求列表文字…"
+                  placeholder={
+                    scenario === "post_investment"
+                      ? "直接粘贴季报模板文字（含【】空格占位符）…"
+                      : "直接粘贴机构发来的尽调需求列表文字…"
+                  }
                   value={checklistText}
                   onChange={(e) => setChecklistText(e.target.value)}
                 />
@@ -787,8 +881,8 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                     : matchStatus === "running"
                       ? matchProgress && matchProgress.total > 0
                         ? `匹配中… ${matchProgress.done}/${matchProgress.total} 项`
-                        : "AI 匹配中…"
-                      : "解析 & 开始匹配"}
+                        : scenario === "post_investment" ? "AI 匹配 & 填充中…" : "AI 匹配中…"
+                      : scenario === "post_investment" ? "解析模板 & 开始匹配" : "解析 & 开始匹配"}
                 </button>
                 {matchStatus === "error" && (
                   <button
@@ -914,6 +1008,16 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                           <span className="text-gray-400 italic text-xs">无匹配</span>
                         )}
                       </td>
+                      {/* 草稿填充值（投后模式）*/}
+                      {scenario === "post_investment" && (
+                        <td className="px-3 py-2 text-xs text-gray-700 max-w-[120px]">
+                          {item.draft_answer ? (
+                            <span className="text-green-700 font-medium">{item.draft_answer}</span>
+                          ) : (
+                            <span className="text-gray-300 italic">待填写</span>
+                          )}
+                        </td>
+                      )}
                       {/* 置信度彩色徽章 */}
                       <td className="px-3 py-2 text-center">
                         {item.user_confirmed === 1 ? (
@@ -955,7 +1059,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                         const cands: Candidate[] = JSON.parse(item.candidates_json);
                         return (
                           <tr className="border-t bg-indigo-50">
-                            <td colSpan={5} className="px-3 py-2">
+                            <td colSpan={scenario === "post_investment" ? 6 : 5} className="px-3 py-2">
                               <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（「选用」设为主文件 · 勾选「附加」可多份材料归一条需求）：</p>
                               <div className="space-y-1">
                                 {cands.map((cand, idx) => {
@@ -1001,7 +1105,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                     {/* 加密文件密码登记行 */}
                     {pwdInputItem === item.id && (
                       <tr className="border-t bg-amber-50">
-                        <td colSpan={5} className="px-3 py-2">
+                        <td colSpan={scenario === "post_investment" ? 6 : 5} className="px-3 py-2">
                           <div className="flex gap-2 items-center">
                             <span className="text-xs text-amber-700 whitespace-nowrap">🔒 打开密码：</span>
                             <input
@@ -1021,7 +1125,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                     {/* 手动指定文件的内联输入行 */}
                     {manualInputItem === item.id && (
                       <tr className="border-t bg-blue-50">
-                        <td colSpan={5} className="px-3 py-2">
+                        <td colSpan={scenario === "post_investment" ? 6 : 5} className="px-3 py-2">
                           <div className="flex gap-2 items-center">
                             <span className="text-xs text-blue-700 whitespace-nowrap">📂 指定文件：</span>
                             <input
@@ -1045,7 +1149,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                     {/* F4 答复草稿审核行 */}
                     {draftItem === item.id && (
                       <tr className="border-t bg-purple-50">
-                        <td colSpan={5} className="px-3 py-2">
+                        <td colSpan={scenario === "post_investment" ? 6 : 5} className="px-3 py-2">
                           {draftLoading && !drafts[item.id] ? (
                             <p className="text-xs text-purple-600">⏳ 正在生成草稿…</p>
                           ) : (() => {
@@ -1088,8 +1192,13 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   <thead className="bg-gray-50 text-gray-500 text-xs sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left w-8">#</th>
-                      <th className="px-3 py-2 text-left">需求</th>
+                      <th className="px-3 py-2 text-left">
+                        {scenario === "post_investment" ? "填充项" : "需求"}
+                      </th>
                       <th className="px-3 py-2 text-left">匹配文件</th>
+                      {scenario === "post_investment" && (
+                        <th className="px-3 py-2 text-left w-32">草稿填充值</th>
+                      )}
                       <th className="px-3 py-2 text-center w-24">置信度</th>
                       <th className="px-3 py-2 text-center w-32">操作</th>
                     </tr>
@@ -1150,7 +1259,42 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                 );
               })()}
 
-              <div className="flex gap-2 items-center pt-2">
+              {/* ── 投后模式：生成季报初稿 ── */}
+              {scenario === "post_investment" ? (
+                <div className="pt-2 space-y-2">
+                  <p className="text-xs text-gray-500">
+                    AI 已从材料中提取填充值（草稿），请审核上方表格后生成初稿文本文件。
+                  </p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      className="flex-1 border rounded px-3 py-2 text-sm text-gray-900"
+                      placeholder="点击「📁 选择」或手动输入季报初稿保存路径（如 /tmp/季报初稿.txt）"
+                      value={reportOutputPath}
+                      onChange={(e) => setReportOutputPath(e.target.value)}
+                    />
+                    <button
+                      onClick={async () => {
+                        const p = await pickFile(reportOutputPath);
+                        if (p) setReportOutputPath(p);
+                      }}
+                      disabled={reportExporting}
+                      className="px-3 py-2 bg-gray-100 text-gray-700 border rounded text-sm hover:bg-gray-200 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      📁 选择
+                    </button>
+                    <button
+                      onClick={() => void handleExportReport()}
+                      disabled={reportExporting || !reportOutputPath.trim()}
+                      className="px-4 py-2 bg-green-600 text-white rounded text-sm disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {reportExporting ? "生成中…" : "📄 生成季报初稿"}
+                    </button>
+                  </div>
+                  {reportExportResult && <p className="text-sm text-green-600">{reportExportResult}</p>}
+                  {reportExportError && <p className="text-sm text-red-500">{reportExportError}</p>}
+                </div>
+              ) : (
+                <div className="flex gap-2 items-center pt-2">
                 <input
                   className="flex-1 border rounded px-3 py-2 text-sm text-gray-900"
                   placeholder="点击「📁 选择」或手动输入导出路径"
@@ -1184,9 +1328,10 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   📁 按问题归档…
                 </button>
               </div>
+              )}
 
-              {/* ── F5 命名确认表 ── */}
-              {byQuestionMode && (
+              {/* ── F5 命名确认表（仅尽调模式）── */}
+              {scenario !== "post_investment" && byQuestionMode && (
                 <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-indigo-700">📁 命名确认 — 每条问题一个文件夹（可改名为对方问题原话）</p>
@@ -1229,8 +1374,8 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   {!outputDir.trim() && <span className="ml-2 text-xs text-amber-500">请先在上方填写导出路径</span>}
                 </div>
               )}
-              {exportResult && <p className="text-sm text-green-600">{exportResult}</p>}
-              {exportError && <p className="text-sm text-red-500">{exportError}</p>}
+              {scenario !== "post_investment" && exportResult && <p className="text-sm text-green-600">{exportResult}</p>}
+              {scenario !== "post_investment" && exportError && <p className="text-sm text-red-500">{exportError}</p>}
             </div>
           )}
         </div>
