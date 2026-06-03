@@ -50,14 +50,68 @@ def _load_accounts() -> dict[str, dict[str, str]]:
     return accounts
 
 
+def _save_session_to_db(token: str, sess: dict[str, Any]) -> None:
+    """将 token 持久化到 fos_sessions 表，服务重启后可恢复。"""
+    try:
+        from cangjie_fos.services.db_base import _connect  # noqa: PLC0415
+        with _connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO fos_sessions"
+                " (token, username, tenant_id, login_at, expires_at) VALUES (?,?,?,?,?)",
+                (token, sess["username"], sess["tenant_id"],
+                 sess["login_at"], sess["login_at"] + _TOKEN_TTL),
+            )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("持久化 token 失败（非致命）: %s", e)
+
+
+def _load_session_from_db(token: str) -> dict[str, Any] | None:
+    """从 DB 读取 token，未找到或已过期返回 None。"""
+    try:
+        from cangjie_fos.services.db_base import _connect  # noqa: PLC0415
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT username, tenant_id, login_at, expires_at"
+                " FROM fos_sessions WHERE token = ?",
+                (token,),
+            ).fetchone()
+        if not row:
+            return None
+        if time.time() > row["expires_at"]:
+            _delete_session_from_db(token)
+            return None
+        return {"username": row["username"], "tenant_id": row["tenant_id"],
+                "login_at": row["login_at"]}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("从 DB 读取 token 失败（非致命）: %s", e)
+        return None
+
+
+def _delete_session_from_db(token: str) -> None:
+    """从 fos_sessions 表删除 token。"""
+    try:
+        from cangjie_fos.services.db_base import _connect  # noqa: PLC0415
+        with _connect() as conn:
+            conn.execute("DELETE FROM fos_sessions WHERE token = ?", (token,))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("删除 DB token 失败（非致命）: %s", e)
+
+
 def get_session(token: str) -> dict[str, Any] | None:
-    """验证 token 并返回 session。过期或不存在返回 None。"""
+    """验证 token 并返回 session。过期或不存在返回 None。
+    内存命中优先；内存无记录时降级查 DB（服务重启后恢复登录态）。
+    """
     sess = _sessions.get(token)
-    if not sess:
-        return None
-    if time.time() - sess["login_at"] > _TOKEN_TTL:
-        del _sessions[token]
-        return None
+    if sess:
+        if time.time() - sess["login_at"] > _TOKEN_TTL:
+            del _sessions[token]
+            _delete_session_from_db(token)
+            return None
+        return sess
+    # DB 降级：重启后内存为空，从持久化层恢复
+    sess = _load_session_from_db(token)
+    if sess:
+        _sessions[token] = sess  # 写回内存，后续请求命中内存
     return sess
 
 
@@ -103,11 +157,9 @@ def login_route(body: LoginRequest, background_tasks: BackgroundTasks) -> LoginR
 
     token = str(uuid.uuid4())
     tenant_id = account["tenant_id"]
-    _sessions[token] = {
-        "username": body.username,
-        "tenant_id": tenant_id,
-        "login_at": time.time(),
-    }
+    sess = {"username": body.username, "tenant_id": tenant_id, "login_at": time.time()}
+    _sessions[token] = sess
+    _save_session_to_db(token, sess)
     logger.info("用户 %s (tenant=%s) 登录成功", body.username, tenant_id)
 
     # 登录后台触发 GitHub pull（拉取该 tenant 最新数据）
@@ -132,8 +184,9 @@ def me_route(request: Request) -> MeResponse:
 def logout_route(request: Request) -> dict[str, str]:
     """注销 token。"""
     token = request.headers.get("X-FOS-Token") or request.query_params.get("token", "")
-    if token and token in _sessions:
-        del _sessions[token]
+    if token:
+        _sessions.pop(token, None)
+        _delete_session_from_db(token)
     return {"message": "已退出登录"}
 
 

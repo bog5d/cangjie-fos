@@ -66,11 +66,22 @@ def _write_dd_outcomes(session_id: str) -> None:
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/dd", tags=["due-diligence"])
 
-# 内存扫描进度（简单实现，足够单机使用）
+# 内存扫描/匹配进度（单机足够；容量上限防止长期运行内存泄漏）
+_MAX_STATUS_ENTRIES = 200
 _scan_status: dict[str, dict] = {}
-
-# 内存匹配进度（session_id → {status, done, total}）
 _match_status: dict[str, dict] = {}
+
+
+def _evict_oldest(d: dict, max_size: int = _MAX_STATUS_ENTRIES) -> None:
+    """超过 max_size 时删除最旧（插入最早）的条目，保证调用后 len(d) < max_size。
+    至少额外多删 20%，减少高频写入时的反复触发。
+    """
+    if len(d) >= max_size:
+        excess = len(d) - max_size + 1          # 需要腾出的最少条数
+        extra = max(1, max_size // 5)            # 额外多删 20%，均摊未来开销
+        evict_n = max(excess, extra)
+        for k in list(d.keys())[:evict_n]:
+            del d[k]
 
 
 class ScanRequest(BaseModel):
@@ -151,6 +162,7 @@ def pick_file(initial_dir: str = ""):
 async def start_indexing(req: ScanRequest, background_tasks: BackgroundTasks):
     """触发后台扫描文件夹，建立材料库索引。"""
     scan_id = f"scan_{int(time.time() * 1000)}"
+    _evict_oldest(_scan_status)
     _scan_status[scan_id] = {"status": "running", "folder": req.folder_path}
 
     def _do_scan():
@@ -268,6 +280,7 @@ async def trigger_matching(
     background_tasks: BackgroundTasks,
 ):
     """后台触发 AI 批量匹配。进度通过 GET /sessions/{id}/match-status 轮询。"""
+    _evict_oldest(_match_status)
     _match_status[session_id] = {"status": "running", "done": 0, "total": 0}
 
     def _do_match():
@@ -287,9 +300,20 @@ async def trigger_matching(
 
 @router.get("/sessions/{session_id}/match-status")
 def get_match_status(session_id: str):
-    """轮询匹配进度。返回 {status, done, total}。status 为 running/done/not_found。"""
+    """轮询匹配进度。返回 {status, done, total}。
+    内存命中优先；重启后内存清空时降级查 dd_match_sessions 表（source=db_fallback）。
+    """
     if session_id in _match_status:
         return _match_status[session_id]
+    # DB 降级：服务重启后内存清空，前端仍能拿到终态
+    from cangjie_fos.services.db_base import _connect  # noqa: PLC0415
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT status FROM dd_match_sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+    if row:
+        return {"status": row["status"], "done": 0, "total": 0, "source": "db_fallback"}
     return {"status": "not_found", "done": 0, "total": 0}
 
 

@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：v1.6.0 | 最后更新：2026-06-02
+## 当前版本：v1.7.0 | 最后更新：2026-06-03
 
 ---
 
@@ -15,7 +15,7 @@
 # ── 后端 ──────────────────────────────────────────────────────────
 cd backend
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
-# 期望：744+ passed, 0 failed
+# 期望：754+ passed, 0 failed
 
 # ── 前端 ──────────────────────────────────────────────────────────
 cd ../frontend
@@ -167,7 +167,8 @@ npm run build
 | v1.3.0 | 2026-05-31 | 新增机构入口、家/次双显、替换按钮、create修复 | PASS A/B/E/F/G · PARTIAL C/D（浏览器滚动不稳定） |
 | v1.4.0 | 2026-05-31 | vitest 兜底 C/D + 修 briefing 字段口径 + 前端依赖安装说明 | PASS（自动化全绿）|
 | v1.5.0 | 2026-05-31 | DD 大批量修复：token 溢出/进度条/截断兜底/逐批存储，733 passed | 待验 |
-| v1.6.0 | 2026-06-02 | P0 稳健性三补丁：SQLite每日快照备份/匹配异常标failed/LLM宕机降级关键词，744 passed | 待验 |
+| v1.6.0 | 2026-06-02 | P0 稳健性三补丁：SQLite每日快照备份/匹配异常标failed/LLM宕机降级关键词，744 passed | ✅ PASS |
+| v1.7.0 | 2026-06-03 | P1 稳健性四补丁：Token持久化/内存字典上限/LLM Prompt截断/匹配状态DB降级，754 passed | 待验 |
 
 ---
 
@@ -293,3 +294,60 @@ uv run --extra dev pytest tests/test_dd_robustness_p0.py -v
 - 备份：`test_create_snapshot_*` / `test_prune_*` / `test_run_daily_backup_*`
 - 失败标记：`test_matching_exception_marks_failed` / `test_matching_success_marks_matched` / `test_matching_no_index_marks_matched`
 - 关键词降级：`test_keyword_fallback_unit` / `test_llm_down_falls_back_to_keyword`
+
+---
+
+### J — 【v1.7.0 新增】P1 稳健性四补丁
+
+> 本组以**自动化测试为权威**（`backend/tests/test_p1_robustness.py`，10 条）。
+
+**自动化验证（必跑）**：
+```bash
+cd backend
+uv run --extra dev pytest tests/test_p1_robustness.py -v
+# 期望：10 passed
+```
+
+#### J-1 — Token 持久化（重启后无需重新登录）
+
+| 检查项 | 期望 |
+|--------|------|
+| 登录后清空内存 `_sessions` | `get_session(token)` 仍能从 `fos_sessions` 表恢复 session |
+| 已过期 token（> 72h）在 DB | `get_session` 返回 None，不恢复 |
+| logout 后 | DB 里的 token 也被删除，重启后不可恢复 |
+
+**FAIL 判定**：重启后用户必须重新登录（内存清空后 token 验证失败）
+
+#### J-2 — 内存字典容量上限（防内存泄漏）
+
+| 检查项 | 期望 |
+|--------|------|
+| `_scan_status` 超过 200 条 | `_evict_oldest()` 自动清除最旧条目，字典长度有界 |
+| `_match_status` 超过 200 条 | 同上 |
+| 大量新 scan/match 操作后 | 内存字典最终不超过 `_MAX_STATUS_ENTRIES=200` |
+
+**FAIL 判定**：长期运行后 `len(_scan_status)` 或 `len(_match_status)` 无界增长
+
+#### J-3 — LLM Prompt 长度上限（防上下文溢出）
+
+| 检查项 | 期望 |
+|--------|------|
+| 单条文件摘要 > 150 字符 | `_build_file_list_text()` 截断到 150 字符并加"…" |
+| 50 条文件 × 超长摘要 | 文件列表文本总长 < 15000 字符 |
+
+**FAIL 判定**：超长摘要导致 Prompt > 32K 字符，DeepSeek API 整批失败
+
+#### J-4 — 匹配进度 DB 降级（重启后状态不丢失）
+
+| 检查项 | 期望 |
+|--------|------|
+| 创建 session 后清空 `_match_status` | `GET /sessions/{id}/match-status` 返回 `source=db_fallback` |
+| 不存在的 session_id | 返回 `status=not_found`（不报 500） |
+
+**FAIL 判定**：重启后前端查询 match-status 永远返回 not_found，导致进度轮询挂死
+
+**自动化兜底文件**：`backend/tests/test_p1_robustness.py`
+- Token：`test_token_survives_memory_clear` / `test_expired_token_not_restored_from_db` / `test_logout_removes_from_db`
+- 内存上限：`test_scan_status_dict_capped` / `test_match_status_dict_capped` / `test_evict_removes_oldest_entries`
+- Prompt 截断：`test_long_summary_truncated_in_file_list` / `test_prompt_total_length_bounded`
+- DB 降级：`test_match_status_db_fallback` / `test_match_status_not_found_for_unknown_session`
