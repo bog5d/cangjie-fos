@@ -91,6 +91,26 @@ class TestSessionEndpoints:
         assert resp.status_code == 200
         assert resp.json()["ok"] is True
 
+    def test_update_item_extra_files_json(self, client, tmp_path):
+        """F2 多文件：PATCH extra_files_json 应持久化，items 读回一致。"""
+        import json
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=_MOCK_ITEMS):
+            create_resp = client.post("/api/v1/dd/sessions", data={
+                "text": "dummy", "tenant_id": "test", "folder_root": str(tmp_path),
+            })
+        sid = create_resp.json()["session_id"]
+        item_id = client.get(f"/api/v1/dd/sessions/{sid}/items").json()[0]["id"]
+
+        extra = json.dumps([{"file_path": "/a/2022.pdf", "filename": "2022.pdf"}])
+        resp = client.patch(f"/api/v1/dd/sessions/{sid}/items/{item_id}",
+                            json={"extra_files_json": extra})
+        assert resp.status_code == 200
+
+        reread = client.get(f"/api/v1/dd/sessions/{sid}/items").json()
+        target = next(i for i in reread if i["id"] == item_id)
+        assert json.loads(target["extra_files_json"])[0]["filename"] == "2022.pdf"
+
 
 class TestExportEndpoint:
 

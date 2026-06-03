@@ -99,6 +99,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [outputDir, setOutputDir] = useState("");
   const [byQuestionMode, setByQuestionMode] = useState(false);
   const [folderNames, setFolderNames] = useState<Record<string, string>>({});
+  const [extraSelections, setExtraSelections] = useState<Record<string, Set<string>>>({});
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const [step, setStep] = useState<Step>(1);
@@ -364,6 +365,36 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       setExpandedCandidates(null);
     } catch (_) {}
   }, [sessionId]);
+
+  // ── Step 3: 多文件附加（F2）──────────────────────────────────
+  /** 勾选/取消勾选某候选作为「附加文件」（一条需求对应多份材料）。 */
+  const toggleExtraFile = useCallback((itemId: string, filePath: string) => {
+    setExtraSelections((prev) => {
+      const cur = new Set(prev[itemId] ?? []);
+      if (cur.has(filePath)) cur.delete(filePath); else cur.add(filePath);
+      return { ...prev, [itemId]: cur };
+    });
+  }, []);
+
+  /** 把勾选的候选写入 extra_files_json，导出时随主文件一起拷入同一文件夹。 */
+  const handleSaveExtraFiles = useCallback(async (item: DDItem) => {
+    if (!sessionId) return;
+    const cands: Candidate[] = item.candidates_json ? JSON.parse(item.candidates_json) : [];
+    const checked = extraSelections[item.id] ?? new Set<string>();
+    const extras = cands
+      .filter((c) => checked.has(c.file_path) && c.file_path !== item.matched_file_path)
+      .map((c) => ({ file_path: c.file_path, filename: c.filename }));
+    const extraJson = JSON.stringify(extras);
+    try {
+      await fetch(`/api/v1/dd/sessions/${sessionId}/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extra_files_json: extraJson }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, extra_files_json: extraJson } : i)));
+      setExpandedCandidates(null);
+    } catch (_) {}
+  }, [sessionId, extraSelections]);
 
   // ── Step 3: 手动指定文件 ──────────────────────────────────────
   const handleManualFile = useCallback(async (itemId: string) => {
@@ -860,21 +891,43 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                         return (
                           <tr className="border-t bg-indigo-50">
                             <td colSpan={5} className="px-3 py-2">
-                              <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（点击选用）：</p>
+                              <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（「选用」设为主文件 · 勾选「附加」可多份材料归一条需求）：</p>
                               <div className="space-y-1">
-                                {cands.map((cand, idx) => (
+                                {cands.map((cand, idx) => {
+                                  const isPrimary = cand.file_path === item.matched_file_path;
+                                  const checked = (extraSelections[item.id]?.has(cand.file_path)) ?? false;
+                                  return (
                                   <div key={idx} className="flex items-center gap-2 text-xs">
+                                    <label className={`flex items-center gap-1 ${isPrimary ? "opacity-30" : "cursor-pointer"}`} title="附加为该需求的额外材料">
+                                      <input
+                                        type="checkbox"
+                                        aria-label={`附加-${cand.filename}`}
+                                        disabled={isPrimary}
+                                        checked={checked}
+                                        onChange={() => toggleExtraFile(item.id, cand.file_path)}
+                                      />
+                                      附加
+                                    </label>
                                     <span className={`w-8 text-center rounded px-1 ${cand.confidence >= 0.8 ? "bg-green-100 text-green-700" : cand.confidence >= 0.5 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-600"}`}>
                                       {Math.round(cand.confidence * 100)}%
                                     </span>
                                     <span className="flex-1 text-gray-700" title={cand.reason}>{cand.filename}</span>
-                                    {idx > 0 && (
+                                    {!isPrimary && (
                                       <button onClick={() => void handleSelectCandidate(item.id, cand)} className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">选用</button>
                                     )}
-                                    {idx === 0 && <span className="text-gray-400 italic">（当前）</span>}
+                                    {isPrimary && <span className="text-gray-400 italic">（当前主文件）</span>}
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </div>
+                              {(extraSelections[item.id]?.size ?? 0) > 0 && (
+                                <button
+                                  onClick={() => void handleSaveExtraFiles(item)}
+                                  className="mt-2 px-2 py-1 bg-indigo-600 text-white rounded text-xs"
+                                >
+                                  附加 {extraSelections[item.id]!.size} 份材料到本需求
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );

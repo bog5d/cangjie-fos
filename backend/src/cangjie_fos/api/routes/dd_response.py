@@ -118,6 +118,7 @@ class ItemUpdateRequest(BaseModel):
     confidence: float | None = None
     user_confirmed: bool | None = None
     user_skipped: bool | None = None
+    extra_files_json: str | None = None  # F2 多文件：附加文件列表 JSON
 
 
 # ── 原生文件夹/文件选取 ──────────────────────────────────────
@@ -372,6 +373,8 @@ def update_item(session_id: str, item_id: str, req: ItemUpdateRequest, backgroun
         updates["user_confirmed"] = 1 if req.user_confirmed else 0
     if req.user_skipped is not None:
         updates["user_skipped"] = 1 if req.user_skipped else 0
+    if req.extra_files_json is not None:
+        updates["extra_files_json"] = req.extra_files_json
 
     if not updates:
         return {"ok": True}
