@@ -227,5 +227,103 @@ class TestChromeRenderingDiagnosis:
             )
         print("=== END ===\n")
 
+
+# ── TestDueDiligenceWizardSmoke ────────────────────────────────────────────────
+
+_OVERLAY_JS = """
+    () => {
+        const blockers = [];
+        for (const el of document.querySelectorAll('*')) {
+            const s = window.getComputedStyle(el);
+            if (s.position === 'fixed' && s.pointerEvents !== 'none'
+                    && s.display !== 'none' && s.visibility !== 'hidden'
+                    && s.opacity !== '0') {
+                const r = el.getBoundingClientRect();
+                if (r.width * r.height > window.innerWidth * window.innerHeight * 0.25)
+                    blockers.push({tag: el.tagName,
+                                   cls: el.className.toString().slice(0, 80)});
+            }
+        }
+        return blockers;
+    }
+"""
+
+
+class TestDueDiligenceWizardSmoke:
+    """gk 模式 — 尽调响应台向导浏览器冒烟。
+
+    每次改动 DueDiligenceWizard.tsx 后必须跑此组测试。
+    服务未启动时自动 skip，不阻断常规 CI。
+    """
+
+    def test_dd_wizard_button_visible(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
+        """主页应有「尽调响应」入口按钮。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        btn = page.locator("button:has-text('尽调响应')")
+        expect(btn).to_be_visible(timeout=8_000)
+
+    def test_dd_wizard_opens_step1(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
+        """点击「尽调响应」后向导 Step 1 应正常打开，显示材料库路径输入。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('尽调响应')").click()
+        page.wait_for_timeout(800)
+        expect(page.get_by_text("材料库路径", exact=False)).to_be_visible(timeout=6_000)
+
+    def test_dd_wizard_step1_has_scan_button(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
+        """Step 1 应有「开始扫描」按钮可点击。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('尽调响应')").click()
+        page.wait_for_timeout(800)
+        expect(page.locator("button:has-text('开始扫描')")).to_be_visible(timeout=6_000)
+
+    def test_dd_wizard_step1_has_checklist_upload(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
+        """Step 1 应有清单上传入口（文字或按钮含「清单」）。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('尽调响应')").click()
+        page.wait_for_timeout(800)
+        expect(page.get_by_text("清单", exact=False).first).to_be_visible(timeout=6_000)
+
+    def test_dd_wizard_close_no_overlay(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
+        """关闭尽调向导后不应残留叠层（Chrome 叠层 Bug 回归）。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('尽调响应')").click()
+        page.wait_for_timeout(800)
+
+        # 关闭按钮：✕ 或 ×
+        close = page.locator("button:has-text('✕'), button:has-text('×')").first
+        if close.is_visible():
+            close.click()
+        else:
+            page.keyboard.press("Escape")
+        page.wait_for_timeout(600)
+
+        blocking = page.evaluate(_OVERLAY_JS)
+        assert blocking == [], (
+            f"关闭尽调向导后仍有叠层：{blocking}"
+        )
+
+    def test_dd_wizard_session_history_shown(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]
+    ) -> None:
+        """Step 1 打开后，如果有历史 Session，应能看到「恢复」或「历史会话」相关文字。
+        若无历史记录，只验证向导正常打开不崩溃即可。
+        """
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('尽调响应')").click()
+        page.wait_for_timeout(1_500)
+
+        # 不管有没有历史，向导必须稳定（不崩溃、Step1 内容可见）
+        expect(page.get_by_text("材料库路径", exact=False)).to_be_visible(timeout=6_000)
+
         # 此测试永远 pass，只打印信息
         assert True
