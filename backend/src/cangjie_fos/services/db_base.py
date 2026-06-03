@@ -275,7 +275,8 @@ CREATE TABLE IF NOT EXISTS dd_asset_index (
     indexed_at  REAL NOT NULL,
     institution_subfolder TEXT NOT NULL DEFAULT '',
     is_encrypted INTEGER NOT NULL DEFAULT 0,
-    mtime       REAL
+    mtime       REAL,
+    unlock_password TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_sessions (
@@ -362,6 +363,7 @@ _MIGRATIONS: list[tuple[int, str]] = [
         confidence            REAL,
         created_at            REAL NOT NULL
     )"""),
+    (22, "ALTER TABLE dd_asset_index ADD COLUMN unlock_password TEXT NOT NULL DEFAULT ''"),
 ]
 
 

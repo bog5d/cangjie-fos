@@ -43,13 +43,35 @@ def create_match_session(
 
 
 def get_session_items(session_id: str) -> list[dict]:
-    """返回 session 的所有需求项（含匹配结果）。"""
+    """返回 session 的所有需求项（含匹配结果）。
+
+    富化：按 matched_file_path 关联 dd_asset_index，带出 is_encrypted /
+    unlock_password，供前端显示🔒标记与密码输入框（gk 模式 F3）。
+    """
     with _connect() as conn:
         rows = conn.execute(
             "SELECT * FROM dd_match_items WHERE session_id = ? ORDER BY item_no",
             (session_id,),
         ).fetchall()
-    return [dict(r) for r in rows]
+        items = [dict(r) for r in rows]
+
+        # 一次性取出本 session 涉及文件的加密状态/密码，避免逐条查询
+        paths = [it["matched_file_path"] for it in items if it.get("matched_file_path")]
+        enc_map: dict[str, dict] = {}
+        if paths:
+            placeholders = ",".join("?" * len(paths))
+            for r in conn.execute(
+                f"SELECT file_path, is_encrypted, unlock_password "
+                f"FROM dd_asset_index WHERE file_path IN ({placeholders})",
+                paths,
+            ).fetchall():
+                enc_map[r["file_path"]] = dict(r)
+
+    for it in items:
+        meta = enc_map.get(it.get("matched_file_path") or "", {})
+        it["is_encrypted"] = meta.get("is_encrypted", 0)
+        it["unlock_password"] = meta.get("unlock_password", "")
+    return items
 
 
 def run_matching(

@@ -107,6 +107,11 @@ class QAExtractRequest(BaseModel):
     tenant_id: str = "default"
 
 
+class SetPasswordRequest(BaseModel):
+    file_path: str
+    password: str
+
+
 class ItemUpdateRequest(BaseModel):
     matched_file_path: str | None = None
     matched_filename: str | None = None
@@ -234,6 +239,19 @@ def get_scan_status(scan_id: str):
 def list_index(folder_root: str):
     """列出指定文件夹的已索引文件。"""
     return get_index_by_folder(folder_root)
+
+
+@router.post("/index/password")
+def set_file_password(req: SetPasswordRequest):
+    """为加密文件登记打开密码（gk 模式 F3：UI 收集，导出时原样附带，后端不解密）。"""
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE dd_asset_index SET unlock_password = ? WHERE file_path = ?",
+            (req.password, req.file_path),
+        )
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="该文件不在索引中")
+    return {"ok": True}
 
 
 # ── 清单 session 相关 ────────────────────────────────────────

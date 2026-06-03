@@ -70,9 +70,16 @@ def scan_and_index_folder(
             folder_path, total, MAX_LLM_SUMMARIZE_FILES,
         )
 
+    # 机构数量（供前端布局徽章）：per_institution 下统计去重后文件来源的机构子文件夹数
+    inst_set = {
+        sf for f in files
+        if (sf := _institution_subfolder(f, root))
+    }
+
     results = {
         "total": total, "indexed": 0, "failed": 0,
         "folder_root": str(root), "folder_layout": layout,
+        "institution_count": len(inst_set),
     }
 
     for i, file_path in enumerate(files):

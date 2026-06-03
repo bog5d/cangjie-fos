@@ -101,6 +101,7 @@ def export_to_folder(session_id: str, output_dir: str) -> dict:
         total_bytes += src_size
 
     _write_gap_report(out, missing)
+    _write_password_note(out, [it["matched_file_path"] for it in exported if it.get("matched_file_path")])
 
     return {
         "exported": len(exported),
@@ -127,6 +128,7 @@ def export_by_question(
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     overrides = folder_name_overrides or {}
+    exported_paths: list[str] = []
 
     with _connect() as conn:
         items = [dict(r) for r in conn.execute(
@@ -166,6 +168,7 @@ def export_by_question(
         # ── 主匹配文件 ────────────────────────────────────────────
         shutil.copy2(src, q_dir / Path(src).name)
         exported_files += 1
+        exported_paths.append(src)
 
         # ── 额外文件（extra_files_json） ─────────────────────────
         extra_raw = item.get("extra_files_json")
@@ -179,14 +182,39 @@ def export_by_question(
                 if ep and Path(ep).is_file():
                     shutil.copy2(ep, q_dir / Path(ep).name)
                     exported_files += 1
+                    exported_paths.append(ep)
 
     _write_gap_report(out, missing)
+    _write_password_note(out, exported_paths)
 
     return {
         "exported": exported_files,
         "missing": len(missing),
         "output_path": str(out),
     }
+
+
+def _write_password_note(out: Path, exported_paths: list[str]) -> None:
+    """为导出的加密文件生成「加密文件密码.txt」（原样附带，不解密）。
+
+    仅当存在已登记密码的加密文件时才生成该清单，供对方据此打开文件。
+    """
+    if not exported_paths:
+        return
+    placeholders = ",".join("?" * len(exported_paths))
+    with _connect() as conn:
+        rows = conn.execute(
+            f"SELECT filename, unlock_password FROM dd_asset_index "
+            f"WHERE file_path IN ({placeholders}) "
+            f"AND is_encrypted = 1 AND unlock_password != ''",
+            exported_paths,
+        ).fetchall()
+    if not rows:
+        return
+    lines = ["# 加密文件密码清单", f"共 {len(rows)} 个加密文件", ""]
+    for r in rows:
+        lines.append(f"- {r['filename']}  密码：{r['unlock_password']}")
+    (out / "加密文件密码.txt").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _write_gap_report(out: Path, missing: list[dict]) -> None:
