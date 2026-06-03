@@ -20,6 +20,8 @@ interface DDItem {
   user_skipped: number;
   candidates_json: string | null;
   extra_files_json: string | null;
+  is_encrypted?: number;
+  unlock_password?: string;
 }
 
 interface SessionSummary {
@@ -66,6 +68,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [folderPath, setFolderPath] = useState("");
   const [scanStatus, setScanStatus] = useState<string>("idle");
   const [scanResult, setScanResult] = useState<string>("");
+  const [layoutInfo, setLayoutInfo] = useState<{ layout: string; institutionCount: number } | null>(null);
   const pollRef = useRef<number | null>(null);
 
   // Session history
@@ -88,10 +91,21 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [expandedCandidates, setExpandedCandidates] = useState<string | null>(null);
   const [manualInputItem, setManualInputItem] = useState<string | null>(null);
   const [manualPath, setManualPath] = useState("");
+  const [pwdInputItem, setPwdInputItem] = useState<string | null>(null);
+  const [pwdDraft, setPwdDraft] = useState("");
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<string>("");
   const [exportError, setExportError] = useState<string>("");
   const [outputDir, setOutputDir] = useState("");
+  const [byQuestionMode, setByQuestionMode] = useState(false);
+  const [folderNames, setFolderNames] = useState<Record<string, string>>({});
+  const [extraSelections, setExtraSelections] = useState<Record<string, Set<string>>>({});
+  // F4 历史问答复用
+  const [qaExtracting, setQaExtracting] = useState(false);
+  const [qaExtractMsg, setQaExtractMsg] = useState("");
+  const [draftItem, setDraftItem] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, { text: string; matched: boolean; confidence: number; source: string }>>({});
+  const [draftLoading, setDraftLoading] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const [step, setStep] = useState<Step>(1);
@@ -140,6 +154,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     if (!folderPath.trim()) return;
     setScanStatus("running");
     setScanResult("");
+    setLayoutInfo(null);
     let data: { scan_id: string };
     try {
       const resp = await fetch("/api/v1/dd/index", {
@@ -173,6 +188,9 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
           setScanStatus("done");
           const llmNote = s.total > 200 ? "（文件数较多，已跳过AI摘要，仅靠文件名匹配）" : "";
           setScanResult(`✅ 扫描完成：共索引 ${s.indexed} 个文件，${s.failed} 个失败${llmNote}`);
+          if (s.folder_layout) {
+            setLayoutInfo({ layout: s.folder_layout, institutionCount: s.institution_count ?? 0 });
+          }
         } else if (s.status === "error") {
           clearInterval(pollRef.current!);
           pollRef.current = null;
@@ -354,6 +372,36 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     } catch (_) {}
   }, [sessionId]);
 
+  // ── Step 3: 多文件附加（F2）──────────────────────────────────
+  /** 勾选/取消勾选某候选作为「附加文件」（一条需求对应多份材料）。 */
+  const toggleExtraFile = useCallback((itemId: string, filePath: string) => {
+    setExtraSelections((prev) => {
+      const cur = new Set(prev[itemId] ?? []);
+      if (cur.has(filePath)) cur.delete(filePath); else cur.add(filePath);
+      return { ...prev, [itemId]: cur };
+    });
+  }, []);
+
+  /** 把勾选的候选写入 extra_files_json，导出时随主文件一起拷入同一文件夹。 */
+  const handleSaveExtraFiles = useCallback(async (item: DDItem) => {
+    if (!sessionId) return;
+    const cands: Candidate[] = item.candidates_json ? JSON.parse(item.candidates_json) : [];
+    const checked = extraSelections[item.id] ?? new Set<string>();
+    const extras = cands
+      .filter((c) => checked.has(c.file_path) && c.file_path !== item.matched_file_path)
+      .map((c) => ({ file_path: c.file_path, filename: c.filename }));
+    const extraJson = JSON.stringify(extras);
+    try {
+      await fetch(`/api/v1/dd/sessions/${sessionId}/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extra_files_json: extraJson }),
+      });
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, extra_files_json: extraJson } : i)));
+      setExpandedCandidates(null);
+    } catch (_) {}
+  }, [sessionId, extraSelections]);
+
   // ── Step 3: 手动指定文件 ──────────────────────────────────────
   const handleManualFile = useCallback(async (itemId: string) => {
     if (!sessionId || !manualPath.trim()) return;
@@ -380,6 +428,22 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       setManualPath("");
     } catch (_) {}
   }, [sessionId, manualPath]);
+
+  // ── Step 3: 为加密文件登记密码（gk F3，UI 收集，导出原样附带）───
+  const handleSavePassword = useCallback(async (item: DDItem) => {
+    if (!item.matched_file_path) return;
+    try {
+      const resp = await fetch("/api/v1/dd/index/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_path: item.matched_file_path, password: pwdDraft }),
+      });
+      if (!resp.ok) return;
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, unlock_password: pwdDraft } : i)));
+      setPwdInputItem(null);
+      setPwdDraft("");
+    } catch (_) {}
+  }, [pwdDraft]);
 
   // ── Step 3: 确认 / 标记缺失 ───────────────────────────────────
   const handleSkip = useCallback(async (itemId: string) => {
@@ -432,6 +496,89 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       setExporting(false);
     }
   }, [sessionId, outputDir]);
+
+  // ── Step 3: 按问题归档导出（F2/F5）─────────────────────────────
+  /** 进入命名确认：用「问题NN_需求」预填每条有匹配项的文件夹名。 */
+  const enterByQuestionMode = useCallback(() => {
+    const defaults: Record<string, string> = {};
+    for (const it of items) {
+      if (it.matched_filename && !it.user_skipped) {
+        defaults[it.id] = `问题${it.item_no}_${it.requirement}`.slice(0, 40);
+      }
+    }
+    setFolderNames(defaults);
+    setByQuestionMode(true);
+  }, [items]);
+
+  const handleExportByQuestion = useCallback(async () => {
+    if (!sessionId || !outputDir.trim()) return;
+    setExporting(true);
+    setExportError("");
+    try {
+      const resp = await fetch(`/api/v1/dd/sessions/${sessionId}/export-by-question`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ output_dir: outputDir.trim(), folder_name_overrides: folderNames }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        setExportError(`❌ 导出失败：${err.detail || resp.statusText}`);
+        return;
+      }
+      const result = await resp.json();
+      setExportResult(
+        `✅ 按问题归档完成：${result.exported} 个文件，${result.missing} 条缺失。文件夹：${result.output_path}`
+      );
+      setByQuestionMode(false);
+    } catch (e) {
+      setExportError(`❌ 网络错误：${e instanceof Error ? e.message : "导出失败"}`);
+    } finally {
+      setExporting(false);
+    }
+  }, [sessionId, outputDir, folderNames]);
+
+  // ── Step 3: F4 历史问答复用 ───────────────────────────────────
+  /** 从材料库的「补充/问答/答复」类文件扒取历史问答对，存入知识库。 */
+  const handleExtractQA = useCallback(async () => {
+    if (!folderPath.trim()) { setQaExtractMsg("⚠️ 缺少材料库路径，无法扒取"); return; }
+    setQaExtracting(true);
+    setQaExtractMsg("");
+    try {
+      const resp = await fetch("/api/v1/dd/qa/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_root: folderPath.trim(), tenant_id: "default" }),
+      });
+      if (!resp.ok) { setQaExtractMsg("❌ 扒取失败，请重试"); return; }
+      const r = await resp.json();
+      setQaExtractMsg(`✅ 已从历史资料扒取 ${r.extracted} 条问答，可点各需求「💬 草稿」生成答复`);
+    } catch (e) {
+      setQaExtractMsg(`❌ 网络错误：${e instanceof Error ? e.message : "扒取失败"}`);
+    } finally {
+      setQaExtracting(false);
+    }
+  }, [folderPath]);
+
+  /** 为某需求生成答复草稿（命中历史问答带出答案+置信度，无命中留空待人工）。 */
+  const handleLoadDraft = useCallback(async (item: DDItem) => {
+    if (draftItem === item.id) { setDraftItem(null); return; }
+    setDraftItem(item.id);
+    if (drafts[item.id]) return;  // 已加载过，直接展开
+    setDraftLoading(true);
+    try {
+      const params = new URLSearchParams({ requirement: item.requirement, folder_root: folderPath.trim() });
+      const resp = await fetch(`/api/v1/dd/qa/draft?${params.toString()}`);
+      if (!resp.ok) return;
+      const d: { matched: boolean; answer: string; confidence: number; source_question: string } = await resp.json();
+      setDrafts((prev) => ({
+        ...prev,
+        [item.id]: { text: d.answer, matched: d.matched, confidence: d.confidence, source: d.source_question },
+      }));
+    } catch (_) {
+    } finally {
+      setDraftLoading(false);
+    }
+  }, [draftItem, drafts, folderPath]);
 
   // ── 置信度颜色 ────────────────────────────────────────────────
   const confidenceColor = (conf: number | null): string => {
@@ -520,6 +667,19 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                 <p className={`text-sm ${scanStatus === "error" ? "text-red-500" : "text-green-600"}`}>
                   {scanResult}
                 </p>
+              )}
+              {layoutInfo && scanStatus === "done" && (
+                <div className="flex items-center gap-2 text-sm">
+                  {layoutInfo.layout === "per_institution" ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+                      🏢 按机构分类 · {layoutInfo.institutionCount} 家机构
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                      📄 平铺材料库
+                    </span>
+                  )}
+                </div>
               )}
               {scanStatus === "done" && (
                 <button
@@ -677,16 +837,27 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-400">确认进度 {pct}%</span>
-                      {highConfCount > 0 && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => void handleBulkConfirm()}
-                          disabled={bulkConfirming}
-                          className="px-3 py-1 bg-green-600 text-white rounded text-xs disabled:opacity-50 hover:bg-green-700"
+                          onClick={() => void handleExtractQA()}
+                          disabled={qaExtracting}
+                          className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs disabled:opacity-50 hover:bg-purple-200"
+                          title="从历史补充资料扒取问答，供「💬 草稿」复用"
                         >
-                          {bulkConfirming ? "确认中…" : `✓ 一键确认高置信（${highConfCount}条）`}
+                          {qaExtracting ? "扒取中…" : "🔍 扒取历史问答"}
                         </button>
-                      )}
+                        {highConfCount > 0 && (
+                          <button
+                            onClick={() => void handleBulkConfirm()}
+                            disabled={bulkConfirming}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-xs disabled:opacity-50 hover:bg-green-700"
+                          >
+                            {bulkConfirming ? "确认中…" : `✓ 一键确认高置信（${highConfCount}条）`}
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {qaExtractMsg && <p className="text-xs text-gray-500">{qaExtractMsg}</p>}
                   </div>
                 );
               })()}
@@ -714,6 +885,15 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                       <td className="px-3 py-2 text-sm">
                         {item.matched_filename ? (
                           <div>
+                            {item.is_encrypted === 1 && (
+                              <button
+                                onClick={() => { setPwdInputItem(pwdInputItem === item.id ? null : item.id); setPwdDraft(item.unlock_password || ""); }}
+                                title={item.unlock_password ? `已登记密码：${item.unlock_password}` : "加密文件 — 点击登记打开密码"}
+                                className={`mr-1 text-xs ${item.unlock_password ? "text-green-600" : "text-amber-500"}`}
+                              >
+                                {item.unlock_password ? "🔓" : "🔒"}
+                              </button>
+                            )}
                             <span className="text-gray-700" title={item.match_reason || ""}>{item.matched_filename}</span>
                             {item.candidates_json && (() => {
                               try {
@@ -762,6 +942,11 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                             >📂 替换</button>
                           </>
                         )}
+                        <button
+                          onClick={() => void handleLoadDraft(item)}
+                          className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded whitespace-nowrap"
+                          title="从历史问答生成答复草稿"
+                        >💬 草稿</button>
                       </td>
                     </tr>
                     {/* 备选候选展开行 */}
@@ -771,26 +956,68 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                         return (
                           <tr className="border-t bg-indigo-50">
                             <td colSpan={5} className="px-3 py-2">
-                              <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（点击选用）：</p>
+                              <p className="text-xs text-indigo-600 mb-1 font-medium">备选文件（「选用」设为主文件 · 勾选「附加」可多份材料归一条需求）：</p>
                               <div className="space-y-1">
-                                {cands.map((cand, idx) => (
+                                {cands.map((cand, idx) => {
+                                  const isPrimary = cand.file_path === item.matched_file_path;
+                                  const checked = (extraSelections[item.id]?.has(cand.file_path)) ?? false;
+                                  return (
                                   <div key={idx} className="flex items-center gap-2 text-xs">
+                                    <label className={`flex items-center gap-1 ${isPrimary ? "opacity-30" : "cursor-pointer"}`} title="附加为该需求的额外材料">
+                                      <input
+                                        type="checkbox"
+                                        aria-label={`附加-${cand.filename}`}
+                                        disabled={isPrimary}
+                                        checked={checked}
+                                        onChange={() => toggleExtraFile(item.id, cand.file_path)}
+                                      />
+                                      附加
+                                    </label>
                                     <span className={`w-8 text-center rounded px-1 ${cand.confidence >= 0.8 ? "bg-green-100 text-green-700" : cand.confidence >= 0.5 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-600"}`}>
                                       {Math.round(cand.confidence * 100)}%
                                     </span>
                                     <span className="flex-1 text-gray-700" title={cand.reason}>{cand.filename}</span>
-                                    {idx > 0 && (
+                                    {!isPrimary && (
                                       <button onClick={() => void handleSelectCandidate(item.id, cand)} className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">选用</button>
                                     )}
-                                    {idx === 0 && <span className="text-gray-400 italic">（当前）</span>}
+                                    {isPrimary && <span className="text-gray-400 italic">（当前主文件）</span>}
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </div>
+                              {(extraSelections[item.id]?.size ?? 0) > 0 && (
+                                <button
+                                  onClick={() => void handleSaveExtraFiles(item)}
+                                  className="mt-2 px-2 py-1 bg-indigo-600 text-white rounded text-xs"
+                                >
+                                  附加 {extraSelections[item.id]!.size} 份材料到本需求
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
                       } catch (_) { return null; }
                     })()}
+                    {/* 加密文件密码登记行 */}
+                    {pwdInputItem === item.id && (
+                      <tr className="border-t bg-amber-50">
+                        <td colSpan={5} className="px-3 py-2">
+                          <div className="flex gap-2 items-center">
+                            <span className="text-xs text-amber-700 whitespace-nowrap">🔒 打开密码：</span>
+                            <input
+                              className="flex-1 border rounded px-2 py-1 text-xs text-gray-900"
+                              placeholder="输入该加密文件的打开密码（导出时随附说明，不解密）"
+                              value={pwdDraft}
+                              onChange={(e) => setPwdDraft(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") void handleSavePassword(item); }}
+                              autoFocus
+                            />
+                            <button onClick={() => void handleSavePassword(item)} className="text-xs px-2 py-1 bg-amber-600 text-white rounded">保存密码</button>
+                            <button onClick={() => setPwdInputItem(null)} className="text-xs px-2 py-1 border rounded text-gray-500">取消</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {/* 手动指定文件的内联输入行 */}
                     {manualInputItem === item.id && (
                       <tr className="border-t bg-blue-50">
@@ -812,6 +1039,45 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                             <button onClick={() => void handleManualFile(item.id)} disabled={!manualPath.trim()} className="text-xs px-2 py-1 bg-blue-600 text-white rounded disabled:opacity-50">确认</button>
                             <button onClick={() => setManualInputItem(null)} className="text-xs px-2 py-1 border rounded text-gray-500">取消</button>
                           </div>
+                        </td>
+                      </tr>
+                    )}
+                    {/* F4 答复草稿审核行 */}
+                    {draftItem === item.id && (
+                      <tr className="border-t bg-purple-50">
+                        <td colSpan={5} className="px-3 py-2">
+                          {draftLoading && !drafts[item.id] ? (
+                            <p className="text-xs text-purple-600">⏳ 正在生成草稿…</p>
+                          ) : (() => {
+                            const d = drafts[item.id];
+                            if (!d) return <p className="text-xs text-gray-400">无草稿</p>;
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <span className="font-medium text-purple-700">💬 答复草稿</span>
+                                  {d.matched ? (
+                                    <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                                      命中历史 · 置信 {Math.round(d.confidence * 100)}%
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                                      无历史命中，请人工填写
+                                    </span>
+                                  )}
+                                  {d.matched && d.source && (
+                                    <span className="text-gray-400" title={d.source}>来源问：{d.source.slice(0, 20)}…</span>
+                                  )}
+                                </div>
+                                <textarea
+                                  aria-label={`草稿-${item.item_no}`}
+                                  className="w-full border rounded px-2 py-1 text-xs text-gray-900 h-20"
+                                  placeholder="可编辑答复草稿…"
+                                  value={d.text}
+                                  onChange={(e) => setDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], text: e.target.value } }))}
+                                />
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     )}
@@ -905,10 +1171,64 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   onClick={() => void handleExport()}
                   disabled={exporting || !outputDir.trim()}
                   className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50 whitespace-nowrap"
+                  title="按材料分类归档（默认）"
                 >
-                  {exporting ? "导出中…" : "导出文件夹"}
+                  {exporting ? "导出中…" : "按分类导出"}
+                </button>
+                <button
+                  onClick={enterByQuestionMode}
+                  disabled={exporting}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded text-sm disabled:opacity-50 whitespace-nowrap"
+                  title="每条机构问题一个文件夹，可统一改名"
+                >
+                  📁 按问题归档…
                 </button>
               </div>
+
+              {/* ── F5 命名确认表 ── */}
+              {byQuestionMode && (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-indigo-700">📁 命名确认 — 每条问题一个文件夹（可改名为对方问题原话）</p>
+                    <button onClick={() => setByQuestionMode(false)} className="text-xs text-gray-400 hover:text-gray-600">✕ 收起</button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto border rounded bg-white">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                        <tr>
+                          <th className="px-2 py-1.5 text-left w-8">#</th>
+                          <th className="px-2 py-1.5 text-left">我方需求</th>
+                          <th className="px-2 py-1.5 text-left">导出文件夹名（可编辑）</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.filter((i) => i.matched_filename && !i.user_skipped).map((i) => (
+                          <tr key={i.id} className="border-t">
+                            <td className="px-2 py-1.5 text-gray-400">{i.item_no}</td>
+                            <td className="px-2 py-1.5 text-gray-600">{i.requirement}</td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                aria-label={`文件夹名-${i.item_no}`}
+                                className="w-full border rounded px-2 py-1 text-xs text-gray-900"
+                                value={folderNames[i.id] ?? ""}
+                                onChange={(e) => setFolderNames((prev) => ({ ...prev, [i.id]: e.target.value }))}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    onClick={() => void handleExportByQuestion()}
+                    disabled={exporting || !outputDir.trim()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded text-sm disabled:opacity-50"
+                  >
+                    {exporting ? "导出中…" : "✅ 确认并按问题导出"}
+                  </button>
+                  {!outputDir.trim() && <span className="ml-2 text-xs text-amber-500">请先在上方填写导出路径</span>}
+                </div>
+              )}
               {exportResult && <p className="text-sm text-green-600">{exportResult}</p>}
               {exportError && <p className="text-sm text-red-500">{exportError}</p>}
             </div>

@@ -6,6 +6,7 @@ v0.7.2 改进：
   - 累计导出大小超过 MB_LIMIT_TOTAL 时终止全部导出，返回错误
 """
 from __future__ import annotations
+import json
 import shutil
 import logging
 from pathlib import Path
@@ -100,12 +101,120 @@ def export_to_folder(session_id: str, output_dir: str) -> dict:
         total_bytes += src_size
 
     _write_gap_report(out, missing)
+    _write_password_note(out, [it["matched_file_path"] for it in exported if it.get("matched_file_path")])
 
     return {
         "exported": len(exported),
         "missing": len(missing),
         "output_path": str(out),
     }
+
+
+def export_by_question(
+    session_id: str,
+    output_dir: str,
+    folder_name_overrides: dict | None = None,
+) -> dict:
+    """
+    F2 + F5：按问题归档导出。
+
+    每条有匹配文件的需求 → 一个「问题NN_需求名」子文件夹；
+    无匹配 → 不建空文件夹，追加到缺失清单.txt。
+    多文件（extra_files_json）全部拷入同一子文件夹。
+    folder_name_overrides: {item_id: 自定义文件夹名} 用于 F5 命名确认。
+
+    返回：{"exported": 文件数, "missing": 缺失需求数, "output_path": str}
+    """
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    overrides = folder_name_overrides or {}
+    exported_paths: list[str] = []
+
+    with _connect() as conn:
+        items = [dict(r) for r in conn.execute(
+            """SELECT id, item_no, category, requirement,
+                      matched_file_path, matched_filename,
+                      confidence, user_skipped, extra_files_json
+               FROM dd_match_items
+               WHERE session_id = ?
+               ORDER BY item_no""",
+            (session_id,),
+        ).fetchall()]
+
+    exported_files = 0
+    missing: list[dict] = []
+
+    for item in items:
+        if item["user_skipped"]:
+            missing.append(item)
+            continue
+
+        src = item["matched_file_path"]
+        if not src or not Path(src).is_file():
+            missing.append(item)
+            continue
+
+        # ── 确定文件夹名 ─────────────────────────────────────────
+        if item["id"] in overrides:
+            folder_name = _safe_dirname(overrides[item["id"]])
+        else:
+            folder_name = _safe_dirname(
+                f"问题{item['item_no']}_{item['requirement']}"
+            )
+
+        q_dir = out / folder_name
+        q_dir.mkdir(exist_ok=True)
+
+        # ── 主匹配文件 ────────────────────────────────────────────
+        shutil.copy2(src, q_dir / Path(src).name)
+        exported_files += 1
+        exported_paths.append(src)
+
+        # ── 额外文件（extra_files_json） ─────────────────────────
+        extra_raw = item.get("extra_files_json")
+        if extra_raw:
+            try:
+                extra_list = json.loads(extra_raw)
+            except (json.JSONDecodeError, TypeError):
+                extra_list = []
+            for ef in extra_list:
+                ep = ef.get("file_path", "")
+                if ep and Path(ep).is_file():
+                    shutil.copy2(ep, q_dir / Path(ep).name)
+                    exported_files += 1
+                    exported_paths.append(ep)
+
+    _write_gap_report(out, missing)
+    _write_password_note(out, exported_paths)
+
+    return {
+        "exported": exported_files,
+        "missing": len(missing),
+        "output_path": str(out),
+    }
+
+
+def _write_password_note(out: Path, exported_paths: list[str]) -> None:
+    """为导出的加密文件生成「加密文件密码.txt」（原样附带，不解密）。
+
+    仅当存在已登记密码的加密文件时才生成该清单，供对方据此打开文件。
+    """
+    if not exported_paths:
+        return
+    placeholders = ",".join("?" * len(exported_paths))
+    with _connect() as conn:
+        rows = conn.execute(
+            f"SELECT filename, unlock_password FROM dd_asset_index "
+            f"WHERE file_path IN ({placeholders}) "
+            f"AND is_encrypted = 1 AND unlock_password != ''",
+            exported_paths,
+        ).fetchall()
+    if not rows:
+        return
+    lines = ["# 加密文件密码清单", f"共 {len(rows)} 个加密文件", ""]
+    for r in rows:
+        lines.append(f"- {r['filename']}  密码：{r['unlock_password']}")
+    (out / "加密文件密码.txt").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _write_gap_report(out: Path, missing: list[dict]) -> None:

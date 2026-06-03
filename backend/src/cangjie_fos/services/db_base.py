@@ -272,7 +272,11 @@ CREATE TABLE IF NOT EXISTS dd_asset_index (
     file_type   TEXT NOT NULL,
     summary     TEXT,
     readable    INTEGER NOT NULL DEFAULT 1,
-    indexed_at  REAL NOT NULL
+    indexed_at  REAL NOT NULL,
+    institution_subfolder TEXT NOT NULL DEFAULT '',
+    is_encrypted INTEGER NOT NULL DEFAULT 0,
+    mtime       REAL,
+    unlock_password TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_sessions (
@@ -283,7 +287,9 @@ CREATE TABLE IF NOT EXISTS dd_match_sessions (
     status           TEXT NOT NULL DEFAULT 'pending',
     institution_name TEXT NOT NULL DEFAULT '',
     created_at       REAL NOT NULL,
-    completed_at     REAL
+    completed_at     REAL,
+    folder_layout    TEXT NOT NULL DEFAULT 'flat',
+    scenario         TEXT NOT NULL DEFAULT 'dd'
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_items (
@@ -300,6 +306,18 @@ CREATE TABLE IF NOT EXISTS dd_match_items (
     user_skipped      INTEGER NOT NULL DEFAULT 0,
     candidates_json   TEXT,
     extra_files_json  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS dd_qa_pairs (
+    id                    TEXT PRIMARY KEY,
+    tenant_id             TEXT NOT NULL DEFAULT '',
+    folder_root           TEXT NOT NULL DEFAULT '',
+    source_file           TEXT NOT NULL DEFAULT '',
+    question              TEXT NOT NULL,
+    answer                TEXT NOT NULL DEFAULT '',
+    institution_subfolder TEXT NOT NULL DEFAULT '',
+    confidence            REAL,
+    created_at            REAL NOT NULL
 );
 """
 
@@ -328,6 +346,24 @@ _MIGRATIONS: list[tuple[int, str]] = [
         login_at   REAL NOT NULL,
         expires_at REAL NOT NULL
     )"""),
+    # ── gk 尽调模式（机构问答响应引擎 阶段一）─────────────────────────────
+    (16, "ALTER TABLE dd_asset_index ADD COLUMN institution_subfolder TEXT NOT NULL DEFAULT ''"),
+    (17, "ALTER TABLE dd_asset_index ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0"),
+    (18, "ALTER TABLE dd_asset_index ADD COLUMN mtime REAL"),
+    (19, "ALTER TABLE dd_match_sessions ADD COLUMN folder_layout TEXT NOT NULL DEFAULT 'flat'"),
+    (20, "ALTER TABLE dd_match_sessions ADD COLUMN scenario TEXT NOT NULL DEFAULT 'dd'"),
+    (21, """CREATE TABLE IF NOT EXISTS dd_qa_pairs (
+        id                    TEXT PRIMARY KEY,
+        tenant_id             TEXT NOT NULL DEFAULT '',
+        folder_root           TEXT NOT NULL DEFAULT '',
+        source_file           TEXT NOT NULL DEFAULT '',
+        question              TEXT NOT NULL,
+        answer                TEXT NOT NULL DEFAULT '',
+        institution_subfolder TEXT NOT NULL DEFAULT '',
+        confidence            REAL,
+        created_at            REAL NOT NULL
+    )"""),
+    (22, "ALTER TABLE dd_asset_index ADD COLUMN unlock_password TEXT NOT NULL DEFAULT ''"),
 ]
 
 

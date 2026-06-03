@@ -5,7 +5,7 @@
 
 ---
 
-## 当前版本：v1.7.0 | 最后更新：2026-06-03
+## 当前版本：v1.8.0 | 最后更新：2026-06-03
 
 ---
 
@@ -15,7 +15,13 @@
 # ── 后端 ──────────────────────────────────────────────────────────
 cd backend
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
-# 期望：754+ passed, 0 failed
+# 期望：783+ passed, 0 failed
+
+# ── 本轮新增（v1.8.0 gk 模式 机构问答响应引擎 阶段一）──────────────
+uv run --extra dev pytest tests/test_dd_gk_scan.py tests/test_dd_gk_export.py \
+                          tests/test_dd_qa_service.py tests/test_dd_gk_api.py \
+                          tests/test_dd_gk_password.py -q
+# 期望：28 passed（11 扫描 + 4 导出 + 5 问答 + 3 API + 5 密码）
 
 # ── 前端 ──────────────────────────────────────────────────────────
 cd ../frontend
@@ -28,7 +34,10 @@ npm install
 # 3. 前端单元测试（含 vitest 兜底用例）
 npm test
 # 注意：使用 Vitest，不支持 Jest 的 --runInBand 参数，不要传
-# 期望：18+ passed, 0 failed
+# 注意：请用 `npm test`（不要用 npx vitest run 单跑某文件，jsdom 冷启动偶发不加载）
+# 期望：24+ passed, 0 failed
+#   gk 模式前端新增：DueDiligenceWizard.layout / .password / .byquestion
+#   / .multifile / .qadraft 共 6 个用例
 
 # 4. TypeScript 编译
 npm run build
@@ -41,6 +50,32 @@ npm run build
 
 > 启动服务后在浏览器里逐项验。
 > 服务启动命令：`cd backend && uv run uvicorn cangjie_fos.main:app --port 8000`
+
+### gk — 【v1.8.0 后端】机构问答响应引擎 阶段一（纯后端，pytest 已覆盖）
+
+> 本轮为后端能力（F1/F2/F4/F5），无 UI，靠自动化测试验收；前端对接见下一版。
+
+| 能力 | 测试文件 | 验收点 |
+|------|---------|--------|
+| F1 布局检测+去重+加密标记 | `test_dd_gk_scan.py` | per_institution 自动识别；同名跨机构去重留最新；加密文件 is_encrypted=1 仍入索引 |
+| F2/F5 按问题归档导出 | `test_dd_gk_export.py` | 每条需求一个「问题NN_xxx」文件夹；无匹配进缺失清单不建空夹；多文件全拷；自定义命名 |
+| F4 历史问答复用 | `test_dd_qa_service.py` | 补充资料扒问答对落 dd_qa_pairs；新需求命中带答案+置信度；无命中低置信不硬塞 |
+| F3 加密密码登记/附带 | `test_dd_gk_password.py` | 扫描报机构数；items 富化 is_encrypted/unlock_password；设密码端点；导出生成加密文件密码.txt |
+| API 端点 | `test_dd_gk_api.py` | export-by-question / qa/extract / qa/draft 三端点 200 |
+
+**FAIL 判定**：上述任一 pytest 文件有 failed。
+
+#### gk 模式前端（已有 vitest 覆盖，无需人工冒烟）
+
+| 前端能力 | 测试文件 | 验收点 |
+|---------|---------|--------|
+| F1 布局徽章 | `DueDiligenceWizard.layout.test.tsx` | 扫描后显示「按机构分类·N家」/「平铺材料库」 |
+| F3 加密🔒+密码 | `DueDiligenceWizard.password.test.tsx` | 加密文件显示🔒，登记密码 POST，切🔓 |
+| F2/F5 按问题归档 | `DueDiligenceWizard.byquestion.test.tsx` | 命名确认表默认问题名、可改名、POST overrides |
+| F2 多文件附加 | `DueDiligenceWizard.multifile.test.tsx` | 候选勾选「附加」→ PATCH extra_files_json |
+| F4 问答草稿 | `DueDiligenceWizard.qadraft.test.tsx` | 「💬 草稿」命中历史答案+置信度、可编辑 |
+
+---
 
 ### A — 【本轮新增】Pipeline 新增机构入口
 
