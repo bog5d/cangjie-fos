@@ -20,6 +20,8 @@ interface DDItem {
   user_skipped: number;
   candidates_json: string | null;
   extra_files_json: string | null;
+  is_encrypted?: number;
+  unlock_password?: string;
 }
 
 interface SessionSummary {
@@ -89,6 +91,8 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [expandedCandidates, setExpandedCandidates] = useState<string | null>(null);
   const [manualInputItem, setManualInputItem] = useState<string | null>(null);
   const [manualPath, setManualPath] = useState("");
+  const [pwdInputItem, setPwdInputItem] = useState<string | null>(null);
+  const [pwdDraft, setPwdDraft] = useState("");
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<string>("");
   const [exportError, setExportError] = useState<string>("");
@@ -385,6 +389,22 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       setManualPath("");
     } catch (_) {}
   }, [sessionId, manualPath]);
+
+  // ── Step 3: 为加密文件登记密码（gk F3，UI 收集，导出原样附带）───
+  const handleSavePassword = useCallback(async (item: DDItem) => {
+    if (!item.matched_file_path) return;
+    try {
+      const resp = await fetch("/api/v1/dd/index/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_path: item.matched_file_path, password: pwdDraft }),
+      });
+      if (!resp.ok) return;
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, unlock_password: pwdDraft } : i)));
+      setPwdInputItem(null);
+      setPwdDraft("");
+    } catch (_) {}
+  }, [pwdDraft]);
 
   // ── Step 3: 确认 / 标记缺失 ───────────────────────────────────
   const handleSkip = useCallback(async (itemId: string) => {
@@ -732,6 +752,15 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                       <td className="px-3 py-2 text-sm">
                         {item.matched_filename ? (
                           <div>
+                            {item.is_encrypted === 1 && (
+                              <button
+                                onClick={() => { setPwdInputItem(pwdInputItem === item.id ? null : item.id); setPwdDraft(item.unlock_password || ""); }}
+                                title={item.unlock_password ? `已登记密码：${item.unlock_password}` : "加密文件 — 点击登记打开密码"}
+                                className={`mr-1 text-xs ${item.unlock_password ? "text-green-600" : "text-amber-500"}`}
+                              >
+                                {item.unlock_password ? "🔓" : "🔒"}
+                              </button>
+                            )}
                             <span className="text-gray-700" title={item.match_reason || ""}>{item.matched_filename}</span>
                             {item.candidates_json && (() => {
                               try {
@@ -809,6 +838,26 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                         );
                       } catch (_) { return null; }
                     })()}
+                    {/* 加密文件密码登记行 */}
+                    {pwdInputItem === item.id && (
+                      <tr className="border-t bg-amber-50">
+                        <td colSpan={5} className="px-3 py-2">
+                          <div className="flex gap-2 items-center">
+                            <span className="text-xs text-amber-700 whitespace-nowrap">🔒 打开密码：</span>
+                            <input
+                              className="flex-1 border rounded px-2 py-1 text-xs text-gray-900"
+                              placeholder="输入该加密文件的打开密码（导出时随附说明，不解密）"
+                              value={pwdDraft}
+                              onChange={(e) => setPwdDraft(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === "Enter") void handleSavePassword(item); }}
+                              autoFocus
+                            />
+                            <button onClick={() => void handleSavePassword(item)} className="text-xs px-2 py-1 bg-amber-600 text-white rounded">保存密码</button>
+                            <button onClick={() => setPwdInputItem(null)} className="text-xs px-2 py-1 border rounded text-gray-500">取消</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {/* 手动指定文件的内联输入行 */}
                     {manualInputItem === item.id && (
                       <tr className="border-t bg-blue-50">
