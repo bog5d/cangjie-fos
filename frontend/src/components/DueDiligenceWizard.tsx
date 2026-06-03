@@ -66,6 +66,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [folderPath, setFolderPath] = useState("");
   const [scanStatus, setScanStatus] = useState<string>("idle");
   const [scanResult, setScanResult] = useState<string>("");
+  const [layoutInfo, setLayoutInfo] = useState<{ layout: string; institutionCount: number } | null>(null);
   const pollRef = useRef<number | null>(null);
 
   // Session history
@@ -140,6 +141,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     if (!folderPath.trim()) return;
     setScanStatus("running");
     setScanResult("");
+    setLayoutInfo(null);
     let data: { scan_id: string };
     try {
       const resp = await fetch("/api/v1/dd/index", {
@@ -173,6 +175,9 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
           setScanStatus("done");
           const llmNote = s.total > 200 ? "（文件数较多，已跳过AI摘要，仅靠文件名匹配）" : "";
           setScanResult(`✅ 扫描完成：共索引 ${s.indexed} 个文件，${s.failed} 个失败${llmNote}`);
+          if (s.folder_layout) {
+            setLayoutInfo({ layout: s.folder_layout, institutionCount: s.institution_count ?? 0 });
+          }
         } else if (s.status === "error") {
           clearInterval(pollRef.current!);
           pollRef.current = null;
@@ -520,6 +525,19 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                 <p className={`text-sm ${scanStatus === "error" ? "text-red-500" : "text-green-600"}`}>
                   {scanResult}
                 </p>
+              )}
+              {layoutInfo && scanStatus === "done" && (
+                <div className="flex items-center gap-2 text-sm">
+                  {layoutInfo.layout === "per_institution" ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-medium">
+                      🏢 按机构分类 · {layoutInfo.institutionCount} 家机构
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                      📄 平铺材料库
+                    </span>
+                  )}
+                </div>
               )}
               {scanStatus === "done" && (
                 <button
