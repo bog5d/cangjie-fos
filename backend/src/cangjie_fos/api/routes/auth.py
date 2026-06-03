@@ -31,14 +31,9 @@ _TOKEN_TTL = 72 * 3600  # 72小时
 _BUILTIN_ACCOUNTS = "zt001:123456:zt,gk001:123456:gk"
 
 
-def _load_accounts() -> dict[str, dict[str, str]]:
-    """从环境变量读取账号表。格式：账号:密码:tenant_id，逗号分隔。
-    未配置 FOS_ACCOUNTS 时使用内置默认账号（zt001/gk001）。
-    """
-    raw = os.getenv("FOS_ACCOUNTS", _BUILTIN_ACCOUNTS).strip()
+def _parse_accounts(raw: str) -> dict[str, dict[str, str]]:
+    """解析「账号:密码:tenant_id，逗号分隔」格式，跳过格式不全的项。"""
     accounts: dict[str, dict[str, str]] = {}
-    if not raw:
-        return accounts
     for entry in raw.split(","):
         parts = entry.strip().split(":")
         if len(parts) == 3:
@@ -47,6 +42,24 @@ def _load_accounts() -> dict[str, dict[str, str]]:
                 "password": password.strip(),
                 "tenant_id": tenant_id.strip(),
             }
+    return accounts
+
+
+def _load_accounts() -> dict[str, dict[str, str]]:
+    """加载账号表。
+
+    关键约定（防止「谁本地没配置就登不上」）：
+      内置默认账号（zt001 / gk001）**始终可用**，作为基底先加载；
+      .env 的 FOS_ACCOUNTS 只做「追加新账号」或「覆盖同名账号的密码/租户」，
+      **绝不会移除内置账号**。
+
+    这样无论是谁第一次 clone、或在只配了 zt001 的服务器上，gk001 与 zt001
+    都能登录；同时仍允许 .env 改密码（同名覆盖）或新增更多账号。
+    """
+    accounts = _parse_accounts(_BUILTIN_ACCOUNTS)
+    raw = os.getenv("FOS_ACCOUNTS", "").strip()
+    if raw:
+        accounts.update(_parse_accounts(raw))  # 同名 → .env 覆盖；其余 → 追加
     return accounts
 
 
