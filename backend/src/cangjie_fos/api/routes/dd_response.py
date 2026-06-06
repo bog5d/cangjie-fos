@@ -67,6 +67,14 @@ def _write_dd_outcomes(session_id: str) -> None:
     except Exception as e:  # noqa: BLE001
         logger.warning("_write_dd_outcomes failed for session %s: %s", session_id, e)
 
+    # 跨机构决策记忆：把已确认的「需求→文件」映射沉淀为全局记忆（材料库共享 →
+    # A 机构确认的选择可惠及 B/C/D）。与上面的 per-institution 飞轮互补、独立容错。
+    try:
+        from cangjie_fos.services.dd_match_service import record_session_decisions  # noqa: PLC0415
+        record_session_decisions(session_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("record_session_decisions failed for session %s: %s", session_id, e)
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/dd", tags=["due-diligence"])
 

@@ -24,17 +24,60 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v1.3.0，2026-05-31）
+## 当前状态（v1.9.0，2026-06-06）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v1.3.0** |
-| 测试基线 | **723 passed**，0 failed |
+| 版本 | **v1.9.0** |
+| 测试基线 | **795 passed**，0 failed |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
 | DB fixture | `_isolate_db_per_test` autouse：每测试独立 SQLite。用 `@pytest.mark.real_db` 声明豁免 |
 | Push hook | `.git/hooks/pre-push` 自动跑 DB fixture 测试 |
+
+---
+
+## 🏗️ DD 物料架构（v1.9.0，新 AI 接手必读）
+
+> 这是尽调响应台的底层重构方向，分三层、三阶段。已落地阶段1-3 的地基。
+
+**为什么重构**：旧匹配只拿「文件名 + 20字摘要」对清单（拿影子匹配 50 页报告），准确率有天花板；
+且没有「匹配完怎么知道对不对」的验证。新架构分三层：
+
+```
+内容层（全文 content_text）   → 用来「懂 / 检索 / 核对」      （阶段1）
+   ↕ 派生，不替换原件
+文件层（原始 PDF/Excel，审过）→ 用来「交付」，永远交原件
+生产线：粗筛(关键词) → 全文精判(看正文) → 机器验证(红/黄/绿+证据)  （阶段1+2）
+人工闸（已有：落库+Web，DB 即 checkpoint，不需要 LangGraph）
+学习闭环：人工确认 → dd_decision_memory（跨机构复用）          （阶段3）
+```
+
+**已落地（阶段1-3）**：
+
+| 阶段 | 能力 | 关键代码 | 测试 |
+|------|------|---------|------|
+| 1 全文精判 | 全文落库 + 看正文核对 + 证据 | `dd_file_parser.extract_full_text`、`dd_asset_index.content_text`、`dd_match_service._refine_session_matches` | `test_dd_material_architecture.py::TestPhase1FullText` |
+| 2 机器验证 | 红/黄/绿 + 原文证据 | `dd_match_items.verdict/evidence`、`_confidence_to_verdict` | `TestPhase2Verdict` |
+| 3 跨机构学习 | 需求→文件 全局复用 | `dd_decision_memory`、`normalize_requirement`、`record_session_decisions`、`_apply_decision_memory` | `TestPhase3CrossInstitutionMemory` |
+
+**不可推翻的判断（讨论已定）**：
+- 内容层（content_text）只用来「懂/匹配」，**绝不替换原件**；交付永远走文件层（审过的原 PDF），不重新生成。
+- 人工闸**不需要 LangGraph**：DD 的人工确认在末尾，落库 + Web 接口天然解耦，DB 就是 checkpoint。
+- 「越学越准」是**记忆化 + 历史检索**，不是 fine-tune 模型（看一个例子立刻生效、可解释、可反悔）。
+- 材料库**跨投资人共享**（同一融资项目，A/B/C 各发清单打同一套材料）→ 记忆按归一化需求全局聚合，机构无关。
+
+### 🔜 下一步开发方向（主理人明确要留的钩子，下次主动找到并接力）
+
+> **「写材料」场景**——本版未做，但内容层已就位，下次优先做这个。
+
+机构日常除了「要原件」，还会「要你写材料」：
+1. **投后报告模板填充**：给一个 Word/Excel 模板，系统读模板占位 + 检索内容层（content_text）→ 填好返回。
+2. **微信问题生成答复**：把机构在微信问的一段话丢进来 → 检索内容层 → 为每个问题**生成一份带溯源的 Word 答复草稿**（不是找文件，是写答案）。
+
+**关键约束**：生成的是**新答复草稿**（场景B），不动审过的原件（场景A 仍交原件）；每条结论必须带「出处：某文件第几段」可溯源，人审后再发。
+**地基已就位**：阶段1 的 `dd_asset_index.content_text`（全文）就是这个功能的检索语料；最接近的现有代码是 `dd_qa_service.generate_answer_draft`（F4 历史问答草稿），可在其上扩展为「模板填充 + 问题→Word」。
 
 ---
 
