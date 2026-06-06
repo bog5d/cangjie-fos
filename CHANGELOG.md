@@ -4,6 +4,35 @@
 
 ---
 
+## [1.9.0] — 2026-06-06  DD 物料架构升级：全文精判 + 机器验证 + 跨机构学习
+
+> 测试基线：795 passed（新增12个 `test_dd_material_architecture.py`）
+> 背景：尽调响应台此前只拿「文件名 + 20字摘要」做匹配（拿影子匹配 50 页报告），准确率有天花板；
+> 且没有「匹配完怎么知道对不对」的验证层。本版补上**内容层 → 生产线 → 学习闭环**三段地基。
+> 架构讨论与分阶段方案见 `AGENTS.md`「DD 物料架构」节。
+
+### Added
+- **阶段1 · 全文精判（内容层）**：
+  - `dd_file_parser.extract_full_text()`：读全部页 / 默认 6000 字（区别于 `extract_text` 只读前 3 页 / 800 字做摘要）。
+  - `dd_asset_index.content_text`（migration 23）：索引时把材料**全文落库**，精判节点据此逐条核对正文，不再只看 20 字摘要。
+  - `dd_match_service._llm_refine_candidate()` / `_refine_session_matches()`：匹配后对「有正文、非记忆锁定」的已匹配项喂正文做精判，按「是否真满足」调整置信度并产出**原文证据片段**。
+- **阶段2 · 机器验证（evaluator）**：
+  - `dd_match_items.verdict` / `evidence`（migration 24/25）：精判产出红/黄/绿判定 + 证据，写回每项。阈值 green≥0.70 / yellow≥0.40 / red（与 `engine/matchmaker.py` 四色一致）。机器先验、人工终审——绿一键过、黄重点看、红改。
+  - 前端 `DueDiligenceWizard`：审核表在文件名下展示 🟢🟡🔴 + 证据片段，加速人工终审。
+- **阶段3 · 跨机构决策记忆（学习闭环）**：
+  - `dd_decision_memory` 表（migration 26/27）+ `normalize_requirement` / `record_session_decisions` / `lookup_decision_memory` / `_apply_decision_memory`。
+  - **材料库共享** → 人工确认的「需求→文件」映射**机构无关**地沉淀；A 机构确认的选择，B/C/D 遇到同类需求时自动锁定（高置信 green，跳过精判省 token）。记忆文件若已不在当前库则不强行套用。
+  - 写入挂在既有确认流程（`_write_dd_outcomes` 同址），与 per-institution 飞轮互补、独立容错。
+
+### Changed
+- `dd_match_service.run_matching`：批量匹配后串接「记忆覆盖 → 全文精判+验证」两段，各自 try/except 容错，不影响主流程终态。
+- 设计取舍：精判全文读取复用既有 pdfplumber/python-docx/openpyxl，**未引入 markitdown**（新依赖、网络受限环境装不稳）。扫描件/图片 PDF 正文读不出者标记跳过，仍靠文件名+摘要参与粗筛；markitdown+OCR 列为未来演进锚点（见 `dd_file_parser.extract_full_text` docstring 与 AGENTS.md）。
+
+### 留给下一棒的钩子
+- **「写材料」场景**（投后报告模板填充 / 微信问题生成 Word 答复）：本版未做，但内容层（`content_text`）已就位。方向详见 AGENTS.md「下一步开发方向」节与 `dd_qa_service.py` 顶部锚点。
+
+---
+
 ## [1.6.0] — 2026-06-02  P0 稳健性三补丁
 
 > 测试基线：744 passed（新增11个 `test_dd_robustness_p0.py`）

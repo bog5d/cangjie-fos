@@ -8,7 +8,9 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from cangjie_fos.services.dd_file_parser import extract_text, SUPPORTED_EXTENSIONS
+from cangjie_fos.services.dd_file_parser import (
+    extract_text, extract_full_text, SUPPORTED_EXTENSIONS,
+)
 from cangjie_fos.services.db_base import _connect
 
 logger = logging.getLogger(__name__)
@@ -136,9 +138,12 @@ def _index_single_file(
     institution_subfolder: str = "",
     is_encrypted: bool = False,
 ) -> None:
-    text, readable = extract_text(file_path)
+    # 全文落库（内容层）：精判节点据此逐条核对正文是否满足需求。
+    # 读全文后顺带切片喂摘要，避免对同一文件读两遍。
+    full_text, readable = extract_full_text(file_path)
+    content_text = full_text or None
     # 只在 use_llm=True 且文件可读时才调用 LLM；否则 summary=None，依靠文件名匹配
-    summary = _llm_summarize(file_path.name, text) if (use_llm and readable and text) else None
+    summary = _llm_summarize(file_path.name, full_text[:600]) if (use_llm and readable and full_text) else None
 
     now = time.time()
     try:
@@ -155,17 +160,19 @@ def _index_single_file(
             conn.execute(
                 """UPDATE dd_asset_index
                    SET summary = ?, readable = ?, indexed_at = ?,
-                       institution_subfolder = ?, is_encrypted = ?, mtime = ?
+                       institution_subfolder = ?, is_encrypted = ?, mtime = ?,
+                       content_text = ?
                    WHERE file_path = ?""",
                 (summary, 1 if readable else 0, now,
-                 institution_subfolder, enc, mtime_val, str(file_path)),
+                 institution_subfolder, enc, mtime_val, content_text, str(file_path)),
             )
         else:
             conn.execute(
                 """INSERT INTO dd_asset_index
                    (id, folder_root, file_path, filename, file_type, summary,
-                    readable, indexed_at, institution_subfolder, is_encrypted, mtime)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    readable, indexed_at, institution_subfolder, is_encrypted, mtime,
+                    content_text)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     str(uuid.uuid4()),
                     folder_root,
@@ -178,6 +185,7 @@ def _index_single_file(
                     institution_subfolder,
                     enc,
                     mtime_val,
+                    content_text,
                 ),
             )
 

@@ -89,6 +89,12 @@ uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 - `IntelAction.actor / action / priority`（不是 owner/deadline）
 - Review API 读 SQLite（`db_job_get`），不读内存 store
 - **字段名权威来源**：`backend/src/cangjie_fos/engine/schema.py`，前端接口必须与之对齐
+- **DD 物料架构（v1.9.0，不要推翻）**：
+  - 内容层 `dd_asset_index.content_text`（全文）只用来「懂/匹配/精判」，**绝不替换原件**；交付永远走原始文件（审过的），不重新生成。
+  - 匹配生产线：粗筛(关键词) → 全文精判(`_refine_session_matches` 看正文) → 机器验证(`verdict` 红/黄/绿 + `evidence`)。
+  - 跨机构学习用 `dd_decision_memory`（记忆化 + 历史检索，**不是 fine-tune**）；材料库共享 → 需求→文件 映射机构无关全局复用。
+  - 人工闸**不需要 LangGraph**：DB 落库 + Web 接口即 checkpoint。
+  - 详见 `AGENTS.md`「DD 物料架构」节，含**下一步「写材料」场景**的钩子。
 
 ---
 

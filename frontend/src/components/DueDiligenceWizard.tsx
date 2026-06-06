@@ -22,6 +22,8 @@ interface DDItem {
   extra_files_json: string | null;
   is_encrypted?: number;
   unlock_password?: string;
+  verdict?: string | null;   // 机器验证：green/yellow/red（精判后写回）
+  evidence?: string | null;  // 机器验证：支撑判断的原文证据片段
 }
 
 interface SessionSummary {
@@ -909,6 +911,13 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                               } catch (_) {}
                               return null;
                             })()}
+                            {/* 机器验证：精判后的原文证据片段（让人工终审更快） */}
+                            {item.evidence && (
+                              <div className="mt-0.5 text-xs text-gray-500 flex items-start gap-1">
+                                <span>{item.verdict === "green" ? "🟢" : item.verdict === "yellow" ? "🟡" : item.verdict === "red" ? "🔴" : "🔎"}</span>
+                                <span className="italic">{item.evidence}</span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-gray-400 italic text-xs">无匹配</span>

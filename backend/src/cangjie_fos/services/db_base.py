@@ -276,7 +276,8 @@ CREATE TABLE IF NOT EXISTS dd_asset_index (
     institution_subfolder TEXT NOT NULL DEFAULT '',
     is_encrypted INTEGER NOT NULL DEFAULT 0,
     mtime       REAL,
-    unlock_password TEXT NOT NULL DEFAULT ''
+    unlock_password TEXT NOT NULL DEFAULT '',
+    content_text TEXT
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_sessions (
@@ -305,8 +306,22 @@ CREATE TABLE IF NOT EXISTS dd_match_items (
     user_confirmed    INTEGER NOT NULL DEFAULT 0,
     user_skipped      INTEGER NOT NULL DEFAULT 0,
     candidates_json   TEXT,
-    extra_files_json  TEXT
+    extra_files_json  TEXT,
+    verdict           TEXT,
+    evidence          TEXT
 );
+
+CREATE TABLE IF NOT EXISTS dd_decision_memory (
+    id              TEXT PRIMARY KEY,
+    requirement_norm TEXT NOT NULL,
+    requirement     TEXT NOT NULL DEFAULT '',
+    file_path       TEXT NOT NULL,
+    filename        TEXT NOT NULL DEFAULT '',
+    confirm_count   INTEGER NOT NULL DEFAULT 1,
+    last_institution TEXT NOT NULL DEFAULT '',
+    updated_at      REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm);
 
 CREATE TABLE IF NOT EXISTS dd_qa_pairs (
     id                    TEXT PRIMARY KEY,
@@ -364,6 +379,24 @@ _MIGRATIONS: list[tuple[int, str]] = [
         created_at            REAL NOT NULL
     )"""),
     (22, "ALTER TABLE dd_asset_index ADD COLUMN unlock_password TEXT NOT NULL DEFAULT ''"),
+    # ── DD 物料架构升级（全文精判 + 机器验证 + 跨机构学习）─────────────────
+    # 阶段1：材料全文落库，供精判节点逐条核对正文（不再只看 20 字摘要）
+    (23, "ALTER TABLE dd_asset_index ADD COLUMN content_text TEXT"),
+    # 阶段2：机器验证节点产出的红/黄/绿判定 + 原文证据片段
+    (24, "ALTER TABLE dd_match_items ADD COLUMN verdict TEXT"),
+    (25, "ALTER TABLE dd_match_items ADD COLUMN evidence TEXT"),
+    # 阶段3：跨机构决策记忆（材料库共享 → 需求→文件 映射全局复用）
+    (26, """CREATE TABLE IF NOT EXISTS dd_decision_memory (
+        id              TEXT PRIMARY KEY,
+        requirement_norm TEXT NOT NULL,
+        requirement     TEXT NOT NULL DEFAULT '',
+        file_path       TEXT NOT NULL,
+        filename        TEXT NOT NULL DEFAULT '',
+        confirm_count   INTEGER NOT NULL DEFAULT 1,
+        last_institution TEXT NOT NULL DEFAULT '',
+        updated_at      REAL NOT NULL
+    )"""),
+    (27, "CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm)"),
 ]
 
 

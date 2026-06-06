@@ -145,6 +145,21 @@ def run_matching(
                         (item["id"],),
                     )
 
+        # ── 阶段3：跨机构决策记忆覆盖（人工确认过的同类需求→文件，直接沿用）──
+        # 材料库共享 → A 机构沉淀的「需求→文件」映射可惠及 B/C/D。
+        # 命中即把该项锁定为记忆文件（高置信 + green），后续精判跳过省 token。
+        try:
+            _apply_decision_memory(session_id, items, index_rows)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("决策记忆覆盖失败（不影响主流程）: %s", e)
+
+        # ── 阶段1+2：全文精判 + 机器验证（红/黄/绿 + 原文证据）──
+        # 只对「有正文可读」且「非记忆锁定」的已匹配项逐条核对正文。
+        try:
+            _refine_session_matches(session_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("精判/验证阶段失败（不影响主流程）: %s", e)
+
     except Exception as e:
         logger.error("匹配任务异常 session=%s: %s", session_id, e)
         failed = True
@@ -186,6 +201,46 @@ def _mark_session_failed(session_id: str) -> None:
             "UPDATE dd_match_sessions SET status = 'failed', completed_at = ? WHERE session_id = ?",
             (time.time(), session_id),
         )
+
+
+# ── 精判 / 验证 / 跨机构学习 常量 ─────────────────────────────────────────────
+# 精判节点喂给 LLM 的单文件正文最大字符数（控制 token，可调）
+_REFINE_CONTENT_CHARS = 4000
+
+# 红/黄/绿判定阈值（与 engine/matchmaker.py 四色逻辑一致）
+_VERDICT_GREEN = 0.70   # ≥ 此值：高可信，可一键放行
+_VERDICT_YELLOW = 0.40  # [此值, GREEN)：建议人工核对；< 此值：低可信（红）
+
+# 跨机构决策记忆命中后写入的标记前缀（精判节点据此跳过，不重复消耗 token）
+MEMORY_REASON_PREFIX = "🧠 历史沿用"
+# 命中记忆时赋予的置信度（人工确认过的同类需求→文件映射，高可信）
+_MEMORY_CONFIDENCE = 0.97
+
+
+def _confidence_to_verdict(conf: float | None) -> str:
+    """置信度 → 红/黄/绿判定。供机器验证节点与人工闸消费。"""
+    c = conf or 0.0
+    if c >= _VERDICT_GREEN:
+        return "green"
+    if c >= _VERDICT_YELLOW:
+        return "yellow"
+    return "red"
+
+
+def normalize_requirement(req: str) -> str:
+    """需求文本归一化，作为跨机构决策记忆的 key。
+
+    材料库共享（同一融资项目，不同投资人各发各的清单）→「需求→文件」映射
+    可在机构间复用。不同机构对同一份材料的措辞会有差异，故归一化：
+      - 去空白 / 标点 / 年份 / 括号注释
+      - 转小写
+    使「近三年财务报表」与「近 3 年财报」尽量落到相近的 key（粗粒度，命中即省一次精判）。
+    """
+    s = (req or "").lower().strip()
+    s = re.sub(r"20\d{2}\s*[-年/]?\s*\d{0,2}\s*[-月/]?\s*\d{0,2}\s*日?", "", s)
+    s = re.sub(r"[（(【\[].{0,12}[）)\]】]", "", s)
+    s = re.sub(r"[\s　,.，。、；;:：!！?？|/\\\-_~·\"'“”‘’()（）]+", "", s)
+    return s
 
 
 # 关键词匹配用停用字（语义稀薄、对匹配无区分度）
@@ -481,3 +536,251 @@ def _llm_batch_match(
                 logger.warning("progress_callback 异常: %s", cb_err)
 
     return results
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 阶段1+2：全文精判 + 机器验证（evaluator）
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _llm_refine_candidate(
+    client, requirement: str, filename: str, content_text: str,
+) -> dict:
+    """精判单条：把候选文件正文喂 LLM，判断是否真满足该需求。
+
+    返回 {"satisfies": bool, "confidence": float, "evidence": str}。
+    这是「看 20 字摘要」→「看正文」的关键一步，也产出供机器验证的原文证据。
+    抽成独立函数便于测试 monkeypatch。
+    """
+    content = (content_text or "")[:_REFINE_CONTENT_CHARS]
+    prompt = f"""你是尽调材料核对员。请判断下面这份文件是否满足机构的这条需求。
+
+机构需求：{requirement}
+候选文件名：{filename}
+文件正文（节选）：
+{content}
+
+严格依据正文内容判断（不要凭文件名猜测）。只返回 JSON：
+{{"satisfies": true 或 false, "confidence": 0到1的小数, "evidence": "支撑判断的原文关键片段或一句话理由（40字内）"}}
+只返回 JSON："""
+
+    def _call() -> dict:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0,
+        )
+        raw = resp.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.lower().startswith("json"):
+                raw = raw[4:]
+        return json.loads(raw.strip())
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _refine_session_matches(session_id: str) -> None:
+    """对 session 已匹配项做全文精判 + 验证，写回 confidence/verdict/evidence。
+
+    规则：
+      - 记忆锁定项（match_reason 以 MEMORY_REASON_PREFIX 开头）：直接给 green，跳过 LLM。
+      - 有正文（content_text）的已匹配项：喂正文精判，按结果调整 confidence + 证据。
+        · satisfies=False → confidence 压到 ≤0.3（红），让人重点复核。
+        · satisfies=True  → 采用精判 confidence（与原值取较高，避免误伤）。
+      - 无正文（图片/加密件等）已匹配项：不精判，verdict 由现有 confidence 推出，
+        evidence 标注「正文不可读，未精判」。
+      - 未匹配项（无 matched_file_path）：verdict=red。
+    所有项最终都带上 verdict，供前端人工闸消费（绿一键过 / 黄重点看 / 红改）。
+    """
+    with _connect() as conn:
+        rows = [dict(r) for r in conn.execute(
+            """SELECT i.id, i.requirement, i.matched_file_path, i.matched_filename,
+                      i.confidence, i.match_reason, a.content_text
+               FROM dd_match_items i
+               LEFT JOIN dd_asset_index a ON a.file_path = i.matched_file_path
+               WHERE i.session_id = ?""",
+            (session_id,),
+        ).fetchall()]
+
+    # 仅当存在「有正文的非记忆锁定已匹配项」时才需要 LLM 客户端（避免无谓初始化）
+    needs_llm = any(
+        r.get("matched_file_path") and (r.get("content_text") or "").strip()
+        and not (r.get("match_reason") or "").startswith(MEMORY_REASON_PREFIX)
+        for r in rows
+    )
+    client = get_dd_llm_client() if needs_llm else None
+
+    for r in rows:
+        item_id = r["id"]
+        path = r.get("matched_file_path")
+        reason = r.get("match_reason") or ""
+        cur_conf = r.get("confidence") or 0.0
+
+        # 未匹配项：直接红判
+        if not path:
+            _update_verdict(item_id, _confidence_to_verdict(cur_conf), "")
+            continue
+
+        # 记忆锁定项：信任人工历史选择，直接 green
+        if reason.startswith(MEMORY_REASON_PREFIX):
+            _update_verdict(item_id, "green", "历史人工确认沿用")
+            continue
+
+        content = (r.get("content_text") or "").strip()
+        if not content or client is None:
+            # 正文不可读：不精判，仅据现有置信度给信号
+            _update_verdict(
+                item_id, _confidence_to_verdict(cur_conf),
+                "（正文不可读，未精判）",
+            )
+            continue
+
+        # 有正文 → 全文精判
+        try:
+            res = _llm_refine_candidate(
+                client, r["requirement"], r.get("matched_filename") or "", content,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("精判失败 item=%s: %s（保留原匹配）", item_id, e)
+            _update_verdict(item_id, _confidence_to_verdict(cur_conf), "")
+            continue
+
+        satisfies = bool(res.get("satisfies", True))
+        evidence = str(res.get("evidence", ""))[:200]
+        try:
+            refined_conf = float(res.get("confidence", cur_conf))
+        except (TypeError, ValueError):
+            refined_conf = cur_conf
+        refined_conf = max(0.0, min(1.0, refined_conf))
+
+        if not satisfies:
+            new_conf = min(cur_conf, 0.3, refined_conf)
+        else:
+            new_conf = max(cur_conf, refined_conf)
+
+        verdict = _confidence_to_verdict(new_conf)
+        with _connect() as conn:
+            conn.execute(
+                """UPDATE dd_match_items
+                   SET confidence = ?, verdict = ?, evidence = ?
+                   WHERE id = ?""",
+                (new_conf, verdict, evidence, item_id),
+            )
+
+
+def _update_verdict(item_id: str, verdict: str, evidence: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE dd_match_items SET verdict = ?, evidence = ? WHERE id = ?",
+            (verdict, evidence, item_id),
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 阶段3：跨机构决策记忆（材料库共享 → 需求→文件 映射全局复用）
+# ═══════════════════════════════════════════════════════════════════════════
+
+def record_session_decisions(session_id: str) -> int:
+    """把 session 中「已确认」的需求→文件映射写入 dd_decision_memory。
+
+    每次人工确认即沉淀一条全局记忆（机构无关，按归一化需求聚合）。
+    返回写入/累加的条数。下一次任意机构遇到同类需求时即可直接沿用。
+    """
+    with _connect() as conn:
+        rows = conn.execute(
+            """SELECT i.requirement, i.matched_file_path, i.matched_filename,
+                      s.institution_name
+               FROM dd_match_items i
+               JOIN dd_match_sessions s ON s.session_id = i.session_id
+               WHERE i.session_id = ? AND i.user_confirmed = 1
+                 AND i.matched_file_path IS NOT NULL AND i.matched_file_path != ''""",
+            (session_id,),
+        ).fetchall()
+        n = 0
+        now = time.time()
+        for row in rows:
+            req = row["requirement"] or ""
+            norm = normalize_requirement(req)
+            if not norm:
+                continue
+            path = row["matched_file_path"]
+            mem_id = f"{norm}::{path}"
+            existing = conn.execute(
+                "SELECT confirm_count FROM dd_decision_memory WHERE id = ?",
+                (mem_id,),
+            ).fetchone()
+            if existing:
+                conn.execute(
+                    """UPDATE dd_decision_memory
+                       SET confirm_count = confirm_count + 1, last_institution = ?,
+                           updated_at = ?, requirement = ?, filename = ?
+                       WHERE id = ?""",
+                    (row["institution_name"] or "", now, req,
+                     row["matched_filename"] or "", mem_id),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO dd_decision_memory
+                       (id, requirement_norm, requirement, file_path, filename,
+                        confirm_count, last_institution, updated_at)
+                       VALUES (?, ?, ?, ?, ?, 1, ?, ?)""",
+                    (mem_id, norm, req, path, row["matched_filename"] or "",
+                     row["institution_name"] or "", now),
+                )
+            n += 1
+    return n
+
+
+def lookup_decision_memory(requirement: str) -> dict | None:
+    """查归一化需求对应的历史人工确认文件（取确认次数最高的一条）。"""
+    norm = normalize_requirement(requirement)
+    if not norm:
+        return None
+    with _connect() as conn:
+        row = conn.execute(
+            """SELECT file_path, filename, confirm_count
+               FROM dd_decision_memory
+               WHERE requirement_norm = ?
+               ORDER BY confirm_count DESC, updated_at DESC
+               LIMIT 1""",
+            (norm,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def _apply_decision_memory(
+    session_id: str, items: list[dict], index_rows: list[dict],
+) -> int:
+    """对每条需求查跨机构记忆；命中且记忆文件仍在当前库 → 锁定为该文件。
+
+    「仍在当前库」用 index_rows 的 file_path 集合判断（材料库共享，但偶有增删）。
+    命中项写入高置信 + MEMORY_REASON_PREFIX 标记，精判阶段据此跳过。
+    返回命中并覆盖的条数。
+    """
+    available = {r["file_path"] for r in index_rows}
+    hits = 0
+    for item in items:
+        mem = lookup_decision_memory(item.get("requirement", ""))
+        if not mem:
+            continue
+        if mem["file_path"] not in available:
+            continue  # 记忆文件已不在当前材料库，不强行套用
+        reason = f"{MEMORY_REASON_PREFIX}（历史已确认{mem.get('confirm_count', 1)}次）"
+        candidates_json = json.dumps([{
+            "file_path": mem["file_path"],
+            "filename": mem.get("filename", ""),
+            "confidence": _MEMORY_CONFIDENCE,
+            "reason": reason,
+        }], ensure_ascii=False)
+        with _connect() as conn:
+            conn.execute(
+                """UPDATE dd_match_items
+                   SET matched_file_path = ?, matched_filename = ?,
+                       confidence = ?, match_reason = ?, candidates_json = ?
+                   WHERE id = ?""",
+                (mem["file_path"], mem.get("filename", ""), _MEMORY_CONFIDENCE,
+                 reason, candidates_json, item["id"]),
+            )
+        hits += 1
+    return hits
