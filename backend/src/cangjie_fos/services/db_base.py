@@ -16,6 +16,10 @@ from cangjie_fos.core import paths as fos_paths
 # ── 写锁（全局唯一，所有模块共享） ───────────────────────────────────────────
 _write_lock = threading.Lock()
 
+# ── schema 初始化缓存（进程内，按 db_path 去重，避免每次 _connect 重跑 DDL+迁移） ──
+_INITIALIZED_PATHS: set[str] = set()
+_init_lock = threading.Lock()
+
 # ── JSON 列名集合（序列化/反序列化时用） ─────────────────────────────────────
 _JSON_COLS: frozenset[str] = frozenset({
     "original_report",
@@ -438,11 +442,26 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         conn.commit()
 
 
-def _init_db(conn: sqlite3.Connection) -> None:
-    """初始化 schema 并运行待应用迁移。"""
-    conn.executescript(_DDL)
-    conn.commit()
-    _run_migrations(conn)
+def _init_db(conn: sqlite3.Connection, db_path: str | None = None) -> None:
+    """初始化 schema 并运行待应用迁移。
+
+    性能：DDL（几十条 CREATE IF NOT EXISTS）+ 迁移检查此前在**每次** _connect 都跑一遍，
+    成为高频小查询（如逐条记忆查询/逐项 verdict 写入）的主要开销。改为进程内按 db_path
+    缓存「已初始化」，同一路径只在首次连接时建表+迁移，后续连接直接跳过。
+    - 测试隔离：每个测试 monkeypatch 出新的临时 db 路径 → 新路径 → 首次仍会完整初始化。
+    - 迁移正确性：旧 DB 文件首次连接仍走完整迁移；进程重启后缓存清空会再校验一次（幂等）。
+    - 线程安全：双检 + 锁，避免并发首连接时重复建表。
+    """
+    if db_path is not None and db_path in _INITIALIZED_PATHS:
+        return
+    with _init_lock:
+        if db_path is not None and db_path in _INITIALIZED_PATHS:
+            return
+        conn.executescript(_DDL)
+        conn.commit()
+        _run_migrations(conn)
+        if db_path is not None:
+            _INITIALIZED_PATHS.add(db_path)
 
 
 def _connect() -> sqlite3.Connection:
@@ -465,7 +484,7 @@ def _connect() -> sqlite3.Connection:
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-32000")
     conn.execute("PRAGMA busy_timeout=5000")  # 锁冲突时等待最多5秒再失败（防测试 flaky）
-    _init_db(conn)
+    _init_db(conn, db_path_str)
     return conn
 
 

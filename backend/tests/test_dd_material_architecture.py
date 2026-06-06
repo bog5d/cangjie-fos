@@ -194,6 +194,40 @@ class TestPhase2Verdict:
         item = _get_item(sid, item_id)
         assert item["verdict"] == "red"
 
+    def test_refine_circuit_breaker_on_llm_down(self, tmp_path):
+        """红队加固：LLM 持续失败时应熔断——只调有限几次，剩余项降级为置信度判定，不逐条死磕。"""
+        from cangjie_fos.services.dd_match_service import (
+            create_match_session, _refine_session_matches, _REFINE_MAX_CONSECUTIVE_FAILS,
+        )
+        folder = str(tmp_path)
+        n = 20
+        items = [{"item_no": str(i + 1), "category": "x", "requirement": f"审计报告{i}"} for i in range(n)]
+        sid = create_match_session("t", "c.xlsx", folder, items)
+        # 每条都匹配到一个有正文的文件，迫使精判尝试
+        with _connect() as conn:
+            rows = conn.execute("SELECT id FROM dd_match_items WHERE session_id=?", (sid,)).fetchall()
+        for idx, row in enumerate(rows):
+            fp = str(tmp_path / f"f{idx}.txt")
+            _insert_index_row(folder, fp, f"f{idx}.txt", content_text="审计报告正文内容")
+            _set_match(sid, row[0], fp, f"f{idx}.txt", 0.8)
+
+        calls = {"n": 0}
+        def _always_fail(*a, **k):
+            calls["n"] += 1
+            raise RuntimeError("LLM down")
+
+        with patch("cangjie_fos.services.dd_match_service._llm_refine_candidate", _always_fail):
+            _refine_session_matches(sid)  # 不应抛、不应卡
+
+        # 熔断：调用次数应远小于 n（约等于连续失败阈值），剩余项降级
+        assert calls["n"] <= _REFINE_MAX_CONSECUTIVE_FAILS + 1, f"未熔断，调用了 {calls['n']} 次"
+        # 所有项仍拿到 verdict（降级为置信度判定，0.8 → green）
+        with _connect() as conn:
+            verdicts = [r[0] for r in conn.execute(
+                "SELECT verdict FROM dd_match_items WHERE session_id=?", (sid,)).fetchall()]
+        assert all(v is not None for v in verdicts)
+        assert verdicts.count("green") == n  # 0.8 → green，降级不改原置信度
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # 阶段3：跨机构决策记忆（材料库共享 → 需求→文件 映射全局复用）
@@ -202,11 +236,18 @@ class TestPhase2Verdict:
 class TestPhase3CrossInstitutionMemory:
 
     def test_normalize_requirement_stable(self):
+        """措辞/标点/礼貌词差异应归一到同一 key（跨机构复用的价值所在）。"""
         from cangjie_fos.services.dd_match_service import normalize_requirement
-        a = normalize_requirement("（请提供）2023年 审计报告。")
-        b = normalize_requirement("审计报告")
-        assert a == b
+        a = normalize_requirement("请提供：营业执照。")
+        b = normalize_requirement("营业执照")
+        c = normalize_requirement("（最新）营业执照 复印件")
+        assert a == b == c
         assert normalize_requirement("") == ""
+
+    def test_normalize_keeps_year_no_cross_year_collision(self):
+        """红队加固：保留年份——不同年份不得归一成同一 key（防套错年份的文件）。"""
+        from cangjie_fos.services.dd_match_service import normalize_requirement
+        assert normalize_requirement("2023年审计报告") != normalize_requirement("2024年审计报告")
 
     def test_record_and_lookup_memory(self, tmp_path):
         from cangjie_fos.services.dd_match_service import (
