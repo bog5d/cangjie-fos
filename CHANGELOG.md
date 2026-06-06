@@ -4,6 +4,26 @@
 
 ---
 
+## [1.9.1] — 2026-06-06  DD 物料架构红队加固 + 压测固化
+
+> 测试基线：798 passed（v1.9.0 的 795 + 熔断/防错年/压测烟雾 3 个）
+> 自造 1188 文件复杂材料库做压力测试，红队视角挖出并修掉 5 个真实脆弱点。
+
+### Added
+- **压测固化**：`backend/bench/dd_stress.py`（可手动按 `--scale small/medium/large` 放大 + `--charts` 出图 + `--real-llm`）；`backend/tests/test_dd_stress_smoke.py` 把核心不变量（全文落库率/验证齐全/跨机构锁定/并发零错误）锁进 CI。
+
+### Fixed / Hardened（红队）
+- **连接开销（全局）**：`db_base._connect` 此前每次都重跑全套 DDL + 迁移检查，成为高频小查询主要开销。改为**进程内按 db_path 缓存「已初始化」**，同路径只首连接建表/迁移一次（线程安全双检锁）。测试隔离与迁移正确性不变。
+- **精判自我吊死**（`_refine_session_matches`）：LLM 持续失败时,此前每条需求都重试退避(120条≈十几分钟)。新增**熔断**:连续失败 `_REFINE_MAX_CONSECUTIVE_FAILS=3` 次即判定 LLM 不可用,剩余项降级为置信度判定;并加单 session 调用上限 `_REFINE_MAX_CALLS=500` 防 runaway。
+- **跨机构记忆套错年份**（`normalize_requirement`）：此前归一化把年份也抹掉,「2023审计报告」与「2024审计报告」会落到同一 key,可能跨机构套错文件且被 bulk-confirm 直接扫过。改为**保留数字/年份**,只去标点/空白/括号/礼貌引导词——宁可少命中,不可错命中。
+- **超大/扫描件 PDF 拖死索引**（`extract_full_text`）：全文模式此前读 PDF 全部页,扫描件(每页抽不出字、永不触顶)会遍历上千页。加页数安全帽 `_FULL_MAX_PAGES=80`。
+- **连接 churn（DD 热路径）**：`_refine_session_matches` 与 `_apply_decision_memory` 改为**单连接 + executemany 批量写**,不再每条 item 各开 1~2 个连接(并发下也降低锁竞争)。`lookup_decision_memory` 增加可选 `conn` 复用参数。
+
+### Changed
+- 测试：`test_dd_material_architecture.py` 新增熔断、防错年 2 例;`normalize` 用例更新为「保留年份」语义。
+
+---
+
 ## [1.9.0] — 2026-06-06  DD 物料架构升级：全文精判 + 机器验证 + 跨机构学习
 
 > 测试基线：795 passed（新增12个 `test_dd_material_architecture.py`）

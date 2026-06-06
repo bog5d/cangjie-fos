@@ -7,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".xlsx", ".xls", ".txt", ".md"}
 
+# 全文抽取时 PDF 最多遍历的页数（安全帽，防扫描件/超大 PDF 把索引拖死）
+_FULL_MAX_PAGES = 80
+
 
 def extract_text(file_path: Path, max_chars: int = 800) -> tuple[str, bool]:
     """
@@ -50,7 +53,9 @@ def extract_full_text(file_path: Path, max_chars: int = 6000) -> tuple[str, bool
         return "", False
     try:
         if suffix == ".pdf":
-            return _extract_pdf(file_path, max_chars, max_pages=None), True
+            # 页数安全帽：扫描件/纯图片 PDF 每页抽不出字、永远到不了 max_chars，
+            # 若不限页会把上千页全遍历一遍，索引时卡死。最多看 _FULL_MAX_PAGES 页。
+            return _extract_pdf(file_path, max_chars, max_pages=_FULL_MAX_PAGES), True
         elif suffix in (".docx", ".doc"):
             return _extract_docx(file_path, max_chars), True
         elif suffix in (".xlsx", ".xls"):

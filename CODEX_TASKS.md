@@ -5,11 +5,26 @@
 
 ---
 
-## 当前版本：v1.9.0 | 最后更新：2026-06-06
+## 当前版本：v1.9.1 | 最后更新：2026-06-06
 
 ---
 
-## 🆕 本轮任务（v1.9.0 · DD 物料架构升级：全文精判 + 机器验证 + 跨机构学习）
+## 🆕 本轮新增（v1.9.1 · 红队加固 + 压测固化）
+
+```bash
+cd backend
+uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q   # 期望 798 passed
+uv run --extra dev pytest tests/test_dd_stress_smoke.py tests/test_dd_material_architecture.py -v
+# 期望：1 + 14 = 15 passed（压测烟雾 1 + 物料架构含熔断/防错年 14）
+
+# 手动压测（可选，自造复杂数据 + 真实流水线 + 出图）
+uv run python bench/dd_stress.py --scale large --charts   # 看 8/8 并发零错误、跨机构锁定成功、全文落库100%
+```
+加固点：DB 连接 schema-init 缓存 / 精判 LLM 熔断 / 归一化保留年份防套错 / PDF 页数安全帽 / 热路径单连接批量写。
+
+---
+
+## 🆕 上轮任务（v1.9.0 · DD 物料架构升级：全文精判 + 机器验证 + 跨机构学习）
 
 > 主理人点名：**模拟人工测试、输出测试 PDF、打开浏览器、该截图截图。**
 

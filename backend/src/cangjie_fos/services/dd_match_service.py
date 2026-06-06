@@ -207,6 +207,12 @@ def _mark_session_failed(session_id: str) -> None:
 # 精判节点喂给 LLM 的单文件正文最大字符数（控制 token，可调）
 _REFINE_CONTENT_CHARS = 4000
 
+# 红队加固：精判连续失败 N 次 → 判定 LLM 不可用，剩余项降级为置信度判定，
+# 不再逐条 retry 干等（否则 LLM 宕机时 120 条 × 重试退避 ≈ 十几分钟自我吊死）。
+_REFINE_MAX_CONSECUTIVE_FAILS = 3
+# 单 session 精判 LLM 调用次数上限（防超大清单 runaway；正常清单远不及此）
+_REFINE_MAX_CALLS = 500
+
 # 红/黄/绿判定阈值（与 engine/matchmaker.py 四色逻辑一致）
 _VERDICT_GREEN = 0.70   # ≥ 此值：高可信，可一键放行
 _VERDICT_YELLOW = 0.40  # [此值, GREEN)：建议人工核对；< 此值：低可信（红）
@@ -227,19 +233,29 @@ def _confidence_to_verdict(conf: float | None) -> str:
     return "red"
 
 
+# 归一化时剥离的「礼貌/引导」噪音词（不影响材料语义，去掉提升跨机构命中）
+_NORM_FILLER = ("请提供", "请贵公司", "贵公司", "提供", "请", "及说明", "的复印件",
+                "复印件", "扫描件", "盖章版", "最新", "相关", "文件", "资料")
+
+
 def normalize_requirement(req: str) -> str:
     """需求文本归一化，作为跨机构决策记忆的 key。
 
     材料库共享（同一融资项目，不同投资人各发各的清单）→「需求→文件」映射
-    可在机构间复用。不同机构对同一份材料的措辞会有差异，故归一化：
-      - 去空白 / 标点 / 年份 / 括号注释
+    可在机构间复用。不同机构对同一份材料的措辞有差异，故归一化：
+      - 去空白 / 标点 / 括号注释 / 礼貌引导词
       - 转小写
-    使「近三年财务报表」与「近 3 年财报」尽量落到相近的 key（粗粒度，命中即省一次精判）。
+
+    ⚠️ 红队加固（v1.9.1）：**保留数字与年份**，不再抹掉。
+    抹年份会让「2023审计报告」与「2024审计报告」归一成同一 key，导致跨机构
+    记忆套错年份的文件、且可能被 bulk-confirm 直接扫过无人复核——这是正确性事故。
+    现以「保守命中」为准：宁可少命中（不同年份各记各的），不可错命中。
     """
     s = (req or "").lower().strip()
-    s = re.sub(r"20\d{2}\s*[-年/]?\s*\d{0,2}\s*[-月/]?\s*\d{0,2}\s*日?", "", s)
-    s = re.sub(r"[（(【\[].{0,12}[）)\]】]", "", s)
-    s = re.sub(r"[\s　,.，。、；;:：!！?？|/\\\-_~·\"'“”‘’()（）]+", "", s)
+    s = re.sub(r"[（(【\[].{0,12}[）)\]】]", "", s)        # 去括号注释
+    for w in _NORM_FILLER:                                  # 去礼貌/引导噪音词
+        s = s.replace(w, "")
+    s = re.sub(r"[\s　,.，。、；;:：!！?？|/\\\-_~·\"'“”‘’()（）]+", "", s)  # 去标点空白
     return s
 
 
@@ -611,6 +627,14 @@ def _refine_session_matches(session_id: str) -> None:
     )
     client = get_dd_llm_client() if needs_llm else None
 
+    # 累积更新，最后一把写库（避免每条 item 各开一个连接 → 连接 churn + 锁竞争）
+    upd_conf: list[tuple] = []     # (confidence, verdict, evidence, id)
+    upd_verdict: list[tuple] = []  # (verdict, evidence, id)
+
+    consecutive_fails = 0  # 精判连续失败计数（熔断用）
+    llm_calls = 0
+    llm_down = False       # 触发熔断后置真：剩余项一律降级，不再调 LLM
+
     for r in rows:
         item_id = r["id"]
         path = r.get("matched_file_path")
@@ -619,21 +643,26 @@ def _refine_session_matches(session_id: str) -> None:
 
         # 未匹配项：直接红判
         if not path:
-            _update_verdict(item_id, _confidence_to_verdict(cur_conf), "")
+            upd_verdict.append((_confidence_to_verdict(cur_conf), "", item_id))
             continue
 
         # 记忆锁定项：信任人工历史选择，直接 green
         if reason.startswith(MEMORY_REASON_PREFIX):
-            _update_verdict(item_id, "green", "历史人工确认沿用")
+            upd_verdict.append(("green", "历史人工确认沿用", item_id))
             continue
 
         content = (r.get("content_text") or "").strip()
+
+        # 正文不可读 / 无需 LLM：按现有置信度给信号
         if not content or client is None:
-            # 正文不可读：不精判，仅据现有置信度给信号
-            _update_verdict(
-                item_id, _confidence_to_verdict(cur_conf),
-                "（正文不可读，未精判）",
-            )
+            upd_verdict.append((_confidence_to_verdict(cur_conf),
+                                "（正文不可读，未精判）", item_id))
+            continue
+
+        # 熔断已触发 / 达到调用上限：降级为置信度判定，不再调 LLM
+        if llm_down or llm_calls >= _REFINE_MAX_CALLS:
+            upd_verdict.append((_confidence_to_verdict(cur_conf),
+                                "（AI暂不可用，按粗筛置信度判定）", item_id))
             continue
 
         # 有正文 → 全文精判
@@ -641,9 +670,18 @@ def _refine_session_matches(session_id: str) -> None:
             res = _llm_refine_candidate(
                 client, r["requirement"], r.get("matched_filename") or "", content,
             )
+            llm_calls += 1
+            consecutive_fails = 0
         except Exception as e:  # noqa: BLE001
+            consecutive_fails += 1
             logger.warning("精判失败 item=%s: %s（保留原匹配）", item_id, e)
-            _update_verdict(item_id, _confidence_to_verdict(cur_conf), "")
+            if consecutive_fails >= _REFINE_MAX_CONSECUTIVE_FAILS:
+                llm_down = True
+                logger.error(
+                    "精判连续失败 %d 次，判定 LLM 不可用，本 session 剩余项降级为置信度判定",
+                    consecutive_fails,
+                )
+            upd_verdict.append((_confidence_to_verdict(cur_conf), "", item_id))
             continue
 
         satisfies = bool(res.get("satisfies", True))
@@ -659,22 +697,21 @@ def _refine_session_matches(session_id: str) -> None:
         else:
             new_conf = max(cur_conf, refined_conf)
 
-        verdict = _confidence_to_verdict(new_conf)
+        upd_conf.append((new_conf, _confidence_to_verdict(new_conf), evidence, item_id))
+
+    # ── 一把写库 ──
+    if upd_conf or upd_verdict:
         with _connect() as conn:
-            conn.execute(
-                """UPDATE dd_match_items
-                   SET confidence = ?, verdict = ?, evidence = ?
-                   WHERE id = ?""",
-                (new_conf, verdict, evidence, item_id),
-            )
-
-
-def _update_verdict(item_id: str, verdict: str, evidence: str) -> None:
-    with _connect() as conn:
-        conn.execute(
-            "UPDATE dd_match_items SET verdict = ?, evidence = ? WHERE id = ?",
-            (verdict, evidence, item_id),
-        )
+            if upd_conf:
+                conn.executemany(
+                    "UPDATE dd_match_items SET confidence=?, verdict=?, evidence=? WHERE id=?",
+                    upd_conf,
+                )
+            if upd_verdict:
+                conn.executemany(
+                    "UPDATE dd_match_items SET verdict=?, evidence=? WHERE id=?",
+                    upd_verdict,
+                )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -732,20 +769,24 @@ def record_session_decisions(session_id: str) -> int:
     return n
 
 
-def lookup_decision_memory(requirement: str) -> dict | None:
-    """查归一化需求对应的历史人工确认文件（取确认次数最高的一条）。"""
+def lookup_decision_memory(requirement: str, conn=None) -> dict | None:
+    """查归一化需求对应的历史人工确认文件（取确认次数最高的一条）。
+
+    可传入 conn 复用连接（批量场景避免每条 item 各开一个连接）。
+    """
     norm = normalize_requirement(requirement)
     if not norm:
         return None
-    with _connect() as conn:
-        row = conn.execute(
-            """SELECT file_path, filename, confirm_count
-               FROM dd_decision_memory
-               WHERE requirement_norm = ?
-               ORDER BY confirm_count DESC, updated_at DESC
-               LIMIT 1""",
-            (norm,),
-        ).fetchone()
+    sql = """SELECT file_path, filename, confirm_count
+             FROM dd_decision_memory
+             WHERE requirement_norm = ?
+             ORDER BY confirm_count DESC, updated_at DESC
+             LIMIT 1"""
+    if conn is not None:
+        row = conn.execute(sql, (norm,)).fetchone()
+        return dict(row) if row else None
+    with _connect() as c:
+        row = c.execute(sql, (norm,)).fetchone()
     return dict(row) if row else None
 
 
@@ -757,15 +798,18 @@ def _apply_decision_memory(
     「仍在当前库」用 index_rows 的 file_path 集合判断（材料库共享，但偶有增删）。
     命中项写入高置信 + MEMORY_REASON_PREFIX 标记，精判阶段据此跳过。
     返回命中并覆盖的条数。
+
+    性能：全程单连接（查记忆 + 批量写回），避免每条 item 开 1~2 个连接。
     """
     available = {r["file_path"] for r in index_rows}
-    hits = 0
-    for item in items:
-        mem = lookup_decision_memory(item.get("requirement", ""))
-        if not mem:
-            continue
-        if mem["file_path"] not in available:
-            continue  # 记忆文件已不在当前材料库，不强行套用
+    updates: list[tuple] = []
+    # 单连接复用：N 条需求的记忆查询共用一个连接（而非每条各开一个）
+    with _connect() as rconn:
+        mems = [(item, lookup_decision_memory(item.get("requirement", ""), conn=rconn))
+                for item in items]
+    for item, mem in mems:
+        if not mem or mem["file_path"] not in available:
+            continue  # 无记忆 / 记忆文件已不在当前材料库 → 不强行套用
         reason = f"{MEMORY_REASON_PREFIX}（历史已确认{mem.get('confirm_count', 1)}次）"
         candidates_json = json.dumps([{
             "file_path": mem["file_path"],
@@ -773,14 +817,16 @@ def _apply_decision_memory(
             "confidence": _MEMORY_CONFIDENCE,
             "reason": reason,
         }], ensure_ascii=False)
+        updates.append((mem["file_path"], mem.get("filename", ""), _MEMORY_CONFIDENCE,
+                        reason, candidates_json, item["id"]))
+
+    if updates:
         with _connect() as conn:
-            conn.execute(
+            conn.executemany(
                 """UPDATE dd_match_items
-                   SET matched_file_path = ?, matched_filename = ?,
-                       confidence = ?, match_reason = ?, candidates_json = ?
-                   WHERE id = ?""",
-                (mem["file_path"], mem.get("filename", ""), _MEMORY_CONFIDENCE,
-                 reason, candidates_json, item["id"]),
+                   SET matched_file_path=?, matched_filename=?, confidence=?,
+                       match_reason=?, candidates_json=?
+                   WHERE id=?""",
+                updates,
             )
-        hits += 1
-    return hits
+    return len(updates)
