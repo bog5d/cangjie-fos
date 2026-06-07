@@ -4,6 +4,23 @@
 
 ---
 
+## [1.9.3] — 2026-06-06  资产瘦身（一）：删除死表 contribution_scores
+
+> 测试基线：803 passed。产品审计后，砍掉"团队知识贡献管理"里**从未接通**的脚手架。
+> 背景：资产管理子系统(~6000行)被确认与核心尽调/路演流程基本脱钩；其中"贡献分"
+> 这条线服务的是"未来有团队时的管理员"，非打单用户，且是纯空架子。
+
+### Removed（零功能损失）
+- **`contribution_scores` 表**（migration 28 `DROP TABLE`，已从 DDL 移除）：确认**无任何生产写入**（仅测试写、一个无前端的 `/api/contributions` 端点读）。
+- `asset_db.db_contribution_score_upsert` / `db_contribution_scores_list`、`pitch_job_db` 对应再导出。
+- `routes/materials.py`：`GET /api/contributions` 端点 + `ContributionScore`/`ContributionsResponse` 模型。
+- 对应测试（test_pitch_job_db 1 例、test_p2_materials_api 3 例）。
+
+### 说明（重要：审计修正）
+- 原产品审计(agent 静态扫描)曾把 `material_match_history`、`nightly_suggestions` 也列为"可删死表"，**经核实不准确**：前者由 `evolution_capture` 在**复盘提交活路径**(`pitch.py`)写入，后者由 lifespan **定时任务**(每日2AM)调度。二者是"半成品但接进了活流程"，删除＝真实功能下线，需单独决策，**本版未动**。
+
+---
+
 ## [1.9.2] — 2026-06-06  DD 红队 P0 加固：抗注入 / 防记忆投毒 / 防路径穿越
 
 > 测试基线：807 passed（新增 `test_dd_redteam.py` 9 个 + 记忆信任 2 个）

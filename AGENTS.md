@@ -24,12 +24,12 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v1.9.2，2026-06-06）
+## 当前状态（v1.9.3，2026-06-06）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v1.9.2**（+ 红队 P0：抗注入/防记忆投毒/防路径穿越） |
-| 测试基线 | **807 passed**，0 failed |
+| 版本 | **v1.9.3**（+ 资产瘦身：删死表 contribution_scores） |
+| 测试基线 | **803 passed**，0 failed |
 | 压测 | `uv run python bench/dd_stress.py --scale large --charts`；CI 烟雾 `tests/test_dd_stress_smoke.py` |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
