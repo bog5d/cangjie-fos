@@ -267,37 +267,56 @@ class TestPhase3CrossInstitutionMemory:
         assert mem["file_path"] == fpath
         assert mem["confirm_count"] == 1
 
-    def test_memory_applies_across_institutions(self, tmp_path):
-        """机构A确认的「需求→文件」，机构B同类需求应被自动锁定（核心场景）。"""
+    def _seed_memory(self, tmp_path, folder, fpath, times: int):
+        """让某「需求→文件」被人工确认 times 次（跨 session），喂进跨机构记忆。"""
         from cangjie_fos.services.dd_match_service import (
-            create_match_session, record_session_decisions, run_matching,
-            MEMORY_REASON_PREFIX,
+            create_match_session, record_session_decisions,
+        )
+        for k in range(times):
+            its = [{"item_no": "1", "category": "财务", "requirement": "近三年审计报告"}]
+            sa = create_match_session("t", f"a{k}.xlsx", folder, its, institution_name=f"机构{k}")
+            iid = _get_first_item_id(sa)
+            _set_match(sa, iid, fpath, "审计报告2023.pdf", 0.9, confirmed=1)
+            record_session_decisions(sa)
+
+    def test_memory_single_confirm_is_suggestion_not_auto_green(self, tmp_path):
+        """红队加固：仅确认 1 次的记忆 → 机构B锁定但只给 yellow（待复核），不被 bulk-confirm 自动放行。"""
+        from cangjie_fos.services.dd_match_service import (
+            create_match_session, run_matching, MEMORY_REASON_PREFIX,
         )
         folder = str(tmp_path)
         fpath = str(tmp_path / "审计报告2023.pdf")
-        _insert_index_row(folder, fpath, "审计报告2023.pdf",
-                          content_text="审计报告 标准无保留意见")
+        _insert_index_row(folder, fpath, "审计报告2023.pdf", content_text="审计报告 标准无保留意见")
+        self._seed_memory(tmp_path, folder, fpath, times=1)
 
-        # 机构A：确认 审计报告 → 该文件
-        items_a = [{"item_no": "1", "category": "财务", "requirement": "近三年审计报告"}]
-        sid_a = create_match_session("t", "a.xlsx", folder, items_a, institution_name="机构A")
-        item_a = _get_first_item_id(sid_a)
-        _set_match(sid_a, item_a, fpath, "审计报告2023.pdf", 0.9, confirmed=1)
-        record_session_decisions(sid_a)
-
-        # 机构B：同样的需求，全新 session。batch 匹配 mock 成「无匹配」，
-        # 证明锁定纯粹来自跨机构记忆。
         items_b = [{"item_no": "1", "category": "财务", "requirement": "近三年审计报告"}]
         sid_b = create_match_session("t", "b.xlsx", folder, items_b, institution_name="机构B")
         item_b = _get_first_item_id(sid_b)
+        with patch("cangjie_fos.services.dd_match_service._llm_batch_match", return_value={}):
+            run_matching(sid_b, folder)
 
-        with patch("cangjie_fos.services.dd_match_service._llm_batch_match",
-                   return_value={}):
+        item = _get_item(sid_b, item_b)
+        assert item["matched_file_path"] == fpath               # 仍预填（沿用 UX 不变）
+        assert item["match_reason"].startswith(MEMORY_REASON_PREFIX)
+        assert item["verdict"] == "yellow"                       # 但只是建议
+        assert item["confidence"] < 0.8                          # 低于 bulk-confirm 阈值
+
+    def test_memory_trusted_after_multiple_confirms_is_green(self, tmp_path):
+        """确认≥2次的记忆升级为可信 → green、高置信，可被一键放行。"""
+        from cangjie_fos.services.dd_match_service import create_match_session, run_matching
+        folder = str(tmp_path)
+        fpath = str(tmp_path / "审计报告2023.pdf")
+        _insert_index_row(folder, fpath, "审计报告2023.pdf", content_text="审计报告 标准无保留意见")
+        self._seed_memory(tmp_path, folder, fpath, times=2)
+
+        items_b = [{"item_no": "1", "category": "财务", "requirement": "近三年审计报告"}]
+        sid_b = create_match_session("t", "b.xlsx", folder, items_b, institution_name="机构B")
+        item_b = _get_first_item_id(sid_b)
+        with patch("cangjie_fos.services.dd_match_service._llm_batch_match", return_value={}):
             run_matching(sid_b, folder)
 
         item = _get_item(sid_b, item_b)
         assert item["matched_file_path"] == fpath
-        assert item["match_reason"].startswith(MEMORY_REASON_PREFIX)
         assert item["verdict"] == "green"
         assert item["confidence"] >= 0.9
 

@@ -95,8 +95,15 @@ def export_to_folder(session_id: str, output_dir: str) -> dict:
 
         cat_dir = out / _safe_dirname(item.get("category") or "其他")
         cat_dir.mkdir(exist_ok=True)
-        dest_name = f"{item['item_no']}_{item['matched_filename']}"
-        shutil.copy2(src, cat_dir / dest_name)
+        dest_name = f"{_safe_component(str(item['item_no']), 12) or 'x'}_{_safe_filename(item['matched_filename'])}"
+        dest = cat_dir / dest_name
+        # 兜底闸：清洗后仍可能异常 → 确认目标在 output_dir 之内才写
+        if not _within(out, dest):
+            logger.warning("跳过疑似越界目标 %s（item %s）", dest, item.get("item_no"))
+            item["_skip_reason"] = "文件名异常（安全跳过）"
+            missing.append(item)
+            continue
+        shutil.copy2(src, dest)
         exported.append(item)
         total_bytes += src_size
 
@@ -166,9 +173,11 @@ def export_by_question(
         q_dir.mkdir(exist_ok=True)
 
         # ── 主匹配文件 ────────────────────────────────────────────
-        shutil.copy2(src, q_dir / Path(src).name)
-        exported_files += 1
-        exported_paths.append(src)
+        dest = q_dir / _safe_filename(Path(src).name)
+        if _within(out, dest):
+            shutil.copy2(src, dest)
+            exported_files += 1
+            exported_paths.append(src)
 
         # ── 额外文件（extra_files_json） ─────────────────────────
         extra_raw = item.get("extra_files_json")
@@ -179,8 +188,9 @@ def export_by_question(
                 extra_list = []
             for ef in extra_list:
                 ep = ef.get("file_path", "")
-                if ep and Path(ep).is_file():
-                    shutil.copy2(ep, q_dir / Path(ep).name)
+                edest = q_dir / _safe_filename(Path(ep).name)
+                if ep and Path(ep).is_file() and _within(out, edest):
+                    shutil.copy2(ep, edest)
                     exported_files += 1
                     exported_paths.append(ep)
 
@@ -232,8 +242,33 @@ def _write_gap_report(out: Path, missing: list[dict]) -> None:
     (out / "缺失清单.txt").write_text("\n".join(lines), encoding="utf-8")
 
 
+def _safe_component(name: str, maxlen: int) -> str:
+    """清洗单个路径组件：去非法字符/路径分隔/控制字符/前导尾随点。
+
+    红队加固：杜绝 `.`、`..`、含 `/`、`\\` 的名字，防止导出时穿越出 output_dir。
+    """
+    invalid = set(r'\/:*?"<>|') | {chr(c) for c in range(32)}
+    clean = "".join(c for c in (name or "") if c not in invalid)
+    clean = clean.replace("\x00", "").strip().strip(".").strip()
+    return clean[:maxlen] or ""
+
+
 def _safe_dirname(name: str) -> str:
-    """过滤非法文件名字符。"""
-    invalid = r'\/:*?"<>|'
-    clean = "".join(c for c in name if c not in invalid)
-    return clean[:30] or "其他"
+    """过滤非法文件名字符（目录名）。"""
+    return _safe_component(name, 30) or "其他"
+
+
+def _safe_filename(name: str) -> str:
+    """清洗文件名：先取 basename（去掉任何路径），再清洗。保留扩展名中的点。"""
+    base = Path(name or "").name  # 去掉任何 ../ 路径成分
+    return _safe_component(base, 80) or "未命名文件"
+
+
+def _within(base: Path, target: Path) -> bool:
+    """target 解析后是否仍在 base 之内（防穿越的兜底闸）。"""
+    try:
+        target.resolve().relative_to(base.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+

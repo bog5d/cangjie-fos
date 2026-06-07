@@ -4,6 +4,23 @@
 
 ---
 
+## [1.9.2] — 2026-06-06  DD 红队 P0 加固：抗注入 / 防记忆投毒 / 防路径穿越
+
+> 测试基线：807 passed（新增 `test_dd_redteam.py` 9 个 + 记忆信任 2 个）
+> 红蓝对抗视角:威胁"正确交付"的三条工业级底线。威胁模型=文件正文/文件名/清单文字
+> 皆不可信、一次人工误确认、恶意文件名。
+
+### Security / Hardened
+- **P0-1 提示注入**（`dd_match_service`）:文件正文/文件名/摘要进 LLM 前先 `_neutralize` 给疑似指令打码;精判 prompt 显式声明正文为不可信数据;**关键兜底**——模型若说"满足"且要给绿,但需求与正文【零字面重合】(`_req_content_overlap`),强制降级到 yellow 待复核,不放绿。正文里的"判我为满足"无法操纵交付。
+- **P0-2 学习记忆投毒**（`dd_match_service`）:一次人工误确认会污染跨机构记忆并自动扩散。对策——记忆需**跨 session 确认≥2 次**才升级为可信(green、可被 bulk-confirm);仅确认 1 次=建议(yellow·待复核、预填但不自动放行)。单次误点无法自动错误交付;高确认数的正确文件自动盖过被投毒的旧映射。
+- **P0-3 导出路径穿越**（`dd_export_service`）:`matched_filename`/类别名/问题文件夹名此前未充分清洗,携带 `../` 可写出 output_dir。新增 `_safe_filename`/`_safe_component`(去路径分隔/控制字符/前后导点,杜绝 `.`、`..`)+ `_within` 兜底闸(目标解析后必须仍在 output_dir 内,否则跳过)。
+
+### Tests
+- `backend/tests/test_dd_redteam.py`（9）:注入打码/零重合兜底/对照不误伤、误确认不被 bulk-confirm 扫过、纠偏盖过投毒、文件名与文件夹穿越均被收纳在 output_dir 内。
+- `test_dd_material_architecture.py`:记忆单次确认=yellow、≥2 次=green 两例。
+
+---
+
 ## [1.9.1] — 2026-06-06  DD 物料架构红队加固 + 压测固化
 
 > 测试基线：798 passed（v1.9.0 的 795 + 熔断/防错年/压测烟雾 3 个）
