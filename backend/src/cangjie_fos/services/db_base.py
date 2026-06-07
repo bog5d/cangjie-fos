@@ -110,16 +110,6 @@ CREATE TABLE IF NOT EXISTS material_contributions (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mat_contrib_path ON material_contributions(relative_path);
 
-CREATE TABLE IF NOT EXISTS material_match_history (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    institution_id TEXT NOT NULL,
-    asset_filename TEXT NOT NULL,
-    relative_path  TEXT NOT NULL,
-    matched_at     REAL NOT NULL,
-    score          REAL NOT NULL DEFAULT 0.0
-);
-CREATE INDEX IF NOT EXISTS idx_mat_match_inst ON material_match_history(institution_id, matched_at DESC);
-
 CREATE TABLE IF NOT EXISTS nightly_suggestions (
     id          TEXT PRIMARY KEY,
     tenant_id   TEXT NOT NULL,
@@ -396,6 +386,9 @@ _MIGRATIONS: list[tuple[int, str]] = [
     # contribution_scores：零生产写入（仅测试写、一个无前端端点读），属"内部团队
     # 知识贡献管理"的半成品脚手架。服务的是"未来有团队时的管理员"，非打单用户。删。
     (28, "DROP TABLE IF EXISTS contribution_scores"),
+    # material_match_history：复盘提交时默默采集的素材匹配历史，唯一读取方是
+    # 一个 admin 调试端点（无真实消费）。复盘提交流程不依赖它。删。
+    (29, "DROP TABLE IF EXISTS material_match_history"),
 ]
 
 

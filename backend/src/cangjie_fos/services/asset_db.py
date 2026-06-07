@@ -1,8 +1,7 @@
 """素材/匹配/健康度领域 DB 操作。
 
 涵盖：assets / asset_scan_config / asset_health_history /
-      material_contributions / material_match_history /
-      match_sessions / match_outcomes /
+      material_contributions / match_sessions / match_outcomes /
       follow_up_items（行动项）
 
 与 pitch_job_db.py 共享同一个 SQLite 文件，通过 db_base._connect() 获取连接。
@@ -331,44 +330,6 @@ def db_material_contribution_bulk_upsert(
             conn.commit()
         finally:
             conn.close()
-
-
-# ---------------------------------------------------------------------------
-# material_match_history — 素材-机构匹配历史
-# ---------------------------------------------------------------------------
-
-def db_material_match_insert(
-    institution_id: str,
-    asset_filename: str,
-    relative_path: str,
-    *,
-    score: float = 0.0,
-) -> None:
-    with _write_lock:
-        conn = _connect()
-        try:
-            conn.execute(
-                """INSERT INTO material_match_history
-                    (institution_id, asset_filename, relative_path, matched_at, score)
-                VALUES (?, ?, ?, ?, ?)""",
-                (institution_id, asset_filename, relative_path, time.time(), score),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-
-def db_material_matches_list(institution_id: str, *, limit: int = 50) -> list[dict[str, Any]]:
-    conn = _connect()
-    try:
-        cur = conn.execute(
-            "SELECT * FROM material_match_history WHERE institution_id = ? "
-            "ORDER BY matched_at DESC LIMIT ?",
-            (institution_id, max(1, min(int(limit), 200))),
-        )
-        return [dict(row) for row in cur.fetchall()]
-    finally:
-        conn.close()
 
 
 # ---------------------------------------------------------------------------

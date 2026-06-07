@@ -90,15 +90,6 @@ def test_materials_match_missing_institution_id():
     assert resp.status_code == 422
 
 
-def test_materials_match_saves_to_history():
-    from cangjie_fos.services.pitch_job_db import db_material_matches_list
-
-    with patch("cangjie_fos.api.routes.materials.load_asset_index_dict", return_value=_MOCK_ASSET_INDEX):
-        client.post("/api/materials/match", json={"institution_id": "inst-xyz"})
-    history = db_material_matches_list("inst-xyz")
-    assert len(history) > 0
-
-
 def test_materials_match_no_asset_index():
     with patch(
         "cangjie_fos.api.routes.materials.load_asset_index_dict",

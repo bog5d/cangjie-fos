@@ -98,13 +98,11 @@ def capture_review_diff(
     同时触发全链路数据关联：
     1. 提取 edited 报告中的风险点关键词 → 找相关素材
     2. 记录素材使用（material_contributions usage_count +1）
-    3. 将匹配结果写入 material_match_history
     """
     from cangjie_fos.services.pitch_job_db import (  # noqa: PLC0415
         db_diff_insert,
         db_assets_search_by_keywords,
         db_material_contribution_bulk_upsert,
-        db_material_match_insert,
     )
 
     diff_summary = compute_diff_summary(original_report, edited_report)
@@ -131,13 +129,6 @@ def capture_review_diff(
             if matched_assets:
                 asset_ids = [a["asset_filename"] for a in matched_assets]
                 db_material_contribution_bulk_upsert(tenant_id, asset_ids, action="review_use")
-                for asset in matched_assets:
-                    db_material_match_insert(
-                        tenant_id,  # institution_id = tenant_id
-                        asset["asset_filename"],
-                        asset["relative_path"],
-                        score=1.0,
-                    )
                 logger.info(
                     "phase4_association_triggered job_id=%s matched_assets=%d",
                     job_id,
