@@ -110,15 +110,6 @@ CREATE TABLE IF NOT EXISTS material_contributions (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mat_contrib_path ON material_contributions(relative_path);
 
-CREATE TABLE IF NOT EXISTS contribution_scores (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    contributor TEXT NOT NULL,
-    score       REAL NOT NULL DEFAULT 0.0,
-    job_count   INTEGER NOT NULL DEFAULT 0,
-    updated_at  REAL NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_contrib_scores_contributor ON contribution_scores(contributor);
-
 CREATE TABLE IF NOT EXISTS material_match_history (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     institution_id TEXT NOT NULL,
@@ -401,6 +392,10 @@ _MIGRATIONS: list[tuple[int, str]] = [
         updated_at      REAL NOT NULL
     )"""),
     (27, "CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm)"),
+    # ── 瘦身（v1.9.3）：删除从未真正接通的死表 ──────────────────────────────
+    # contribution_scores：零生产写入（仅测试写、一个无前端端点读），属"内部团队
+    # 知识贡献管理"的半成品脚手架。服务的是"未来有团队时的管理员"，非打单用户。删。
+    (28, "DROP TABLE IF EXISTS contribution_scores"),
 ]
 
 
