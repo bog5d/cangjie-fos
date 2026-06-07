@@ -4,6 +4,20 @@
 
 ---
 
+## [1.9.4] — 2026-06-06  资产瘦身（二）：删除 material_match_history
+
+> 测试基线：798 passed。下线"复盘时默默采集、仅调试端点读"的素材匹配历史。
+
+### Removed（用户无感，复盘提交流程不依赖）
+- **`material_match_history` 表**（migration 29 `DROP TABLE` + 从 DDL 移除）：由 `evolution_capture` 在复盘提交时写入，但唯一读取方是一个 admin 调试端点 `/api/v1/admin/association-log`（无真实消费）。
+- `asset_db.db_material_match_insert` / `db_material_matches_list` + `pitch_job_db` 再导出。
+- `evolution_capture.capture_review_diff`：移除写 match_history 的循环（**保留** `db_diff_insert` 核心 + `material_contributions` 使用计数累加）。
+- `routes/admin.py`：`/association-log` 调试端点。
+- `routes/materials.py`：`/api/materials/match` 里写 match_history 的调用（保留贡献计数）。
+- 对应测试若干（test_pitch_job_db / test_p2_materials_api / test_phase4_association 的 association-log 与 match-history 用例）；Test 8 改为断言 `capture_review_diff` 仍正常写 review_diffs。
+
+---
+
 ## [1.9.3] — 2026-06-06  资产瘦身（一）：删除死表 contribution_scores
 
 > 测试基线：803 passed。产品审计后，砍掉"团队知识贡献管理"里**从未接通**的脚手架。

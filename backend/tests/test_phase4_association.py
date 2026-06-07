@@ -18,7 +18,6 @@ from cangjie_fos.services.pitch_job_db import (
     db_assets_search_by_keywords,
     db_material_contribution_bulk_upsert,
     db_material_contributions_list,
-    db_material_matches_list,
 )
 
 client = TestClient(app)
@@ -189,17 +188,12 @@ def test_capture_review_diff_triggers_association():
 
 
 # ---------------------------------------------------------------------------
-# Test 8: capture_review_diff 写入 material_match_history
+# Test 8: capture_review_diff 核心行为（写 review_diffs）仍正常
+# （match_history 采集已下线，但 diff 捕获这一保留路径不受影响）
 # ---------------------------------------------------------------------------
 
 
-def test_capture_review_diff_writes_match_history():
-    db_material_contribution_upsert(
-        "history_test.pdf", "history_test.pdf",
-        tags=["financing", "risk"],
-        usage_count_delta=1,
-    )
-
+def test_capture_review_diff_writes_diff():
     job_id = str(uuid.uuid4())
     tenant = "t-match"
     db_job_create(job_id, tenant)
@@ -211,17 +205,14 @@ def test_capture_review_diff_writes_match_history():
     }
 
     from cangjie_fos.services.evolution_capture import capture_review_diff
-    capture_review_diff(
+    diff_id = capture_review_diff(
         job_id=job_id,
         tenant_id=tenant,
         committed_at=time.time(),
         original_report=None,
         edited_report=edited,
     )
-
-    matches = db_material_matches_list(tenant)
-    assert len(matches) >= 1
-    assert any(m["asset_filename"] == "history_test.pdf" for m in matches)
+    assert isinstance(diff_id, int)  # review_diffs 写入成功（核心保留行为）
 
 
 # ---------------------------------------------------------------------------
@@ -261,45 +252,3 @@ async def test_nightly_settle_real_material_suggestions():
     assert all(r["type"] in ("material_update", "institution_insight") for r in rows)
 
 
-# ---------------------------------------------------------------------------
-# Test 10: /api/v1/admin/association-log 返回 200 + 正确字段结构
-# ---------------------------------------------------------------------------
-
-
-def test_association_log_endpoint_200():
-    resp = client.get("/api/v1/admin/association-log?tenant_id=test-tenant")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "tenant_id" in data
-    assert "total" in data
-    assert "records" in data
-    assert isinstance(data["records"], list)
-
-
-# ---------------------------------------------------------------------------
-# Test 11: /api/v1/admin/association-log 缺少 tenant_id → 422
-# ---------------------------------------------------------------------------
-
-
-def test_association_log_missing_tenant_id():
-    resp = client.get("/api/v1/admin/association-log")
-    assert resp.status_code == 422
-
-
-# ---------------------------------------------------------------------------
-# Test 12: association-log 有数据时返回聚合记录
-# ---------------------------------------------------------------------------
-
-
-def test_association_log_with_data():
-    from cangjie_fos.services.pitch_job_db import db_material_match_insert
-    tenant = "t-log"
-    db_material_match_insert(tenant, "file.pdf", "docs/file.pdf", score=0.9)
-    db_material_match_insert(tenant, "file2.pdf", "docs/file2.pdf", score=0.8)
-
-    resp = client.get(f"/api/v1/admin/association-log?tenant_id={tenant}")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] >= 1
-    assert data["records"][0]["institution_id"] == tenant
-    assert data["records"][0]["matched_count"] >= 2

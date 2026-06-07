@@ -9,7 +9,6 @@ from cangjie_fos.services.asset_index_io import load_asset_index_dict
 from cangjie_fos.services.pitch_job_db import (
     db_material_contribution_upsert,
     db_material_contributions_list,
-    db_material_match_insert,
 )
 
 logger = structlog.get_logger(__name__)
@@ -121,12 +120,6 @@ def materials_match(body: MaterialMatchRequest) -> MaterialMatchResponse:
 
     matches: list[MatchedAsset] = []
     for asset, score in scored:
-        db_material_match_insert(
-            body.institution_id,
-            asset.get("filename", ""),
-            asset.get("relative_path", ""),
-            score=score,
-        )
         db_material_contribution_upsert(
             asset.get("filename", ""),
             asset.get("relative_path", ""),
