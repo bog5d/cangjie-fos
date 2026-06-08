@@ -97,9 +97,6 @@ from cangjie_fos.services.memory_db import (
     db_exec_memory_insert,
     db_exec_memory_list,
     db_exec_memory_delete,
-    db_nightly_suggestion_insert,
-    db_nightly_suggestion_list_pending,
-    db_nightly_suggestion_mark_consumed,
 )
 
 # ── __all__：让 import * 也能透传（IDE、linter 友好） ─────────────────────────
@@ -125,8 +122,6 @@ __all__ = [
     "db_wiki_episode_insert", "db_wiki_episodes_for_source",
     # memory domain
     "db_exec_memory_insert", "db_exec_memory_list", "db_exec_memory_delete",
-    "db_nightly_suggestion_insert", "db_nightly_suggestion_list_pending",
-    "db_nightly_suggestion_mark_consumed",
     # job domain (defined below)
     "db_job_create", "db_job_update", "db_job_get",
     "db_job_list_for_tenant", "db_job_list_recent_errors", "db_job_list_risk_keywords",

@@ -186,17 +186,6 @@ def test_asset_wiki_api(isolated_db):
     assert "selection_rate" in body
 
 
-def test_digest_pending_api(isolated_db):
-    """/api/v1/digest/pending 返回 suggestions 列表（可为空）。"""
-    with TestClient(global_app) as client:
-        r = client.get("/api/v1/digest/pending")
-    assert r.status_code == 200
-    body = r.json()
-    assert "suggestions" in body
-    assert "count" in body
-    assert isinstance(body["suggestions"], list)
-
-
 def test_match_route_includes_gap_hints(isolated_db, monkeypatch):
     """POST /api/v1/assets/match 返回中包含 gap_hints 字段。"""
     monkeypatch.setattr(

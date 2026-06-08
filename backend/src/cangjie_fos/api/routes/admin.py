@@ -15,11 +15,11 @@ doctor_router = APIRouter(prefix="/api/v1", tags=["admin"])
 
 @router.post("/nightly-settle")
 async def trigger_nightly_settle(tenant_id: str) -> dict:
-    """立即执行单租户夜间结算，返回生成的建议数量。"""
+    """立即执行单租户夜间结算（偏好提取），返回提取到的偏好条数。"""
     from cangjie_fos.services.nightly_settle import nightly_settle_for_tenant  # noqa: PLC0415
 
     count = await nightly_settle_for_tenant(tenant_id)
-    return {"tenant_id": tenant_id, "suggested": count}
+    return {"tenant_id": tenant_id, "extracted": count}
 
 
 # ── Doctor 诊断端点 ──────────────────────────────────────────────────────────

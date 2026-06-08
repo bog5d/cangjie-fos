@@ -38,8 +38,6 @@ from cangjie_fos.services.pitch_job_db import (
     db_match_session_create,
     db_match_session_get,
     db_match_session_update,
-    db_nightly_suggestion_list_pending,
-    db_nightly_suggestion_mark_consumed,
 )
 
 from cangjie_fos.services import github_sync
@@ -335,24 +333,6 @@ def get_asset_wiki_route(relative_path: str) -> dict[str, Any]:
     数据来源：match_outcomes 表聚合，零延迟。
     """
     return db_asset_wiki_summary(relative_path)
-
-
-@router.get("/api/v1/digest/pending", tags=["assets"])
-def get_digest_pending_route() -> dict[str, Any]:
-    """返回未读晨报建议（来自 nightly_suggestions 表）。
-
-    供前端 DigestBanner 组件读取，展示给用户后调用
-    POST /api/v1/digest/{id}/consume 标记为已读。
-    """
-    suggestions = db_nightly_suggestion_list_pending(tenant_id="default", limit=5)
-    return {"suggestions": [dict(s) for s in suggestions], "count": len(suggestions)}
-
-
-@router.post("/api/v1/digest/{suggestion_id}/consume", tags=["assets"])
-def post_digest_consume_route(suggestion_id: str) -> dict[str, Any]:
-    """将晨报建议标记为已读（consumed_at 设为当前时间）。"""
-    db_nightly_suggestion_mark_consumed(suggestion_id)
-    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

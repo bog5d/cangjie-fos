@@ -110,19 +110,6 @@ CREATE TABLE IF NOT EXISTS material_contributions (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mat_contrib_path ON material_contributions(relative_path);
 
-CREATE TABLE IF NOT EXISTS nightly_suggestions (
-    id          TEXT PRIMARY KEY,
-    tenant_id   TEXT NOT NULL,
-    created_at  REAL NOT NULL,
-    consumed_at REAL,
-    type        TEXT NOT NULL,
-    content     TEXT NOT NULL,
-    asset_id    TEXT,
-    priority    INTEGER DEFAULT 5
-);
-CREATE INDEX IF NOT EXISTS idx_nightly_suggestions_pending
-    ON nightly_suggestions(tenant_id, consumed_at) WHERE consumed_at IS NULL;
-
 CREATE TABLE IF NOT EXISTS assets (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     filename        TEXT NOT NULL,
@@ -389,6 +376,9 @@ _MIGRATIONS: list[tuple[int, str]] = [
     # material_match_history：复盘提交时默默采集的素材匹配历史，唯一读取方是
     # 一个 admin 调试端点（无真实消费）。复盘提交流程不依赖它。删。
     (29, "DROP TABLE IF EXISTS material_match_history"),
+    # nightly_suggestions：夜间建议/晨报 banner。生成逻辑一直是 mock，banner 永远空。
+    # 整条下线（定时任务保留偏好提取部分）。
+    (30, "DROP TABLE IF EXISTS nightly_suggestions"),
 ]
 
 

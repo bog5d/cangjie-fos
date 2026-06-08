@@ -24,11 +24,11 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v1.9.4，2026-06-06）
+## 当前状态（v1.9.5，2026-06-06）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v1.9.4**（+ 资产瘦身二：删 material_match_history） |
+| 版本 | **v1.9.5**（+ 资产瘦身三：下线 nightly_suggestions 夜间建议） |
 | 测试基线 | **803 passed**，0 failed |
 | 压测 | `uv run python bench/dd_stress.py --scale large --charts`；CI 烟雾 `tests/test_dd_stress_smoke.py` |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
