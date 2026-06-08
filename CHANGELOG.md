@@ -4,6 +4,28 @@
 
 ---
 
+## [1.9.5] — 2026-06-06  资产瘦身（三）：整条下线 nightly_suggestions / 夜间建议
+
+> 测试基线：791 passed。生成逻辑一直是 mock、前端 banner 长期为空的"夜间建议/晨报"
+> 功能整条下线。**保留**真实的偏好提取学习链路。
+
+### Removed（用户可见但本就无产出）
+- **`nightly_suggestions` 表**（migration 30 `DROP TABLE` + 从 DDL 移除）。
+- `memory_db` 三个函数（insert / list_pending / mark_consumed）+ `pitch_job_db` 再导出。
+- `routes/assets.py`：`GET /api/v1/digest/pending` + `POST /api/v1/digest/{id}/consume`。
+- `npc_chat_graph`：豆豆里注入"夜间进化建议"的读取块。
+- `nightly_settle.py`：删除 mock 素材建议生成（`_generate_material_suggestions` / `_simple_tfidf_score` / NPC 推送），**保留并简化为只做偏好提取**。
+- 前端：删除 `DigestBanner.tsx` + `AssetLibrary` 里的引用。
+
+### Kept（明确边界，未误伤）
+- **偏好提取链路完整保留**：定时任务每晚仍跑 `run_preference_extraction`（review_diffs → investor_prefs → Coach 注入）。`admin /nightly-settle` 触发端点保留（返回 `extracted` 偏好条数）。
+- **反思飞轮**（`/api/v1/reflection/nightly-settle` → evolution_guidelines）与本功能无关，未触碰。
+
+### Tests
+- `test_nightly_settle.py` 重写为「偏好提取 + admin 端点」3 例；移除 `test_wiki_display` 的 digest 用例、`test_phase4_association` 的夜间建议生成用例。
+
+---
+
 ## [1.9.4] — 2026-06-06  资产瘦身（二）：删除 material_match_history
 
 > 测试基线：798 passed。下线"复盘时默默采集、仅调试端点读"的素材匹配历史。
