@@ -312,8 +312,27 @@ def get_institution_briefing_route(institution_name: str) -> dict[str, Any]:
 
     比 /profile 多返回 gap_hints（历史上要过但无法满足的材料清单）。
     设计用于匹配前展示给用户，帮助提前了解该机构的已知缺口。
+
+    v1.10.0：合入机构情报侧表（institution_intel）——尽调缺口 + 路演细分情报
+    （关键问题 / 兴趣信号），让机构简报反映"内容层"而不只是历史次数。
     """
-    return db_institution_briefing(institution_name)
+    briefing = db_institution_briefing(institution_name)
+
+    from cangjie_fos.services.institution_store import get_institution_intel_by_name  # noqa: PLC0415
+    intel = get_institution_intel_by_name(institution_name)
+    dd = intel.get("dd") or {}
+    roadshow = intel.get("roadshow") or {}
+    briefing["dd_summary"] = (
+        {"checklist": dd.get("checklist", ""), "total": dd.get("total", 0),
+         "confirmed": dd.get("confirmed", 0), "gaps": dd.get("gaps", [])}
+        if dd else None
+    )
+    briefing["roadshow_questions"] = roadshow.get("key_questions", [])
+    briefing["interest_signals"] = roadshow.get("interest_signals", [])
+    # 有侧表情报时，即便没有 match_sessions 历史也让面板展示
+    if (dd or roadshow) and not briefing.get("has_history"):
+        briefing["has_history"] = True
+    return briefing
 
 
 @router.get("/api/v1/assets/wiki/{relative_path:path}", tags=["assets"])

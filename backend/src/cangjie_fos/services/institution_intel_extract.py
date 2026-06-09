@@ -10,7 +10,11 @@ import uuid
 from typing import Any
 
 from cangjie_fos.schemas.institution import InstitutionProfile, InstitutionThermal, PipelineStage
-from cangjie_fos.services.institution_store import get_by_name, upsert_institution
+from cangjie_fos.services.institution_store import (
+    get_by_name,
+    merge_institution_intel,
+    upsert_institution,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +129,27 @@ def _llm_extract(transcript: str, report: Any) -> list[dict[str, Any]] | None:
     return None
 
 
+def _roadshow_intel_bits(report: Any) -> dict[str, Any] | None:
+    """从路演情报报告抽取细分情报（关键问题 / 兴趣信号）。非路演报告返回 None。"""
+    kq = getattr(report, "key_questions", None) or []
+    sig = getattr(report, "interest_signals", None) or []
+    questions = []
+    for q in list(kq)[:8]:
+        v = (getattr(q, "verbatim", "") or "")[:300]
+        c = (getattr(q, "underlying_concern", "") or "")[:300]
+        if v or c:
+            questions.append({"verbatim": v, "concern": c})
+    signals = []
+    for s in list(sig)[:8]:
+        v = (getattr(s, "verbatim", "") or "")[:300]
+        interp = (getattr(s, "interpretation", "") or "")[:300]
+        if v or interp:
+            signals.append({"verbatim": v, "interpretation": interp})
+    if not questions and not signals:
+        return None
+    return {"key_questions": questions, "interest_signals": signals, "updated_at": time.time()}
+
+
 def extract_and_persist_institution_intel(
     *,
     tenant_id: str,
@@ -193,3 +218,11 @@ def extract_and_persist_institution_intel(
             )
         )
         logger.info("institution_intel_upserted name=%s tenant_id=%s trace=%s", name, tenant_id, trace_id)
+
+        # 路演细分情报回流：关键问题 / 兴趣信号 写进机构情报侧表，供机构简报展示
+        rs_bits = _roadshow_intel_bits(report)
+        if rs_bits:
+            try:
+                merge_institution_intel(tenant_id=tenant_id, name=name, patch={"roadshow": rs_bits})
+            except Exception as e:  # noqa: BLE001
+                logger.warning("roadshow_intel_merge_skipped name=%s: %s", name, e)
