@@ -64,6 +64,26 @@ def _write_dd_outcomes(session_id: str) -> None:
                 selected_names=selected_names,
                 candidate_names=candidate_names,
             )
+        # 同步进「机构档案」(match_sessions)：让机构档案面板反映尽调台的真实确认/发送
+        # 活动（MatchMaker 下线后，此处接替成为档案的尽调侧数据源）。用 dd session_id
+        # 作 match_sessions.id，存在即更新 → 幂等，重复确认不会刷出多条历史。
+        if institution and selected_paths:
+            from cangjie_fos.services.asset_db import (  # noqa: PLC0415
+                db_match_session_get, db_match_session_create, db_match_session_update,
+            )
+            confirmed_files = [
+                {"filename": n, "relative_path": p}
+                for p, n in zip(selected_paths, selected_names)
+            ]
+            if db_match_session_get(session_id) is None:
+                db_match_session_create(
+                    session_id=session_id, institution=institution,
+                    req_text=f"尽调响应：确认 {len(selected_paths)} 个文件",
+                    requirements=[], results=[],
+                )
+            db_match_session_update(
+                session_id=session_id, status="confirmed", confirmed_files=confirmed_files,
+            )
     except Exception as e:  # noqa: BLE001
         logger.warning("_write_dd_outcomes failed for session %s: %s", session_id, e)
 

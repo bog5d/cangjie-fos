@@ -471,11 +471,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
       />
       <FollowUpWidget tenantId={tenant} />
       <Suspense fallback={<div className="text-slate-500 text-xs p-2">加载资料库…</div>}>
-        <AssetLibrary onLaunchDD={(text, inst) => {
-          setDdInitChecklist(text);
-          setDdInitInstitution(inst);
-          setDdOpen(true);
-        }} />
+        <AssetLibrary />
       </Suspense>
       <PitchUploadWizard
         open={wizardOpen}

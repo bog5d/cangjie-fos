@@ -372,19 +372,6 @@ def db_match_session_get(session_id: str) -> dict[str, Any] | None:
     return _match_row_to_dict(row) if row else None
 
 
-def db_match_session_list(limit: int = 50) -> list[dict[str, Any]]:
-    lim = max(1, min(int(limit), 200))
-    conn = _connect()
-    try:
-        cur = conn.execute(
-            "SELECT * FROM match_sessions ORDER BY created_at DESC LIMIT ?", (lim,)
-        )
-        rows = cur.fetchall()
-    finally:
-        conn.close()
-    return [_match_row_to_dict(r) for r in rows]
-
-
 def db_match_session_update(session_id: str, **kwargs: Any) -> None:
     """更新会话字段（status / confirmed_files / output_dir）。"""
     _allowed = {"status", "confirmed_files", "output_dir"}
