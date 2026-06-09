@@ -147,6 +147,7 @@ def run_pitch_file_job(
     on_status: Callable[[str], None] | None = None,
     skip_html_export: bool = False,
     cached_words: list[TranscriptionWord] | None = None,
+    on_words: Callable[[list[TranscriptionWord]], None] | None = None,
 ) -> tuple[list[TranscriptionWord], AnalysisReport]:
     """
     执行单条音频的完整流水线。失败时抛出异常，由调用方（如 Streamlit）捕获汇总。
@@ -193,6 +194,14 @@ def run_pitch_file_job(
             json.dumps([w.model_dump() for w in words], ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+
+    # 断点续跑钩子：ASR 结果已就绪，先让调用方持久化（哪怕后续评估失败也不丢转写，
+    # 失败后可经 retry-eval 端点从 words_json 直接重跑，省去昂贵的二次 ASR）。
+    if on_words is not None:
+        try:
+            on_words(words)
+        except Exception:  # noqa: BLE001
+            logger.exception("on_words callback failed (non-fatal)")
 
     _line("正在执行商业机密脱敏打码…")
     words_for_llm = mask_words_for_llm(words, params.sensitive_words)
