@@ -592,6 +592,25 @@ def _merge_institution_from_cloud(data: dict) -> None:
         tenant_id = data.get("tenant_id", "")
         if not institution_id or not tenant_id:
             return
+
+        # 跨源情报合并（独立于里程碑时间戳门控）：按子键各自的 updated_at 新者覆盖，
+        # 避免陈旧远端情报盖掉本地更新的情报。
+        remote_intel = data.get("intel_notes") or {}
+        name = data.get("name") or ""
+        if isinstance(remote_intel, dict) and remote_intel and name:
+            from cangjie_fos.services.institution_store import (  # noqa: PLC0415
+                get_institution_intel_by_name, merge_institution_intel,
+            )
+            local_intel = get_institution_intel_by_name(name)
+            patch = {}
+            for k, v in remote_intel.items():
+                if not isinstance(v, dict):
+                    continue
+                if float(v.get("updated_at") or 0) > float((local_intel.get(k) or {}).get("updated_at") or 0):
+                    patch[k] = v
+            if patch:
+                merge_institution_intel(tenant_id=tenant_id, name=name, patch=patch)
+
         local = get_by_id(institution_id=institution_id)
         remote_ts = float(data.get("updated_at") or 0)
         local_ts = float(local.updated_at) if local else 0
@@ -690,6 +709,14 @@ def push_institution(institution_id: str) -> bool:
         path = f"analytics/{tenant}/institutions/{institution_id}.json"
         payload = prof.model_dump()
         payload["fos_source"] = "cangjie_fos"
+        # 让 v1.10.0 的跨源情报（尽调缺口 / 路演细分情报）随机构档案一起跨端流通
+        try:
+            from cangjie_fos.services.institution_store import get_institution_intel_by_name  # noqa: PLC0415
+            intel = get_institution_intel_by_name(prof.name)
+            if intel:
+                payload["intel_notes"] = intel
+        except Exception:  # noqa: BLE001
+            pass  # 情报附带失败不应阻断机构档案同步
         ok = _put_file(path, payload, f"institution: {prof.name}")
         if ok:
             logger.info("✅ GitHub sync institution: %s (%s)", prof.name, institution_id)
