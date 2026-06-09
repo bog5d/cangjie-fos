@@ -189,31 +189,6 @@ def _index_single_file(
                 ),
             )
 
-        # ── 同步写入共享 assets 表（供轻量匹配器 MatchMaker 读取）────────────
-        # 用相对路径作为唯一键；已有更优摘要时不覆盖（CASE WHEN）
-        try:
-            rel_path = str(file_path.relative_to(Path(folder_root)))
-        except ValueError:
-            rel_path = file_path.name
-        try:
-            mtime = str(file_path.stat().st_mtime)
-        except OSError:
-            mtime = ""
-        conn.execute(
-            """INSERT INTO assets (filename, relative_path, full_path, last_modified,
-                                   summary, tags, scan_dir, indexed_at)
-               VALUES (?, ?, ?, ?, ?, '[]', ?, ?)
-               ON CONFLICT(relative_path) DO UPDATE SET
-                   full_path     = excluded.full_path,
-                   last_modified = excluded.last_modified,
-                   summary       = CASE WHEN excluded.summary != '' THEN excluded.summary
-                                        ELSE assets.summary END,
-                   scan_dir      = excluded.scan_dir,
-                   indexed_at    = excluded.indexed_at""",
-            (file_path.name, rel_path, str(file_path), mtime,
-             summary or "", folder_root, now),
-        )
-
 
 def _llm_summarize(filename: str, content: str) -> str:
     """

@@ -4,7 +4,6 @@ import type { AssetIndexResponse, AssetItem } from "../types/assets";
 import { AssetHealthPanel } from "./AssetHealthPanel";
 import { AssetScanConfigModal } from "./AssetScanConfigModal";
 import { InstitutionArchivePanel } from "./InstitutionArchivePanel";
-import { MatchMakerPanel } from "./MatchMakerPanel";
 
 // ─── 常量 ─────────────────────────────────────────────────────────────────────
 
@@ -651,11 +650,7 @@ function BundleForm({ files, onDone, onCancel }: {
 
 type ViewMode = "list" | "semantic" | "dir";
 
-interface AssetLibraryProps {
-  onLaunchDD?: (reqText: string, institution: string) => void;
-}
-
-export function AssetLibrary({ onLaunchDD }: AssetLibraryProps = {}) {
+export function AssetLibrary() {
   const [data, setData] = useState<AssetIndexResponse | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -986,7 +981,6 @@ export function AssetLibrary({ onLaunchDD }: AssetLibraryProps = {}) {
 
       {/* 子面板 */}
       <AssetHealthPanel />
-      <MatchMakerPanel onLaunchDD={onLaunchDD} />
       <InstitutionArchivePanel />
 
       <AssetScanConfigModal

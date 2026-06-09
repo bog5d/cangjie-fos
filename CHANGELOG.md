@@ -4,6 +4,31 @@
 
 ---
 
+## [1.9.6] — 2026-06-06  资产瘦身（四）：删除旧 MatchMaker + 机构档案收编到尽调台
+
+> 测试基线：763 passed。删掉被新尽调台全面覆盖的旧 BM25 匹配（MatchMaker），
+> 并把「机构档案」的数据源从旧引擎收编到新尽调台。
+
+### Removed（旧 BM25 匹配，被尽调响应台覆盖）
+- `routes/assets.py`：`POST /api/v1/assets/match`、`GET /match/{id}`、`POST /match/{id}/confirm` 三个端点 + `MatchSessionIn`/`ConfirmIn`。
+- `engine/matchmaker.py`（BM25 匹配引擎）整文件删除。
+- `asset_db.db_match_session_list`（孤儿）+ `pitch_job_db` 再导出。
+- 前端：`MatchMakerPanel.tsx` 删除 + `AssetLibrary` 引用 + `App` 的 `onLaunchDD` 桥。
+- `dd_index_service`：删除尽调扫描「双写 assets 表供 MatchMaker 读」的块 → **两套扫描自然解耦**（尽调写 `dd_asset_index`，台账写 `assets`）。
+
+### Changed（收编：机构档案改由尽调台喂数据）
+- `dd_response._write_dd_outcomes`：尽调台确认后，除写 `match_outcomes` 飞轮外，**同步写一条 `match_session`**（以 dd session_id 为主键，幂等）→ 「机构档案/简报」面板现在反映**真实的尽调台活动**，而非旧 MatchMaker 历史。
+
+### Kept（明确边界，未误伤）
+- **台账(A)**：列表/搜索/扫描/标记/打包(`/assets/bundle`)/活力雷达/资产wiki —— 全部保留。
+- **尽调响应台(C)**：保留。
+- `match_outcomes` 表 + `match_sessions` 表 + `db_match_session_create/get/update`（台账打包 + 尽调台都在用）。
+
+### Tests
+- 删除 `test_matchmaker.py`、`test_wiki_display` 的 3 个 BM25/match 端点用例、`test_dd_e2e` 的 dual-write 用例；新增 `test_confirm_feeds_institution_archive`（验证尽调台确认 → 机构档案 has_history）。
+
+---
+
 ## [1.9.5] — 2026-06-06  资产瘦身（三）：整条下线 nightly_suggestions / 夜间建议
 
 > 测试基线：791 passed。生成逻辑一直是 mock、前端 banner 长期为空的"夜间建议/晨报"
