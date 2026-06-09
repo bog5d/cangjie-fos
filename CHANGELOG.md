@@ -4,6 +4,27 @@
 
 ---
 
+## [1.11.0] — 2026-06-09  Workflow 加固（二）：向导断点续跑 + 失败可见
+
+> 测试基线：775 passed。诊断发现长流程的两个真实缺陷：向导路径评估失败会丢掉
+> 已完成的 ASR 成果（无法重跑只能重传）、向导情报抽取失败被静默吞掉。本版修复。
+> （注：尽调匹配"阶段3失败仍标 matched"经核实为 v1.6.0 既定设计——精判/记忆为
+> 增强环节，失败不应否定已成立的核心匹配，故不改。）
+
+### Fixed
+- **向导断点续跑**：`run_pitch_file_job` 新增 `on_words` 回调，ASR 一就绪即触发；
+  向导（`pitch_wizard_runner`）借此在转写完成时立刻把 `words_json` 落库——评估阶段
+  再失败也不丢转写，可直接走既有 `POST /jobs/{id}/retry-eval` 端点重跑，省去昂贵的
+  二次 ASR。（上传路径此前已具备此能力，本版补齐向导路径的对等性。）
+- **失败可见**：向导情报抽取（`extract_and_persist_institution_intel`）失败不再静默
+  仅打日志，改为同步记入 `job.warnings`（与 `pitch_graph_service` 一致），前端/排查可见。
+
+### Tests
+- 新增 `test_wizard_resume.py`（3 个）：评估失败后 words_json 仍保留、retry-eval 从
+  缓存词重跑直达 completed、无 words_json 时 retry-eval 返回 422。
+
+---
+
 ## [1.10.0] — 2026-06-09  数据拉通（一）：尽调缺口 + 路演细分情报回流到机构画像
 
 > 测试基线：772 passed。诊断发现"内容层"数据断点——尽调台只把机构推进到 DD 阶段、
