@@ -4,6 +4,30 @@
 
 ---
 
+## [1.10.0] — 2026-06-09  数据拉通（一）：尽调缺口 + 路演细分情报回流到机构画像
+
+> 测试基线：772 passed。诊断发现"内容层"数据断点——尽调台只把机构推进到 DD 阶段、
+> 路演细分情报（关键问题/兴趣信号）只躺在 report JSON 里，看板看不到"这家机构在纠结什么"。
+> 本版打通这条线：用一张解耦的情报侧表承接，机构简报直接展示。
+
+### Added
+- **`institution_intel` 侧表**（`institution_store.py`）：按 (tenant, name) 存 `{"dd":…, "roadshow":…}` JSON，
+  `merge_institution_intel`（按子键合并、幂等）+ `get_institution_intel_by_name`（按名取最近）。
+  刻意与 `institutions` 主表解耦——不污染 `row_to_profile` 的定位映射，不卷入 GitHub 同步。
+- **尽调缺口回流**：`_write_dd_outcomes` 在确认后，把"未确认/红灯/无匹配文件"的清单项算成
+  `gaps`，连同"已确认 X/总 N + 清单名"写进侧表。
+- **路演细分情报回流**：`extract_and_persist_institution_intel` 把路演报告的 `key_questions`
+  （含 underlying_concern）/ `interest_signals`（含 interpretation）写进侧表；普通评分报告不误触发。
+- **机构简报合入**：`GET /api/v1/institutions/{name}/briefing` 新增 `dd_summary` /
+  `roadshow_questions` / `interest_signals`；侧表有情报时即便无 match_sessions 历史也展示。
+- 前端 `InstitutionArchivePanel`：渲染尽调进展与缺口、路演关键问题、兴趣信号。
+
+### Tests
+- 新增 `test_institution_intel_reflow.py`（9 个）：侧表合并/幂等/子键共存、DD 缺口回流、
+  路演情报抽取与回流、简报合入。
+
+---
+
 ## [1.9.6] — 2026-06-06  资产瘦身（四）：删除旧 MatchMaker + 机构档案收编到尽调台
 
 > 测试基线：763 passed。删掉被新尽调台全面覆盖的旧 BM25 匹配（MatchMaker），

@@ -31,12 +31,20 @@ def _write_dd_outcomes(session_id: str) -> None:
         from cangjie_fos.services.asset_db import db_match_outcome_batch_save  # noqa: PLC0415
         with _connect() as conn:
             session_row = conn.execute(
-                "SELECT institution_name FROM dd_match_sessions WHERE session_id = ?",
+                "SELECT institution_name, tenant_id, checklist_name FROM dd_match_sessions WHERE session_id = ?",
                 (session_id,),
             ).fetchone()
             if not session_row:
                 return
             institution = (session_row["institution_name"] or "").strip()
+            sess_tenant = (session_row["tenant_id"] or "default").strip() or "default"
+            sess_checklist = session_row["checklist_name"] or ""
+            # 缺口诊断：未确认 / 判定红灯 / 无匹配文件 的清单项 = 这家机构 DD 还缺什么
+            all_items = conn.execute(
+                """SELECT requirement, verdict, user_confirmed, matched_file_path
+                   FROM dd_match_items WHERE session_id = ?""",
+                (session_id,),
+            ).fetchall()
             items = conn.execute(
                 """SELECT matched_file_path, matched_filename
                    FROM dd_match_items
@@ -83,6 +91,33 @@ def _write_dd_outcomes(session_id: str) -> None:
                 )
             db_match_session_update(
                 session_id=session_id, status="confirmed", confirmed_files=confirmed_files,
+            )
+
+        # 内容层回流：把"尽调缺什么"结构化写进机构情报侧表，供机构简报展示
+        # （看板/经理人能看到这家机构 DD 在纠结什么，而不只是停在哪个阶段）。
+        if institution and all_items:
+            gaps: list[str] = []
+            for it in all_items:
+                req = (it["requirement"] or "").strip()
+                unmet = (
+                    not it["user_confirmed"]
+                    or (it["verdict"] or "") == "red"
+                    or not (it["matched_file_path"] or "").strip()
+                )
+                if req and unmet and req not in gaps:
+                    gaps.append(req)
+            confirmed_n = sum(1 for it in all_items if it["user_confirmed"])
+            from cangjie_fos.services.institution_store import merge_institution_intel  # noqa: PLC0415
+            merge_institution_intel(
+                tenant_id=sess_tenant, name=institution,
+                patch={"dd": {
+                    "checklist": sess_checklist,
+                    "total": len(all_items),
+                    "confirmed": confirmed_n,
+                    "gaps": gaps[:8],
+                    "session_id": session_id,
+                    "updated_at": time.time(),
+                }},
             )
     except Exception as e:  # noqa: BLE001
         logger.warning("_write_dd_outcomes failed for session %s: %s", session_id, e)
