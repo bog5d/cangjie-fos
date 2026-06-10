@@ -7,6 +7,7 @@ from cangjie_fos.api.routes import (
     admin,
     assets,
     auth,
+    coaching,
     dashboard,
     dd_response,
     feedback,
@@ -52,3 +53,4 @@ api_router.include_router(follow_ups.router)
 api_router.include_router(settings.router)
 api_router.include_router(roadshow.router)
 api_router.include_router(dd_response.router)
+api_router.include_router(coaching.router)

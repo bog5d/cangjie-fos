@@ -322,6 +322,43 @@ CREATE TABLE IF NOT EXISTS dd_qa_pairs (
     confidence            REAL,
     created_at            REAL NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS coaching_sessions (
+    session_id      TEXT PRIMARY KEY,
+    tenant_id       TEXT NOT NULL DEFAULT '',
+    mode            TEXT NOT NULL DEFAULT 'coach',
+    title           TEXT NOT NULL DEFAULT '',
+    bp_doc_path     TEXT NOT NULL DEFAULT '',
+    key_points_json TEXT NOT NULL DEFAULT '[]',
+    status          TEXT NOT NULL DEFAULT 'ready',
+    created_at      REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS coaching_rounds (
+    round_id           TEXT PRIMARY KEY,
+    session_id         TEXT NOT NULL,
+    round_no           INTEGER NOT NULL DEFAULT 1,
+    audio_path         TEXT NOT NULL DEFAULT '',
+    transcript_text    TEXT NOT NULL DEFAULT '',
+    coverage_score     REAL,
+    covered_points_json TEXT NOT NULL DEFAULT '[]',
+    missed_points_json  TEXT NOT NULL DEFAULT '[]',
+    feedback_json      TEXT NOT NULL DEFAULT '{}',
+    created_at         REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS qa_question_bank (
+    id                 TEXT PRIMARY KEY,
+    tenant_id          TEXT NOT NULL DEFAULT '',
+    sector             TEXT NOT NULL DEFAULT '',
+    round_stage        TEXT NOT NULL DEFAULT '',
+    category           TEXT NOT NULL DEFAULT '',
+    question_text      TEXT NOT NULL,
+    answer_points_json TEXT NOT NULL DEFAULT '[]',
+    source             TEXT NOT NULL DEFAULT 'ai',
+    hit_count          INTEGER NOT NULL DEFAULT 0,
+    created_at         REAL NOT NULL
+);
 """
 
 # ── 版本化迁移列表（既有 DB 升级用，新安装 DDL 已包含所有列） ─────────────────
@@ -370,6 +407,41 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (23, "ALTER TABLE dd_match_sessions ADD COLUMN template_text TEXT NOT NULL DEFAULT ''"),
     (24, "ALTER TABLE dd_match_items ADD COLUMN field_kind TEXT NOT NULL DEFAULT ''"),
     (25, "ALTER TABLE dd_match_items ADD COLUMN draft_answer TEXT NOT NULL DEFAULT ''"),
+    # ── 需求01：路演 AI 教练 & 答疑 AI 审问 ─────────────────────────────────
+    (26, """CREATE TABLE IF NOT EXISTS coaching_sessions (
+        session_id      TEXT PRIMARY KEY,
+        tenant_id       TEXT NOT NULL DEFAULT '',
+        mode            TEXT NOT NULL DEFAULT 'coach',
+        title           TEXT NOT NULL DEFAULT '',
+        bp_doc_path     TEXT NOT NULL DEFAULT '',
+        key_points_json TEXT NOT NULL DEFAULT '[]',
+        status          TEXT NOT NULL DEFAULT 'ready',
+        created_at      REAL NOT NULL
+    )"""),
+    (27, """CREATE TABLE IF NOT EXISTS coaching_rounds (
+        round_id           TEXT PRIMARY KEY,
+        session_id         TEXT NOT NULL,
+        round_no           INTEGER NOT NULL DEFAULT 1,
+        audio_path         TEXT NOT NULL DEFAULT '',
+        transcript_text    TEXT NOT NULL DEFAULT '',
+        coverage_score     REAL,
+        covered_points_json TEXT NOT NULL DEFAULT '[]',
+        missed_points_json  TEXT NOT NULL DEFAULT '[]',
+        feedback_json      TEXT NOT NULL DEFAULT '{}',
+        created_at         REAL NOT NULL
+    )"""),
+    (28, """CREATE TABLE IF NOT EXISTS qa_question_bank (
+        id                 TEXT PRIMARY KEY,
+        tenant_id          TEXT NOT NULL DEFAULT '',
+        sector             TEXT NOT NULL DEFAULT '',
+        round_stage        TEXT NOT NULL DEFAULT '',
+        category           TEXT NOT NULL DEFAULT '',
+        question_text      TEXT NOT NULL,
+        answer_points_json TEXT NOT NULL DEFAULT '[]',
+        source             TEXT NOT NULL DEFAULT 'ai',
+        hit_count          INTEGER NOT NULL DEFAULT 0,
+        created_at         REAL NOT NULL
+    )"""),
 ]
 
 
