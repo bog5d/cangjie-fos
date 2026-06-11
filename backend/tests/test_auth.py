@@ -63,30 +63,26 @@ def test_login_builtin_accounts_when_no_env(client, monkeypatch):
     assert r_gk.json()["tenant_id"] == "gk"
 
 
-def test_builtin_gk001_still_works_when_env_only_has_zt001(client, monkeypatch):
-    """关键回归：服务器 .env 只配了 zt001 时，内置 gk001 仍必须能登录。
-
-    复现用户线上故障（zt001 能登、gk001 登不上）。修复约定：内置账号始终可用，
-    .env 只追加/覆盖，绝不移除内置账号。
-    """
-    monkeypatch.setenv("FOS_ACCOUNTS", "zt001:123456:zt")  # 只配了 zt001
+def test_env_fully_replaces_builtin_when_set(client, monkeypatch):
+    """FOS_ACCOUNTS 设置后完全替换内置账号，只列出的账号可用。"""
+    monkeypatch.setenv("FOS_ACCOUNTS", "zt001:123456:zt,gk001:123456:gk")
     r_zt = client.post("/api/auth/login", json={"username": "zt001", "password": "123456"})
     r_gk = client.post("/api/auth/login", json={"username": "gk001", "password": "123456"})
     assert r_zt.status_code == 200, "zt001 应能登录"
-    assert r_gk.status_code == 200, "gk001（内置）即便 .env 没列也应能登录"
+    assert r_gk.status_code == 200, "gk001 应能登录"
     assert r_gk.json()["tenant_id"] == "gk"
 
 
 def test_env_can_override_builtin_password(client, monkeypatch):
-    """.env 同名账号覆盖内置密码：gk001 改新密码后，旧内置密码失效、新密码生效。"""
+    """.env 设置后只有该账号可用；同名账号使用 .env 密码。"""
     monkeypatch.setenv("FOS_ACCOUNTS", "gk001:newpass999:gk")
     r_old = client.post("/api/auth/login", json={"username": "gk001", "password": "123456"})
     r_new = client.post("/api/auth/login", json={"username": "gk001", "password": "newpass999"})
-    assert r_old.status_code == 401, "覆盖后旧密码应失效"
+    assert r_old.status_code == 401, "旧密码应失效"
     assert r_new.status_code == 200, "新密码应生效"
-    # 同时 zt001 内置仍可用
+    # FOS_ACCOUNTS 未列 zt001，所以 zt001 不可用
     r_zt = client.post("/api/auth/login", json={"username": "zt001", "password": "123456"})
-    assert r_zt.status_code == 200
+    assert r_zt.status_code == 401
 
 
 # ─── me ───────────────────────────────────────────────────────────────────────

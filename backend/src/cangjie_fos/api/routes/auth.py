@@ -48,19 +48,13 @@ def _parse_accounts(raw: str) -> dict[str, dict[str, str]]:
 def _load_accounts() -> dict[str, dict[str, str]]:
     """加载账号表。
 
-    关键约定（防止「谁本地没配置就登不上」）：
-      内置默认账号（zt001 / gk001）**始终可用**，作为基底先加载；
-      .env 的 FOS_ACCOUNTS 只做「追加新账号」或「覆盖同名账号的密码/租户」，
-      **绝不会移除内置账号**。
-
-    这样无论是谁第一次 clone、或在只配了 zt001 的服务器上，gk001 与 zt001
-    都能登录；同时仍允许 .env 改密码（同名覆盖）或新增更多账号。
+    FOS_ACCOUNTS 未设置时使用内置默认账号（zt001/gk001）；
+    FOS_ACCOUNTS 设置后完全替换内置账号——部署时在 .env 明确列出所有授权账号。
     """
-    accounts = _parse_accounts(_BUILTIN_ACCOUNTS)
     raw = os.getenv("FOS_ACCOUNTS", "").strip()
     if raw:
-        accounts.update(_parse_accounts(raw))  # 同名 → .env 覆盖；其余 → 追加
-    return accounts
+        return _parse_accounts(raw)
+    return _parse_accounts(_BUILTIN_ACCOUNTS)
 
 
 def _save_session_to_db(token: str, sess: dict[str, Any]) -> None:
