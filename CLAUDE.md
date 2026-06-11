@@ -169,12 +169,69 @@ uv run --extra dev pytest tests/test_ui_smoke.py -v --headed  # 有头调试
 
 ---
 
+## 🔴 强制约定：模拟人工测试（带截图 PDF 报告）
+
+> **这是 Claude / Codex 每次涉及前端开发后的不可跳过动作。**
+> 起因：vitest 跑在 jsdom 里，看不到真实 Chrome 渲染、CSS 可见性、叠层阻塞、
+> 真实点击跳转——约 30% 的真实人工场景测不到。「vitest 全绿」≠「用户能用」。
+
+### 规则（写任务给 Codex 时必须照此交代）
+
+1. **凡是改了任何前端组件（`.tsx`/`.ts`），必须写/更新 Playwright 浏览器冒烟测试**，
+   不能只靠 vitest。两者都必须通过。
+2. **每个被测功能给出逐步「人工点击指引」**：从哪个入口进、点哪个按钮、
+   期望看到什么、在哪一步截图。指引直接写进 `test_ui_smoke.py` 的测试方法里
+   （每一步 `ui_reporter.capture(page, "步骤名", status=...)`）。
+3. **测试过程产出带截图的 PDF 报告**：用 `ui_reporter` fixture（见
+   `backend/tests/ui_report.py`）。每个关键步骤截一帧，顶部中文横幅标
+   PASS/FAIL + 备注。任一步 FAIL → PDF 文件名自动带 `FAILED_` 前缀。
+4. **PDF 回传给 Claude 审核**：报告落在 `backend/data/ui_reports/`，
+   Codex 跑完后把 PDF 路径/文件回传，由 Claude（或人）逐帧审 UI 真实渲染。
+5. **不得靠 skip 蒙混**：服务未启动会自动 skip，但 Codex 必须先起前后端服务
+   再跑——全部 skip 视为「未完成」，不算通过。
+
+### 怎么用（标准片段）
+
+```python
+def test_xxx(self, page, fos_server_url, fos_login_credentials, ui_reporter):
+    _login(page, fos_server_url, fos_login_credentials)
+    page.locator("button:has-text('入口名')").click()
+    page.wait_for_timeout(800)
+    try:
+        expect(page.get_by_text("期望文字")).to_be_visible(timeout=6_000)
+        ui_reporter.capture(page, "步骤名 — 期望达成", status="ok", note="说明")
+    except AssertionError:
+        ui_reporter.fail(page, "步骤名 — 失败", note="实际现象")
+        raise
+```
+
+```bash
+# 跑法（先起服务）：
+cd backend && uv run uvicorn cangjie_fos.main:app --port 8000   # 终端1
+cd frontend && npm run dev                                       # 终端2
+cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
+# -s 让 PDF 路径打印到 stdout；报告在 backend/data/ui_reports/
+```
+
+### 工具文件
+
+| 文件 | 作用 |
+|------|------|
+| `backend/tests/ui_report.py` | `UIReporter`：截图 + 中文标注 → 合成多页 PDF（仅用 Pillow，零新依赖） |
+| `backend/tests/conftest.py` | `ui_reporter` session fixture：跑完自动 finalize PDF 并打印路径 |
+| `backend/tests/test_ui_smoke.py` | 浏览器冒烟测试集（含 `TestDueDiligenceWizardSmoke` 参考实现） |
+| `backend/data/ui_reports/` | PDF 报告输出目录（gitignored，回传给 Claude） |
+
+---
+
 ## 新增功能时的标准流程
 
 1. 写代码
 2. 写测试（参照现有 E2E 测试的 mock 模式）
 3. `pytest tests/ -q` 全绿
-4. 报告：`X passed`，不说"可以了你试试"
+4. **改了前端 → 写/更新 `test_ui_smoke.py` 的 Playwright 浏览器测试 + `ui_reporter` 截图**
+5. 起前后端服务跑 `pytest tests/test_ui_smoke.py -v -s`，产出带截图 PDF（`backend/data/ui_reports/`）
+6. 报告：`X passed` + PDF 路径，不说"可以了你试试"
 
 ---
 

@@ -1,5 +1,6 @@
 """
 将匹配结果导出为本地文件夹：复制文件 + 生成缺失清单。
+投后模式：把 draft_answer 填回季报模板，生成可交付初稿。
 
 v0.7.2 改进：
   - 单文件超过 MB_LIMIT_PER_FILE 时跳过并记入缺失清单（而非直接复制炸盘）
@@ -7,6 +8,7 @@ v0.7.2 改进：
 """
 from __future__ import annotations
 import json
+import re
 import shutil
 import logging
 from pathlib import Path
@@ -240,6 +242,69 @@ def _write_gap_report(out: Path, missing: list[dict]) -> None:
         reason = f"  ← {skip}" if skip else ""
         lines.append(f"- 第{item['item_no']}项 {cat}{item['requirement']}{reason}")
     (out / "缺失清单.txt").write_text("\n".join(lines), encoding="utf-8")
+
+
+def export_post_investment_report(session_id: str, output_path: str) -> dict:
+    """将投后季报的 draft_answer 填回模板，生成可交付初稿文本文件。
+
+    每个【】按顺序对应一个 blank 类型的 item（item_no 升序）。
+    有 draft_answer 的替换为「【填充值】」，无的保留原空格「【  】」并附注备查。
+
+    返回：{ok, output_path, filled, total, blank_count}
+    """
+    with _connect() as conn:
+        sess_row = conn.execute(
+            "SELECT template_text FROM dd_match_sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+        items = [dict(r) for r in conn.execute(
+            """SELECT item_no, requirement, field_kind, draft_answer, matched_filename
+               FROM dd_match_items
+               WHERE session_id = ?
+               ORDER BY CAST(item_no AS INTEGER)""",
+            (session_id,),
+        ).fetchall()]
+
+    if not sess_row:
+        return {"ok": False, "error": f"Session {session_id} 不存在"}
+
+    template = sess_row["template_text"] or ""
+    if not template:
+        return {"ok": False, "error": "该会话未存储模板原文，无法重建"}
+
+    blank_items = [i for i in items if i["field_kind"] == "blank"]
+    blank_idx = 0
+
+    def _replace_blank(m: re.Match) -> str:
+        nonlocal blank_idx
+        if blank_idx < len(blank_items):
+            answer = (blank_items[blank_idx].get("draft_answer") or "").strip()
+            blank_idx += 1
+            return f"【{answer}】" if answer else "【　　】"
+        blank_idx += 1
+        return m.group(0)
+
+    filled_text = re.sub(r"【\s*】", _replace_blank, template)
+    filled_count = sum(1 for i in blank_items if (i.get("draft_answer") or "").strip())
+
+    unfilled = [i for i in blank_items if not (i.get("draft_answer") or "").strip()]
+    if unfilled:
+        footer_lines = ["\n\n" + "─" * 40, "【未填充项清单（需人工核填）】"]
+        for it in unfilled:
+            footer_lines.append(f"  第{it['item_no']}项：{it['requirement'][:60]}")
+        filled_text += "\n".join(footer_lines)
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(filled_text, encoding="utf-8")
+
+    return {
+        "ok": True,
+        "output_path": str(out),
+        "filled": filled_count,
+        "total": len(blank_items),
+        "blank_count": len(blank_items),
+    }
 
 
 def _safe_component(name: str, maxlen: int) -> str:

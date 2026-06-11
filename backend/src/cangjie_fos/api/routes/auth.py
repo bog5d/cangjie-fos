@@ -31,14 +31,9 @@ _TOKEN_TTL = 72 * 3600  # 72小时
 _BUILTIN_ACCOUNTS = "zt001:123456:zt,gk001:123456:gk"
 
 
-def _load_accounts() -> dict[str, dict[str, str]]:
-    """从环境变量读取账号表。格式：账号:密码:tenant_id，逗号分隔。
-    未配置 FOS_ACCOUNTS 时使用内置默认账号（zt001/gk001）。
-    """
-    raw = os.getenv("FOS_ACCOUNTS", _BUILTIN_ACCOUNTS).strip()
+def _parse_accounts(raw: str) -> dict[str, dict[str, str]]:
+    """解析「账号:密码:tenant_id，逗号分隔」格式，跳过格式不全的项。"""
     accounts: dict[str, dict[str, str]] = {}
-    if not raw:
-        return accounts
     for entry in raw.split(","):
         parts = entry.strip().split(":")
         if len(parts) == 3:
@@ -48,6 +43,18 @@ def _load_accounts() -> dict[str, dict[str, str]]:
                 "tenant_id": tenant_id.strip(),
             }
     return accounts
+
+
+def _load_accounts() -> dict[str, dict[str, str]]:
+    """加载账号表。
+
+    FOS_ACCOUNTS 未设置时使用内置默认账号（zt001/gk001）；
+    FOS_ACCOUNTS 设置后完全替换内置账号——部署时在 .env 明确列出所有授权账号。
+    """
+    raw = os.getenv("FOS_ACCOUNTS", "").strip()
+    if raw:
+        return _parse_accounts(raw)
+    return _parse_accounts(_BUILTIN_ACCOUNTS)
 
 
 def _save_session_to_db(token: str, sess: dict[str, Any]) -> None:
