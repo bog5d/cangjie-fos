@@ -10,7 +10,9 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Uploa
 from pydantic import BaseModel
 
 from cangjie_fos.services.dd_checklist_parser import parse_checklist
-from cangjie_fos.services.dd_export_service import export_to_folder, export_by_question
+from cangjie_fos.services.dd_export_service import export_to_folder, export_by_question, export_post_investment_report
+from cangjie_fos.services.post_investment_parser import parse_report_template
+from cangjie_fos.services.post_investment_fill_service import run_draft_fill
 from cangjie_fos.services.dd_qa_service import (
     extract_qa_pairs_from_folder,
     generate_answer_draft,
@@ -327,8 +329,15 @@ async def create_session(
     tenant_id: str = Form("default"),
     folder_root: str = Form(...),
     institution_name: str = Form(""),
+    scenario: str = Form("dd"),
 ):
-    """上传尽调清单文件或粘贴文字，解析为需求项列表，创建匹配 session。"""
+    """上传尽调清单或投后季报模板，解析为需求项列表，创建匹配 session。
+
+    scenario='dd': 解析尽调清单（默认）
+    scenario='post_investment': 解析投后季报模板中的待填项
+    """
+    template_text = ""
+
     if file and file.filename:
         suffix = Path(file.filename).suffix.lower()
         type_map = {".xlsx": "excel", ".xls": "excel", ".docx": "word",
@@ -340,33 +349,48 @@ async def create_session(
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
                 tmp.write(content)
                 tmp_path = tmp.name
-            items = parse_checklist(tmp_path, source_type)
+            if scenario == "post_investment":
+                items = parse_report_template(tmp_path, source_type)
+                # 存储模板原文以供导出时重建
+                from cangjie_fos.services.dd_file_parser import extract_text  # noqa: PLC0415
+                raw, _ = extract_text(tmp_path)
+                template_text = raw
+            else:
+                items = parse_checklist(tmp_path, source_type)
         finally:
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
         checklist_name = file.filename
     elif text:
-        items = parse_checklist(text, "text")
+        if scenario == "post_investment":
+            items = parse_report_template(text, "text")
+            template_text = text
+        else:
+            items = parse_checklist(text, "text")
         checklist_name = "粘贴文字"
     else:
         raise HTTPException(400, "必须提供 file 或 text")
 
     if not items:
-        raise HTTPException(400, "清单解析未找到任何需求项，请检查上传内容格式或清单是否为空")
+        label = "季报模板" if scenario == "post_investment" else "清单"
+        raise HTTPException(400, f"{label}解析未找到任何待填项，请检查上传内容格式是否正确")
 
-    session_id = create_match_session(tenant_id, checklist_name, folder_root, items, institution_name)
+    session_id = create_match_session(
+        tenant_id, checklist_name, folder_root, items, institution_name,
+        scenario=scenario, template_text=template_text,
+    )
 
-    # 若指定了机构名，尝试更新机构阶段为 DD
-    if institution_name.strip():
+    # 尽调模式才更新机构阶段；投后模式不推进
+    if scenario == "dd" and institution_name.strip():
         try:
-            from cangjie_fos.services.institution_store import update_stage_by_name
+            from cangjie_fos.services.institution_store import update_stage_by_name  # noqa: PLC0415
             updated = update_stage_by_name(tenant_id=tenant_id, name=institution_name.strip(), stage="dd")
             if updated:
                 logger.info("机构 %s 阶段已自动更新为 DD", institution_name)
         except Exception as e:
             logger.warning("更新机构阶段失败（不影响主流程）: %s", e)
 
-    return {"session_id": session_id, "items": items, "count": len(items)}
+    return {"session_id": session_id, "items": items, "count": len(items), "scenario": scenario}
 
 
 @router.post("/sessions/{session_id}/match")
@@ -375,7 +399,9 @@ async def trigger_matching(
     folder_root: str,
     background_tasks: BackgroundTasks,
 ):
-    """后台触发 AI 批量匹配。进度通过 GET /sessions/{id}/match-status 轮询。"""
+    """后台触发 AI 批量匹配。进度通过 GET /sessions/{id}/match-status 轮询。
+    投后场景（scenario=post_investment）：匹配完成后自动触发草稿填充。
+    """
     _evict_oldest(_match_status)
     _match_status[session_id] = {"status": "running", "done": 0, "total": 0}
 
@@ -385,6 +411,19 @@ async def trigger_matching(
 
         try:
             run_matching(session_id, folder_root, progress_callback=_progress)
+            # 投后场景：匹配完自动触发草稿填充
+            with _connect() as conn:
+                row = conn.execute(
+                    "SELECT scenario FROM dd_match_sessions WHERE session_id = ?",
+                    (session_id,),
+                ).fetchone()
+            if row and row["scenario"] == "post_investment":
+                _match_status[session_id]["filling"] = True
+                try:
+                    run_draft_fill(session_id)
+                except Exception as fe:
+                    logger.warning("投后草稿填充失败（不影响匹配结果）: %s", fe)
+                _match_status[session_id].pop("filling", None)
         finally:
             status = _match_status.get(session_id, {})
             total = status.get("total", 0)
@@ -463,6 +502,20 @@ def export_session(session_id: str, req: ExportRequest, background_tasks: Backgr
     return result
 
 
+class ExportReportRequest(BaseModel):
+    output_path: str
+
+
+@router.post("/sessions/{session_id}/export-report")
+def export_post_investment_session(session_id: str, req: ExportReportRequest):
+    """投后模式：将草稿填充值写回季报模板，生成可交付初稿文本文件。"""
+    result = export_post_investment_report(session_id, req.output_path)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error", "导出失败"))
+    return result
+
+
+
 @router.post("/sessions/{session_id}/export-by-question")
 def export_session_by_question(
     session_id: str, req: ExportByQuestionRequest, background_tasks: BackgroundTasks,
@@ -494,11 +547,11 @@ def qa_draft(requirement: str, folder_root: str):
 
 @router.get("/sessions")
 def list_sessions_route(tenant_id: str = "default", limit: int = 10):
-    """列出最近的匹配会话（含需求项数量统计）。"""
+    """列出最近的匹配会话（含需求项数量统计、scenario 字段）。"""
     with _connect() as conn:
         rows = conn.execute(
             """SELECT s.session_id, s.tenant_id, s.checklist_name, s.folder_root,
-                      s.status, s.created_at, s.completed_at, s.institution_name,
+                      s.status, s.created_at, s.completed_at, s.institution_name, s.scenario,
                       COUNT(i.id) AS item_count,
                       SUM(CASE WHEN i.user_confirmed = 1 THEN 1 ELSE 0 END) AS confirmed_count
                FROM dd_match_sessions s

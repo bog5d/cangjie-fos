@@ -262,7 +262,8 @@ CREATE TABLE IF NOT EXISTS dd_match_sessions (
     created_at       REAL NOT NULL,
     completed_at     REAL,
     folder_layout    TEXT NOT NULL DEFAULT 'flat',
-    scenario         TEXT NOT NULL DEFAULT 'dd'
+    scenario         TEXT NOT NULL DEFAULT 'dd',
+    template_text    TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_items (
@@ -280,7 +281,9 @@ CREATE TABLE IF NOT EXISTS dd_match_items (
     candidates_json   TEXT,
     extra_files_json  TEXT,
     verdict           TEXT,
-    evidence          TEXT
+    evidence          TEXT,
+    field_kind        TEXT NOT NULL DEFAULT '',
+    draft_answer      TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS dd_decision_memory (
@@ -305,6 +308,43 @@ CREATE TABLE IF NOT EXISTS dd_qa_pairs (
     institution_subfolder TEXT NOT NULL DEFAULT '',
     confidence            REAL,
     created_at            REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS coaching_sessions (
+    session_id      TEXT PRIMARY KEY,
+    tenant_id       TEXT NOT NULL DEFAULT '',
+    mode            TEXT NOT NULL DEFAULT 'coach',
+    title           TEXT NOT NULL DEFAULT '',
+    bp_doc_path     TEXT NOT NULL DEFAULT '',
+    key_points_json TEXT NOT NULL DEFAULT '[]',
+    status          TEXT NOT NULL DEFAULT 'ready',
+    created_at      REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS coaching_rounds (
+    round_id           TEXT PRIMARY KEY,
+    session_id         TEXT NOT NULL,
+    round_no           INTEGER NOT NULL DEFAULT 1,
+    audio_path         TEXT NOT NULL DEFAULT '',
+    transcript_text    TEXT NOT NULL DEFAULT '',
+    coverage_score     REAL,
+    covered_points_json TEXT NOT NULL DEFAULT '[]',
+    missed_points_json  TEXT NOT NULL DEFAULT '[]',
+    feedback_json      TEXT NOT NULL DEFAULT '{}',
+    created_at         REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS qa_question_bank (
+    id                 TEXT PRIMARY KEY,
+    tenant_id          TEXT NOT NULL DEFAULT '',
+    sector             TEXT NOT NULL DEFAULT '',
+    round_stage        TEXT NOT NULL DEFAULT '',
+    category           TEXT NOT NULL DEFAULT '',
+    question_text      TEXT NOT NULL,
+    answer_points_json TEXT NOT NULL DEFAULT '[]',
+    source             TEXT NOT NULL DEFAULT 'ai',
+    hit_count          INTEGER NOT NULL DEFAULT 0,
+    created_at         REAL NOT NULL
 );
 """
 
@@ -352,12 +392,9 @@ _MIGRATIONS: list[tuple[int, str]] = [
     )"""),
     (22, "ALTER TABLE dd_asset_index ADD COLUMN unlock_password TEXT NOT NULL DEFAULT ''"),
     # ── DD 物料架构升级（全文精判 + 机器验证 + 跨机构学习）─────────────────
-    # 阶段1：材料全文落库，供精判节点逐条核对正文（不再只看 20 字摘要）
     (23, "ALTER TABLE dd_asset_index ADD COLUMN content_text TEXT"),
-    # 阶段2：机器验证节点产出的红/黄/绿判定 + 原文证据片段
     (24, "ALTER TABLE dd_match_items ADD COLUMN verdict TEXT"),
     (25, "ALTER TABLE dd_match_items ADD COLUMN evidence TEXT"),
-    # 阶段3：跨机构决策记忆（材料库共享 → 需求→文件 映射全局复用）
     (26, """CREATE TABLE IF NOT EXISTS dd_decision_memory (
         id              TEXT PRIMARY KEY,
         requirement_norm TEXT NOT NULL,
@@ -369,16 +406,64 @@ _MIGRATIONS: list[tuple[int, str]] = [
         updated_at      REAL NOT NULL
     )"""),
     (27, "CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm)"),
-    # ── 瘦身（v1.9.3）：删除从未真正接通的死表 ──────────────────────────────
-    # contribution_scores：零生产写入（仅测试写、一个无前端端点读），属"内部团队
-    # 知识贡献管理"的半成品脚手架。服务的是"未来有团队时的管理员"，非打单用户。删。
     (28, "DROP TABLE IF EXISTS contribution_scores"),
-    # material_match_history：复盘提交时默默采集的素材匹配历史，唯一读取方是
-    # 一个 admin 调试端点（无真实消费）。复盘提交流程不依赖它。删。
     (29, "DROP TABLE IF EXISTS material_match_history"),
-    # nightly_suggestions：夜间建议/晨报 banner。生成逻辑一直是 mock，banner 永远空。
-    # 整条下线（定时任务保留偏好提取部分）。
     (30, "DROP TABLE IF EXISTS nightly_suggestions"),
+    # ── 投后季报 + 需求01 路演AI教练 & 答疑AI审问 ───────────────────────────
+    (31, "ALTER TABLE dd_match_sessions ADD COLUMN template_text TEXT NOT NULL DEFAULT ''"),
+    (32, "ALTER TABLE dd_match_items ADD COLUMN field_kind TEXT NOT NULL DEFAULT ''"),
+    (33, "ALTER TABLE dd_match_items ADD COLUMN draft_answer TEXT NOT NULL DEFAULT ''"),
+    (34, """CREATE TABLE IF NOT EXISTS coaching_sessions (
+        session_id      TEXT PRIMARY KEY,
+        tenant_id       TEXT NOT NULL DEFAULT '',
+        mode            TEXT NOT NULL DEFAULT 'coach',
+        title           TEXT NOT NULL DEFAULT '',
+        bp_doc_path     TEXT NOT NULL DEFAULT '',
+        key_points_json TEXT NOT NULL DEFAULT '[]',
+        status          TEXT NOT NULL DEFAULT 'ready',
+        created_at      REAL NOT NULL
+    )"""),
+    (35, """CREATE TABLE IF NOT EXISTS coaching_rounds (
+        round_id           TEXT PRIMARY KEY,
+        session_id         TEXT NOT NULL,
+        round_no           INTEGER NOT NULL DEFAULT 1,
+        audio_path         TEXT NOT NULL DEFAULT '',
+        transcript_text    TEXT NOT NULL DEFAULT '',
+        coverage_score     REAL,
+        covered_points_json TEXT NOT NULL DEFAULT '[]',
+        missed_points_json  TEXT NOT NULL DEFAULT '[]',
+        feedback_json      TEXT NOT NULL DEFAULT '{}',
+        created_at         REAL NOT NULL
+    )"""),
+    (36, """CREATE TABLE IF NOT EXISTS qa_question_bank (
+        id                 TEXT PRIMARY KEY,
+        tenant_id          TEXT NOT NULL DEFAULT '',
+        sector             TEXT NOT NULL DEFAULT '',
+        round_stage        TEXT NOT NULL DEFAULT '',
+        category           TEXT NOT NULL DEFAULT '',
+        question_text      TEXT NOT NULL,
+        answer_points_json TEXT NOT NULL DEFAULT '[]',
+        source             TEXT NOT NULL DEFAULT 'ai',
+        hit_count          INTEGER NOT NULL DEFAULT 0,
+        created_at         REAL NOT NULL
+    )"""),
+    # ── 修复迁移：补回因版本号冲突而被跳过的 master 列 ───────────────────────
+    # v1.9.x 在 master 上使用迁移 23-28；同一时期的 feature 分支也使用了 23-28 但语义不同。
+    # 合并后 master 的 23-28 被跳过（DB 已记录为"已应用"）。用 37-41 补回缺失列。
+    (37, "ALTER TABLE dd_asset_index ADD COLUMN content_text TEXT"),
+    (38, "ALTER TABLE dd_match_items ADD COLUMN verdict TEXT"),
+    (39, "ALTER TABLE dd_match_items ADD COLUMN evidence TEXT"),
+    (40, """CREATE TABLE IF NOT EXISTS dd_decision_memory (
+        id              TEXT PRIMARY KEY,
+        requirement_norm TEXT NOT NULL,
+        requirement     TEXT NOT NULL DEFAULT '',
+        file_path       TEXT NOT NULL,
+        filename        TEXT NOT NULL DEFAULT '',
+        confirm_count   INTEGER NOT NULL DEFAULT 1,
+        last_institution TEXT NOT NULL DEFAULT '',
+        updated_at      REAL NOT NULL
+    )"""),
+    (41, "CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm)"),
 ]
 
 

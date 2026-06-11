@@ -63,7 +63,7 @@ uv run --extra dev pytest tests/test_dd_material_architecture.py -v
 ## 第一步：自动化基线（必须全绿才算通）
 
 ```bash
-# ── 后端 ──────────────────────────────────────────────────────────
+# ── 1. 后端单元/集成测试 ──────────────────────────────────────────
 cd backend
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 # 期望：783+ passed, 0 failed
@@ -74,15 +74,15 @@ uv run --extra dev pytest tests/test_dd_gk_scan.py tests/test_dd_gk_export.py \
                           tests/test_dd_gk_password.py -q
 # 期望：28 passed（11 扫描 + 4 导出 + 5 问答 + 3 API + 5 密码）
 
-# ── 前端 ──────────────────────────────────────────────────────────
+# ── 2. 本轮新增专项（v1.8.0 gk 模式 机构问答响应引擎 阶段一）──────
+uv run --extra dev pytest tests/test_dd_gk_scan.py tests/test_dd_gk_export.py \
+                          tests/test_dd_qa_service.py tests/test_dd_gk_api.py \
+                          tests/test_dd_gk_password.py -q
+# 期望：28 passed（11 扫描 + 4 导出 + 5 问答 + 3 API + 5 密码）
+
+# ── 3. 前端单元测试（jsdom，验证逻辑，不替代浏览器）────────────────
 cd ../frontend
-
-# ⚠️ 每次 git pull 后必须先检查依赖是否有变化再跑测试/编译
-# 若 package.json 或 package-lock.json 有更新，先执行：
-npm install
-# （新增依赖不阻塞，audit vulnerability 当前不影响测试，可忽略）
-
-# 3. 前端单元测试（含 vitest 兜底用例）
+npm install   # 依赖有变化时运行
 npm test
 # 注意：使用 Vitest，不支持 Jest 的 --runInBand 参数，不要传
 # 注意：请用 `npm test`（不要用 npx vitest run 单跑某文件，jsdom 冷启动偶发不加载）
@@ -90,17 +90,93 @@ npm test
 #   gk 模式前端新增：DueDiligenceWizard.layout / .password / .byquestion
 #   / .multifile / .qadraft 共 6 个用例
 
-# 4. TypeScript 编译
+# ── 4. TypeScript 编译 ────────────────────────────────────────────
 npm run build
 # 期望：exit code 0，无 error（warning 忽略）
+
+# ── 5. 【强制】Playwright 浏览器冒烟 + 带截图 PDF 报告 ───────────
+# ⚠️ 关键：这是命令行跑的 Playwright（本地 chromium 子进程），
+#    不是 in-app Browser Use，不受 Browser Use URL policy 限制 —— 可正常访问
+#    127.0.0.1:8000 / 5173。Codex 之前 in-app browser 被拦的问题，用这条命令绕开。
+#
+# 必须先启动后端服务（另一终端）：
+#   cd backend && uv run uvicorn cangjie_fos.main:app --port 8000
+# 再启动前端（另一终端）：
+#   cd frontend && npm run dev
+# 等服务就绪后执行（-s 让 PDF 路径打印出来）：
+cd backend
+uv run --extra dev pytest tests/test_ui_smoke.py tests/test_ui_smoke_gk.py -v -s
+# 期望：全部 passed；跑完会在 backend/data/ui_reports/ 生成带截图 PDF
+#   （每步一帧 + 中文 PASS/FAIL 横幅）。任一步 FAIL → 文件名带 FAILED_ 前缀。
+#
+# test_ui_smoke_gk.py（gk 尽调向导专项，Claude 已本机真跑通，5 passed / 7 帧 PDF）：
+#   Tier A 免数据：尽调入口 / Step1 材料库文件夹+开始扫描+清单 / 关闭无叠层
+#   Tier B 播种会话→恢复→Step3：🔒加密锁+密码登记 / 💬草稿+📁按问题归档 / 候选附加
+#
+# 默认账号（无 .env 时）：gk001 / 123456（auth 内置）；conftest 已自动回退到它。
+# 若环境 playwright 默认浏览器版本不匹配/下载被拦，设环境变量指向已装 chromium：
+#   PW_CHROME_EXECUTABLE=/path/to/chrome uv run --extra dev pytest tests/test_ui_smoke_gk.py -v -s
 ```
+
+**FAIL 判定**：上述任一步骤有 failed，或第 5 步因「服务未启动」全部 skip（跳过视为未完成）。
+
+### 📄 回传要求（强制）
+
+跑完第 5 步后，**把 `backend/data/ui_reports/` 下最新生成的 PDF 回传给 Claude**
+（贴路径或附件）。这份 PDF 是「模拟人工测试」的可视证据，Claude 会逐帧审 UI
+真实渲染。**不回传 PDF = 本轮浏览器验收未完成。**
+
+> 注：命令行 Playwright 是本地 chromium 子进程，**不走 in-app Browser Use 通道**，
+> 因此 v1.8.0 验收时 in-app browser 被 Browser Use URL policy 拦住的问题，用这套
+> 命令行 smoke 即可绕开 —— Codex 不必再依赖 in-app browser 访问 127.0.0.1。
+
+> 为什么必须 PDF：vitest 跑在 jsdom，看不到真实 Chrome 渲染/CSS/叠层/点击跳转
+> （约 30% 真实人工场景测不到）。「vitest 全绿 + build 通过」**不等于**人工验收 PASS。
 
 ---
 
-## 第二步：人工冒烟测试清单
+## 第二步：浏览器冒烟——gk 模式尽调向导（Playwright 自动化）
 
-> 启动服务后在浏览器里逐项验。
-> 服务启动命令：`cd backend && uv run uvicorn cangjie_fos.main:app --port 8000`
+> 这一组已写入 `tests/test_ui_smoke.py`（`TestDueDiligenceWizardSmoke`），
+> 跑 `pytest tests/test_ui_smoke.py -v` 自动覆盖，**无需手动点浏览器**。
+
+| 测试方法 | 验收点 |
+|---------|--------|
+| `test_dd_wizard_button_visible` | 主页有「尽调响应」按钮且可见 |
+| `test_dd_wizard_opens_step1` | 点击后 Step 1 出现「材料库路径」字样 |
+| `test_dd_wizard_step1_has_scan_button` | Step 1 有「开始扫描」按钮 |
+| `test_dd_wizard_step1_has_checklist_upload` | Step 1 有「清单」相关入口 |
+| `test_dd_wizard_close_no_overlay` | 关闭向导后无遮罩叠层（Chrome Bug 回归） |
+| `test_dd_wizard_session_history_shown` | 向导打开后不崩溃、Step1 稳定渲染 |
+
+**FAIL 判定**：任一用例 FAILED（skip 因服务未起，Codex 必须先起服务）。
+
+---
+
+## 第三步：手动冒烟清单（Playwright 无法覆盖的场景）
+
+> 以下需要真实数据/文件操作，Playwright 无法模拟，由**开发者/QA 人工验**。
+
+### gk — 【v1.8.0】机构问答响应引擎 阶段一
+
+| 能力 | 测试文件（自动化） | 人工验收点（额外） |
+|------|---------|--------|
+| F1 布局检测+去重+加密标记 | `test_dd_gk_scan.py`（11） | 真实 per_institution 文件夹扫描，徽章显示正确机构数 |
+| F2/F5 按问题归档导出 | `test_dd_gk_export.py`（4） | 真实导出后用文件管理器确认目录结构 |
+| F4 历史问答复用 | `test_dd_qa_service.py`（5） | 真实补充文档扒取后，草稿答案是否合理 |
+| F3 加密密码登记/附带 | `test_dd_gk_password.py`（5） | 真实加密 PDF 流程：登记密码 → 导出「加密文件密码.txt」 |
+
+**⚠️ vitest 覆盖的前端逻辑（不替代浏览器）**：
+
+| 前端能力 | vitest 覆盖 | 浏览器是否已覆盖 |
+|---------|---------|--------|
+| F1 布局徽章 | `DueDiligenceWizard.layout.test.tsx` | ✅ Playwright `TestDueDiligenceWizardSmoke` |
+| F3 加密🔒+密码 | `DueDiligenceWizard.password.test.tsx` | ⚠️ 仅 jsdom，需人工验 |
+| F2/F5 按问题归档 | `DueDiligenceWizard.byquestion.test.tsx` | ⚠️ 仅 jsdom，需人工验 |
+| F2 多文件附加 | `DueDiligenceWizard.multifile.test.tsx` | ⚠️ 仅 jsdom，需人工验 |
+| F4 问答草稿 | `DueDiligenceWizard.qadraft.test.tsx` | ⚠️ 仅 jsdom，需人工验 |
+
+---
 
 ### gk — 【v1.8.0 后端】机构问答响应引擎 阶段一（纯后端，pytest 已覆盖）
 

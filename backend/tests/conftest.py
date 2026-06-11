@@ -45,22 +45,87 @@ def fos_login_credentials() -> tuple[str, str]:
     """
     返回可用的登录凭据 (username, password)。
 
-    优先读取 backend/.env 的 FOS_ACCOUNTS（格式：user:pass:tenant,...）。
-    若未配置则返回 dev/dev（后端无账号限制时可用）。
+    优先级：
+      1. 环境变量 FOS_ACCOUNTS（与运行中服务一致时）
+      2. backend/.env 的 FOS_ACCOUNTS（格式：user:pass:tenant,...）
+      3. auth 模块内置默认账号（_BUILTIN_ACCOUNTS，当前 gk001:123456）
+    —— 后端默认就有内置账号（非 dev 放行模式），所以不能回退 dev/dev。
     """
+    def _first(raw: str) -> tuple[str, str] | None:
+        raw = raw.strip()
+        if not raw:
+            return None
+        parts = raw.split(",")[0].strip().split(":")
+        if len(parts) >= 2:
+            return parts[0].strip(), parts[1].strip()
+        return None
+
+    # 1. 环境变量
+    env_val = os.getenv("FOS_ACCOUNTS", "")
+    if (cred := _first(env_val)):
+        return cred
+    # 2. .env 文件
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         for line in env_path.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line.startswith("FOS_ACCOUNTS="):
-                value = line[len("FOS_ACCOUNTS="):].strip()
-                if value:
-                    first_account = value.split(",")[0].strip()
-                    parts = first_account.split(":")
-                    if len(parts) >= 2:
-                        return parts[0], parts[1]
-    # 无账号配置 → dev mode，任意凭据
-    return "dev", "dev"
+                if (cred := _first(line[len("FOS_ACCOUNTS="):])):
+                    return cred
+    # 3. 内置默认账号（从 auth 模块取，避免硬编码漂移）
+    try:
+        from cangjie_fos.api.routes.auth import _BUILTIN_ACCOUNTS
+        if (cred := _first(_BUILTIN_ACCOUNTS)):
+            return cred
+    except Exception:
+        pass
+    return "gk001", "123456"
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args):
+    """浏览器启动参数兜底。
+
+    正常环境下用 `playwright install chromium` 安装的默认浏览器即可，本 fixture
+    透传原参数。若环境里 Playwright 默认浏览器版本不匹配/未安装，可设环境变量
+    PW_CHROME_EXECUTABLE 指向已有 chromium 可执行文件，避免被下载策略阻塞。
+    """
+    exe = os.environ.get("PW_CHROME_EXECUTABLE")
+    if exe and Path(exe).exists():
+        return {**browser_type_launch_args, "executable_path": exe}
+    return browser_type_launch_args
+
+
+@pytest.fixture(scope="session")
+def ui_reporter(request):
+    """浏览器「模拟人工测试」截图报告器（session 级，跑完合成 PDF）。
+
+    用法（在 Playwright 测试里）：
+        def test_xxx(self, page, fos_server_url, fos_login_credentials, ui_reporter):
+            _login(page, fos_server_url, fos_login_credentials)
+            ui_reporter.capture(page, "登录后主页", status="ok")
+
+    session 结束时自动把所有截图合成一份 PDF，路径打印到 stdout，
+    并写入 backend/data/ui_reports/。任一步 status='fail' → 文件名带 FAILED_ 前缀。
+    """
+    try:
+        from tests.ui_report import UIReporter
+    except ModuleNotFoundError:
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).parent))
+        from ui_report import UIReporter
+
+    reporter = UIReporter(report_name="ui_smoke")
+
+    def _finalize() -> None:
+        pdf_path = reporter.finalize()
+        if pdf_path is not None:
+            print(f"\n\n📄 模拟人工测试报告（带截图 PDF）已生成：\n   {pdf_path}\n"
+                  f"   共 {len(reporter.shots)} 帧"
+                  f"{'，含 FAIL ❌' if reporter.any_fail else '，全部 PASS ✅'}\n")
+
+    request.addfinalizer(_finalize)
+    return reporter
 
 
 @pytest.fixture(autouse=True)
