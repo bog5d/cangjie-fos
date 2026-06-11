@@ -11,6 +11,7 @@ import { FollowUpWidget } from "./components/FollowUpWidget";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { RoadshowWizard } from "./components/RoadshowWizard";
 import DueDiligenceWizard from "./components/DueDiligenceWizard";
+import CoachingWizard from "./components/CoachingWizard";
 import { ParticipantConfirmModal } from "./components/ParticipantConfirmModal";
 import { SettingsPanel } from "./components/SettingsPanel";
 
@@ -145,6 +146,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
   const [wizardOpen, setWizardOpen] = useState(false);
   const [roadshowOpen, setRoadshowOpen] = useState(false);
   const [ddOpen, setDdOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
   const [ddInitChecklist, setDdInitChecklist] = useState("");
   const [ddInitInstitution, setDdInitInstitution] = useState("");
   const [doctorOpen, setDoctorOpen] = useState(false);
@@ -389,6 +391,15 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
           </button>
           <button
             type="button"
+            disabled={!!uploadBlockedReason}
+            title={uploadBlockedReason ?? "AI 模拟投资人：练讲述 + 抗追问陪练"}
+            onClick={() => setCoachOpen(true)}
+            className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            🎤 路演陪练
+          </button>
+          <button
+            type="button"
             onClick={() => setDdOpen(true)}
             className="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
           >
@@ -489,6 +500,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
         onPipelineDataChanged={() => void refreshWarData()}
         institutions={institutions.map((i) => i.name).filter(Boolean)}
       />
+      <CoachingWizard open={coachOpen} onClose={() => setCoachOpen(false)} tenantId={tenant} />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
       <DueDiligenceWizard
         open={ddOpen}
