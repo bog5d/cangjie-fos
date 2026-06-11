@@ -90,15 +90,6 @@ def test_materials_match_missing_institution_id():
     assert resp.status_code == 422
 
 
-def test_materials_match_saves_to_history():
-    from cangjie_fos.services.pitch_job_db import db_material_matches_list
-
-    with patch("cangjie_fos.api.routes.materials.load_asset_index_dict", return_value=_MOCK_ASSET_INDEX):
-        client.post("/api/materials/match", json={"institution_id": "inst-xyz"})
-    history = db_material_matches_list("inst-xyz")
-    assert len(history) > 0
-
-
 def test_materials_match_no_asset_index():
     with patch(
         "cangjie_fos.api.routes.materials.load_asset_index_dict",
@@ -108,40 +99,3 @@ def test_materials_match_no_asset_index():
     assert resp.status_code == 200
     data = resp.json()
     assert data["matches"] == []
-
-
-# ---------------------------------------------------------------------------
-# GET /api/contributions
-# ---------------------------------------------------------------------------
-
-
-def test_contributions_empty_returns_200():
-    resp = client.get("/api/contributions")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "scores" in data
-    assert data["scores"] == []
-
-
-def test_contributions_with_data():
-    from cangjie_fos.services.pitch_job_db import db_contribution_score_upsert
-
-    db_contribution_score_upsert("李四", score_delta=20.0)
-    db_contribution_score_upsert("张三", score_delta=50.0)
-    resp = client.get("/api/contributions")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert len(data["scores"]) == 2
-    # sorted by score DESC
-    assert data["scores"][0]["contributor"] == "张三"
-    assert data["scores"][0]["score"] == pytest.approx(50.0)
-
-
-def test_contributions_limit_param():
-    from cangjie_fos.services.pitch_job_db import db_contribution_score_upsert
-
-    for i in range(10):
-        db_contribution_score_upsert(f"user-{i}", score_delta=float(i))
-    resp = client.get("/api/contributions?limit=3")
-    assert resp.status_code == 200
-    assert len(resp.json()["scores"]) == 3

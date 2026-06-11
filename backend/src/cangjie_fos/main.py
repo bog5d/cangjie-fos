@@ -75,11 +75,16 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except Exception as _e:  # noqa: BLE001
         import logging as _logging  # noqa: PLC0415
         _logging.getLogger(__name__).warning("每日备份任务注册失败（非致命）: %s", _e)
-    # 每 10 分钟自动重试 GitHub 拉取（补偿启动时网络抖动导致的拉取失败）
+    # 定时自动拉取 GitHub（补偿启动网络抖动 + 跨端数据流通）。
+    # 间隔可经 CANGJIE_SYNC_INTERVAL_MINUTES 调整（默认 10，分散办公可调小到 2~3）。
     def _bg_pull():
         import threading as _t
         _t.Thread(target=__import__("cangjie_fos.services.github_sync", fromlist=["pull_latest"]).pull_latest, daemon=True, name="github-auto-pull").start()
-    _scheduler.add_job(_bg_pull, "interval", minutes=10)
+    try:
+        _sync_interval = max(1, int(os.getenv("CANGJIE_SYNC_INTERVAL_MINUTES", "10")))
+    except (ValueError, TypeError):
+        _sync_interval = 10
+    _scheduler.add_job(_bg_pull, "interval", minutes=_sync_interval)
     try:
         import logging as _logging  # noqa: PLC0415
         from cangjie_fos.services.wiki_consolidator import consolidate_wiki  # noqa: PLC0415

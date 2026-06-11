@@ -24,6 +24,8 @@ interface DDItem {
   extra_files_json: string | null;
   is_encrypted?: number;
   unlock_password?: string;
+  verdict?: string | null;
+  evidence?: string | null;
 }
 
 type Scenario = "dd" | "post_investment";
@@ -633,6 +635,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     }
   }, [sessionId, reportOutputPath]);
 
+
   // ── 置信度颜色 ────────────────────────────────────────────────
   const confidenceColor = (conf: number | null): string => {
     if (conf === null) return "bg-gray-100 text-gray-500";
@@ -1003,6 +1006,13 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                               } catch (_) {}
                               return null;
                             })()}
+                            {/* 机器验证：精判后的原文证据片段（让人工终审更快） */}
+                            {item.evidence && (
+                              <div className="mt-0.5 text-xs text-gray-500 flex items-start gap-1">
+                                <span>{item.verdict === "green" ? "🟢" : item.verdict === "yellow" ? "🟡" : item.verdict === "red" ? "🔴" : "🔎"}</span>
+                                <span className="italic">{item.evidence}</span>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-gray-400 italic text-xs">无匹配</span>

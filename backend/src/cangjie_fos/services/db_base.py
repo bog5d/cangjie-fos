@@ -16,6 +16,10 @@ from cangjie_fos.core import paths as fos_paths
 # ── 写锁（全局唯一，所有模块共享） ───────────────────────────────────────────
 _write_lock = threading.Lock()
 
+# ── schema 初始化缓存（进程内，按 db_path 去重，避免每次 _connect 重跑 DDL+迁移） ──
+_INITIALIZED_PATHS: set[str] = set()
+_init_lock = threading.Lock()
+
 # ── JSON 列名集合（序列化/反序列化时用） ─────────────────────────────────────
 _JSON_COLS: frozenset[str] = frozenset({
     "original_report",
@@ -105,38 +109,6 @@ CREATE TABLE IF NOT EXISTS material_contributions (
     updated_at         REAL NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mat_contrib_path ON material_contributions(relative_path);
-
-CREATE TABLE IF NOT EXISTS contribution_scores (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    contributor TEXT NOT NULL,
-    score       REAL NOT NULL DEFAULT 0.0,
-    job_count   INTEGER NOT NULL DEFAULT 0,
-    updated_at  REAL NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_contrib_scores_contributor ON contribution_scores(contributor);
-
-CREATE TABLE IF NOT EXISTS material_match_history (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    institution_id TEXT NOT NULL,
-    asset_filename TEXT NOT NULL,
-    relative_path  TEXT NOT NULL,
-    matched_at     REAL NOT NULL,
-    score          REAL NOT NULL DEFAULT 0.0
-);
-CREATE INDEX IF NOT EXISTS idx_mat_match_inst ON material_match_history(institution_id, matched_at DESC);
-
-CREATE TABLE IF NOT EXISTS nightly_suggestions (
-    id          TEXT PRIMARY KEY,
-    tenant_id   TEXT NOT NULL,
-    created_at  REAL NOT NULL,
-    consumed_at REAL,
-    type        TEXT NOT NULL,
-    content     TEXT NOT NULL,
-    asset_id    TEXT,
-    priority    INTEGER DEFAULT 5
-);
-CREATE INDEX IF NOT EXISTS idx_nightly_suggestions_pending
-    ON nightly_suggestions(tenant_id, consumed_at) WHERE consumed_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS assets (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -276,7 +248,8 @@ CREATE TABLE IF NOT EXISTS dd_asset_index (
     institution_subfolder TEXT NOT NULL DEFAULT '',
     is_encrypted INTEGER NOT NULL DEFAULT 0,
     mtime       REAL,
-    unlock_password TEXT NOT NULL DEFAULT ''
+    unlock_password TEXT NOT NULL DEFAULT '',
+    content_text TEXT
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_sessions (
@@ -307,9 +280,23 @@ CREATE TABLE IF NOT EXISTS dd_match_items (
     user_skipped      INTEGER NOT NULL DEFAULT 0,
     candidates_json   TEXT,
     extra_files_json  TEXT,
+    verdict           TEXT,
+    evidence          TEXT,
     field_kind        TEXT NOT NULL DEFAULT '',
     draft_answer      TEXT NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS dd_decision_memory (
+    id              TEXT PRIMARY KEY,
+    requirement_norm TEXT NOT NULL,
+    requirement     TEXT NOT NULL DEFAULT '',
+    file_path       TEXT NOT NULL,
+    filename        TEXT NOT NULL DEFAULT '',
+    confirm_count   INTEGER NOT NULL DEFAULT 1,
+    last_institution TEXT NOT NULL DEFAULT '',
+    updated_at      REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm);
 
 CREATE TABLE IF NOT EXISTS dd_qa_pairs (
     id                    TEXT PRIMARY KEY,
@@ -404,11 +391,29 @@ _MIGRATIONS: list[tuple[int, str]] = [
         created_at            REAL NOT NULL
     )"""),
     (22, "ALTER TABLE dd_asset_index ADD COLUMN unlock_password TEXT NOT NULL DEFAULT ''"),
-    (23, "ALTER TABLE dd_match_sessions ADD COLUMN template_text TEXT NOT NULL DEFAULT ''"),
-    (24, "ALTER TABLE dd_match_items ADD COLUMN field_kind TEXT NOT NULL DEFAULT ''"),
-    (25, "ALTER TABLE dd_match_items ADD COLUMN draft_answer TEXT NOT NULL DEFAULT ''"),
-    # ── 需求01：路演 AI 教练 & 答疑 AI 审问 ─────────────────────────────────
-    (26, """CREATE TABLE IF NOT EXISTS coaching_sessions (
+    # ── DD 物料架构升级（全文精判 + 机器验证 + 跨机构学习）─────────────────
+    (23, "ALTER TABLE dd_asset_index ADD COLUMN content_text TEXT"),
+    (24, "ALTER TABLE dd_match_items ADD COLUMN verdict TEXT"),
+    (25, "ALTER TABLE dd_match_items ADD COLUMN evidence TEXT"),
+    (26, """CREATE TABLE IF NOT EXISTS dd_decision_memory (
+        id              TEXT PRIMARY KEY,
+        requirement_norm TEXT NOT NULL,
+        requirement     TEXT NOT NULL DEFAULT '',
+        file_path       TEXT NOT NULL,
+        filename        TEXT NOT NULL DEFAULT '',
+        confirm_count   INTEGER NOT NULL DEFAULT 1,
+        last_institution TEXT NOT NULL DEFAULT '',
+        updated_at      REAL NOT NULL
+    )"""),
+    (27, "CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm)"),
+    (28, "DROP TABLE IF EXISTS contribution_scores"),
+    (29, "DROP TABLE IF EXISTS material_match_history"),
+    (30, "DROP TABLE IF EXISTS nightly_suggestions"),
+    # ── 投后季报 + 需求01 路演AI教练 & 答疑AI审问 ───────────────────────────
+    (31, "ALTER TABLE dd_match_sessions ADD COLUMN template_text TEXT NOT NULL DEFAULT ''"),
+    (32, "ALTER TABLE dd_match_items ADD COLUMN field_kind TEXT NOT NULL DEFAULT ''"),
+    (33, "ALTER TABLE dd_match_items ADD COLUMN draft_answer TEXT NOT NULL DEFAULT ''"),
+    (34, """CREATE TABLE IF NOT EXISTS coaching_sessions (
         session_id      TEXT PRIMARY KEY,
         tenant_id       TEXT NOT NULL DEFAULT '',
         mode            TEXT NOT NULL DEFAULT 'coach',
@@ -418,7 +423,7 @@ _MIGRATIONS: list[tuple[int, str]] = [
         status          TEXT NOT NULL DEFAULT 'ready',
         created_at      REAL NOT NULL
     )"""),
-    (27, """CREATE TABLE IF NOT EXISTS coaching_rounds (
+    (35, """CREATE TABLE IF NOT EXISTS coaching_rounds (
         round_id           TEXT PRIMARY KEY,
         session_id         TEXT NOT NULL,
         round_no           INTEGER NOT NULL DEFAULT 1,
@@ -430,7 +435,7 @@ _MIGRATIONS: list[tuple[int, str]] = [
         feedback_json      TEXT NOT NULL DEFAULT '{}',
         created_at         REAL NOT NULL
     )"""),
-    (28, """CREATE TABLE IF NOT EXISTS qa_question_bank (
+    (36, """CREATE TABLE IF NOT EXISTS qa_question_bank (
         id                 TEXT PRIMARY KEY,
         tenant_id          TEXT NOT NULL DEFAULT '',
         sector             TEXT NOT NULL DEFAULT '',
@@ -442,6 +447,23 @@ _MIGRATIONS: list[tuple[int, str]] = [
         hit_count          INTEGER NOT NULL DEFAULT 0,
         created_at         REAL NOT NULL
     )"""),
+    # ── 修复迁移：补回因版本号冲突而被跳过的 master 列 ───────────────────────
+    # v1.9.x 在 master 上使用迁移 23-28；同一时期的 feature 分支也使用了 23-28 但语义不同。
+    # 合并后 master 的 23-28 被跳过（DB 已记录为"已应用"）。用 37-41 补回缺失列。
+    (37, "ALTER TABLE dd_asset_index ADD COLUMN content_text TEXT"),
+    (38, "ALTER TABLE dd_match_items ADD COLUMN verdict TEXT"),
+    (39, "ALTER TABLE dd_match_items ADD COLUMN evidence TEXT"),
+    (40, """CREATE TABLE IF NOT EXISTS dd_decision_memory (
+        id              TEXT PRIMARY KEY,
+        requirement_norm TEXT NOT NULL,
+        requirement     TEXT NOT NULL DEFAULT '',
+        file_path       TEXT NOT NULL,
+        filename        TEXT NOT NULL DEFAULT '',
+        confirm_count   INTEGER NOT NULL DEFAULT 1,
+        last_institution TEXT NOT NULL DEFAULT '',
+        updated_at      REAL NOT NULL
+    )"""),
+    (41, "CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm)"),
 ]
 
 
@@ -483,11 +505,26 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
         conn.commit()
 
 
-def _init_db(conn: sqlite3.Connection) -> None:
-    """初始化 schema 并运行待应用迁移。"""
-    conn.executescript(_DDL)
-    conn.commit()
-    _run_migrations(conn)
+def _init_db(conn: sqlite3.Connection, db_path: str | None = None) -> None:
+    """初始化 schema 并运行待应用迁移。
+
+    性能：DDL（几十条 CREATE IF NOT EXISTS）+ 迁移检查此前在**每次** _connect 都跑一遍，
+    成为高频小查询（如逐条记忆查询/逐项 verdict 写入）的主要开销。改为进程内按 db_path
+    缓存「已初始化」，同一路径只在首次连接时建表+迁移，后续连接直接跳过。
+    - 测试隔离：每个测试 monkeypatch 出新的临时 db 路径 → 新路径 → 首次仍会完整初始化。
+    - 迁移正确性：旧 DB 文件首次连接仍走完整迁移；进程重启后缓存清空会再校验一次（幂等）。
+    - 线程安全：双检 + 锁，避免并发首连接时重复建表。
+    """
+    if db_path is not None and db_path in _INITIALIZED_PATHS:
+        return
+    with _init_lock:
+        if db_path is not None and db_path in _INITIALIZED_PATHS:
+            return
+        conn.executescript(_DDL)
+        conn.commit()
+        _run_migrations(conn)
+        if db_path is not None:
+            _INITIALIZED_PATHS.add(db_path)
 
 
 def _connect() -> sqlite3.Connection:
@@ -510,7 +547,7 @@ def _connect() -> sqlite3.Connection:
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA cache_size=-32000")
     conn.execute("PRAGMA busy_timeout=5000")  # 锁冲突时等待最多5秒再失败（防测试 flaky）
-    _init_db(conn)
+    _init_db(conn, db_path_str)
     return conn
 
 

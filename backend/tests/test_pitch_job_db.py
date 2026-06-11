@@ -209,10 +209,6 @@ from cangjie_fos.services.pitch_job_db import (  # noqa: E402
     db_exec_memory_delete,
     db_material_contribution_upsert,
     db_material_contributions_list,
-    db_material_match_insert,
-    db_material_matches_list,
-    db_contribution_score_upsert,
-    db_contribution_scores_list,
 )
 
 
@@ -250,22 +246,6 @@ def test_material_contribution_upsert_and_list():
     rows2 = db_material_contributions_list()
     match = next(r for r in rows2 if r["asset_filename"] == "file.pptx")
     assert match["usage_count"] == 3
-
-
-def test_material_match_insert_and_list():
-    db_material_match_insert("inst-1", "file.pptx", "docs/file.pptx", score=0.9)
-    rows = db_material_matches_list("inst-1")
-    assert len(rows) == 1
-    assert rows[0]["score"] == pytest.approx(0.9)
-
-
-def test_contribution_score_upsert_and_list():
-    db_contribution_score_upsert("张三", score_delta=10.0)
-    db_contribution_score_upsert("张三", score_delta=5.0)
-    rows = db_contribution_scores_list()
-    match = next(r for r in rows if r["contributor"] == "张三")
-    assert match["score"] == pytest.approx(15.0)
-    assert match["job_count"] == 2
 
 
 # ---------------------------------------------------------------------------

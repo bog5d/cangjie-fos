@@ -24,6 +24,16 @@ interface InstitutionArchive {
   bundles: BundleRecord[];
 }
 
+interface DDSummary {
+  checklist: string;
+  total: number;
+  confirmed: number;
+  gaps: string[];
+}
+
+interface RoadshowQuestion { verbatim: string; concern: string }
+interface InterestSignal { verbatim: string; interpretation: string }
+
 interface InstitutionBriefing {
   institution: string;
   has_history: boolean;
@@ -31,6 +41,9 @@ interface InstitutionBriefing {
   last_contact: number | null;
   preferred_tags: string[];
   gap_hints: string[];
+  dd_summary?: DDSummary | null;
+  roadshow_questions?: RoadshowQuestion[];
+  interest_signals?: InterestSignal[];
 }
 
 // ─── 工具 ─────────────────────────────────────────────────────────────────────
@@ -81,6 +94,48 @@ function WikiPreview({ name }: { name: string }) {
                 {g}
               </span>
             ))}
+          </div>
+        )}
+        {briefing.dd_summary && (
+          <div className="rounded-lg border border-white/8 bg-black/20 p-2">
+            <div className="mb-1 text-slate-400">
+              📋 尽调进展{briefing.dd_summary.checklist ? `（${briefing.dd_summary.checklist}）` : ""}：
+              已确认 {briefing.dd_summary.confirmed}/{briefing.dd_summary.total} 项
+            </div>
+            {briefing.dd_summary.gaps.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="mr-0.5 text-rose-400/70">还缺：</span>
+                {briefing.dd_summary.gaps.map(g => (
+                  <span key={g} className="rounded border border-rose-500/30 bg-rose-950/20 px-1.5 py-0.5 text-[10px] text-rose-300">
+                    {g}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {briefing.roadshow_questions && briefing.roadshow_questions.length > 0 && (
+          <div className="rounded-lg border border-white/8 bg-black/20 p-2">
+            <div className="mb-1 text-slate-400">🎤 路演关键问题：</div>
+            <ul className="space-y-0.5">
+              {briefing.roadshow_questions.map((q, i) => (
+                <li key={i} className="text-[11px] text-slate-300">
+                  · {q.verbatim}{q.concern ? <span className="text-slate-500">（关切：{q.concern}）</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {briefing.interest_signals && briefing.interest_signals.length > 0 && (
+          <div className="rounded-lg border border-white/8 bg-black/20 p-2">
+            <div className="mb-1 text-slate-400">📈 兴趣信号：</div>
+            <ul className="space-y-0.5">
+              {briefing.interest_signals.map((s, i) => (
+                <li key={i} className="text-[11px] text-emerald-300/90">
+                  · {s.verbatim}{s.interpretation ? <span className="text-slate-500">（{s.interpretation}）</span> : null}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

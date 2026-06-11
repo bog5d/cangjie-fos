@@ -4,6 +4,237 @@
 
 ---
 
+## [1.12.0] — 2026-06-10  共享部署：一台常开服务器 = 真正的数据流转（替代 GitHub 同步）
+
+> 测试基线：782 passed。回答"不用 GitHub 怎么真正解决数据流转"——根因是每台电脑
+> 各存一份、靠 GitHub 互换文件。真正的解法是**只在一台常开机器上跑后端+数据库，
+> 全员浏览器连它**，数据只有一份，实时共享、不丢、不用 Token。底子（Docker 多阶段
+> 构建 + 后端托管前端 + 登录系统 + 持久化卷）此前已具备，本版补全"上生产"的缺口。
+
+### Added
+- `backend/.env.production.example`：生产配置模板。点明**最关键的一点**——
+  同一 `tenant_id` 的账号才共享数据，团队要"人人都看见"必须全员同 tenant；
+  并把弱密码默认值、GitHub 可退役（留空即纯单机共享）讲清楚。
+- `deploy/部署到共享服务器_运行手册.md`：给非技术同事的白话部署手册。覆盖选机器
+  （云 A1 / 办公室 A2）、装 Docker、配 `.env`、三种访问方式（局域网 / **Tailscale**
+  推荐 / 域名 HTTPS）、数据迁移、备份、安全清单。
+- `deploy/Caddyfile` + `deploy/docker-compose.https.yml`：公网访问可选叠加层，
+  Caddy 自动 HTTPS，后端 8000 不再对公网裸露（`docker compose -f … -f …` 一行启用）。
+
+### Tests
+- 新增 `test_shared_accounts.py`（4 个）：同 tenant 共享 / 不同 tenant 隔离 /
+  环境变量覆盖内置默认 / 畸形条目跳过。
+
+---
+
+## [1.11.1] — 2026-06-09  多端补漏（三）：可调轮询 + 跨源情报随机构跨端流通
+
+> 测试基线：778 passed。维持 GitHub 同步方案，补两个洞。
+> （诚实交代：原以为"pitch_jobs 编辑传不过去"是大洞——核实后发现 pitch 跨端**本就只传
+> 摘要卡片**（total_score/risk_breakdown），完整报告从不过界，故"编辑传播"基本是既定设计；
+> 且对它做"新者覆盖"反而有**用陈旧远端摘要盖掉本机完整报告**的数据丢失风险，因此不做。）
+
+### Added
+- **可调同步频率**：定时拉取间隔改由 `CANGJIE_SYNC_INTERVAL_MINUTES` 控制（默认 10，
+  分散办公可调小到 2~3 分钟）。
+- **跨源情报跨端流通**：v1.10.0 新增的 `institution_intel`（尽调缺口 / 路演细分情报）
+  此前是**本地表、不跨端**。现随机构档案一起同步——`push_institution` 附带 `intel_notes`，
+  pull 合并时按**子键各自的 `updated_at` 新者覆盖**（陈旧远端不会盖掉本地更新的情报）。
+
+### Tests
+- 新增 `test_intel_sync.py`（3 个）：push 附带情报、pull 合并远端情报、陈旧远端不覆盖本地。
+
+---
+
+## [1.11.0] — 2026-06-09  Workflow 加固（二）：向导断点续跑 + 失败可见
+
+> 测试基线：775 passed。诊断发现长流程的两个真实缺陷：向导路径评估失败会丢掉
+> 已完成的 ASR 成果（无法重跑只能重传）、向导情报抽取失败被静默吞掉。本版修复。
+> （注：尽调匹配"阶段3失败仍标 matched"经核实为 v1.6.0 既定设计——精判/记忆为
+> 增强环节，失败不应否定已成立的核心匹配，故不改。）
+
+### Fixed
+- **向导断点续跑**：`run_pitch_file_job` 新增 `on_words` 回调，ASR 一就绪即触发；
+  向导（`pitch_wizard_runner`）借此在转写完成时立刻把 `words_json` 落库——评估阶段
+  再失败也不丢转写，可直接走既有 `POST /jobs/{id}/retry-eval` 端点重跑，省去昂贵的
+  二次 ASR。（上传路径此前已具备此能力，本版补齐向导路径的对等性。）
+- **失败可见**：向导情报抽取（`extract_and_persist_institution_intel`）失败不再静默
+  仅打日志，改为同步记入 `job.warnings`（与 `pitch_graph_service` 一致），前端/排查可见。
+
+### Tests
+- 新增 `test_wizard_resume.py`（3 个）：评估失败后 words_json 仍保留、retry-eval 从
+  缓存词重跑直达 completed、无 words_json 时 retry-eval 返回 422。
+
+---
+
+## [1.10.0] — 2026-06-09  数据拉通（一）：尽调缺口 + 路演细分情报回流到机构画像
+
+> 测试基线：772 passed。诊断发现"内容层"数据断点——尽调台只把机构推进到 DD 阶段、
+> 路演细分情报（关键问题/兴趣信号）只躺在 report JSON 里，看板看不到"这家机构在纠结什么"。
+> 本版打通这条线：用一张解耦的情报侧表承接，机构简报直接展示。
+
+### Added
+- **`institution_intel` 侧表**（`institution_store.py`）：按 (tenant, name) 存 `{"dd":…, "roadshow":…}` JSON，
+  `merge_institution_intel`（按子键合并、幂等）+ `get_institution_intel_by_name`（按名取最近）。
+  刻意与 `institutions` 主表解耦——不污染 `row_to_profile` 的定位映射，不卷入 GitHub 同步。
+- **尽调缺口回流**：`_write_dd_outcomes` 在确认后，把"未确认/红灯/无匹配文件"的清单项算成
+  `gaps`，连同"已确认 X/总 N + 清单名"写进侧表。
+- **路演细分情报回流**：`extract_and_persist_institution_intel` 把路演报告的 `key_questions`
+  （含 underlying_concern）/ `interest_signals`（含 interpretation）写进侧表；普通评分报告不误触发。
+- **机构简报合入**：`GET /api/v1/institutions/{name}/briefing` 新增 `dd_summary` /
+  `roadshow_questions` / `interest_signals`；侧表有情报时即便无 match_sessions 历史也展示。
+- 前端 `InstitutionArchivePanel`：渲染尽调进展与缺口、路演关键问题、兴趣信号。
+
+### Tests
+- 新增 `test_institution_intel_reflow.py`（9 个）：侧表合并/幂等/子键共存、DD 缺口回流、
+  路演情报抽取与回流、简报合入。
+
+---
+
+## [1.9.6] — 2026-06-06  资产瘦身（四）：删除旧 MatchMaker + 机构档案收编到尽调台
+
+> 测试基线：763 passed。删掉被新尽调台全面覆盖的旧 BM25 匹配（MatchMaker），
+> 并把「机构档案」的数据源从旧引擎收编到新尽调台。
+
+### Removed（旧 BM25 匹配，被尽调响应台覆盖）
+- `routes/assets.py`：`POST /api/v1/assets/match`、`GET /match/{id}`、`POST /match/{id}/confirm` 三个端点 + `MatchSessionIn`/`ConfirmIn`。
+- `engine/matchmaker.py`（BM25 匹配引擎）整文件删除。
+- `asset_db.db_match_session_list`（孤儿）+ `pitch_job_db` 再导出。
+- 前端：`MatchMakerPanel.tsx` 删除 + `AssetLibrary` 引用 + `App` 的 `onLaunchDD` 桥。
+- `dd_index_service`：删除尽调扫描「双写 assets 表供 MatchMaker 读」的块 → **两套扫描自然解耦**（尽调写 `dd_asset_index`，台账写 `assets`）。
+
+### Changed（收编：机构档案改由尽调台喂数据）
+- `dd_response._write_dd_outcomes`：尽调台确认后，除写 `match_outcomes` 飞轮外，**同步写一条 `match_session`**（以 dd session_id 为主键，幂等）→ 「机构档案/简报」面板现在反映**真实的尽调台活动**，而非旧 MatchMaker 历史。
+
+### Kept（明确边界，未误伤）
+- **台账(A)**：列表/搜索/扫描/标记/打包(`/assets/bundle`)/活力雷达/资产wiki —— 全部保留。
+- **尽调响应台(C)**：保留。
+- `match_outcomes` 表 + `match_sessions` 表 + `db_match_session_create/get/update`（台账打包 + 尽调台都在用）。
+
+### Tests
+- 删除 `test_matchmaker.py`、`test_wiki_display` 的 3 个 BM25/match 端点用例、`test_dd_e2e` 的 dual-write 用例；新增 `test_confirm_feeds_institution_archive`（验证尽调台确认 → 机构档案 has_history）。
+
+---
+
+## [1.9.5] — 2026-06-06  资产瘦身（三）：整条下线 nightly_suggestions / 夜间建议
+
+> 测试基线：791 passed。生成逻辑一直是 mock、前端 banner 长期为空的"夜间建议/晨报"
+> 功能整条下线。**保留**真实的偏好提取学习链路。
+
+### Removed（用户可见但本就无产出）
+- **`nightly_suggestions` 表**（migration 30 `DROP TABLE` + 从 DDL 移除）。
+- `memory_db` 三个函数（insert / list_pending / mark_consumed）+ `pitch_job_db` 再导出。
+- `routes/assets.py`：`GET /api/v1/digest/pending` + `POST /api/v1/digest/{id}/consume`。
+- `npc_chat_graph`：豆豆里注入"夜间进化建议"的读取块。
+- `nightly_settle.py`：删除 mock 素材建议生成（`_generate_material_suggestions` / `_simple_tfidf_score` / NPC 推送），**保留并简化为只做偏好提取**。
+- 前端：删除 `DigestBanner.tsx` + `AssetLibrary` 里的引用。
+
+### Kept（明确边界，未误伤）
+- **偏好提取链路完整保留**：定时任务每晚仍跑 `run_preference_extraction`（review_diffs → investor_prefs → Coach 注入）。`admin /nightly-settle` 触发端点保留（返回 `extracted` 偏好条数）。
+- **反思飞轮**（`/api/v1/reflection/nightly-settle` → evolution_guidelines）与本功能无关，未触碰。
+
+### Tests
+- `test_nightly_settle.py` 重写为「偏好提取 + admin 端点」3 例；移除 `test_wiki_display` 的 digest 用例、`test_phase4_association` 的夜间建议生成用例。
+
+---
+
+## [1.9.4] — 2026-06-06  资产瘦身（二）：删除 material_match_history
+
+> 测试基线：798 passed。下线"复盘时默默采集、仅调试端点读"的素材匹配历史。
+
+### Removed（用户无感，复盘提交流程不依赖）
+- **`material_match_history` 表**（migration 29 `DROP TABLE` + 从 DDL 移除）：由 `evolution_capture` 在复盘提交时写入，但唯一读取方是一个 admin 调试端点 `/api/v1/admin/association-log`（无真实消费）。
+- `asset_db.db_material_match_insert` / `db_material_matches_list` + `pitch_job_db` 再导出。
+- `evolution_capture.capture_review_diff`：移除写 match_history 的循环（**保留** `db_diff_insert` 核心 + `material_contributions` 使用计数累加）。
+- `routes/admin.py`：`/association-log` 调试端点。
+- `routes/materials.py`：`/api/materials/match` 里写 match_history 的调用（保留贡献计数）。
+- 对应测试若干（test_pitch_job_db / test_p2_materials_api / test_phase4_association 的 association-log 与 match-history 用例）；Test 8 改为断言 `capture_review_diff` 仍正常写 review_diffs。
+
+---
+
+## [1.9.3] — 2026-06-06  资产瘦身（一）：删除死表 contribution_scores
+
+> 测试基线：803 passed。产品审计后，砍掉"团队知识贡献管理"里**从未接通**的脚手架。
+> 背景：资产管理子系统(~6000行)被确认与核心尽调/路演流程基本脱钩；其中"贡献分"
+> 这条线服务的是"未来有团队时的管理员"，非打单用户，且是纯空架子。
+
+### Removed（零功能损失）
+- **`contribution_scores` 表**（migration 28 `DROP TABLE`，已从 DDL 移除）：确认**无任何生产写入**（仅测试写、一个无前端的 `/api/contributions` 端点读）。
+- `asset_db.db_contribution_score_upsert` / `db_contribution_scores_list`、`pitch_job_db` 对应再导出。
+- `routes/materials.py`：`GET /api/contributions` 端点 + `ContributionScore`/`ContributionsResponse` 模型。
+- 对应测试（test_pitch_job_db 1 例、test_p2_materials_api 3 例）。
+
+### 说明（重要：审计修正）
+- 原产品审计(agent 静态扫描)曾把 `material_match_history`、`nightly_suggestions` 也列为"可删死表"，**经核实不准确**：前者由 `evolution_capture` 在**复盘提交活路径**(`pitch.py`)写入，后者由 lifespan **定时任务**(每日2AM)调度。二者是"半成品但接进了活流程"，删除＝真实功能下线，需单独决策，**本版未动**。
+
+---
+
+## [1.9.2] — 2026-06-06  DD 红队 P0 加固：抗注入 / 防记忆投毒 / 防路径穿越
+
+> 测试基线：807 passed（新增 `test_dd_redteam.py` 9 个 + 记忆信任 2 个）
+> 红蓝对抗视角:威胁"正确交付"的三条工业级底线。威胁模型=文件正文/文件名/清单文字
+> 皆不可信、一次人工误确认、恶意文件名。
+
+### Security / Hardened
+- **P0-1 提示注入**（`dd_match_service`）:文件正文/文件名/摘要进 LLM 前先 `_neutralize` 给疑似指令打码;精判 prompt 显式声明正文为不可信数据;**关键兜底**——模型若说"满足"且要给绿,但需求与正文【零字面重合】(`_req_content_overlap`),强制降级到 yellow 待复核,不放绿。正文里的"判我为满足"无法操纵交付。
+- **P0-2 学习记忆投毒**（`dd_match_service`）:一次人工误确认会污染跨机构记忆并自动扩散。对策——记忆需**跨 session 确认≥2 次**才升级为可信(green、可被 bulk-confirm);仅确认 1 次=建议(yellow·待复核、预填但不自动放行)。单次误点无法自动错误交付;高确认数的正确文件自动盖过被投毒的旧映射。
+- **P0-3 导出路径穿越**（`dd_export_service`）:`matched_filename`/类别名/问题文件夹名此前未充分清洗,携带 `../` 可写出 output_dir。新增 `_safe_filename`/`_safe_component`(去路径分隔/控制字符/前后导点,杜绝 `.`、`..`)+ `_within` 兜底闸(目标解析后必须仍在 output_dir 内,否则跳过)。
+
+### Tests
+- `backend/tests/test_dd_redteam.py`（9）:注入打码/零重合兜底/对照不误伤、误确认不被 bulk-confirm 扫过、纠偏盖过投毒、文件名与文件夹穿越均被收纳在 output_dir 内。
+- `test_dd_material_architecture.py`:记忆单次确认=yellow、≥2 次=green 两例。
+
+---
+
+## [1.9.1] — 2026-06-06  DD 物料架构红队加固 + 压测固化
+
+> 测试基线：798 passed（v1.9.0 的 795 + 熔断/防错年/压测烟雾 3 个）
+> 自造 1188 文件复杂材料库做压力测试，红队视角挖出并修掉 5 个真实脆弱点。
+
+### Added
+- **压测固化**：`backend/bench/dd_stress.py`（可手动按 `--scale small/medium/large` 放大 + `--charts` 出图 + `--real-llm`）；`backend/tests/test_dd_stress_smoke.py` 把核心不变量（全文落库率/验证齐全/跨机构锁定/并发零错误）锁进 CI。
+
+### Fixed / Hardened（红队）
+- **连接开销（全局）**：`db_base._connect` 此前每次都重跑全套 DDL + 迁移检查，成为高频小查询主要开销。改为**进程内按 db_path 缓存「已初始化」**，同路径只首连接建表/迁移一次（线程安全双检锁）。测试隔离与迁移正确性不变。
+- **精判自我吊死**（`_refine_session_matches`）：LLM 持续失败时,此前每条需求都重试退避(120条≈十几分钟)。新增**熔断**:连续失败 `_REFINE_MAX_CONSECUTIVE_FAILS=3` 次即判定 LLM 不可用,剩余项降级为置信度判定;并加单 session 调用上限 `_REFINE_MAX_CALLS=500` 防 runaway。
+- **跨机构记忆套错年份**（`normalize_requirement`）：此前归一化把年份也抹掉,「2023审计报告」与「2024审计报告」会落到同一 key,可能跨机构套错文件且被 bulk-confirm 直接扫过。改为**保留数字/年份**,只去标点/空白/括号/礼貌引导词——宁可少命中,不可错命中。
+- **超大/扫描件 PDF 拖死索引**（`extract_full_text`）：全文模式此前读 PDF 全部页,扫描件(每页抽不出字、永不触顶)会遍历上千页。加页数安全帽 `_FULL_MAX_PAGES=80`。
+- **连接 churn（DD 热路径）**：`_refine_session_matches` 与 `_apply_decision_memory` 改为**单连接 + executemany 批量写**,不再每条 item 各开 1~2 个连接(并发下也降低锁竞争)。`lookup_decision_memory` 增加可选 `conn` 复用参数。
+
+### Changed
+- 测试：`test_dd_material_architecture.py` 新增熔断、防错年 2 例;`normalize` 用例更新为「保留年份」语义。
+
+---
+
+## [1.9.0] — 2026-06-06  DD 物料架构升级：全文精判 + 机器验证 + 跨机构学习
+
+> 测试基线：795 passed（新增12个 `test_dd_material_architecture.py`）
+> 背景：尽调响应台此前只拿「文件名 + 20字摘要」做匹配（拿影子匹配 50 页报告），准确率有天花板；
+> 且没有「匹配完怎么知道对不对」的验证层。本版补上**内容层 → 生产线 → 学习闭环**三段地基。
+> 架构讨论与分阶段方案见 `AGENTS.md`「DD 物料架构」节。
+
+### Added
+- **阶段1 · 全文精判（内容层）**：
+  - `dd_file_parser.extract_full_text()`：读全部页 / 默认 6000 字（区别于 `extract_text` 只读前 3 页 / 800 字做摘要）。
+  - `dd_asset_index.content_text`（migration 23）：索引时把材料**全文落库**，精判节点据此逐条核对正文，不再只看 20 字摘要。
+  - `dd_match_service._llm_refine_candidate()` / `_refine_session_matches()`：匹配后对「有正文、非记忆锁定」的已匹配项喂正文做精判，按「是否真满足」调整置信度并产出**原文证据片段**。
+- **阶段2 · 机器验证（evaluator）**：
+  - `dd_match_items.verdict` / `evidence`（migration 24/25）：精判产出红/黄/绿判定 + 证据，写回每项。阈值 green≥0.70 / yellow≥0.40 / red（与 `engine/matchmaker.py` 四色一致）。机器先验、人工终审——绿一键过、黄重点看、红改。
+  - 前端 `DueDiligenceWizard`：审核表在文件名下展示 🟢🟡🔴 + 证据片段，加速人工终审。
+- **阶段3 · 跨机构决策记忆（学习闭环）**：
+  - `dd_decision_memory` 表（migration 26/27）+ `normalize_requirement` / `record_session_decisions` / `lookup_decision_memory` / `_apply_decision_memory`。
+  - **材料库共享** → 人工确认的「需求→文件」映射**机构无关**地沉淀；A 机构确认的选择，B/C/D 遇到同类需求时自动锁定（高置信 green，跳过精判省 token）。记忆文件若已不在当前库则不强行套用。
+  - 写入挂在既有确认流程（`_write_dd_outcomes` 同址），与 per-institution 飞轮互补、独立容错。
+
+### Changed
+- `dd_match_service.run_matching`：批量匹配后串接「记忆覆盖 → 全文精判+验证」两段，各自 try/except 容错，不影响主流程终态。
+- 设计取舍：精判全文读取复用既有 pdfplumber/python-docx/openpyxl，**未引入 markitdown**（新依赖、网络受限环境装不稳）。扫描件/图片 PDF 正文读不出者标记跳过，仍靠文件名+摘要参与粗筛；markitdown+OCR 列为未来演进锚点（见 `dd_file_parser.extract_full_text` docstring 与 AGENTS.md）。
+
+### 留给下一棒的钩子
+- **「写材料」场景**（投后报告模板填充 / 微信问题生成 Word 答复）：本版未做，但内容层（`content_text`）已就位。方向详见 AGENTS.md「下一步开发方向」节与 `dd_qa_service.py` 顶部锚点。
+
+---
+
 ## [1.6.0] — 2026-06-02  P0 稳健性三补丁
 
 > 测试基线：744 passed（新增11个 `test_dd_robustness_p0.py`）

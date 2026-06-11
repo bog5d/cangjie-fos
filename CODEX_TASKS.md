@@ -5,16 +5,58 @@
 
 ---
 
-## 当前版本：v1.8.0 | 最后更新：2026-06-03
+## 当前版本：v1.9.1 | 最后更新：2026-06-06
 
 ---
 
-## ⚠️ 测试执行规则（必读，不可跳过）
+## 🆕 本轮新增（v1.9.1 · 红队加固 + 压测固化）
 
-> **vitest 单元测试 ≠ 浏览器验收**。vitest 运行在 jsdom 模拟环境里，
-> 无法验证真实 Chrome 渲染、CSS 可见性、叠层阻塞、真实点击流程。
-> **每次改动了任何前端组件（.tsx/.ts），必须同时跑 Playwright 浏览器冒烟。**
-> 「前端已有 vitest 覆盖」不能替代浏览器测试，两者必须都通过。
+```bash
+cd backend
+uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q   # 期望 798 passed
+uv run --extra dev pytest tests/test_dd_stress_smoke.py tests/test_dd_material_architecture.py -v
+# 期望：1 + 14 = 15 passed（压测烟雾 1 + 物料架构含熔断/防错年 14）
+
+# 手动压测（可选，自造复杂数据 + 真实流水线 + 出图）
+uv run python bench/dd_stress.py --scale large --charts   # 看 8/8 并发零错误、跨机构锁定成功、全文落库100%
+```
+加固点：DB 连接 schema-init 缓存 / 精判 LLM 熔断 / 归一化保留年份防套错 / PDF 页数安全帽 / 热路径单连接批量写。
+
+---
+
+## 🆕 上轮任务（v1.9.0 · DD 物料架构升级：全文精判 + 机器验证 + 跨机构学习）
+
+> 主理人点名：**模拟人工测试、输出测试 PDF、打开浏览器、该截图截图。**
+
+### 1) 自动化（必须全绿）
+```bash
+cd backend
+uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
+# 期望：795 passed, 0 failed
+
+# 本轮新增（12 个）
+uv run --extra dev pytest tests/test_dd_material_architecture.py -v
+# 期望：12 passed（阶段1 全文精判 5 + 阶段2 验证 3 + 阶段3 跨机构记忆 4）
+```
+
+### 2) 人工冒烟（启动服务 + 真实浏览器，截图存档）
+> 启动：`cd backend && uv run uvicorn cangjie_fos.main:app --port 8000`，前端走 `frontend/dist`（已预编译）。
+> 全程**打开浏览器**操作，每个验收点**截图**；最后把过程与结论汇总**输出成一份测试 PDF**（含截图）。
+
+| # | 操作 | 验收点（截图） |
+|---|------|--------------|
+| A | 准备一个材料库文件夹（放 2-3 个 txt/pdf，如「审计报告.txt」含「审计报告 标准无保留意见」正文、一个无关「装修合同.txt」），在「📋 尽调响应」里扫描 | 扫描完成；后端 `dd_asset_index.content_text` 有全文（可不查库，看下一步精判生效即可） |
+| B | 上传/粘贴清单（如「1. 审计报告」），触发 AI 匹配 | 匹配出候选；审核表里命中项文件名**下方出现 🟢/🟡/🔴 + 一句证据片段**（机器验证产物） |
+| C | 故意让一条需求匹配到无关文件，看精判是否纠偏 | 该项被标 🔴（红），证据说明「正文与需求不符」之类 |
+| D | 确认（✓）某条「需求→文件」，再新建一个**不同机构名**、含**同一条需求**的 session 并匹配 | 第二个机构该项被**自动锁定**为上次确认的文件，理由含「🧠 历史沿用」，徽章绿色（跨机构学习生效） |
+| E | 导出 | 导出的是**原始文件**（非重新生成）；缺失清单正常 |
+
+**FAIL 判定**：自动化任一 failed；或 B/C/D 任一现象不符。
+**输出**：测试结果 PDF（含 A-E 截图 + 通过/失败结论）。回填到本文件「历史记录」或 PR 评论。
+
+---
+
+## 历史版本：v1.8.0 | 2026-06-03
 
 ---
 
@@ -23,9 +65,14 @@
 ```bash
 # ── 1. 后端单元/集成测试 ──────────────────────────────────────────
 cd backend
-uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py \
-                           --ignore=tests/test_ui_smoke.py -q
+uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
 # 期望：783+ passed, 0 failed
+
+# ── 本轮新增（v1.8.0 gk 模式 机构问答响应引擎 阶段一）──────────────
+uv run --extra dev pytest tests/test_dd_gk_scan.py tests/test_dd_gk_export.py \
+                          tests/test_dd_qa_service.py tests/test_dd_gk_api.py \
+                          tests/test_dd_gk_password.py -q
+# 期望：28 passed（11 扫描 + 4 导出 + 5 问答 + 3 API + 5 密码）
 
 # ── 2. 本轮新增专项（v1.8.0 gk 模式 机构问答响应引擎 阶段一）──────
 uv run --extra dev pytest tests/test_dd_gk_scan.py tests/test_dd_gk_export.py \
@@ -37,8 +84,11 @@ uv run --extra dev pytest tests/test_dd_gk_scan.py tests/test_dd_gk_export.py \
 cd ../frontend
 npm install   # 依赖有变化时运行
 npm test
-# 注意：用 `npm test`，不要用 npx vitest run 单跑某文件（jsdom 冷启动偶发不加载）
+# 注意：使用 Vitest，不支持 Jest 的 --runInBand 参数，不要传
+# 注意：请用 `npm test`（不要用 npx vitest run 单跑某文件，jsdom 冷启动偶发不加载）
 # 期望：24+ passed, 0 failed
+#   gk 模式前端新增：DueDiligenceWizard.layout / .password / .byquestion
+#   / .multifile / .qadraft 共 6 个用例
 
 # ── 4. TypeScript 编译 ────────────────────────────────────────────
 npm run build
@@ -125,6 +175,32 @@ uv run --extra dev pytest tests/test_ui_smoke.py tests/test_ui_smoke_gk.py -v -s
 | F2/F5 按问题归档 | `DueDiligenceWizard.byquestion.test.tsx` | ⚠️ 仅 jsdom，需人工验 |
 | F2 多文件附加 | `DueDiligenceWizard.multifile.test.tsx` | ⚠️ 仅 jsdom，需人工验 |
 | F4 问答草稿 | `DueDiligenceWizard.qadraft.test.tsx` | ⚠️ 仅 jsdom，需人工验 |
+
+---
+
+### gk — 【v1.8.0 后端】机构问答响应引擎 阶段一（纯后端，pytest 已覆盖）
+
+> 本轮为后端能力（F1/F2/F4/F5），无 UI，靠自动化测试验收；前端对接见下一版。
+
+| 能力 | 测试文件 | 验收点 |
+|------|---------|--------|
+| F1 布局检测+去重+加密标记 | `test_dd_gk_scan.py` | per_institution 自动识别；同名跨机构去重留最新；加密文件 is_encrypted=1 仍入索引 |
+| F2/F5 按问题归档导出 | `test_dd_gk_export.py` | 每条需求一个「问题NN_xxx」文件夹；无匹配进缺失清单不建空夹；多文件全拷；自定义命名 |
+| F4 历史问答复用 | `test_dd_qa_service.py` | 补充资料扒问答对落 dd_qa_pairs；新需求命中带答案+置信度；无命中低置信不硬塞 |
+| F3 加密密码登记/附带 | `test_dd_gk_password.py` | 扫描报机构数；items 富化 is_encrypted/unlock_password；设密码端点；导出生成加密文件密码.txt |
+| API 端点 | `test_dd_gk_api.py` | export-by-question / qa/extract / qa/draft 三端点 200 |
+
+**FAIL 判定**：上述任一 pytest 文件有 failed。
+
+#### gk 模式前端（已有 vitest 覆盖，无需人工冒烟）
+
+| 前端能力 | 测试文件 | 验收点 |
+|---------|---------|--------|
+| F1 布局徽章 | `DueDiligenceWizard.layout.test.tsx` | 扫描后显示「按机构分类·N家」/「平铺材料库」 |
+| F3 加密🔒+密码 | `DueDiligenceWizard.password.test.tsx` | 加密文件显示🔒，登记密码 POST，切🔓 |
+| F2/F5 按问题归档 | `DueDiligenceWizard.byquestion.test.tsx` | 命名确认表默认问题名、可改名、POST overrides |
+| F2 多文件附加 | `DueDiligenceWizard.multifile.test.tsx` | 候选勾选「附加」→ PATCH extra_files_json |
+| F4 问答草稿 | `DueDiligenceWizard.qadraft.test.tsx` | 「💬 草稿」命中历史答案+置信度、可编辑 |
 
 ---
 

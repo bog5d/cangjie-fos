@@ -2,16 +2,13 @@
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from cangjie_fos.services.asset_index_io import load_asset_index_dict
 from cangjie_fos.services.pitch_job_db import (
-    db_contribution_scores_list,
     db_material_contribution_upsert,
     db_material_contributions_list,
-    db_material_match_insert,
-    db_material_matches_list,
 )
 
 logger = structlog.get_logger(__name__)
@@ -56,17 +53,6 @@ class MaterialMatchResponse(BaseModel):
     institution_id: str
     matches: list[MatchedAsset]
     total: int
-
-
-class ContributionScore(BaseModel):
-    contributor: str
-    score: float
-    job_count: int
-
-
-class ContributionsResponse(BaseModel):
-    total: int
-    scores: list[ContributionScore]
 
 
 # ---------------------------------------------------------------------------
@@ -134,12 +120,6 @@ def materials_match(body: MaterialMatchRequest) -> MaterialMatchResponse:
 
     matches: list[MatchedAsset] = []
     for asset, score in scored:
-        db_material_match_insert(
-            body.institution_id,
-            asset.get("filename", ""),
-            asset.get("relative_path", ""),
-            score=score,
-        )
         db_material_contribution_upsert(
             asset.get("filename", ""),
             asset.get("relative_path", ""),
@@ -165,18 +145,3 @@ def materials_match(body: MaterialMatchRequest) -> MaterialMatchResponse:
     return MaterialMatchResponse(
         institution_id=body.institution_id, matches=matches, total=len(matches)
     )
-
-
-@router.get("/api/contributions", response_model=ContributionsResponse)
-def get_contributions(limit: int = Query(50, ge=1, le=200)) -> ContributionsResponse:
-    """返回贡献度排行（按 score DESC）。"""
-    rows = db_contribution_scores_list(limit=limit)
-    scores = [
-        ContributionScore(
-            contributor=r["contributor"],
-            score=float(r["score"]),
-            job_count=int(r["job_count"]),
-        )
-        for r in rows
-    ]
-    return ContributionsResponse(total=len(scores), scores=scores)

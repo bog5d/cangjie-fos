@@ -5,17 +5,11 @@ import logging
 import uuid
 from typing import Any, List
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from cangjie_fos.core.paths import get_fos_bridge_data_dir
 from cangjie_fos.services.asset_index_io import load_asset_index_dict
-from cangjie_fos.engine.matchmaker import (
-    get_default_matcher,
-    parse_requirements_from_text,
-    result_to_dict,
-    run_matching,
-)
 from cangjie_fos.services.asset_health_service import (
     get_health_dashboard,
     take_health_snapshot,
@@ -36,13 +30,8 @@ from cangjie_fos.services.pitch_job_db import (
     db_institutions_list,
     db_match_outcome_batch_save,
     db_match_session_create,
-    db_match_session_get,
     db_match_session_update,
-    db_nightly_suggestion_list_pending,
-    db_nightly_suggestion_mark_consumed,
 )
-
-from cangjie_fos.services import github_sync
 
 logger = logging.getLogger(__name__)
 
@@ -323,8 +312,27 @@ def get_institution_briefing_route(institution_name: str) -> dict[str, Any]:
 
     比 /profile 多返回 gap_hints（历史上要过但无法满足的材料清单）。
     设计用于匹配前展示给用户，帮助提前了解该机构的已知缺口。
+
+    v1.10.0：合入机构情报侧表（institution_intel）——尽调缺口 + 路演细分情报
+    （关键问题 / 兴趣信号），让机构简报反映"内容层"而不只是历史次数。
     """
-    return db_institution_briefing(institution_name)
+    briefing = db_institution_briefing(institution_name)
+
+    from cangjie_fos.services.institution_store import get_institution_intel_by_name  # noqa: PLC0415
+    intel = get_institution_intel_by_name(institution_name)
+    dd = intel.get("dd") or {}
+    roadshow = intel.get("roadshow") or {}
+    briefing["dd_summary"] = (
+        {"checklist": dd.get("checklist", ""), "total": dd.get("total", 0),
+         "confirmed": dd.get("confirmed", 0), "gaps": dd.get("gaps", [])}
+        if dd else None
+    )
+    briefing["roadshow_questions"] = roadshow.get("key_questions", [])
+    briefing["interest_signals"] = roadshow.get("interest_signals", [])
+    # 有侧表情报时，即便没有 match_sessions 历史也让面板展示
+    if (dd or roadshow) and not briefing.get("has_history"):
+        briefing["has_history"] = True
+    return briefing
 
 
 @router.get("/api/v1/assets/wiki/{relative_path:path}", tags=["assets"])
@@ -335,24 +343,6 @@ def get_asset_wiki_route(relative_path: str) -> dict[str, Any]:
     数据来源：match_outcomes 表聚合，零延迟。
     """
     return db_asset_wiki_summary(relative_path)
-
-
-@router.get("/api/v1/digest/pending", tags=["assets"])
-def get_digest_pending_route() -> dict[str, Any]:
-    """返回未读晨报建议（来自 nightly_suggestions 表）。
-
-    供前端 DigestBanner 组件读取，展示给用户后调用
-    POST /api/v1/digest/{id}/consume 标记为已读。
-    """
-    suggestions = db_nightly_suggestion_list_pending(tenant_id="default", limit=5)
-    return {"suggestions": [dict(s) for s in suggestions], "count": len(suggestions)}
-
-
-@router.post("/api/v1/digest/{suggestion_id}/consume", tags=["assets"])
-def post_digest_consume_route(suggestion_id: str) -> dict[str, Any]:
-    """将晨报建议标记为已读（consumed_at 设为当前时间）。"""
-    db_nightly_suggestion_mark_consumed(suggestion_id)
-    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
@@ -421,146 +411,3 @@ def post_bundle_route(body: BundleIn) -> dict[str, Any]:
         "file_count": len(body.files),
         "institution": body.institution,
     }
-
-
-class MatchSessionIn(BaseModel):
-    institution: str = ""
-    req_text: str
-    use_llm: bool = False
-    top_n: int = 3
-
-
-class ConfirmIn(BaseModel):
-    confirmed_files: list[dict]  # [{"filename": ..., "full_path": ...}, ...]
-
-
-@router.post("/api/v1/assets/match", tags=["assets"])
-def post_match_route(body: MatchSessionIn) -> dict[str, Any]:
-    """解析尽调需求文本 → MatcherSkill 匹配（含机构历史偏好加权）→ 持久化会话。
-
-    匹配流程：
-      1. 解析需求文本（LLM 或启发式）
-      2. 从 match_outcomes 表加载机构历史偏好画像（无历史时跳过）
-      3. BM25MatcherSkill 执行匹配 + 历史偏好加权
-      4. 持久化 session，返回结果
-    """
-    if not body.req_text.strip():
-        raise HTTPException(status_code=422, detail={"code": "E_EMPTY_REQ", "message": "需求文本不能为空"})
-
-    requirements = parse_requirements_from_text(body.req_text, use_llm=body.use_llm)
-    if not requirements:
-        raise HTTPException(status_code=422, detail={"code": "E_NO_REQ", "message": "未能解析出任何需求条目"})
-
-    assets = db_assets_list(limit=2000)
-
-    # 注入机构历史偏好画像（有历史数据时加权，无历史时退化为纯 BM25）
-    institution_profile: dict | None = None
-    if body.institution:
-        try:
-            profile = db_institution_match_profile(body.institution)
-            if profile.get("total_sessions", 0) > 0:
-                institution_profile = profile
-                logger.info(
-                    "机构 %s 历史画像注入：%d 次匹配，%d 个偏好文件",
-                    body.institution,
-                    profile["total_sessions"],
-                    len(profile.get("preferred_paths", [])),
-                )
-        except Exception:  # noqa: BLE001
-            pass  # 画像加载失败不阻断匹配
-
-    matcher = get_default_matcher()
-    results = matcher.match(
-        requirements,
-        assets,
-        institution=body.institution,
-        institution_profile=institution_profile,
-        top_n=body.top_n,
-    )
-
-    session_id = str(uuid.uuid4())
-    req_dicts = [{"description": r.description, "scene_type": r.scene_type, "time_range": r.time_range}
-                 for r in requirements]
-    res_dicts = [result_to_dict(r) for r in results]
-    db_match_session_create(
-        session_id=session_id,
-        institution=body.institution,
-        req_text=body.req_text,
-        requirements=req_dicts,
-        results=res_dicts,
-    )
-    # 缺口检测（异步计算不影响主流程）
-    gap_hints: list[str] = []
-    if body.institution:
-        try:
-            briefing = db_institution_briefing(body.institution)
-            gap_hints = briefing.get("gap_hints", [])
-        except Exception:  # noqa: BLE001
-            pass
-
-    return {
-        "session_id": session_id,
-        "institution": body.institution,
-        "req_count": len(requirements),
-        "results": res_dicts,
-        "profile_injected": institution_profile is not None,
-        "gap_hints": gap_hints,
-    }
-
-
-@router.get("/api/v1/assets/match/{session_id}", tags=["assets"])
-def get_match_session_route(session_id: str) -> dict[str, Any]:
-    """按 session_id 取匹配会话详情。"""
-    session = db_match_session_get(session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail={"code": "E_SESSION_NOT_FOUND", "message": "会话不存在"})
-    return session
-
-
-@router.post("/api/v1/assets/match/{session_id}/confirm", tags=["assets"])
-def post_match_confirm_route(session_id: str, body: ConfirmIn, background_tasks: BackgroundTasks) -> dict[str, Any]:
-    """提交人工确认的文件列表，将会话标记为 confirmed，并写入 match_outcomes 记忆。
-
-    每次 confirm 都是飞轮的一圈：
-      人工选择 → match_outcomes 记录 → 下次匹配时偏好加权 → 结果更准
-    """
-    session = db_match_session_get(session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail={"code": "E_SESSION_NOT_FOUND", "message": "会话不存在"})
-    db_match_session_update(
-        session_id,
-        status="confirmed",
-        confirmed_files=body.confirmed_files,
-    )
-
-    # 写入匹配结果记忆（学习飞轮）
-    try:
-        institution = session.get("institution", "")
-        # 从 session results 中提取所有候选文件路径
-        candidate_paths: list[str] = []
-        candidate_names: list[str] = []
-        for result in (session.get("results") or []):
-            for c in (result.get("candidates") or []):
-                path = (c.get("asset") or {}).get("relative_path", "")
-                name = (c.get("asset") or {}).get("filename", "")
-                if path and path not in candidate_paths:
-                    candidate_paths.append(path)
-                    candidate_names.append(name)
-        # 被选中的文件
-        selected_paths = [f.get("relative_path", "") for f in body.confirmed_files if f.get("relative_path")]
-        selected_names = [f.get("filename", "") for f in body.confirmed_files]
-        db_match_outcome_batch_save(
-            session_id=session_id,
-            institution=institution,
-            selected_paths=selected_paths,
-            candidate_paths=candidate_paths,
-            selected_names=selected_names,
-            candidate_names=candidate_names,
-        )
-    except Exception:  # noqa: BLE001
-        logger.warning("match_outcomes 写入失败，不阻断确认流程", exc_info=True)
-
-    # GitHub 同步：把匹配记录 push 到 coach_data 仓库
-    background_tasks.add_task(github_sync.push_match_session, session_id)
-
-    return {"session_id": session_id, "status": "confirmed", "confirmed_count": len(body.confirmed_files)}

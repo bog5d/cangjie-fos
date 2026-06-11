@@ -130,39 +130,6 @@ def test_asset_wiki_summary_with_history(isolated_db):
     assert "IDG" in institutions
 
 
-# ─── 3. candidate reason 字段 ─────────────────────────────────────────────────
-
-def test_candidate_to_dict_has_reason():
-    """candidate_to_dict 为每个候选生成 reason 文本。"""
-    from cangjie_fos.engine.matchmaker import BM25MatcherSkill, RequirementItem
-
-    assets = [
-        {"filename": "审计报告.pdf", "summary": "年度审计", "tags": ["审计"],
-         "relative_path": "审计报告.pdf"},
-    ]
-    reqs = [RequirementItem(description="审计")]
-    results = BM25MatcherSkill().match(reqs, assets, top_n=1)
-    from cangjie_fos.engine.matchmaker import result_to_dict
-    d = result_to_dict(results[0])
-    candidate = d["candidates"][0]
-    assert "reason" in candidate
-    assert isinstance(candidate["reason"], str)
-    assert len(candidate["reason"]) > 0
-
-
-def test_reason_includes_history_boost():
-    """机构历史偏好命中时，reason 包含'机构历史首选'。"""
-    from cangjie_fos.engine.matchmaker import BM25MatcherSkill, RequirementItem, result_to_dict
-
-    assets = [{"filename": "审计报告.pdf", "summary": "年度审计", "tags": ["审计"],
-               "relative_path": "审计报告.pdf"}]
-    reqs = [RequirementItem(description="审计")]
-    profile = {"preferred_paths": ["审计报告.pdf"], "preferred_tags": [], "total_sessions": 5}
-    results = BM25MatcherSkill().match(reqs, assets, institution_profile=profile, top_n=1)
-    d = result_to_dict(results[0])
-    assert "机构历史首选" in d["candidates"][0]["reason"]
-
-
 # ─── 4. API 端点 ──────────────────────────────────────────────────────────────
 
 def test_institution_briefing_api_no_history(isolated_db):
@@ -184,30 +151,3 @@ def test_asset_wiki_api(isolated_db):
     assert "total_selected" in body
     assert "institutions" in body
     assert "selection_rate" in body
-
-
-def test_digest_pending_api(isolated_db):
-    """/api/v1/digest/pending 返回 suggestions 列表（可为空）。"""
-    with TestClient(global_app) as client:
-        r = client.get("/api/v1/digest/pending")
-    assert r.status_code == 200
-    body = r.json()
-    assert "suggestions" in body
-    assert "count" in body
-    assert isinstance(body["suggestions"], list)
-
-
-def test_match_route_includes_gap_hints(isolated_db, monkeypatch):
-    """POST /api/v1/assets/match 返回中包含 gap_hints 字段。"""
-    monkeypatch.setattr(
-        "cangjie_fos.api.routes.assets.db_assets_list",
-        lambda limit=2000: [],
-    )
-    with TestClient(global_app) as client:
-        r = client.post("/api/v1/assets/match", json={
-            "institution": "任意机构", "req_text": "1. 审计报告",
-        })
-    assert r.status_code == 200
-    body = r.json()
-    assert "gap_hints" in body
-    assert isinstance(body["gap_hints"], list)

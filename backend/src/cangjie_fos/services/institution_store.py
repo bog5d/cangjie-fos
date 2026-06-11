@@ -1,6 +1,7 @@
 """Phase 6：机构画像 SQLite 存储（按 tenant_id 隔离）。"""
 from __future__ import annotations
 
+import json
 import sqlite3
 import time
 import uuid
@@ -62,8 +63,71 @@ def _conn() -> sqlite3.Connection:
             c.execute(f"ALTER TABLE institutions ADD COLUMN {col_def}")  # noqa: S608
         except sqlite3.OperationalError:
             pass  # column already exists
+    # 跨源情报侧表（v1.10.0）：承接尽调缺口 / 路演细分情报等"内容层"回流，
+    # 与 institutions 主表解耦（避免污染 row_to_profile 的定位映射 + GitHub 同步）。
+    # notes_json 形如 {"dd": {...}, "roadshow": {...}}，按子键合并。
+    c.execute(
+        """CREATE TABLE IF NOT EXISTS institution_intel (
+            tenant_id  TEXT NOT NULL,
+            name       TEXT NOT NULL,
+            notes_json TEXT NOT NULL DEFAULT '{}',
+            updated_at REAL NOT NULL,
+            PRIMARY KEY (tenant_id, name)
+        )"""
+    )
     c.commit()
     return c
+
+
+def merge_institution_intel(*, tenant_id: str, name: str, patch: dict[str, Any]) -> None:
+    """把 patch 按顶层子键合并进机构情报侧表（幂等：同子键覆盖，不同子键共存）。
+
+    用于尽调台 / 路演分析把"内容层"情报回流到机构，供机构简报展示。
+    """
+    name = (name or "").strip()
+    tenant_id = (tenant_id or "default").strip() or "default"
+    if not name or not patch:
+        return
+    with _conn() as c:
+        row = c.execute(
+            "SELECT notes_json FROM institution_intel WHERE tenant_id = ? AND name = ?",
+            (tenant_id, name),
+        ).fetchone()
+        try:
+            notes = json.loads(row[0]) if row and row[0] else {}
+            if not isinstance(notes, dict):
+                notes = {}
+        except (json.JSONDecodeError, TypeError):
+            notes = {}
+        notes.update(patch)
+        c.execute(
+            """INSERT INTO institution_intel (tenant_id, name, notes_json, updated_at)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(tenant_id, name) DO UPDATE SET
+                   notes_json = excluded.notes_json, updated_at = excluded.updated_at""",
+            (tenant_id, name, json.dumps(notes, ensure_ascii=False), time.time()),
+        )
+        c.commit()
+
+
+def get_institution_intel_by_name(name: str) -> dict[str, Any]:
+    """按机构名读取情报侧表（tenant 无关，取最近更新的一条），与机构档案层一致。"""
+    name = (name or "").strip()
+    if not name:
+        return {}
+    with _conn() as c:
+        row = c.execute(
+            """SELECT notes_json FROM institution_intel WHERE name = ?
+               ORDER BY updated_at DESC LIMIT 1""",
+            (name,),
+        ).fetchone()
+    if not row or not row[0]:
+        return {}
+    try:
+        notes = json.loads(row[0])
+        return notes if isinstance(notes, dict) else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 
 def upsert_institution(row: InstitutionProfile) -> None:

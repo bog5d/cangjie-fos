@@ -199,6 +199,10 @@ def run_pitch_wizard_track_job(
                 on_status=None,
                 skip_html_export=True,
                 cached_words=None,
+                # 断点续跑：ASR 一就绪即落库 words_json，评估失败也可经 retry-eval 重跑
+                on_words=lambda ws: db_job_update(
+                    job_id, words_json=[w.model_dump() for w in ws]
+                ),
             )
 
         try:
@@ -213,6 +217,11 @@ def run_pitch_wizard_track_job(
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("institution_intel_extract_skipped wizard: %s", e)
+            # 不再静默吞掉：把失败记进 job.warnings，前端/排查可见（与 pitch_graph_service 一致）
+            try:
+                db_job_update(job_id, warnings={"institution_extract": str(e)})
+            except Exception:  # noqa: BLE001
+                pass
 
         # ── 路演情报：将 next_actions 持久化到 follow_up_items ───────────────
         try:

@@ -356,49 +356,42 @@ class TestFlywheel:
         assert row is not None
         assert row[0] == "单项确认机构"
 
+    def test_confirm_feeds_institution_archive(self, client, tmp_path):
+        """收编验证：尽调台确认后，机构档案（match_sessions / briefing）应反映该机构活动。
 
-class TestDDScanSyncToAssets:
-    """Step 3 验证：DD 扫描同步写入 assets 共享表。"""
-
-    def test_scan_writes_to_assets_table(self, client, tmp_path):
-        """扫描完成后 assets 表中应能查到被扫描的文件。"""
-        (tmp_path / "营业执照.txt").write_text("营业执照原件", encoding="utf-8")
-        (tmp_path / "财务报告.txt").write_text("2023年财务报告", encoding="utf-8")
-
-        with patch("cangjie_fos.services.dd_index_service._llm_summarize", return_value="测试摘要"):
-            from cangjie_fos.services.dd_index_service import scan_and_index_folder
-            result = scan_and_index_folder(str(tmp_path), "test_sync")
-
-        assert result["indexed"] == 2
-
-        from cangjie_fos.services.db_base import _connect
-        with _connect() as conn:
-            rows = conn.execute(
-                "SELECT filename, summary FROM assets WHERE scan_dir = ?", (str(tmp_path),)
-            ).fetchall()
-        filenames = {r[0] for r in rows}
-        assert "营业执照.txt" in filenames
-        assert "财务报告.txt" in filenames
-        # 摘要应被写入
-        assert any(r[1] == "测试摘要" for r in rows)
-
-    def test_scan_upserts_existing_asset(self, client, tmp_path):
-        """重复扫描同一文件不应创建重复记录（upsert 幂等）。"""
-        f = tmp_path / "合同.txt"
-        f.write_text("合同正文", encoding="utf-8")
-
-        with patch("cangjie_fos.services.dd_index_service._llm_summarize", return_value="合同摘要"):
-            from cangjie_fos.services.dd_index_service import scan_and_index_folder
-            scan_and_index_folder(str(tmp_path), "t_upsert")
-            scan_and_index_folder(str(tmp_path), "t_upsert")
+        MatchMaker 下线后，尽调台接替成为机构档案的尽调侧数据源。
+        """
+        src = tmp_path / "章程.pdf"
+        src.write_bytes(b"fake")
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
+                   return_value=[{"item_no": "1", "category": "法务", "requirement": "公司章程"}]):
+            resp = client.post("/api/v1/dd/sessions", data={
+                "text": "dummy", "tenant_id": "arch", "folder_root": str(tmp_path),
+                "institution_name": "档案联动机构",
+            })
+        sid = resp.json()["session_id"]
+        item_id = client.get(f"/api/v1/dd/sessions/{sid}/items").json()[0]["id"]
 
         from cangjie_fos.services.db_base import _connect
         with _connect() as conn:
-            count = conn.execute(
-                "SELECT COUNT(*) FROM assets WHERE filename = '合同.txt' AND scan_dir = ?",
-                (str(tmp_path),),
-            ).fetchone()[0]
-        assert count == 1  # 不应重复
+            conn.execute(
+                "UPDATE dd_match_items SET matched_file_path = ?, matched_filename = ? WHERE id = ?",
+                (str(src), "章程.pdf", item_id),
+            )
+        client.patch(f"/api/v1/dd/sessions/{sid}/items/{item_id}", json={"user_confirmed": True})
+
+        # match_sessions 应有一条该机构的 confirmed 记录（幂等：用 dd session_id 作主键）
+        with _connect() as conn:
+            ms = conn.execute(
+                "SELECT institution, status FROM match_sessions WHERE id = ?", (sid,)
+            ).fetchone()
+        assert ms is not None and ms[0] == "档案联动机构" and ms[1] == "confirmed"
+
+        # 机构档案简报应据此显示有历史
+        from cangjie_fos.services.pitch_job_db import db_institution_briefing
+        briefing = db_institution_briefing("档案联动机构")
+        assert briefing["has_history"] is True
+        assert briefing["total_sessions"] >= 1
 
 
 _TEMPLATE_TEXT = """一、基本信息
@@ -470,7 +463,6 @@ class TestPostInvestmentScenario:
         })
         sid = resp.json()["session_id"]
 
-        # 手动写入 draft_answer 模拟填充结果
         from cangjie_fos.services.db_base import _connect
         with _connect() as conn:
             blank_items = conn.execute(
@@ -497,7 +489,6 @@ class TestPostInvestmentScenario:
 
     def test_draft_fill_runs_after_matching(self, client, tmp_path):
         """投后场景触发 match 后，fill service 自动运行（mock LLM）。"""
-        # 创建索引文件
         (tmp_path / "财务报告.txt").write_text("总资产5000万元，净资产3000万元", encoding="utf-8")
         with patch("cangjie_fos.services.dd_index_service._llm_summarize",
                    return_value="总资产5000万元，净资产3000万元"):

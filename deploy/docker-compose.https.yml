@@ -1,0 +1,30 @@
+# 公网域名 + 自动 HTTPS 叠加配置（仅「方案三：公网访问」需要）
+#
+# 用法（在仓库根目录）：
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.https.yml up -d
+#
+# 作用：在原有后端之上加一个 Caddy 反向代理，对外只暴露 443/80（HTTPS），
+#       后端 8000 不再直接对公网开放，更安全。
+
+services:
+  # 后端不再把 8000 直接映射到公网（去掉端口暴露，只在 docker 内网可达）
+  cangjie-fos:
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: cangjie-fos-caddy
+    restart: unless-stopped
+    depends_on:
+      - cangjie-fos
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:
