@@ -8,8 +8,10 @@
   GET  /api/v1/coaching/sessions/{id}/progress 进步曲线
 
 审问（mode=qa）：
-  POST /api/v1/coaching/qa/questions        出题（历史迁移 + AI 生成，去重）
-  POST /api/v1/coaching/qa/grade            评估一次答疑回答（可选录音转写）
+  POST /api/v1/coaching/qa/questions        出题（历史迁移 + AI 生成，去重 + 事实护栏）
+  POST /api/v1/coaching/qa/grade            评估一次答疑回答（默认不写回题库）
+  POST /api/v1/coaching/qa/grade-audio      录音回答 → ASR → 评估
+  POST /api/v1/coaching/qa/bank             人工确认后显式沉淀进题库
 """
 from __future__ import annotations
 
@@ -154,12 +156,14 @@ class GradeRequest(BaseModel):
     sector: str = ""
     round_stage: str = ""
     category: str = "业务"
-    persist: bool = True
+    # 默认不自动写回题库：AI 生成的坏题一旦入库会被优先迁移复用（题库污染）。
+    # 沉淀必须人工确认（前端「沉淀到题库」按钮 → POST /qa/bank）。
+    persist: bool = False
 
 
 @router.post("/qa/grade")
 def grade_qa_answer(req: GradeRequest):
-    """评估一次答疑回答（文字转写）。persist=True 时把问题沉淀回可复用库。"""
+    """评估一次答疑回答（文字转写）。persist=True 时把问题沉淀回可复用库（默认关）。"""
     result = grade_answer(req.question, req.answer_points, req.transcript)
     if req.persist and req.question.strip():
         try:
@@ -175,6 +179,33 @@ def grade_qa_answer(req: GradeRequest):
         except Exception as e:  # noqa: BLE001
             logger.warning("问题沉淀回写失败（不影响评分）: %s", e)
     return result
+
+
+# ── 审问：人工确认后沉淀进题库 ──────────────────────────────────
+class BankUpsertRequest(BaseModel):
+    question_text: str
+    answer_points: list[str] = []
+    tenant_id: str = "default"
+    category: str = "业务"
+    sector: str = ""
+    round_stage: str = ""
+
+
+@router.post("/qa/bank")
+def persist_question_to_bank(req: BankUpsertRequest):
+    """人工确认这道题值得复用后，显式沉淀进 qa_question_bank。"""
+    if not req.question_text.strip():
+        raise HTTPException(400, "question_text 不能为空")
+    qid = upsert_question_bank(
+        tenant_id=req.tenant_id,
+        question_text=req.question_text.strip(),
+        answer_points=req.answer_points,
+        category=req.category,
+        sector=req.sector,
+        round_stage=req.round_stage,
+        source="real",
+    )
+    return {"id": qid, "ok": True}
 
 
 @router.post("/qa/grade-audio")

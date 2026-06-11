@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from cangjie_fos.services.db_base import _connect
 from cangjie_fos.services.dd_llm_client import get_dd_llm_client, call_with_retry
+from cangjie_fos.services.fact_guard import evidence_found, ungrounded_numbers
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class Question(BaseModel):
     question_text: str = Field(..., description="问题正文")
     answer_points: list[str] = Field(default_factory=list, description="应答要点")
     source: str = Field("ai", description="ai/migrated/real")
+    evidence: str = Field("", description="材料原句出处（AI 生成题必填，历史题为空）")
 
 
 def _bigrams(text: str) -> set[str]:
@@ -89,6 +91,7 @@ def generate_questions(
             "question_text": qt,
             "answer_points": item.get("answer_points", []),
             "source": "ai",
+            "evidence": str(item.get("evidence", "")).strip(),
         })
         if len(result) >= limit:
             break
@@ -120,6 +123,7 @@ def _migrate_history(tenant_id: str, sector: str, round_stage: str, limit: int) 
         "question_text": r["question_text"],
         "answer_points": json.loads(r["answer_points_json"] or "[]"),
         "source": "migrated",
+        "evidence": "",
     } for r in rows]
 
 
@@ -170,8 +174,14 @@ def _llm_generate_questions(material: str, sector: str, round_stage: str) -> lis
 请按以下维度各提 1-2 个最尖锐、最容易问倒创始人的问题：{cats}。
 每个问题给出 2-3 条「合格回答应当命中的要点」。
 
+硬性规则（违反即作废）：
+1. 问题和要点里出现的每一个数字，必须原样来自上面的材料。禁止自行推导新数字
+   （如用月增长率推算年化），禁止把不同指标的数字互相搬用（如把客户集中度当毛利率）。
+2. 每个问题必须带 "evidence" 字段：逐字引用材料中触发该问题的那句原文，不许改写。
+   提不出原句出处的问题不要输出。
+
 返回 JSON 数组，每项：
-{{"category": "维度", "question_text": "问题", "answer_points": ["要点1","要点2"]}}
+{{"category": "维度", "question_text": "问题", "answer_points": ["要点1","要点2"], "evidence": "材料原句"}}
 只返回 JSON 数组："""
 
     def _call() -> str:
@@ -209,5 +219,29 @@ def _llm_generate_questions(material: str, sector: str, round_stage: str) -> lis
                 "category": cat if cat in _CATEGORIES else "业务",
                 "question_text": str(item["question_text"]).strip(),
                 "answer_points": [str(p) for p in item.get("answer_points", []) if p],
+                "evidence": str(item.get("evidence", "")).strip(),
             })
-    return out
+    return _filter_grounded_questions(out, material)
+
+
+def _filter_grounded_questions(items: list[dict], material: str) -> list[dict]:
+    """事实护栏：丢弃无有效证据、或数字不来自材料的 AI 生成题。
+
+    同事实测发现的两类幻觉都在这里拦：
+      - 推导/搬用数字（月增12% → 年化流失78%）→ 数字不在材料里，丢弃
+      - 凭空引用 → evidence 不是材料子串，丢弃
+    """
+    kept: list[dict] = []
+    for item in items:
+        qt = item.get("question_text", "")
+        if not evidence_found(item.get("evidence", ""), material):
+            logger.warning("出题护栏：丢弃无有效材料出处的问题: %s", qt[:60])
+            continue
+        bad = ungrounded_numbers(
+            qt + "；" + "；".join(item.get("answer_points") or []), material,
+        )
+        if bad:
+            logger.warning("出题护栏：丢弃含材料中不存在数字 %s 的问题: %s", bad, qt[:60])
+            continue
+        kept.append(item)
+    return kept

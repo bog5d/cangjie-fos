@@ -11,6 +11,7 @@ interface KeyPoint {
   point_text: string;
   weight: Weight;
   status?: CoverStatus;
+  /** 材料原句出处（后端事实护栏：含数字的要点必有） */
   evidence?: string;
 }
 
@@ -40,6 +41,8 @@ interface QAQuestion {
   question_text: string;
   answer_points: string[];
   source?: string;
+  /** 材料原句出处（AI 生成题必有，经过后端事实护栏校验；历史题为空） */
+  evidence?: string;
 }
 
 interface AnswerGrade {
@@ -164,6 +167,9 @@ export default function CoachingWizard({ open, onClose, tenantId }: Props) {
   const [answerText, setAnswerText] = useState("");
   const [grades, setGrades] = useState<Record<string, AnswerGrade>>({});
   const [grading, setGrading] = useState(false);
+  // 题库沉淀是人工动作（默认不自动写回，防止坏题污染复用库）
+  const [banked, setBanked] = useState<Record<string, boolean>>({});
+  const [banking, setBanking] = useState(false);
 
   const [err, setErr] = useState<string>("");
   const coachRec = useRecorder();
@@ -259,7 +265,9 @@ export default function CoachingWizard({ open, onClose, tenantId }: Props) {
       });
       setQuestions(r.data.questions);
       setGrades({});
-      setActiveQ(null);
+      setBanked({});
+      setActiveQ(r.data.questions.length ? 0 : null);
+      setAnswerText("");
     } catch (e) {
       setErr(extractErr(e, "出题失败"));
     } finally {
@@ -284,13 +292,33 @@ export default function CoachingWizard({ open, onClose, tenantId }: Props) {
         sector,
         round_stage: roundStage,
         category: q.category,
-        persist: true,
+        // 不自动沉淀：入库走下方「沉淀到题库」人工确认按钮
       });
       setGrades((g) => ({ ...g, [String(q.question_id)]: r.data }));
     } catch (e) {
       setErr(extractErr(e, "评估失败"));
     } finally {
       setGrading(false);
+    }
+  };
+
+  // ── 审问：人工确认后沉淀进题库 ─────────────────────────────────────────────
+  const persistToBank = async (q: QAQuestion) => {
+    setBanking(true);
+    try {
+      await api.post("/api/v1/coaching/qa/bank", {
+        question_text: q.question_text,
+        answer_points: q.answer_points,
+        tenant_id: tenantId,
+        category: q.category,
+        sector,
+        round_stage: roundStage,
+      });
+      setBanked((b) => ({ ...b, [String(q.question_id)]: true }));
+    } catch (e) {
+      setErr(extractErr(e, "沉淀失败"));
+    } finally {
+      setBanking(false);
     }
   };
 
@@ -327,7 +355,7 @@ export default function CoachingWizard({ open, onClose, tenantId }: Props) {
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 头部 */}
@@ -446,7 +474,12 @@ export default function CoachingWizard({ open, onClose, tenantId }: Props) {
                         <span className={`mt-0.5 shrink-0 rounded border px-1.5 text-[11px] ${WEIGHT_CLASS[kp.weight]}`}>
                           {WEIGHT_LABEL[kp.weight]}
                         </span>
-                        <span className="flex-1 text-gray-700">{kp.point_text}</span>
+                        <span
+                          className="flex-1 text-gray-700"
+                          title={kp.evidence ? `出处：${kp.evidence}` : undefined}
+                        >
+                          {kp.point_text}
+                        </span>
                         {st && (
                           <span className={`shrink-0 text-xs font-medium ${STATUS_CLASS[st]}`}>
                             {STATUS_LABEL[st]}
@@ -607,122 +640,161 @@ export default function CoachingWizard({ open, onClose, tenantId }: Props) {
           {mode === "qa" && questions.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">{questions.length} 道压力测试题</h3>
+                <h3 className="text-sm font-semibold text-gray-700">
+                  模拟投资人面试房间 · {questions.length} 道压力测试题
+                </h3>
                 <button
                   type="button"
                   onClick={() => {
                     setQuestions([]);
                     setGrades({});
+                    setBanked({});
+                    setActiveQ(null);
                   }}
                   className="text-xs text-gray-400 hover:text-gray-600"
                 >
                   ← 换一份材料
                 </button>
               </div>
-              {questions.map((q, i) => {
-                const grade = grades[String(q.question_id)];
-                const isActive = activeQ === i;
-                return (
-                  <div key={q.question_id} className="rounded-xl border border-gray-200 p-3">
-                    <div className="flex items-start gap-2">
-                      <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[11px] text-purple-700">
-                        {q.category}
-                      </span>
-                      <p className="flex-1 text-sm font-medium text-gray-800">{q.question_text}</p>
-                      {grade && (
-                        <span className={`shrink-0 text-lg font-bold ${scoreColor(grade.score)}`}>{grade.score}</span>
-                      )}
-                    </div>
-                    {q.answer_points.length > 0 && (
-                      <p className="mt-1 pl-1 text-xs text-gray-400">
-                        参考要点：{q.answer_points.join("；")}
-                      </p>
-                    )}
 
-                    {!isActive && !grade && (
+              <div className="grid gap-3 md:grid-cols-[230px_1fr]">
+                {/* 左：问题队列 */}
+                <div className="space-y-1 md:max-h-[58vh] md:overflow-y-auto">
+                  {questions.map((q, i) => {
+                    const grade = grades[String(q.question_id)];
+                    const isActive = activeQ === i;
+                    return (
                       <button
+                        key={q.question_id}
                         type="button"
                         onClick={() => {
                           setActiveQ(i);
                           setAnswerText("");
                         }}
-                        className="mt-2 text-sm text-purple-600 hover:text-purple-800"
+                        className={`flex w-full items-center gap-2 rounded-lg border px-2 py-2 text-left text-xs transition ${
+                          isActive
+                            ? "border-purple-400 bg-purple-50"
+                            : "border-gray-200 hover:border-purple-200 hover:bg-gray-50"
+                        }`}
                       >
-                        ▶ 作答这道题
+                        <span className="shrink-0 rounded bg-purple-100 px-1 py-0.5 text-[10px] text-purple-700">
+                          {q.category}
+                        </span>
+                        <span className="flex-1 truncate text-gray-700">{q.question_text}</span>
+                        {grade ? (
+                          <span className={`shrink-0 text-sm font-bold ${scoreColor(grade.score)}`}>
+                            {grade.score}
+                          </span>
+                        ) : (
+                          <span className="shrink-0 text-[10px] text-gray-300">未答</span>
+                        )}
                       </button>
-                    )}
+                    );
+                  })}
+                </div>
 
-                    {isActive && (
-                      <div className="mt-2 space-y-2">
-                        <textarea
-                          value={answerText}
-                          onChange={(e) => setAnswerText(e.target.value)}
-                          placeholder="打字作答，或用下方录音按钮口头回答…"
-                          rows={3}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800"
-                        />
-                        <div className="flex flex-wrap items-center gap-2">
+                {/* 右：答题区 + 实时评估 */}
+                {activeQ !== null && questions[activeQ] && (() => {
+                  const q = questions[activeQ];
+                  const grade = grades[String(q.question_id)];
+                  const isBanked = banked[String(q.question_id)];
+                  return (
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-3">
+                        <div className="flex items-start gap-2">
+                          <span className="shrink-0 rounded bg-purple-100 px-1.5 py-0.5 text-[11px] text-purple-700">
+                            {q.category}
+                          </span>
+                          <p className="flex-1 text-sm font-medium text-gray-800">{q.question_text}</p>
+                        </div>
+                        {q.evidence && (
+                          <p className="mt-1.5 border-l-2 border-purple-300 pl-2 text-xs italic text-gray-500">
+                            出处：「{q.evidence}」
+                          </p>
+                        )}
+                        {q.answer_points.length > 0 && (
+                          <p className="mt-1.5 text-xs text-gray-400">
+                            参考要点：{q.answer_points.join("；")}
+                          </p>
+                        )}
+                      </div>
+
+                      <textarea
+                        value={answerText}
+                        onChange={(e) => setAnswerText(e.target.value)}
+                        placeholder="打字作答，或用录音按钮口头回答…"
+                        rows={4}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={grading}
+                          onClick={() => void gradeText(q)}
+                          className="rounded-lg bg-purple-600 px-3 py-1.5 text-sm text-white hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {grading ? "评估中…" : "提交评估"}
+                        </button>
+                        {qaRec.supported && (
                           <button
                             type="button"
                             disabled={grading}
-                            onClick={() => void gradeText(q)}
-                            className="rounded-lg bg-purple-600 px-3 py-1.5 text-sm text-white hover:bg-purple-700 disabled:opacity-50"
+                            onClick={() => (qaRec.recording ? void onQaRecordStop(q) : void qaRec.start())}
+                            className={`rounded-lg px-3 py-1.5 text-sm text-white disabled:opacity-50 ${
+                              qaRec.recording ? "animate-pulse bg-red-600" : "bg-gray-600 hover:bg-gray-700"
+                            }`}
                           >
-                            {grading ? "评估中…" : "提交评估"}
+                            {qaRec.recording ? `⏹ 停止（${fmtTime(qaRec.seconds)}）` : "🎙 口头回答"}
                           </button>
-                          {qaRec.supported && (
+                        )}
+                      </div>
+
+                      {grade && (
+                        <div className="space-y-1.5 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm">
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-xs font-semibold text-gray-500">本题评估</span>
+                            <span className={`text-2xl font-bold ${scoreColor(grade.score)}`}>
+                              {grade.score}
+                              <span className="text-sm font-normal text-gray-400"> / 100</span>
+                            </span>
+                          </div>
+                          {grade.feedback && <p className="font-medium text-gray-700">{grade.feedback}</p>}
+                          {grade.hit_points.length > 0 && (
+                            <p className="text-emerald-700">✓ 命中：{grade.hit_points.join("；")}</p>
+                          )}
+                          {grade.missed_points.length > 0 && (
+                            <p className="text-red-600">✗ 遗漏：{grade.missed_points.join("；")}</p>
+                          )}
+                          {grade.logic_flaws.length > 0 && (
+                            <p className="text-amber-700">⚠ 逻辑漏洞：{grade.logic_flaws.join("；")}</p>
+                          )}
+                          {grade.risk_statements.length > 0 && (
+                            <p className="text-orange-700">🚩 风险表述：{grade.risk_statements.join("；")}</p>
+                          )}
+                          <div className="flex items-center gap-3 pt-1">
                             <button
                               type="button"
-                              disabled={grading}
-                              onClick={() => (qaRec.recording ? void onQaRecordStop(q) : void qaRec.start())}
-                              className={`rounded-lg px-3 py-1.5 text-sm text-white disabled:opacity-50 ${
-                                qaRec.recording ? "animate-pulse bg-red-600" : "bg-gray-600 hover:bg-gray-700"
-                              }`}
+                              onClick={() => setAnswerText("")}
+                              className="text-xs text-purple-600 hover:text-purple-800"
                             >
-                              {qaRec.recording ? `⏹ 停止（${fmtTime(qaRec.seconds)}）` : "🎙 口头回答"}
+                              重答
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setActiveQ(null)}
-                            className="text-sm text-gray-400 hover:text-gray-600"
-                          >
-                            收起
-                          </button>
+                            <button
+                              type="button"
+                              disabled={banking || isBanked}
+                              onClick={() => void persistToBank(q)}
+                              title="确认这道题问得好、值得下次复用，才写进团队题库（防止 AI 坏题污染）"
+                              className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                            >
+                              {isBanked ? "✓ 已沉淀到题库" : banking ? "沉淀中…" : "⭐ 沉淀到题库"}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    {grade && (
-                      <div className="mt-2 space-y-1.5 rounded-lg bg-gray-50 p-3 text-sm">
-                        {grade.feedback && <p className="font-medium text-gray-700">{grade.feedback}</p>}
-                        {grade.hit_points.length > 0 && (
-                          <p className="text-emerald-700">✓ 命中：{grade.hit_points.join("；")}</p>
-                        )}
-                        {grade.missed_points.length > 0 && (
-                          <p className="text-red-600">✗ 遗漏：{grade.missed_points.join("；")}</p>
-                        )}
-                        {grade.logic_flaws.length > 0 && (
-                          <p className="text-amber-700">⚠ 逻辑漏洞：{grade.logic_flaws.join("；")}</p>
-                        )}
-                        {grade.risk_statements.length > 0 && (
-                          <p className="text-orange-700">🚩 风险表述：{grade.risk_statements.join("；")}</p>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveQ(i);
-                            setAnswerText("");
-                          }}
-                          className="text-xs text-purple-600 hover:text-purple-800"
-                        >
-                          重答
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           )}
         </div>
