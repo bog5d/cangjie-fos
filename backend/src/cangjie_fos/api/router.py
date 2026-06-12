@@ -15,6 +15,7 @@ from cangjie_fos.api.routes import (
     health,
     materials,
     npc,
+    package_response,
     participants,
     pipeline,
     pitch,
@@ -54,3 +55,4 @@ api_router.include_router(settings.router)
 api_router.include_router(roadshow.router)
 api_router.include_router(dd_response.router)
 api_router.include_router(coaching.router)
+api_router.include_router(package_response.router)

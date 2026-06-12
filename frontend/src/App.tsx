@@ -12,6 +12,7 @@ import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { RoadshowWizard } from "./components/RoadshowWizard";
 import DueDiligenceWizard from "./components/DueDiligenceWizard";
 import CoachingWizard from "./components/CoachingWizard";
+import PackageGapWizard from "./components/PackageGapWizard";
 import { ParticipantConfirmModal } from "./components/ParticipantConfirmModal";
 import { SettingsPanel } from "./components/SettingsPanel";
 
@@ -147,6 +148,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
   const [roadshowOpen, setRoadshowOpen] = useState(false);
   const [ddOpen, setDdOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [packageOpen, setPackageOpen] = useState(false);
   const [ddInitChecklist, setDdInitChecklist] = useState("");
   const [ddInitInstitution, setDdInitInstitution] = useState("");
   const [doctorOpen, setDoctorOpen] = useState(false);
@@ -407,6 +409,13 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
           </button>
           <button
             type="button"
+            onClick={() => setPackageOpen(true)}
+            className="px-3 py-1.5 text-sm bg-teal-50 text-teal-700 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors"
+          >
+            📦 数据包补全
+          </button>
+          <button
+            type="button"
             onClick={() => onExpEvent(10, "资料补齐")}
             className="rounded-xl bg-gradient-to-r from-cyan/80 to-plasma/80 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-cyan/25 transition hover:brightness-110"
           >
@@ -501,6 +510,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
         institutions={institutions.map((i) => i.name).filter(Boolean)}
       />
       <CoachingWizard open={coachOpen} onClose={() => setCoachOpen(false)} tenantId={tenant} />
+      <PackageGapWizard open={packageOpen} onClose={() => setPackageOpen(false)} tenantId={tenant} />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
       <DueDiligenceWizard
         open={ddOpen}

@@ -346,6 +346,34 @@ CREATE TABLE IF NOT EXISTS qa_question_bank (
     hit_count          INTEGER NOT NULL DEFAULT 0,
     created_at         REAL NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS package_sessions (
+    session_id   TEXT PRIMARY KEY,
+    tenant_id    TEXT NOT NULL DEFAULT 'default',
+    title        TEXT NOT NULL DEFAULT '',
+    folder_root  TEXT NOT NULL DEFAULT '',
+    template_id  TEXT NOT NULL DEFAULT 'standard',
+    status       TEXT NOT NULL DEFAULT 'pending',
+    created_at   REAL NOT NULL,
+    completed_at REAL
+);
+
+CREATE TABLE IF NOT EXISTS package_items (
+    id                TEXT PRIMARY KEY,
+    session_id        TEXT NOT NULL,
+    item_no           TEXT NOT NULL,
+    category          TEXT NOT NULL DEFAULT '',
+    requirement       TEXT NOT NULL,
+    importance        TEXT NOT NULL DEFAULT 'normal',
+    matched_file_path TEXT,
+    matched_filename  TEXT,
+    confidence        REAL,
+    match_reason      TEXT,
+    gap_state         TEXT NOT NULL DEFAULT 'pending',
+    draft_answer      TEXT NOT NULL DEFAULT '',
+    user_fragments    TEXT NOT NULL DEFAULT '',
+    created_at        REAL NOT NULL
+);
 """
 
 # ── 版本化迁移列表（既有 DB 升级用，新安装 DDL 已包含所有列） ─────────────────
@@ -464,6 +492,34 @@ _MIGRATIONS: list[tuple[int, str]] = [
         updated_at      REAL NOT NULL
     )"""),
     (41, "CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm)"),
+    # ── 需求03 数据包补全（独立表，与尽调台隔离）──────────────────────────────
+    (42, """CREATE TABLE IF NOT EXISTS package_sessions (
+        session_id   TEXT PRIMARY KEY,
+        tenant_id    TEXT NOT NULL DEFAULT 'default',
+        title        TEXT NOT NULL DEFAULT '',
+        folder_root  TEXT NOT NULL DEFAULT '',
+        template_id  TEXT NOT NULL DEFAULT 'standard',
+        status       TEXT NOT NULL DEFAULT 'pending',
+        created_at   REAL NOT NULL,
+        completed_at REAL
+    )"""),
+    (43, """CREATE TABLE IF NOT EXISTS package_items (
+        id                TEXT PRIMARY KEY,
+        session_id        TEXT NOT NULL,
+        item_no           TEXT NOT NULL,
+        category          TEXT NOT NULL DEFAULT '',
+        requirement       TEXT NOT NULL,
+        importance        TEXT NOT NULL DEFAULT 'normal',
+        matched_file_path TEXT,
+        matched_filename  TEXT,
+        confidence        REAL,
+        match_reason      TEXT,
+        gap_state         TEXT NOT NULL DEFAULT 'pending',
+        draft_answer      TEXT NOT NULL DEFAULT '',
+        user_fragments    TEXT NOT NULL DEFAULT '',
+        created_at        REAL NOT NULL
+    )"""),
+    (44, "CREATE INDEX IF NOT EXISTS idx_package_items_session ON package_items(session_id)"),
 ]
 
 

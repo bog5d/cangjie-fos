@@ -4,6 +4,36 @@
 
 ---
 
+## [1.14.0] — 2026-06-12  需求03 数据包补全：扫描缺口 + 引导提问 + AI 合成
+
+> 测试基线：882 passed。把"写材料"从人主导变成系统主导——扫描材料库对照标准模板找缺口，
+> 缺的部分引导用户口述零碎信息，AI 合成初稿。复用尽调引擎的扫描/匹配内核，
+> **独立表隔离、不动尽调台与资产包**（按产品决策）。
+
+### 新增 — 后端（独立 package_* 表 + 服务）
+- `package_template.py`：内置标准数据包模板（财务/法务/业务 21 条，core/normal 分级）
+- `package_gap_service.py`：建会话 → 复用 `dd_index` 扫描 + 尽调引擎纯函数（关键词预筛/
+  红黄绿阈值）匹配 → 缺口三态分类（已有/需更新/缺失）；文件超 365 天未更新判"需更新"
+- `package_synthesis_service.py`：引导问题生成 + 零碎信息→材料合成,**复用 fact_guard**
+  逐句剔除素材中无来源的数字（防 AI 编造），透明告知被剔数字
+- `api/routes/package_response.py`：8 个端点（模板/建会话/缺口明细/进度/历史/引导问题/合成）
+- `db_base.py`：migration 42-44（package_sessions / package_items / 索引）
+
+### 新增 — 前端「📦 数据包补全」（`PackageGapWizard.tsx`）
+- 比尽调向导更精简：填路径 → 缺口看板（三态徽章 + 按维度分组）→ 点缺失项引导补全
+- 右侧补全工作区：引导问题 + 零碎信息输入 + AI 合成初稿（标注被护栏剔除的数字）
+
+### 设计取舍（经确认）
+- 新功能**独立**于尽调响应台:用独立表,不让 package 会话漏进 DD 的会话历史
+- 资产管理包**本次不动**:其活力雷达/快速打包与本需求不重叠,且仍在给机构简报供数
+
+### 测试（+23）
+- `test_package_template.py`(3) / `test_package_gap_service.py`(7) /
+  `test_package_synthesis.py`(6) / `test_package_api_e2e.py`(8)
+- `test_ui_smoke.py` 新增 `TestPackageGapWizardSmoke`(开启可交互 + 关闭无叠层)
+
+---
+
 ## [1.13.0] — 2026-06-11  路演陪练：前端界面 + 事实护栏（同事实测反馈修复）
 
 > 测试基线：859 passed。需求01 后端（PR #21）原本只有 API 没有界面；本版补齐前端，
