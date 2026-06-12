@@ -16,6 +16,7 @@ import logging
 from pydantic import BaseModel, Field
 
 from cangjie_fos.services.dd_llm_client import get_dd_llm_client, call_with_retry
+from cangjie_fos.services.fact_guard import numbers_grounded, ungrounded_numbers
 
 logger = logging.getLogger(__name__)
 
@@ -51,15 +52,36 @@ def grade_answer(question: str, answer_points: list[str], transcript: str) -> di
     else:
         score = _ratio_score(hit, answer_points)
 
+    # 事实护栏：反馈里出现的数字必须来自问题/要点/回答本身，
+    # 拦截评估器自己推导或编造数字（如把月增 12% 演绎成年化流失 78%）
+    sources = (question, "；".join(answer_points), transcript)
+    feedback = str(result.get("feedback", ""))
+    if not numbers_grounded(feedback, *sources):
+        logger.warning("评分护栏：总评含无来源数字，已置空: %s", feedback[:60])
+        feedback = ""
+
     grade = AnswerGrade(
         score=round(max(0.0, min(100.0, score)), 1),
         hit_points=hit,
         missed_points=missed or _infer_missed(hit, answer_points),
-        logic_flaws=[str(x) for x in result.get("logic_flaws", [])],
-        risk_statements=[str(x) for x in result.get("risk_statements", [])],
-        feedback=str(result.get("feedback", "")),
+        logic_flaws=_drop_ungrounded(result.get("logic_flaws", []), sources, "逻辑漏洞"),
+        risk_statements=_drop_ungrounded(result.get("risk_statements", []), sources, "风险表述"),
+        feedback=feedback,
     )
     return grade.model_dump()
+
+
+def _drop_ungrounded(items: list, sources: tuple[str, ...], label: str) -> list[str]:
+    """丢弃含「问题/要点/回答中都不存在的数字」的条目。"""
+    kept: list[str] = []
+    for x in items:
+        s = str(x)
+        bad = ungrounded_numbers(s, *sources)
+        if bad:
+            logger.warning("评分护栏：丢弃含无来源数字 %s 的%s: %s", bad, label, s[:60])
+            continue
+        kept.append(s)
+    return kept
 
 
 def _ratio_score(hit: list[str], answer_points: list[str]) -> float:
@@ -90,6 +112,9 @@ def _llm_grade(question: str, answer_points: list[str], transcript: str) -> dict
 1. 命中了哪些要点 / 遗漏了哪些要点
 2. 回答里有无逻辑漏洞
 3. 有无「风险表述」（可能被投资人抓住做文章的话）
+
+硬性规则：你的评估里引用的任何数字，必须原样出现在上面的问题、要点或回答中。
+禁止自行推导新数字（如年化换算），禁止引用这三处都没有的数据。
 
 返回 JSON：
 {{"score": 0到100整数, "hit_points": ["命中要点"], "missed_points": ["遗漏要点"],

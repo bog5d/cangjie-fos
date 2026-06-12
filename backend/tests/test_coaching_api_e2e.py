@@ -123,3 +123,43 @@ def test_grade_answer_and_persist(client, monkeypatch):
     with _connect() as conn:
         n = conn.execute("SELECT COUNT(*) FROM qa_question_bank WHERE tenant_id = 'zt'").fetchone()[0]
     assert n == 1
+
+
+def test_grade_does_not_persist_by_default(client, monkeypatch):
+    """题库污染防护：不带 persist 参数时，评分不得写回题库。"""
+    monkeypatch.setattr(gr, "_llm_grade", lambda q, ap, t: {
+        "score": 50, "hit_points": [], "missed_points": [],
+        "logic_flaws": [], "risk_statements": [], "feedback": "",
+    })
+    r = client.post("/api/v1/coaching/qa/grade", json={
+        "question": "可能是坏题，不该自动入库", "answer_points": [],
+        "transcript": "随便答答", "tenant_id": "zt-nopersist",
+    })
+    assert r.status_code == 200
+    from cangjie_fos.services.db_base import _connect
+    with _connect() as conn:
+        n = conn.execute(
+            "SELECT COUNT(*) FROM qa_question_bank WHERE tenant_id = 'zt-nopersist'"
+        ).fetchone()[0]
+    assert n == 0
+
+
+def test_qa_bank_explicit_persist(client):
+    """人工确认沉淀：POST /qa/bank 显式写入题库。"""
+    r = client.post("/api/v1/coaching/qa/bank", json={
+        "question_text": "市场规模到底有多大？", "answer_points": ["TAM", "SAM"],
+        "tenant_id": "zt-bank", "category": "业务", "sector": "AI",
+    })
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    from cangjie_fos.services.db_base import _connect
+    with _connect() as conn:
+        n = conn.execute(
+            "SELECT COUNT(*) FROM qa_question_bank WHERE tenant_id = 'zt-bank'"
+        ).fetchone()[0]
+    assert n == 1
+
+
+def test_qa_bank_rejects_empty(client):
+    r = client.post("/api/v1/coaching/qa/bank", json={"question_text": "   "})
+    assert r.status_code == 400

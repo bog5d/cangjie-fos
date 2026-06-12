@@ -369,3 +369,124 @@ class TestDueDiligenceWizardSmoke:
 
         # 此测试永远 pass，只打印信息
         assert True
+
+
+# ── TestCoachingWizardSmoke ────────────────────────────────────────────────────
+
+class TestCoachingWizardSmoke:
+    """路演陪练向导（AI 教练 + 答疑审问）烟雾测试。
+
+    覆盖 CLAUDE.md 要求：新增全屏 Modal 必须验证「开启态可交互 + 关闭态无叠层」。
+    """
+
+    def test_coaching_button_opens_modal(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """🎤 路演陪练按钮可点击并打开向导，两个模式 Tab 均可见。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        btn = page.locator("button:has-text('路演陪练')")
+        expect(btn).to_be_visible(timeout=8_000)
+        btn.click()
+        page.wait_for_timeout(800)
+        try:
+            expect(page.get_by_text("路演教练", exact=False).first).to_be_visible(timeout=6_000)
+            expect(page.get_by_text("答疑审问", exact=False).first).to_be_visible(timeout=6_000)
+            ui_reporter.capture(page, "路演陪练 — 向导打开，双模式可见", status="ok")
+        except AssertionError:
+            ui_reporter.fail(page, "路演陪练向导未正常打开")
+            raise
+
+    def test_coaching_qa_mode_switch(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """切到「答疑审问」Tab，应看到出题入口。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('路演陪练')").click()
+        page.wait_for_timeout(600)
+        page.locator("button:has-text('答疑审问')").click()
+        page.wait_for_timeout(600)
+        try:
+            expect(page.get_by_text("压力测试问题", exact=False).first).to_be_visible(timeout=6_000)
+            ui_reporter.capture(page, "路演陪练 — 答疑审问模式出题入口可见", status="ok")
+        except AssertionError:
+            ui_reporter.fail(page, "答疑审问模式未正常渲染")
+            raise
+
+    def test_coaching_close_no_overlay(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """关闭路演陪练向导后不应残留叠层（Chrome 叠层 Bug 回归）。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('路演陪练')").click()
+        page.wait_for_timeout(800)
+
+        close = page.locator("button:has-text('✕'), button:has-text('×')").first
+        if close.is_visible():
+            close.click()
+        else:
+            page.keyboard.press("Escape")
+        page.wait_for_timeout(600)
+
+        blocking = page.evaluate(_OVERLAY_JS)
+        if blocking == []:
+            ui_reporter.capture(page, "关闭路演陪练向导后 — 无残留叠层",
+                                status="ok", note="无大面积 fixed 遮罩")
+        else:
+            ui_reporter.fail(page, "关闭路演陪练向导后仍有叠层",
+                             note=f"残留 {len(blocking)} 个遮罩")
+        assert blocking == [], (
+            f"关闭路演陪练向导后仍有叠层：{blocking}"
+        )
+
+
+# ── TestPackageGapWizardSmoke ──────────────────────────────────────────────────
+
+class TestPackageGapWizardSmoke:
+    """数据包补全向导（需求03）烟雾测试：开启可交互 + 关闭无叠层。"""
+
+    def test_package_button_opens_modal(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """📦 数据包补全按钮可点击并打开向导，扫描入口可见。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        btn = page.locator("button:has-text('数据包补全')")
+        expect(btn).to_be_visible(timeout=8_000)
+        btn.click()
+        page.wait_for_timeout(800)
+        try:
+            expect(page.get_by_text("开始扫描并分析缺口", exact=False)).to_be_visible(timeout=6_000)
+            ui_reporter.capture(page, "数据包补全 — 向导打开，扫描入口可见", status="ok")
+        except AssertionError:
+            ui_reporter.fail(page, "数据包补全向导未正常打开")
+            raise
+
+    def test_package_close_no_overlay(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """关闭数据包补全向导后不应残留叠层（Chrome 叠层 Bug 回归）。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('数据包补全')").click()
+        page.wait_for_timeout(800)
+
+        close = page.locator("button:has-text('✕'), button:has-text('×')").first
+        if close.is_visible():
+            close.click()
+        else:
+            page.keyboard.press("Escape")
+        page.wait_for_timeout(600)
+
+        blocking = page.evaluate(_OVERLAY_JS)
+        if blocking == []:
+            ui_reporter.capture(page, "关闭数据包补全向导后 — 无残留叠层",
+                                status="ok", note="无大面积 fixed 遮罩")
+        else:
+            ui_reporter.fail(page, "关闭数据包补全向导后仍有叠层",
+                             note=f"残留 {len(blocking)} 个遮罩")
+        assert blocking == [], (
+            f"关闭数据包补全向导后仍有叠层：{blocking}"
+        )

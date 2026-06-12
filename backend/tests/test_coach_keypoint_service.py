@@ -53,3 +53,47 @@ def test_parse_strips_markdown_fence():
 def test_parse_garbage_returns_empty():
     assert svc._parse_keypoints_json("这不是JSON") == []
     assert svc._parse_keypoints_json('{"not": "a list"}') == []
+
+
+# ── 要点事实护栏 ──────────────────────────────────────────────
+
+_SOURCE = "我们自建算力集群，毛利率58%。团队来自一线大厂，CTO 曾负责推荐系统。"
+
+
+def _pt(text, evidence=""):
+    return {"point_no": "1", "page_no": 1, "point_text": text,
+            "weight": "core", "evidence": evidence}
+
+
+def test_guard_drops_fabricated_number():
+    """真实案例：原文没有「32张GPU」「3000万参数」→ 含这些数字的要点丢弃。"""
+    points = [
+        _pt("自建32张GPU算力集群", evidence="我们自建算力集群"),
+        _pt("CTO有3000万参数模型训练经验", evidence="CTO 曾负责推荐系统"),
+    ]
+    assert svc._filter_grounded_points(points, _SOURCE) == []
+
+
+def test_guard_drops_numeric_point_without_evidence():
+    """含数字但没给出处的要点 → 丢弃（数据类主张必须可溯源）。"""
+    points = [_pt("毛利率58%")]
+    assert svc._filter_grounded_points(points, _SOURCE) == []
+
+
+def test_guard_drops_fabricated_evidence():
+    """出处对不上原文 → 丢弃（拦数字真实但指标串号的情况）。"""
+    points = [_pt("客户留存率58%", evidence="客户留存率58%")]
+    assert svc._filter_grounded_points(points, _SOURCE) == []
+
+
+def test_guard_keeps_grounded_numeric_point():
+    points = [_pt("毛利率58%", evidence="毛利率58%")]
+    kept = svc._filter_grounded_points(points, _SOURCE)
+    assert len(kept) == 1
+
+
+def test_guard_keeps_non_numeric_point_without_evidence():
+    """不含数字的定性要点，没有出处也保留（避免过度过滤）。"""
+    points = [_pt("团队来自一线大厂")]
+    kept = svc._filter_grounded_points(points, _SOURCE)
+    assert len(kept) == 1
