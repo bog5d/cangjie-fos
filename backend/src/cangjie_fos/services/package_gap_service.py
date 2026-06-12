@@ -25,7 +25,11 @@ from cangjie_fos.services.dd_match_service import (
     _VERDICT_GREEN,
     _VERDICT_YELLOW,
 )
-from cangjie_fos.services.package_template import get_standard_template
+from cangjie_fos.services.package_template_store import (
+    BUILTIN_ID,
+    get_template_items,
+    template_exists,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +48,14 @@ def create_session(
     tenant_id: str,
     folder_root: str,
     title: str = "",
-    template_id: str = "standard",
+    template_id: str = BUILTIN_ID,
 ) -> dict:
-    """创建数据包补全会话，按标准模板铺开待检项。返回 {session_id, count}。"""
-    template = get_standard_template()
+    """创建数据包补全会话，按所选模板（DB，可编辑）铺开待检项。返回 {session_id, count}。"""
+    if not template_exists(template_id, tenant_id):
+        raise ValueError(f"模板 {template_id} 不存在")
+    template = get_template_items(template_id, tenant_id)
+    if not template:
+        raise ValueError(f"模板 {template_id} 没有任何条目，请先编辑模板")
     session_id = str(uuid.uuid4())
     now = time.time()
     with _connect() as conn:
@@ -86,18 +94,43 @@ def list_items(session_id: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+# 完整度评分权重：core 项权重 2，normal 项 1；已有计满分，需更新计一半，缺失 0。
+_IMP_WEIGHT = {"core": 2.0, "normal": 1.0}
+_STATE_RATIO = {HAVE: 1.0, UPDATE: 0.5, MISSING: 0.0, PENDING: 0.0}
+
+
 def gap_summary(session_id: str) -> dict:
-    """按 gap_state 汇总条数，供前端进度环/缺口概览。"""
+    """按 gap_state 汇总条数 + 加权完整度评分 + 分维度细分，供前端缺口看板。"""
     items = list_items(session_id)
     counts = {HAVE: 0, UPDATE: 0, MISSING: 0, PENDING: 0}
+    earned = 0.0
+    total_w = 0.0
+    by_cat: dict[str, dict] = {}
     for it in items:
-        counts[it.get("gap_state", PENDING)] = counts.get(it.get("gap_state", PENDING), 0) + 1
+        state = it.get("gap_state", PENDING)
+        counts[state] = counts.get(state, 0) + 1
+        w = _IMP_WEIGHT.get(it.get("importance", "normal"), 1.0)
+        total_w += w
+        earned += w * _STATE_RATIO.get(state, 0.0)
+        cat = it.get("category", "未分类")
+        c = by_cat.setdefault(cat, {"have": 0, "update": 0, "missing": 0, "pending": 0, "total": 0})
+        c[state if state in c else "pending"] += 1
+        c["total"] += 1
+    score = round(earned / total_w * 100.0, 1) if total_w > 0 else 0.0
+    # 必备项（core）缺失数：投资人必看却没有的，单独点名
+    core_missing = sum(
+        1 for it in items
+        if it.get("importance") == "core" and it.get("gap_state") == MISSING
+    )
     return {
         "total": len(items),
         "have": counts[HAVE],
         "update": counts[UPDATE],
         "missing": counts[MISSING],
         "pending": counts[PENDING],
+        "score": score,
+        "core_missing": core_missing,
+        "by_category": by_cat,
     }
 
 
