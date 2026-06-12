@@ -24,10 +24,29 @@ def _seed_index(folder_root: str, files: list[tuple[str, str, float]]):
 
 def test_create_session_lays_out_template():
     r = gap.create_session("zt", "/data/pkg", title="A轮数据包")
-    assert r["count"] >= 18
+    assert r["count"] >= 45
     items = gap.list_items(r["session_id"])
     assert len(items) == r["count"]
     assert all(it["gap_state"] == "pending" for it in items)
+
+
+def test_create_session_with_custom_template():
+    """跨轮次复用：会话可基于自定义模板创建。"""
+    from cangjie_fos.services import package_template_store as store
+    t = store.create_template("精简包", "zt")
+    store.replace_items(t["template_id"], [
+        {"category": "财务", "requirement": "只查审计报告", "importance": "core"},
+    ], "zt")
+    r = gap.create_session("zt", "/data/pkg", template_id=t["template_id"])
+    assert r["count"] == 1
+    items = gap.list_items(r["session_id"])
+    assert items[0]["requirement"] == "只查审计报告"
+
+
+def test_create_session_unknown_template_raises():
+    import pytest
+    with pytest.raises(ValueError):
+        gap.create_session("zt", "/data/pkg", template_id="不存在的模板")
 
 
 def test_gap_analysis_classifies_have_update_missing(monkeypatch):
@@ -58,16 +77,40 @@ def test_gap_analysis_classifies_have_update_missing(monkeypatch):
 
     items = gap.list_items(sess["session_id"])
     states = {it["requirement"]: it["gap_state"] for it in items}
-    assert states["营业执照"] == "have"
+    assert states["营业执照（最新）"] == "have"
     assert states["近三年审计报告"] == "update"          # 文件过旧 → 需更新
-    assert states["商业计划书（BP）"] == "missing"        # 无匹配 → 缺失
+    assert states["商业计划书（BP，最新版）"] == "missing"  # 无匹配 → 缺失
 
     summary = gap.gap_summary(sess["session_id"])
     assert summary["have"] == 1
     assert summary["update"] == 1
     assert summary["missing"] == summary["total"] - 2
+    # 完整度评分字段齐全
+    assert 0 <= summary["score"] <= 100
+    assert "core_missing" in summary
+    assert "by_category" in summary and summary["by_category"]
     # 分析完会话标记 done
     assert gap.get_session(sess["session_id"])["status"] == "done"
+
+
+def test_gap_summary_score_weighting(monkeypatch):
+    """完整度评分：全已有=100，全缺失=0；core 项权重更高。"""
+    folder = "/data/score"
+    sess = gap.create_session("zt", folder)
+    items = gap.list_items(sess["session_id"])
+
+    # 全部判已有 → 100 分
+    monkeypatch.setattr(gap, "_llm_match_package", lambda i, r: {})
+    with _connect() as conn:
+        for it in items:
+            conn.execute("UPDATE package_items SET gap_state='have' WHERE id=?", (it["id"],))
+    assert gap.gap_summary(sess["session_id"])["score"] == 100.0
+
+    # 全部缺失 → 0 分
+    with _connect() as conn:
+        for it in items:
+            conn.execute("UPDATE package_items SET gap_state='missing' WHERE id=?", (it["id"],))
+    assert gap.gap_summary(sess["session_id"])["score"] == 0.0
 
 
 def test_gap_analysis_empty_index_all_missing(monkeypatch):

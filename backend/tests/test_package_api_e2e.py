@@ -34,8 +34,8 @@ def test_get_template(client):
     r = client.get("/api/v1/package/template")
     assert r.status_code == 200
     body = r.json()
-    assert body["categories"] == ["财务", "法务", "业务"]
-    assert len(body["items"]) >= 18
+    assert body["categories"] == ["财务税务", "法务合规", "业务经营", "团队组织", "技术研发"]
+    assert len(body["items"]) >= 45
 
 
 def test_create_session_runs_gap_analysis(client, monkeypatch):
@@ -64,7 +64,10 @@ def test_create_session_runs_gap_analysis(client, monkeypatch):
 
     items = client.get(f"/api/v1/package/sessions/{sid}/items").json()
     have = [it for it in items if it["gap_state"] == "have"]
-    assert have and have[0]["requirement"] == "营业执照"
+    assert have and have[0]["requirement"] == "营业执照（最新）"
+
+    # 完整度评分随结果出现
+    assert 0 < status["summary"]["score"] <= 100
 
 
 def test_create_session_empty_folder_400(client):
@@ -110,3 +113,70 @@ def test_synthesize_requires_input(client):
 
 def test_item_questions_404(client):
     assert client.post("/api/v1/package/items/nope/questions").status_code == 404
+
+
+# ── 模板管理 API（多套复用 + 在线编辑）────────────────────────
+
+def test_template_list_and_builtin(client):
+    rows = client.get("/api/v1/package/templates?tenant_id=apie2e").json()
+    assert len(rows) == 1
+    assert rows[0]["template_id"] == "standard"
+    assert rows[0]["is_builtin"] == 1
+
+
+def test_template_create_edit_reuse(client):
+    # 另存为
+    r = client.post("/api/v1/package/templates",
+                    json={"name": "并购包", "tenant_id": "apie2e", "copy_from": "standard"})
+    assert r.status_code == 200
+    tid = r.json()["template_id"]
+    # 在线编辑：整体替换
+    r2 = client.put(f"/api/v1/package/templates/{tid}/items",
+                    json={"tenant_id": "apie2e", "items": [
+                        {"category": "财务", "requirement": "审计报告", "importance": "core"},
+                        {"category": "法务", "requirement": "公司章程", "importance": "normal"},
+                    ]})
+    assert r2.json()["item_count"] == 2
+    # 复用：基于该模板建会话
+    r3 = client.post("/api/v1/package/sessions",
+                     json={"folder_root": "/data/tpl", "tenant_id": "apie2e",
+                           "template_id": tid, "rescan": False})
+    assert r3.status_code == 200
+    assert r3.json()["count"] == 2
+
+
+def test_template_edit_empty_rejected(client):
+    r = client.post("/api/v1/package/templates", json={"name": "空包", "tenant_id": "apie2e"})
+    tid = r.json()["template_id"]
+    r2 = client.put(f"/api/v1/package/templates/{tid}/items",
+                    json={"tenant_id": "apie2e", "items": [{"requirement": "  "}]})
+    assert r2.status_code == 400
+
+
+def test_template_builtin_not_deletable(client):
+    assert client.delete("/api/v1/package/templates/standard?tenant_id=apie2e").status_code == 400
+
+
+def test_template_reset(client):
+    r = client.post("/api/v1/package/templates/standard/reset?tenant_id=apie2e")
+    assert r.status_code == 200
+    assert r.json()["item_count"] >= 45
+
+
+# ── 导出 ────────────────────────────────────────────────────
+
+def test_export_session_zip(client, monkeypatch):
+    sess = gap.create_session("apie2e", "/data/exp")
+    items = gap.list_items(sess["session_id"])
+    from cangjie_fos.services.db_base import _connect
+    with _connect() as conn:
+        conn.execute("UPDATE package_items SET draft_answer='初稿内容' WHERE id=?",
+                     (items[0]["id"],))
+    r = client.get(f"/api/v1/package/sessions/{sess['session_id']}/export")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/zip"
+    assert r.content[:2] == b"PK"  # zip magic
+
+
+def test_export_404(client):
+    assert client.get("/api/v1/package/sessions/nope/export").status_code == 404

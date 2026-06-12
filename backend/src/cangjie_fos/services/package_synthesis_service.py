@@ -30,6 +30,32 @@ def _get_item(item_id: str) -> dict | None:
     return dict(row) if row else None
 
 
+# 自动喂给合成的「已有材料片段」最大字符数（控制 token）
+_AUTO_SNIPPET_CHARS = 1500
+
+
+def auto_existing_snippets(item: dict) -> str:
+    """若该项匹配到了材料库文件，自动取其正文节选作为「已有片段」。
+
+    对「需更新」项尤其关键：旧版材料正文 + 用户口述的新信息 → 合成新版初稿，
+    用户不必手动翻旧文件复制粘贴。
+    """
+    path = item.get("matched_file_path")
+    if not path:
+        return ""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT content_text, filename FROM dd_asset_index WHERE file_path = ?",
+            (path,),
+        ).fetchone()
+    if not row:
+        return ""
+    content = (row["content_text"] or "").strip()
+    if not content:
+        return ""
+    return f"（来自已有文件《{row['filename']}》）\n{content[:_AUTO_SNIPPET_CHARS]}"
+
+
 def generate_guiding_questions(requirement: str, category: str = "") -> list[str]:
     """对一个缺失材料项，生成 3-5 个引导问题（向用户索取私有信息）。"""
     questions = _llm_questions(requirement, category)
@@ -91,15 +117,17 @@ def save_draft(item_id: str, draft: str) -> None:
         )
 
 
-def synthesize_for_item(item_id: str, fragments: str) -> dict:
-    """端到端：存用户片段 → 合成 → 存初稿。返回合成结果。"""
+def synthesize_for_item(item_id: str, fragments: str, existing_snippets: str = "") -> dict:
+    """端到端：存用户片段 → （自动补已有片段）→ 合成 → 存初稿。返回合成结果。"""
     item = _get_item(item_id)
     if not item:
         raise ValueError(f"package item {item_id} 不存在")
     save_fragments(item_id, fragments)
+    snippets = existing_snippets.strip() or auto_existing_snippets(item)
     result = synthesize_material(
-        item["requirement"], fragments, category=item.get("category", ""),
+        item["requirement"], fragments, snippets, category=item.get("category", ""),
     )
+    result["used_existing"] = bool(snippets)
     save_draft(item_id, result["draft"])
     return result
 

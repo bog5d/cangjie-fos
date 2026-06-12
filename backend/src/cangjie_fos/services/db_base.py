@@ -374,6 +374,27 @@ CREATE TABLE IF NOT EXISTS package_items (
     user_fragments    TEXT NOT NULL DEFAULT '',
     created_at        REAL NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS package_templates (
+    template_id TEXT NOT NULL,
+    tenant_id   TEXT NOT NULL DEFAULT 'default',
+    name        TEXT NOT NULL DEFAULT '',
+    is_builtin  INTEGER NOT NULL DEFAULT 0,
+    created_at  REAL NOT NULL,
+    updated_at  REAL NOT NULL,
+    PRIMARY KEY (template_id, tenant_id)
+);
+
+CREATE TABLE IF NOT EXISTS package_template_items (
+    id          TEXT PRIMARY KEY,
+    template_id TEXT NOT NULL,
+    tenant_id   TEXT NOT NULL DEFAULT 'default',
+    item_no     TEXT NOT NULL,
+    category    TEXT NOT NULL DEFAULT '',
+    requirement TEXT NOT NULL,
+    importance  TEXT NOT NULL DEFAULT 'normal'
+);
+CREATE INDEX IF NOT EXISTS idx_pkg_tpl_items ON package_template_items(template_id, tenant_id);
 """
 
 # ── 版本化迁移列表（既有 DB 升级用，新安装 DDL 已包含所有列） ─────────────────
@@ -520,6 +541,26 @@ _MIGRATIONS: list[tuple[int, str]] = [
         created_at        REAL NOT NULL
     )"""),
     (44, "CREATE INDEX IF NOT EXISTS idx_package_items_session ON package_items(session_id)"),
+    # ── 需求03 深化：可编辑模板（多套复用 + 在线编辑）────────────────────────
+    (45, """CREATE TABLE IF NOT EXISTS package_templates (
+        template_id TEXT NOT NULL,
+        tenant_id   TEXT NOT NULL DEFAULT 'default',
+        name        TEXT NOT NULL DEFAULT '',
+        is_builtin  INTEGER NOT NULL DEFAULT 0,
+        created_at  REAL NOT NULL,
+        updated_at  REAL NOT NULL,
+        PRIMARY KEY (template_id, tenant_id)
+    )"""),
+    (46, """CREATE TABLE IF NOT EXISTS package_template_items (
+        id          TEXT PRIMARY KEY,
+        template_id TEXT NOT NULL,
+        tenant_id   TEXT NOT NULL DEFAULT 'default',
+        item_no     TEXT NOT NULL,
+        category    TEXT NOT NULL DEFAULT '',
+        requirement TEXT NOT NULL,
+        importance  TEXT NOT NULL DEFAULT 'normal'
+    )"""),
+    (47, "CREATE INDEX IF NOT EXISTS idx_pkg_tpl_items ON package_template_items(template_id, tenant_id)"),
 ]
 
 
