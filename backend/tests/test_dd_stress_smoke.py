@@ -17,8 +17,10 @@ def test_stress_benchmark_invariants():
     """小规模跑通整条流水线 + 基准工具自身，断言核心不变量。"""
     m = run_benchmark(scale="small", checklist_n=16, seed_mem=100, concurrency=3)
 
-    # 索引：全部文件入库，全文落库覆盖率应满（可读 txt/docx/xlsx）
+    # 索引：全部文件入库
     assert m["indexed"] == m["file_count"]
+    # 延迟抽取（v1.16.0）：扫描期不预存全文（大库扫描卡死根因已根治）；架构保证
+    # 「已匹配文件」精判时按需抽取并回填，故覆盖率改为衡量已匹配文件的回填覆盖。
     assert m["content_coverage"] >= 0.99, m["content_coverage"]
 
     # 机器验证：每条需求都拿到 verdict（绿+黄+红 = 清单数），且有绿（相关匹配）

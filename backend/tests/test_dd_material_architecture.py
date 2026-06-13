@@ -75,21 +75,34 @@ class TestPhase1FullText:
         assert text == ""
         assert readable is False
 
-    def test_index_stores_content_text(self, tmp_path):
-        """扫描后 dd_asset_index.content_text 应落库全文。"""
-        (tmp_path / "执照.txt").write_text("营业执照全文内容" * 50, encoding="utf-8")
+    def test_index_defers_full_text_then_backfills_on_demand(self, tmp_path):
+        """延迟抽取（v1.16.0）：扫描期 content_text 留空（大库不卡死），
+        精判按需抽取时回填全文（架构保证：全文仍可用于精判，只是惰性）。"""
+        f = tmp_path / "执照.txt"
+        f.write_text("营业执照全文内容" * 50, encoding="utf-8")
         with patch("cangjie_fos.services.dd_index_service._llm_summarize",
                    return_value="营业执照"):
             from cangjie_fos.services.dd_index_service import scan_and_index_folder
             scan_and_index_folder(str(tmp_path), "t")
 
+        # 扫描期：content_text 留空（延迟，不逐个解析全文）
         with _connect() as conn:
             row = conn.execute(
-                "SELECT content_text FROM dd_asset_index WHERE filename = '执照.txt'"
+                "SELECT file_path, content_text FROM dd_asset_index WHERE filename = '执照.txt'"
             ).fetchone()
         assert row is not None
-        assert row["content_text"] is not None
-        assert "营业执照全文内容" in row["content_text"]
+        assert row["content_text"] is None
+
+        # 精判按需抽取：读磁盘正文并回填缓存
+        from cangjie_fos.services.dd_match_service import _ensure_content_text
+        text = _ensure_content_text(row["file_path"])
+        assert "营业执照全文内容" in text
+        with _connect() as conn:
+            row2 = conn.execute(
+                "SELECT content_text FROM dd_asset_index WHERE filename = '执照.txt'"
+            ).fetchone()
+        assert row2["content_text"] is not None
+        assert "营业执照全文内容" in row2["content_text"]
 
     def test_refine_overrides_confidence_when_not_satisfied(self, tmp_path):
         """精判判定不满足 → confidence 压低到红判，并写入证据。"""
