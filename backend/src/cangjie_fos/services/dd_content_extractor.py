@@ -92,13 +92,40 @@ def _try_decrypt(path: Path, password: str) -> Path | None:
     return None
 
 
-def _build_markitdown():
-    """构建 MarkItDown 实例；配置了视觉模型则启用图片 OCR（避免意外 API 成本，默认不开）。"""
-    from markitdown import MarkItDown  # noqa: PLC0415
+def _resolve_vision() -> tuple[str, str, str] | None:
+    """解析视觉 OCR 配置（用于把扫描件/图片识别成文字）。返回 (base_url, api_key, model) 或 None。
+
+    优先级（开箱即用）：
+      1. 显式覆盖：CANGJIE_VISION_BASE_URL + CANGJIE_VISION_API_KEY + CANGJIE_VISION_MODEL
+      2. 显式关闭：CANGJIE_OCR_DISABLED=1/true/yes → 返回 None（省 API 成本）
+      3. 默认：复用百炼 DASHSCOPE_API_KEY（同事为 ASR 早已配好）→ qwen-vl-max，
+         走 DashScope OpenAI 兼容端点；模型可用 CANGJIE_VISION_MODEL 覆盖。
+    """
     base = os.getenv("CANGJIE_VISION_BASE_URL")
     key = os.getenv("CANGJIE_VISION_API_KEY")
     model = os.getenv("CANGJIE_VISION_MODEL")
     if base and key and model:
+        return base, key, model
+
+    if os.getenv("CANGJIE_OCR_DISABLED", "").strip().lower() in ("1", "true", "yes"):
+        return None
+
+    ds_key = os.getenv("DASHSCOPE_API_KEY")
+    if ds_key:
+        return (
+            "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ds_key,
+            model or "qwen-vl-max",
+        )
+    return None
+
+
+def _build_markitdown():
+    """构建 MarkItDown 实例；解析到视觉配置则启用图片 OCR，否则纯文本抽取（优雅降级）。"""
+    from markitdown import MarkItDown  # noqa: PLC0415
+    cfg = _resolve_vision()
+    if cfg:
+        base, key, model = cfg
         try:
             from openai import OpenAI  # noqa: PLC0415
             client = OpenAI(base_url=base, api_key=key)
