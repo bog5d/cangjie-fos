@@ -56,6 +56,12 @@ uv run --extra dev pytest tests/test_dd_checklist_parser.py -k compound -v
 > 备注：B 的加密 docx 可用 `msoffcrypto-tool` 造；C 的扫描 PDF 找任意图片导出 PDF 即可。
 > 若服务未起则全部 skip——**全 skip 视为未完成**，必须先起服务再跑。
 
+### 🔧 v1.18.1 修复（回应 16 passed/1 failed 那一轮）
+- **`test_coaching_close_no_overlay` 竞态失败** → 已修：根因是前端 `/api/v1/ready` 只拉一次，
+  抖动失败即 `ready=null` 把按钮永久禁用。`App.tsx` 改为**自愈轮询**（未就绪/失败每 3s 重试，
+  ok 后停）。重跑应转绿。额外稳妥：点「路演陪练/复盘上传向导」前可先
+  `expect(btn).to_be_enabled(timeout=10_000)` 再点。
+
 ### 🔧 本轮顺带修复（测试设施，回应上一轮 Codex 反馈）
 - **PDF 报告汇总与 pytest 脱钩** → 已修：`conftest.py` 加 `pytest_runtest_makereport` 钩子，
   任一用了 `ui_reporter` 的测试被 pytest 判 failed（含 TimeoutError、登录阶段崩、按钮禁用），

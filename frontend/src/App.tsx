@@ -235,9 +235,32 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
       .catch(() => setReady(null));
   }, []);
 
+  // 自愈轮询：未就绪 / 拉取失败时每 3s 重试，就绪(ok)后停止。
+  // 修复：原先只在挂载时拉一次，启动预热期或一次网络抖动失败后 setReady(null)，
+  // 会把核心功能按钮永久禁用到手动刷新为止。
   useEffect(() => {
-    fetchReady();
-  }, [fetchReady]);
+    let cancelled = false;
+    let timer: number | undefined;
+    const tick = () => {
+      void api
+        .get<ReadyPayload>("/api/v1/ready")
+        .then((r) => {
+          if (cancelled) return;
+          setReady(r.data);
+          if (!r.data.ok) timer = window.setTimeout(tick, 3_000);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setReady(null);
+          timer = window.setTimeout(tick, 3_000);
+        });
+    };
+    tick();
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!dashboard) return;
