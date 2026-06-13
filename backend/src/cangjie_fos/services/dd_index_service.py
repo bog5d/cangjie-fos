@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from cangjie_fos.services.dd_file_parser import (
-    extract_text, extract_full_text, SUPPORTED_EXTENSIONS,
+    extract_text, SUPPORTED_EXTENSIONS,
 )
 from cangjie_fos.services.db_base import _connect
 
@@ -138,12 +138,19 @@ def _index_single_file(
     institution_subfolder: str = "",
     is_encrypted: bool = False,
 ) -> None:
-    # 全文落库（内容层）：精判节点据此逐条核对正文是否满足需求。
-    # 读全文后顺带切片喂摘要，避免对同一文件读两遍。
-    full_text, readable = extract_full_text(file_path)
-    content_text = full_text or None
-    # 只在 use_llm=True 且文件可读时才调用 LLM；否则 summary=None，依靠文件名匹配
-    summary = _llm_summarize(file_path.name, full_text[:600]) if (use_llm and readable and full_text) else None
+    # ── 延迟全文抽取（v1.16.0 性能）────────────────────────────────────────────
+    # 旧实现对每个文件都 extract_full_text（解析整份 PDF/Word/Excel），是 2~3000 份
+    # 大库扫描 10 分钟卡死的主因（~1 文件/秒 → 数千份要几十分钟）。
+    # 全文只在「精判」阶段对【已匹配的少数文件】才需要，故扫描阶段不再预抽全文：
+    #   - 小文件夹（use_llm）：只抽「轻量前几页/800字」喂 LLM 摘要，比全文快得多；
+    #   - 大文件夹：纯元数据（文件名 + 加密标记），秒级完成；
+    #   - content_text 留空，待精判按需抽取并回填（dd_match_service._ensure_content_text）。
+    if use_llm:
+        light_text, readable = extract_text(file_path, max_chars=800)
+        summary = _llm_summarize(file_path.name, light_text) if (readable and light_text) else None
+    else:
+        light_text, readable, summary = "", True, None
+    content_text = None  # 延迟到精判按需抽取
 
     now = time.time()
     try:

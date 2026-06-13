@@ -178,6 +178,33 @@ def run_matching(
             _mark_session_done(session_id)
 
 
+def _ensure_content_text(file_path: str) -> str:
+    """精判前按需抽取全文（配合扫描阶段的延迟抽取，v1.16.0 性能）。
+
+    扫描时不再预抽全文（几千份文件的主瓶颈）；精判只对【已匹配的少数文件】
+    按需读取磁盘正文，成功则回填 dd_asset_index.content_text 作缓存，下次直接命中。
+    """
+    if not file_path:
+        return ""
+    from pathlib import Path  # noqa: PLC0415
+    from cangjie_fos.services.dd_file_parser import extract_full_text  # noqa: PLC0415
+    try:
+        text, readable = extract_full_text(Path(file_path))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("按需抽取全文失败 %s: %s", file_path, e)
+        return ""
+    if text:
+        try:
+            with _connect() as conn:
+                conn.execute(
+                    "UPDATE dd_asset_index SET content_text = ?, readable = ? WHERE file_path = ?",
+                    (text, 1 if readable else 0, file_path),
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("回填 content_text 失败 %s: %s", file_path, e)
+    return text or ""
+
+
 def _get_index_for_folder(folder_root: str) -> list[dict]:
     """返回文件夹下所有已索引文件。
     注意：不再过滤 readable=1，确保图片型PDF、加密文件等仍通过文件名参与匹配。
@@ -667,9 +694,11 @@ def _refine_session_matches(session_id: str) -> None:
             (session_id,),
         ).fetchall()]
 
-    # 仅当存在「有正文的非记忆锁定已匹配项」时才需要 LLM 客户端（避免无谓初始化）
+    # 仅当存在「非记忆锁定的已匹配项」时才需要 LLM 客户端（避免无谓初始化）。
+    # 注意：延迟抽取后扫描期 content_text 多为空，故不再以 content_text 是否存在为判据，
+    # 改为"有匹配文件即可能需要精判"，正文在循环里按需抽取。
     needs_llm = any(
-        r.get("matched_file_path") and (r.get("content_text") or "").strip()
+        r.get("matched_file_path")
         and not (r.get("match_reason") or "").startswith(MEMORY_REASON_PREFIX)
         for r in rows
     )
@@ -704,6 +733,9 @@ def _refine_session_matches(session_id: str) -> None:
             continue
 
         content = (r.get("content_text") or "").strip()
+        # 延迟抽取：扫描期未存全文 → 精判时对这份已匹配文件按需读取磁盘正文并回填缓存
+        if not content and path:
+            content = _ensure_content_text(path).strip()
 
         # 正文不可读 / 无需 LLM：按现有置信度给信号
         if not content or client is None:

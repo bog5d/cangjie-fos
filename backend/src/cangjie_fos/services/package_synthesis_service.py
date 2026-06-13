@@ -52,6 +52,10 @@ def auto_existing_snippets(item: dict) -> str:
         return ""
     content = (row["content_text"] or "").strip()
     if not content:
+        # 延迟抽取：扫描期未存全文 → 按需从磁盘读取该文件正文（并回填缓存）
+        from cangjie_fos.services.dd_match_service import _ensure_content_text  # noqa: PLC0415
+        content = _ensure_content_text(path).strip()
+    if not content:
         return ""
     return f"（来自已有文件《{row['filename']}》）\n{content[:_AUTO_SNIPPET_CHARS]}"
 

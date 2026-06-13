@@ -135,10 +135,8 @@ def run_benchmark(scale: str = "medium", checklist_n: int = 120, seed_mem: int =
     m["index_s"] = round(time.perf_counter() - t, 2)
     m["indexed"] = res["indexed"]
     m["index_throughput"] = round(res["indexed"] / max(m["index_s"], 1e-6))
-    with _connect() as conn:
-        tot = conn.execute("SELECT COUNT(*) FROM dd_asset_index WHERE folder_root=?", (str(lib),)).fetchone()[0]
-        wc = conn.execute("SELECT COUNT(*) FROM dd_asset_index WHERE folder_root=? AND content_text IS NOT NULL AND content_text!=''", (str(lib),)).fetchone()[0]
-    m["content_coverage"] = round(wc / tot, 4) if tot else 0
+    # 延迟抽取（v1.16.0）：扫描期不再预存全文（大库扫描卡死的根因已根治）。
+    # 全文落库覆盖率改到精判后按「已匹配文件」统计（见下），那才是架构保证的范围。
 
     index_rows = _get_index_for_folder(str(lib))
     batch = [{"requirement": dt} for dts in CATS.values() for dt in dts][:20]
@@ -159,6 +157,20 @@ def run_benchmark(scale: str = "medium", checklist_n: int = 120, seed_mem: int =
     m["verdict_green"] = sum(1 for it in si if it.get("verdict") == "green")
     m["verdict_yellow"] = sum(1 for it in si if it.get("verdict") == "yellow")
     m["verdict_red"] = sum(1 for it in si if it.get("verdict") == "red")
+
+    # 全文落库覆盖率（延迟抽取后语义）：架构保证「已匹配文件」在精判时按需抽取并回填。
+    matched_paths = {it["matched_file_path"] for it in si if it.get("matched_file_path")}
+    if matched_paths:
+        ph = ",".join("?" * len(matched_paths))
+        with _connect() as conn:
+            wc = conn.execute(
+                f"SELECT COUNT(*) FROM dd_asset_index WHERE content_text IS NOT NULL "
+                f"AND content_text != '' AND file_path IN ({ph})",
+                tuple(matched_paths),
+            ).fetchone()[0]
+        m["content_coverage"] = round(wc / len(matched_paths), 4)
+    else:
+        m["content_coverage"] = 0.0
 
     now = time.time()
     with _connect() as conn:
