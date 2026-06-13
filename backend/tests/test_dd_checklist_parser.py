@@ -287,3 +287,31 @@ def test_run_matching_stores_candidates_json():
     cands = json.loads(result[0]["candidates_json"])
     assert len(cands) == 2
     assert cands[1]["filename"] == "备选.pdf"
+
+
+def test_extract_prompt_has_compound_split_rule():
+    """v1.17.0：出题 prompt 必须含「复合项按年度/并列拆条」指令（保证逐份可匹配）。"""
+    from cangjie_fos.services import dd_checklist_parser as p
+
+    captured = {}
+
+    class _FakeResp:
+        class _C:
+            class _M:
+                content = "[]"
+            message = _M()
+        choices = [_C()]
+
+    class _FakeClient:
+        class chat:
+            class completions:
+                @staticmethod
+                def create(model, messages, **kw):
+                    captured["prompt"] = messages[0]["content"]
+                    return _FakeResp()
+
+    with patch.object(p, "get_dd_llm_client", lambda: _FakeClient()) if hasattr(p, "get_dd_llm_client") else patch("cangjie_fos.services.dd_llm_client.get_dd_llm_client", lambda: _FakeClient()):
+        p._llm_extract_chunk("近三年审计报告")
+
+    prompt = captured.get("prompt", "")
+    assert "拆" in prompt and ("年度" in prompt or "逐条" in prompt)

@@ -44,9 +44,9 @@ def extract_full_text(file_path: Path, max_chars: int = 6000) -> tuple[str, bool
     返回 (text, readable)。readable=False 表示加密/图片型 PDF/不支持格式
     （此类文件正文读不出，精判会自动跳过，仍可靠文件名+摘要参与粗筛）。
 
-    [未来演进锚点] 扫描件/纯图片 PDF 当前读不出正文（readable=False）。
-    下一步可引入 microsoft/markitdown（PDF/Office/图片/音频统一转 Markdown，
-    图片走 OCR/视觉模型），把这类「死角」也纳入内容层。详见 AGENTS.md「物料架构」节。
+    注：本函数只做「文字层」快速抽取（pdfplumber 等）。扫描件/图片型 PDF 读不出字、
+    加密文件读不了——这些「死角」由 dd_content_extractor.extract_for_verify 在精判节点
+    按需补齐（解密 + MarkItDown + 图片 OCR），见 v1.17.0。本函数保持轻量，不引入重依赖。
     """
     suffix = file_path.suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:

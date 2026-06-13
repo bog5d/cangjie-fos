@@ -403,14 +403,18 @@ async def trigger_matching(
     投后场景（scenario=post_investment）：匹配完成后自动触发草稿填充。
     """
     _evict_oldest(_match_status)
-    _match_status[session_id] = {"status": "running", "done": 0, "total": 0}
+    _match_status[session_id] = {"status": "running", "done": 0, "total": 0, "stage": "matching"}
 
     def _do_match():
         def _progress(done: int, total: int) -> None:
             _match_status[session_id].update({"done": done, "total": total})
 
+        def _stage(stage: str) -> None:
+            _match_status[session_id].update({"stage": stage})
+
         try:
-            run_matching(session_id, folder_root, progress_callback=_progress)
+            run_matching(session_id, folder_root,
+                         progress_callback=_progress, stage_callback=_stage)
             # 投后场景：匹配完自动触发草稿填充
             with _connect() as conn:
                 row = conn.execute(
@@ -427,7 +431,7 @@ async def trigger_matching(
         finally:
             status = _match_status.get(session_id, {})
             total = status.get("total", 0)
-            _match_status[session_id] = {"status": "done", "done": total, "total": total}
+            _match_status[session_id] = {"status": "done", "done": total, "total": total, "stage": "done"}
 
     background_tasks.add_task(_do_match)
     return {"status": "matching_started", "session_id": session_id}

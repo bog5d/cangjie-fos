@@ -4,6 +4,40 @@
 
 ---
 
+## [1.17.0] — 2026-06-13  尽调台内容层补盲：解密 + MarkItDown/OCR + 工作流可视化
+
+> 测试基线：914 passed。同事追问"匹配准不准、扫描件/加密件读不读得了、工作流是不是
+> 一步步在走"——本版把内容层的三个死角补上，并让工作流可见。**关键架构：内容抽取一律
+> 惰性，只在精判节点对【粗匹配出的少数候选文件】做，绝不在扫描期对全库跑**（沿用 v1.16.0
+> 延迟抽取的思路），所以补盲不会拖慢扫描。
+
+### 内容层补盲（核心，`dd_content_extractor.extract_for_verify`）
+精判按需抽取升级为三层降级：
+1. **加密文件**：用登记密码解密（Office→msoffcrypto / PDF→pikepdf）到临时明文再抽取
+2. **文字层**：pdfplumber / docx / xlsx 快速抽取
+3. **扫描件/图片型**：文字层为空时走 **MarkItDown** 统一转换；配置视觉模型
+   （`CANGJIE_VISION_*`）则对图片走 OCR/视觉识别
+- 全部惰性导入 + 优雅降级：依赖缺失或失败都不影响 app 启动，自动退到下一层
+- `_ensure_content_text` 接入：精判时对候选文件带密码、走补盲抽取并回填缓存
+
+### 清单复合项强制拆分
+- `dd_checklist_parser` prompt 增加硬规则：把"近三年/去年今年明年/并列多份材料"拆成
+  独立需求项，保证逐份可匹配（解决"一句话三个东西匹配不准"）
+
+### 工作流可视化
+- `run_matching` 新增 `stage_callback`：粗筛(matching) → 读正文精判(verifying) → 完成
+- match-status 返回 `stage`；前端尽调向导新增**步骤条**
+  （解析清单 → AI 粗筛匹配 → 读正文精判验证 → 待人工确认），不再闷头转圈
+
+### 依赖
+- 新增 markitdown、msoffcrypto-tool、pikepdf（均惰性使用）
+
+### 测试（+10，累计 914 passed）
+- 新增 `test_dd_content_extractor.py`（解密/文字层/MarkItDown 兜底/降级路由）、
+  `test_dd_workflow_stage.py`（阶段回调）；`test_dd_checklist_parser` 增复合拆分指令断言
+
+---
+
 ## [1.16.0] — 2026-06-13  性能：大库扫描根治（延迟全文抽取）
 
 > 测试基线：904 passed。同事实测 2~3000 份材料库扫描卡在 23% 后 10 分钟超时——

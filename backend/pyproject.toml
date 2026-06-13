@@ -23,6 +23,9 @@ dependencies = [
   "apscheduler>=3.10",
   "pdfplumber>=0.11.9",
   "openpyxl>=3.1.5",
+  "msoffcrypto-tool>=6.0.0",
+  "pikepdf>=10.8.0",
+  "markitdown>=0.1.6",
 ]
 
 [project.optional-dependencies]

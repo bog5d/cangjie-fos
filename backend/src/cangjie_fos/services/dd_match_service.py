@@ -79,10 +79,21 @@ def get_session_items(session_id: str) -> list[dict]:
     return items
 
 
+def _emit_stage(cb: Callable[[str], None] | None, stage: str) -> None:
+    """安全触发工作流阶段回调（供前端步骤条可视化；失败不影响主流程）。"""
+    if cb is None:
+        return
+    try:
+        cb(stage)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("stage_callback 异常: %s", e)
+
+
 def run_matching(
     session_id: str,
     folder_root: str,
     progress_callback: Callable[[int, int], None] | None = None,
+    stage_callback: Callable[[str], None] | None = None,
 ) -> None:
     """
     对 session 的所有需求项，与 folder_root 下的已索引文件做批量匹配。
@@ -118,6 +129,7 @@ def run_matching(
             return
 
         total = len(items)
+        _emit_stage(stage_callback, "matching")  # 阶段：AI 粗筛（文件名+摘要）
         matches = _llm_batch_match(
             items, "", index_rows,
             progress_callback=progress_callback,
@@ -159,7 +171,8 @@ def run_matching(
             logger.warning("决策记忆覆盖失败（不影响主流程）: %s", e)
 
         # ── 阶段1+2：全文精判 + 机器验证（红/黄/绿 + 原文证据）──
-        # 只对「有正文可读」且「非记忆锁定」的已匹配项逐条核对正文。
+        # 只对「非记忆锁定」的已匹配项逐条按需抽取正文核对（解密/OCR 兜底见 _ensure_content_text）。
+        _emit_stage(stage_callback, "verifying")  # 阶段：读正文精判 + 机器验证
         try:
             _refine_session_matches(session_id)
         except Exception as e:  # noqa: BLE001
@@ -182,14 +195,29 @@ def _ensure_content_text(file_path: str) -> str:
     """精判前按需抽取全文（配合扫描阶段的延迟抽取，v1.16.0 性能）。
 
     扫描时不再预抽全文（几千份文件的主瓶颈）；精判只对【已匹配的少数文件】
-    按需读取磁盘正文，成功则回填 dd_asset_index.content_text 作缓存，下次直接命中。
+    按需抽取，成功则回填 dd_asset_index.content_text 作缓存，下次直接命中。
+
+    v1.17.0：抽取升级为「统一抽取」——加密件用登记密码解密、扫描件走 MarkItDown/OCR
+    兜底（dd_content_extractor.extract_for_verify），把内容层的死角补上。
     """
     if not file_path:
         return ""
-    from pathlib import Path  # noqa: PLC0415
-    from cangjie_fos.services.dd_file_parser import extract_full_text  # noqa: PLC0415
+    # 取该文件登记的解密密码（加密件用）
+    password = ""
     try:
-        text, readable = extract_full_text(Path(file_path))
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT unlock_password FROM dd_asset_index WHERE file_path = ?",
+                (file_path,),
+            ).fetchone()
+            if row:
+                password = row["unlock_password"] or ""
+    except Exception:  # noqa: BLE001
+        password = ""
+
+    from cangjie_fos.services.dd_content_extractor import extract_for_verify  # noqa: PLC0415
+    try:
+        text, readable, _method = extract_for_verify(file_path, password=password)
     except Exception as e:  # noqa: BLE001
         logger.warning("按需抽取全文失败 %s: %s", file_path, e)
         return ""
