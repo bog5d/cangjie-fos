@@ -4,6 +4,25 @@
 
 ---
 
+## [1.18.0] — 2026-06-13  扫描件 OCR 开箱即用（复用百炼 DASHSCOPE_API_KEY）
+
+> 测试基线：919 passed。承 v1.17.0 内容层补盲——把"扫描件/图片型 PDF 走 OCR"
+> 从"需手动配视觉模型"变成**开箱即用**：只要环境里有 ASR 用的 `DASHSCOPE_API_KEY`，
+> 扫描件 OCR 自动生效，无需额外配置。
+
+### 视觉 OCR 配置解析（`dd_content_extractor._resolve_vision`）
+优先级：
+1. **显式覆盖**：`CANGJIE_VISION_BASE_URL` + `CANGJIE_VISION_API_KEY` + `CANGJIE_VISION_MODEL`
+2. **显式关闭**：`CANGJIE_OCR_DISABLED=1`（省 API 成本，扫描件退回文件名匹配）
+3. **默认开箱**：复用 `DASHSCOPE_API_KEY` → `qwen-vl-max`，走百炼 OpenAI 兼容端点
+   （模型可用 `CANGJIE_VISION_MODEL` 覆盖，如 `qwen-vl-plus`）
+- 成本可控：OCR 只对【精判节点的少数候选文件】中【读不出文字层的扫描件】触发
+
+### 测试（+5，累计 919 passed）
+- `test_dd_content_extractor`：默认走 DashScope / 显式覆盖 / 模型覆盖 / 开关关闭 / 无 key 降级
+
+---
+
 ## [1.17.0] — 2026-06-13  尽调台内容层补盲：解密 + MarkItDown/OCR + 工作流可视化
 
 > 测试基线：914 passed。同事追问"匹配准不准、扫描件/加密件读不读得了、工作流是不是

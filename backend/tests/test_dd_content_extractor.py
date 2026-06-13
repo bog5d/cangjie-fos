@@ -79,3 +79,49 @@ def test_markitdown_import_missing_safe(tmp_path, monkeypatch):
         raise ImportError("markitdown 未安装")
     monkeypatch.setattr(ce, "_build_markitdown", boom)
     assert ce._try_markitdown(Path(str(f)), 6000) == ""
+
+
+# ── v1.18.0：视觉 OCR 开箱配置（复用百炼 DASHSCOPE_API_KEY）──
+
+def _clear_vision_env(monkeypatch):
+    for k in ("CANGJIE_VISION_BASE_URL", "CANGJIE_VISION_API_KEY",
+              "CANGJIE_VISION_MODEL", "CANGJIE_OCR_DISABLED", "DASHSCOPE_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+
+
+def test_vision_default_uses_dashscope(monkeypatch):
+    """有 DASHSCOPE_API_KEY 即开箱：自动 qwen-vl-max + 百炼兼容端点。"""
+    _clear_vision_env(monkeypatch)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-ds")
+    cfg = ce._resolve_vision()
+    assert cfg is not None
+    base, key, model = cfg
+    assert "dashscope" in base and key == "sk-ds" and model == "qwen-vl-max"
+
+
+def test_vision_explicit_override(monkeypatch):
+    _clear_vision_env(monkeypatch)
+    monkeypatch.setenv("CANGJIE_VISION_BASE_URL", "http://x/v1")
+    monkeypatch.setenv("CANGJIE_VISION_API_KEY", "kk")
+    monkeypatch.setenv("CANGJIE_VISION_MODEL", "my-vl")
+    assert ce._resolve_vision() == ("http://x/v1", "kk", "my-vl")
+
+
+def test_vision_model_override_on_dashscope(monkeypatch):
+    _clear_vision_env(monkeypatch)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-ds")
+    monkeypatch.setenv("CANGJIE_VISION_MODEL", "qwen-vl-plus")
+    assert ce._resolve_vision()[2] == "qwen-vl-plus"
+
+
+def test_vision_disabled_switch(monkeypatch):
+    """CANGJIE_OCR_DISABLED=1 → 关闭，省 API 成本。"""
+    _clear_vision_env(monkeypatch)
+    monkeypatch.setenv("DASHSCOPE_API_KEY", "sk-ds")
+    monkeypatch.setenv("CANGJIE_OCR_DISABLED", "1")
+    assert ce._resolve_vision() is None
+
+
+def test_vision_none_when_no_key(monkeypatch):
+    _clear_vision_env(monkeypatch)
+    assert ce._resolve_vision() is None
