@@ -31,26 +31,21 @@ jobs:
       - name: Create data directory
         run: mkdir -p backend/data/audio backend/data/html_reports
 
-      - name: Run tests
+      - name: Run tests (and verify count ≥ 440)
         working-directory: backend
         env:
           # Mock FSS path — CI runs without FSS installed
           CANGJIE_PITCH_COACH_ROOT: /tmp/mock_pitch_coach
           CANGJIE_DRY_RUN: "true"
         run: |
+          set -o pipefail   # 保留 pytest 真实失败（tee 会掩盖退出码）
           mkdir -p /tmp/mock_pitch_coach/src
-          uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q --tb=short
-
-      - name: Verify test count
-        working-directory: backend
-        env:
-          CANGJIE_PITCH_COACH_ROOT: /tmp/mock_pitch_coach
-          CANGJIE_DRY_RUN: "true"
-        run: |
-          mkdir -p /tmp/mock_pitch_coach/src
-          COUNT=$(uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q --tb=no --no-header 2>&1 | grep "passed" | grep -oP '^\d+')
-          echo "Tests passed: $COUNT"
-          if [ "$COUNT" -lt 440 ]; then
+          # 只跑一次；输出同时落盘供计数（旧版跑两遍 + 脆弱 grep 在 set -e 下误杀）
+          uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q --tb=short \
+            | tee /tmp/pytest_out.txt
+          COUNT=$(grep -oE '[0-9]+ passed' /tmp/pytest_out.txt | grep -oE '[0-9]+' | head -1 || true)
+          echo "Tests passed: ${COUNT:-0}"
+          if [ "${COUNT:-0}" -lt 440 ]; then
             echo "❌ 测试数量不足 440，请检查是否有测试被跳过或删除"
             exit 1
           fi
