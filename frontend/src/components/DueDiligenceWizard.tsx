@@ -90,6 +90,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [matchStatus, setMatchStatus] = useState<string>("idle");
   const [matchError, setMatchError] = useState<string>("");
   const [matchProgress, setMatchProgress] = useState<{ done: number; total: number } | null>(null);
+  const [matchStage, setMatchStage] = useState<string>("");
   const pollMatchRef = useRef<number | null>(null);
 
   // Step 3 state
@@ -255,6 +256,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     setParsing(false);
     setMatchStatus("running");
     setMatchProgress(null);
+    setMatchStage("matching");
     try {
       const matchResp = await fetch(
         `/api/v1/dd/sessions/${sessionData.session_id}/match?folder_root=${encodeURIComponent(folderPath.trim())}`,
@@ -279,10 +281,11 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
         // 先拉进度（不等 items 全部完成）
         const progressResp = await fetch(`/api/v1/dd/sessions/${sid}/match-status`);
         if (progressResp.ok) {
-          const ps: { status: string; done: number; total: number } = await progressResp.json();
+          const ps: { status: string; done: number; total: number; stage?: string } = await progressResp.json();
           if (ps.total > 0) {
             setMatchProgress({ done: ps.done, total: ps.total });
           }
+          if (ps.stage) setMatchStage(ps.stage);
           if (ps.status === "done") {
             clearInterval(pollMatchRef.current!);
             pollMatchRef.current = null;
@@ -896,6 +899,38 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   </button>
                 )}
               </div>
+              {matchStatus === "running" && (() => {
+                // 工作流步骤条：让人看到 AI 一步步在干什么，而不是闷头转圈
+                const order = ["parse", "matching", "verifying", "confirm"];
+                const cur = parsing ? "parse" : (matchStage || "matching");
+                const curIdx = order.indexOf(cur);
+                const steps = [
+                  { key: "parse", label: "解析清单" },
+                  { key: "matching", label: "AI 粗筛匹配" },
+                  { key: "verifying", label: "读正文精判验证" },
+                  { key: "confirm", label: "待人工确认" },
+                ];
+                return (
+                  <div className="mt-3 flex items-center gap-1 text-xs">
+                    {steps.map((s, i) => {
+                      const done = i < curIdx;
+                      const active = i === curIdx;
+                      return (
+                        <div key={s.key} className="flex items-center gap-1">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${
+                            done ? "bg-green-100 text-green-700"
+                              : active ? "bg-blue-100 text-blue-700 font-medium"
+                                : "bg-gray-100 text-gray-400"
+                          }`}>
+                            {done ? "✓" : active ? "●" : "○"} {s.label}
+                          </span>
+                          {i < steps.length - 1 && <span className="text-gray-300">→</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
