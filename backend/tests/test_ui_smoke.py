@@ -45,7 +45,9 @@ def _login(
     """
     username, password = credentials
     page.goto(base_url)
-    page.wait_for_load_state("networkidle", timeout=10_000)
+    # 不用 networkidle：本应用登录后会轮询 /api/v1/ready 等接口，网络永不 idle，
+    # networkidle 必然超时拖垮所有用例。改为等具体元素出现（Playwright 最佳实践）。
+    page.wait_for_selector("input[type='password']", timeout=15_000)
 
     text_inputs = page.locator("input[type='text']")
     # 第1个 text input = 指挥官名称（必填）
@@ -55,9 +57,16 @@ def _login(
     page.locator("input[type='password']").first.fill(password)
     page.locator("button[type='submit']").click()
 
-    # 等待页面稳定（最多12秒，包括 API 响应和 React 渲染）
-    page.wait_for_load_state("networkidle", timeout=12_000)
-    page.wait_for_timeout(2_000)
+    # 等主界面出现（任一主入口按钮可见即认为已进入），而非 networkidle
+    try:
+        page.wait_for_selector(
+            "button:has-text('尽调响应'), button:has-text('路演分析'), "
+            "button:has-text('复盘上传向导')",
+            timeout=15_000,
+        )
+    except Exception:  # noqa: BLE001 — 进不到主界面交由各用例自身断言定位
+        pass
+    page.wait_for_timeout(1_000)
 
 
 # ── TestLoginNoOverlay ─────────────────────────────────────────────────────────
@@ -68,9 +77,9 @@ class TestLoginNoOverlay:
     def test_login_page_visible(self, page: Page, fos_server_url: str) -> None:
         """登录页应正常显示，有用户名和密码输入框。"""
         page.goto(fos_server_url)
-        page.wait_for_load_state("networkidle", timeout=10_000)
-        expect(page.locator("input[type='text']").first).to_be_visible(timeout=5_000)
-        expect(page.locator("input[type='password']").first).to_be_visible(timeout=5_000)
+        # 不用 networkidle（应用挂载即轮询 /api/v1/ready，网络不 idle）；直接等输入框
+        expect(page.locator("input[type='text']").first).to_be_visible(timeout=10_000)
+        expect(page.locator("input[type='password']").first).to_be_visible(timeout=10_000)
 
     def test_login_succeeds_enters_main_page(
         self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str]

@@ -53,7 +53,7 @@ def _load_font(size: int) -> ImageFont.FreeTypeFont:
 
 @dataclass
 class _Shot:
-    png: bytes
+    png: bytes | None
     label: str
     status: str
     note: str
@@ -86,12 +86,26 @@ class UIReporter:
         """便捷：截一张 FAIL 图。"""
         self.capture(page, label, status="fail", note=note)
 
+    def mark_failed(self, label: str, note: str = "", png: bytes | None = None) -> None:
+        """记录一次「pytest 判定失败」——即使测试没主动调 fail()（如 Timeout、登录阶段就崩）。
+
+        由 conftest 的 pytest_runtest_makereport 钩子调用，保证 PDF 总览与 pytest
+        真实结果一致，不再出现「pytest 失败但报告显示全 PASS」。png 为空时生成纯文字失败页。
+        """
+        self.any_fail = True
+        self.shots.append(_Shot(png=png, label=label, status="fail", note=note))
+
     def _render_page(self, shot: _Shot, index: int, total: int) -> Image.Image:
-        """单张截图 + 顶部中文标注横幅，返回 RGB 图。"""
-        screenshot = Image.open(io.BytesIO(shot.png)).convert("RGB")
-        w = screenshot.width
+        """单张截图 + 顶部中文标注横幅，返回 RGB 图。无截图时生成纯文字失败页。"""
         banner_h = 96
-        canvas = Image.new("RGB", (w, screenshot.height + banner_h), (255, 255, 255))
+        if shot.png:
+            screenshot = Image.open(io.BytesIO(shot.png)).convert("RGB")
+            w, body_h = screenshot.width, screenshot.height
+        else:
+            screenshot = None
+            w, body_h = 1000, 280
+
+        canvas = Image.new("RGB", (w, body_h + banner_h), (255, 255, 255))
         draw = ImageDraw.Draw(canvas)
 
         color = _STATUS_COLORS.get(shot.status, _STATUS_COLORS["info"])
@@ -106,7 +120,43 @@ class UIReporter:
         if shot.note:
             draw.text((16, 56), shot.note, fill=(255, 255, 255), font=note_font)
 
-        canvas.paste(screenshot, (0, banner_h))
+        if screenshot is not None:
+            canvas.paste(screenshot, (0, banner_h))
+        else:
+            draw.text((16, banner_h + 24),
+                      "（无截图：页面无法截屏，或测试在截图前已崩溃 / 超时）",
+                      fill=(120, 120, 120), font=note_font)
+        return canvas
+
+    def _render_summary(self) -> Image.Image:
+        """首页总览：整体结论 + PASS/FAIL 计数 + 失败明细。一眼判定真实结果。"""
+        total = len(self.shots)
+        fails = sum(1 for s in self.shots if s.status == "fail")
+        passes = sum(1 for s in self.shots if s.status == "ok")
+        w, h = 1000, 760
+        canvas = Image.new("RGB", (w, h), (255, 255, 255))
+        draw = ImageDraw.Draw(canvas)
+        color = _STATUS_COLORS["fail"] if self.any_fail else _STATUS_COLORS["ok"]
+        draw.rectangle([0, 0, w, 110], fill=color)
+        verdict = "❌ 存在失败（FAILED）" if self.any_fail else "✅ 全部通过（PASS）"
+        draw.text((24, 30), f"模拟人工测试总览 — {verdict}",
+                  fill=(255, 255, 255), font=_load_font(34))
+
+        body = _load_font(24)
+        y = 140
+        for ln in [
+            f"报告：{self.report_name}",
+            f"总帧数：{total}    ✅ PASS：{passes}    ❌ FAIL：{fails}",
+            "",
+            ("失败明细：" if fails else "无失败步骤。"),
+        ]:
+            draw.text((24, y), ln, fill=(30, 30, 30), font=body)
+            y += 38
+        for s in self.shots:
+            if s.status == "fail" and y < h - 40:
+                line = f"  ❌ {s.label}" + (f"  · {s.note}" if s.note else "")
+                draw.text((24, y), line[:80], fill=(180, 30, 30), font=body)
+                y += 36
         return canvas
 
     def finalize(self, out_dir: Path | None = None) -> Path | None:
@@ -121,7 +171,8 @@ class UIReporter:
         out_path = out_dir / f"{prefix}{self.report_name}_{ts}.pdf"
 
         total = len(self.shots)
-        pages = [self._render_page(s, i + 1, total) for i, s in enumerate(self.shots)]
+        pages = [self._render_summary()]
+        pages += [self._render_page(s, i + 1, total) for i, s in enumerate(self.shots)]
         pages[0].save(out_path, save_all=True, append_images=pages[1:],
                       resolution=100.0)
         return out_path
