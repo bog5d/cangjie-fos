@@ -5,11 +5,53 @@
 
 ---
 
-## 当前版本：v1.9.1 | 最后更新：2026-06-06
+## 当前版本：v1.18.0 | 最后更新：2026-06-13
 
 ---
 
-## 🆕 本轮新增（v1.9.1 · 红队加固 + 压测固化）
+## 🆕 本轮新增（v1.17.0 + v1.18.0 · 内容层补盲 + 工作流可视化）
+
+> 主理人点名：**模拟人工测试、打开浏览器、该截图截图、输出测试 PDF。**
+> 本轮补的是尽调台「内容层三个死角」+「工作流看不见」：
+> ① 加密件登记密码后能解密读正文　② 扫描件/图片型 PDF 走 OCR 读　
+> ③ 清单复合项（近三年/并列多份）拆成独立条　④ 匹配过程出现步骤条。
+
+### 1) 自动化（必须全绿）
+```bash
+cd backend
+uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
+# 期望：919 passed, 0 failed
+
+# 本轮新增（共 17 个）
+uv run --extra dev pytest tests/test_dd_content_extractor.py tests/test_dd_workflow_stage.py -v
+# 期望：12 + 2 = 14 passed（统一抽取解密/文字层/OCR兜底/降级 12，阶段回调 2）
+uv run --extra dev pytest tests/test_dd_checklist_parser.py -k compound -v
+# 期望：1 passed（复合项拆分指令在 prompt 中）
+```
+
+### 2) 人工冒烟（启动服务 + 真实浏览器，逐步截图 → 出 PDF）
+> 启动：`cd backend && uv run uvicorn cangjie_fos.main:app --port 8000`；前端走 `frontend/dist`（已预编译）。
+> 入口统一：登录后点 **「📋 尽调响应」**（`button:has-text('尽调响应')`）进向导 Step 1。
+> 测试方法加到 `tests/test_ui_smoke.py` 的 `TestDueDiligenceWizardSmoke` 里，
+> **每一步 `ui_reporter.capture(page, "步骤名", status=...)`**；任一步失败用 `ui_reporter.fail(...)` 再 `raise`。
+
+| # | 操作（逐步点击指引） | 验收点（截图） |
+|---|------|--------------|
+| A · 工作流步骤条 | 备一个材料库文件夹（放 `审计报告.txt`＝「审计报告 标准无保留意见」、`装修合同.txt`＝无关内容）。Step1 填材料库路径 → 「开始扫描」→ 扫完粘贴清单「1. 审计报告」→ 「解析 & 开始匹配」 | 匹配进行中**出现步骤条**：`解析清单 → AI 粗筛匹配 → 读正文精判验证 → 待人工确认`，当前步高亮（蓝色 ●）、已完成步打勾（绿色 ✓）。截「粗筛中」「精判中」两帧 |
+| B · 加密件解密读 | 材料库再放一个**加密 docx/pdf**（设密码，如 `123456`，正文含「审计报告」字样）。在向导里**登记该文件密码**（item 的 unlock_password 输入框）→ 重新匹配 | 该加密件能参与精判并命中（🟢/🟡），证明已解密读到正文；**不再是读不出/跳过** |
+| C · 扫描件 OCR | 材料库放一个**图片型/扫描 PDF**（无文字层）。**前提**：环境配了 `DASHSCOPE_API_KEY`（OCR 默认开箱）。匹配 | 配了 key：扫描件能被识别出文字并参与匹配（命中或给出证据）。未配 key / 设 `CANGJIE_OCR_DISABLED=1`：**优雅降级**（标记读不出，流程不崩、不报错）——两种都要截图说明 |
+| D · 清单复合项拆分 | 上传/粘贴含复合项的清单，如「1. 近三年审计报告」「2. 公司章程及历次股东会决议」→ 解析 | 解析后审核表里**拆成多条**：审计报告按年度（2022/2023/2024）各一条；章程与股东会决议各一条。截解析结果表 |
+| E · 关闭无叠层（回归） | 关闭向导（✕ 或 Esc） | 无大面积 `fixed` 遮罩残留（沿用既有 `_OVERLAY_JS` 断言） |
+
+**FAIL 判定**：自动化任一 failed；或 A 看不到步骤条 / B 加密件仍读不出 / C 配了 key 仍不识别且非降级提示 / D 复合项没拆开。
+**输出**：带 A–E 截图的测试 PDF（`backend/data/ui_reports/`，`-s` 打印路径），回填 PR 评论或本文件历史记录。
+
+> 备注：B 的加密 docx 可用 `msoffcrypto-tool` 造；C 的扫描 PDF 找任意图片导出 PDF 即可。
+> 若服务未起则全部 skip——**全 skip 视为未完成**，必须先起服务再跑。
+
+---
+
+## 上轮（v1.9.1 · 红队加固 + 压测固化）
 
 ```bash
 cd backend
