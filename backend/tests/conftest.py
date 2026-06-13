@@ -116,16 +116,56 @@ def ui_reporter(request):
         from ui_report import UIReporter
 
     reporter = UIReporter(report_name="ui_smoke")
+    global _LIVE_UI_REPORTER
+    _LIVE_UI_REPORTER = reporter
 
     def _finalize() -> None:
+        global _LIVE_UI_REPORTER
         pdf_path = reporter.finalize()
         if pdf_path is not None:
+            fails = sum(1 for s in reporter.shots if s.status == "fail")
             print(f"\n\n📄 模拟人工测试报告（带截图 PDF）已生成：\n   {pdf_path}\n"
                   f"   共 {len(reporter.shots)} 帧"
-                  f"{'，含 FAIL ❌' if reporter.any_fail else '，全部 PASS ✅'}\n")
+                  f"{f'，含 {fails} 个 FAIL ❌' if reporter.any_fail else '，全部 PASS ✅'}\n")
+        _LIVE_UI_REPORTER = None
 
     request.addfinalizer(_finalize)
     return reporter
+
+
+# 当前活跃的 UI 报告器（session 级，供 makereport 钩子在测试真实失败时标红）
+_LIVE_UI_REPORTER = None
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """让 PDF 总览与 pytest 真实结果对齐。
+
+    根因修复：UIReporter 此前只统计测试主动调用的 fail()；但 Playwright TimeoutError、
+    按钮被禁用、_login 阶段就崩等情况是 AssertionError 之外的异常，测试根本走不到 fail()，
+    导致 pytest 失败而 PDF 仍显示「全部 PASS」。这里在任一用了 ui_reporter 的测试 setup/call
+    阶段失败时，自动补一帧失败截图并标红。
+    """
+    outcome = yield
+    report = outcome.get_result()
+    if report.when not in ("setup", "call") or not report.failed:
+        return
+    if _LIVE_UI_REPORTER is None:
+        return
+    if "ui_reporter" not in getattr(item, "fixturenames", []):
+        return
+    png = None
+    page = getattr(item, "funcargs", {}).get("page")
+    if page is not None:
+        try:
+            png = page.screenshot(full_page=False)
+        except Exception:  # noqa: BLE001
+            png = None
+    _LIVE_UI_REPORTER.mark_failed(
+        label=item.name,
+        note=f"pytest 判定失败（{report.when} 阶段）",
+        png=png,
+    )
 
 
 @pytest.fixture(autouse=True)

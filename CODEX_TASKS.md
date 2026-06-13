@@ -29,6 +29,13 @@ uv run --extra dev pytest tests/test_dd_checklist_parser.py -k compound -v
 # 期望：1 passed（复合项拆分指令在 prompt 中）
 ```
 
+### ⚙️ 跑冒烟前的环境前提（上一轮 10 failed 多半栽在这里，先备齐再跑）
+1. **装浏览器**：`uv run playwright install chromium`（缺它整批 skip/fail）。
+2. **配密钥**：`backend/.env` 写 `DEEPSEEK_API_KEY` + `DASHSCOPE_API_KEY`。
+   否则 `/api/v1/ready` 的 `api_keys_ok=false`，**复盘上传向导/路演陪练会被禁用**（按钮 disabled，
+   点击类用例必失败）——这不是 bug，是防呆门控。尽调响应台的实际匹配也要 LLM key 才出结果。
+3. **起服务**：见下。先 `curl http://127.0.0.1:8000/api/v1/ready` 确认 `"ok": true` 再跑。
+
 ### 2) 人工冒烟（启动服务 + 真实浏览器，逐步截图 → 出 PDF）
 > 启动：`cd backend && uv run uvicorn cangjie_fos.main:app --port 8000`；前端走 `frontend/dist`（已预编译）。
 > 入口统一：登录后点 **「📋 尽调响应」**（`button:has-text('尽调响应')`）进向导 Step 1。
@@ -48,6 +55,16 @@ uv run --extra dev pytest tests/test_dd_checklist_parser.py -k compound -v
 
 > 备注：B 的加密 docx 可用 `msoffcrypto-tool` 造；C 的扫描 PDF 找任意图片导出 PDF 即可。
 > 若服务未起则全部 skip——**全 skip 视为未完成**，必须先起服务再跑。
+
+### 🔧 本轮顺带修复（测试设施，回应上一轮 Codex 反馈）
+- **PDF 报告汇总与 pytest 脱钩** → 已修：`conftest.py` 加 `pytest_runtest_makereport` 钩子，
+  任一用了 `ui_reporter` 的测试被 pytest 判 failed（含 TimeoutError、登录阶段崩、按钮禁用），
+  **自动补一帧失败截图并标红**；PDF 新增**总览首页**（整体 PASS/FAIL + 失败明细），文件名带
+  `FAILED_` 前缀。不会再出现「pytest 失败但报告显示全 PASS」。
+- **`_login` networkidle 超时拖垮整批** → 已修：本应用登录后持续轮询 `/api/v1/ready`，网络
+  永不 idle；`wait_for_load_state("networkidle")` 改为**等具体元素出现**。
+- 说明：上一轮的 `test_webhook_watch` 异步事件循环报错在主理人环境复跑为 **2 passed**，疑似
+  并行/事件循环差异，非代码缺陷；若再现请贴完整 traceback。
 
 ---
 
