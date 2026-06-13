@@ -38,14 +38,15 @@ jobs:
           CANGJIE_PITCH_COACH_ROOT: /tmp/mock_pitch_coach
           CANGJIE_DRY_RUN: "true"
         run: |
-          set -o pipefail   # 保留 pytest 真实失败（tee 会掩盖退出码）
           mkdir -p /tmp/mock_pitch_coach/src
-          # 只跑一次；输出同时落盘供计数（旧版跑两遍 + 脆弱 grep 在 set -e 下误杀）
-          uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q --tb=short \
-            | tee /tmp/pytest_out.txt
-          COUNT=$(grep -oE '[0-9]+ passed' /tmp/pytest_out.txt | grep -oE '[0-9]+' | head -1 || true)
-          echo "Tests passed: ${COUNT:-0}"
-          if [ "${COUNT:-0}" -lt 440 ]; then
+          # 只跑一次。pytest 退出码直接决定步骤成败（有失败即非0 → 本步失败）。
+          # 计数从 JUnit XML（机器可读）解析，不依赖人类摘要行——
+          # 旧写法靠 grep 摘要行，在本 pytest/uv 组合下摘要行抓不到，每次推送必误判失败。
+          uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py \
+            -q --tb=short --junit-xml=/tmp/result.xml
+          COUNT=$(python3 -c "import xml.etree.ElementTree as ET; r=ET.parse('/tmp/result.xml').getroot(); s=r if r.tag=='testsuite' else r.find('testsuite'); t=int(s.get('tests',0)); f=int(s.get('failures',0)); e=int(s.get('errors',0)); k=int(s.get('skipped',0)); print(t-f-e-k)")
+          echo "Tests passed: $COUNT"
+          if [ "$COUNT" -lt 440 ]; then
             echo "❌ 测试数量不足 440，请检查是否有测试被跳过或删除"
             exit 1
           fi
