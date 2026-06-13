@@ -20,14 +20,16 @@
 ```bash
 cd backend
 uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
-# 期望：919 passed, 0 failed
+# 期望：926 passed, 0 failed
 
-# 本轮新增（共 17 个）
-uv run --extra dev pytest tests/test_dd_content_extractor.py tests/test_dd_workflow_stage.py -v
-# 期望：12 + 2 = 14 passed（统一抽取解密/文字层/OCR兜底/降级 12，阶段回调 2）
+# 本轮新增（含【真实文件】功能证明，无需 LLM/浏览器，确定性）
+uv run --extra dev pytest tests/test_dd_content_extractor.py tests/test_dd_content_extractor_real.py tests/test_dd_workflow_stage.py -v
+# 期望：12 + 7 + 2 = 21 passed
+#   real：真实加密 PDF 用密码解密、错密码降级、图片型PDF确无文字层→进OCR兜底、真实 docx/xlsx 抽取
 uv run --extra dev pytest tests/test_dd_checklist_parser.py -k compound -v
 # 期望：1 passed（复合项拆分指令在 prompt 中）
 ```
+> 说明：加密件解密 / 扫描件OCR路由 已由 `test_dd_content_extractor_real.py` 用**真实文件**在引擎层证明（确定性、零依赖外部服务）。浏览器层只需补验工作流步骤条 + 人工核对拆条/红黄绿（见下）。
 
 ### ⚙️ 跑冒烟前的环境前提（上一轮 10 failed 多半栽在这里，先备齐再跑）
 1. **装浏览器**：`uv run playwright install chromium`（缺它整批 skip/fail）。
@@ -41,6 +43,11 @@ uv run --extra dev pytest tests/test_dd_checklist_parser.py -k compound -v
 > 入口统一：登录后点 **「📋 尽调响应」**（`button:has-text('尽调响应')`）进向导 Step 1。
 > 测试方法加到 `tests/test_ui_smoke.py` 的 `TestDueDiligenceWizardSmoke` 里，
 > **每一步 `ui_reporter.capture(page, "步骤名", status=...)`**；任一步失败用 `ui_reporter.fail(...)` 再 `raise`。
+
+> ✅ A 与 D 已写成可直接跑的浏览器用例：
+> `tests/test_ui_smoke.py::TestDueDiligenceWizardSmoke::test_dd_workflow_stepper_real_flow`
+> （自动造材料库 → 扫描 → 粘贴复合清单 → 匹配 → **硬断言步骤条出现** → 截 Step3 供人工核对拆条+红黄绿）。
+> 直接跑它即可；B/C 见下方补充说明。
 
 | # | 操作（逐步点击指引） | 验收点（截图） |
 |---|------|--------------|

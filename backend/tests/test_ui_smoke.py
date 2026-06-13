@@ -379,6 +379,90 @@ class TestDueDiligenceWizardSmoke:
         # 此测试永远 pass，只打印信息
         assert True
 
+    def test_dd_workflow_stepper_real_flow(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter, tmp_path,
+    ) -> None:
+        """v1.17 工作流步骤条 + 真实扫描→匹配链路（需 LLM key；测试与服务同机）。
+
+        人工点击指引：尽调响应 → 填材料库路径 → 开始扫描 → 下一步 → 粘贴复合清单
+        → 解析&开始匹配 → 观察步骤条（解析清单/AI 粗筛匹配/读正文精判验证/待人工确认）
+        → 进 Step3 看清单是否拆条、命中项是否有 🟢/🟡/🔴 证据。
+
+        硬断言：材料库输入/扫描完成/工作流步骤条出现。
+        人工核对（截图存证，不脆断言 LLM 输出）：复合项是否拆条 + 红黄绿判定。
+        """
+        # 1) 造一个服务器可读的材料库（测试与服务同机）
+        folder = tmp_path / "dd_lib"
+        folder.mkdir()
+        (folder / "审计报告_2023.txt").write_text(
+            "审计报告 标准无保留意见 2023年度财务报表", encoding="utf-8")
+        (folder / "装修合同.txt").write_text(
+            "办公室装修施工合同 与本次尽调无关", encoding="utf-8")
+
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('尽调响应')").click()
+        page.wait_for_timeout(1_000)
+
+        # 2) 填路径 + 扫描
+        try:
+            folder_input = page.get_by_placeholder("点击「📁 选择文件夹」或手动输入路径")
+            expect(folder_input).to_be_visible(timeout=8_000)
+            folder_input.fill(str(folder))
+            page.locator("button:has-text('开始扫描')").click()
+            ui_reporter.capture(page, "尽调-Step1 — 已触发扫描", status="info", note=str(folder))
+        except AssertionError:
+            ui_reporter.fail(page, "尽调-Step1 — 材料库路径输入/扫描按钮缺失")
+            raise
+
+        # 3) 等扫描完成（出现「下一步：上传清单」即 scanStatus=done）
+        try:
+            next_btn = page.locator("button:has-text('下一步：上传清单')")
+            expect(next_btn).to_be_visible(timeout=90_000)
+            ui_reporter.capture(page, "尽调-Step1 — 扫描完成", status="ok")
+            next_btn.click()
+        except AssertionError:
+            ui_reporter.fail(page, "尽调-Step1 — 扫描未在 90s 内完成",
+                             note="检查 LLM key / 材料库路径是否服务器可读")
+            raise
+
+        # 4) 粘贴复合清单 + 触发匹配
+        try:
+            ta = page.locator("textarea").first
+            expect(ta).to_be_visible(timeout=8_000)
+            ta.fill("1. 近三年审计报告\n2. 公司章程及历次股东会决议")
+            page.locator("button:has-text('解析 & 开始匹配')").click()
+            ui_reporter.capture(page, "尽调-Step2 — 已提交复合清单", status="info",
+                                note="近三年审计报告 / 章程及股东会决议（应被拆条）")
+        except AssertionError:
+            ui_reporter.fail(page, "尽调-Step2 — 清单输入/匹配按钮缺失")
+            raise
+
+        # 5) 工作流步骤条应出现（解析→粗筛→精判→待确认）
+        stepper_seen = False
+        for _ in range(60):  # 最多等 ~60s（解析 + 匹配启动）
+            if page.get_by_text("AI 粗筛匹配", exact=False).count() > 0:
+                stepper_seen = True
+                break
+            page.wait_for_timeout(1_000)
+        if stepper_seen:
+            ui_reporter.capture(page, "尽调-工作流步骤条可见", status="ok",
+                                note="解析清单 → AI 粗筛匹配 → 读正文精判验证 → 待人工确认")
+        else:
+            ui_reporter.fail(page, "尽调-工作流步骤条未出现",
+                             note="匹配运行期未见步骤条（或解析阶段已报错）")
+            raise AssertionError("工作流步骤条未出现")
+
+        # 6) 等匹配完成，截 Step3 结果供人工核对「复合项是否拆条 + 红黄绿」
+        for _ in range(120):
+            if page.get_by_text("审计报告", exact=False).count() > 0:
+                break
+            page.wait_for_timeout(1_000)
+        ui_reporter.capture(
+            page, "尽调-Step3 — 匹配结果（人工核对：复合项拆条 + 红黄绿判定）",
+            status="info",
+            note="近三年→逐年多条？章程与股东会决议→拆开？命中项有 🟢/🟡/🔴 证据？")
+
 
 # ── TestCoachingWizardSmoke ────────────────────────────────────────────────────
 
