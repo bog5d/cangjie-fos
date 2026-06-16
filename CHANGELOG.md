@@ -4,6 +4,30 @@
 
 ---
 
+## [1.19.0] — 2026-06-16  尽调台 L4 地基：持久化中间态 + 决策记忆幂等化
+
+> 架构决策（务实，抵制过度工程）：HITL「挂起→重入」沿用 **DB-as-checkpointer + HTTP-as-resume**，
+> **不引入 LangGraph**；后续的 Evaluator→retrieval「反思打回」将做成 `_refine` 内的**有界循环**
+> 复用已持久化的 `candidates_json`。本版先夯实加任何高级机制都绕不开的两块地基。
+
+### 地基 1 · 持久化中间态（解决状态裂脑）
+- `dd_match_sessions` 新增 `stage` / `reflection_iter` 持久列（migration 48/49）。
+- `run_matching` 在阶段切换时双写：内存 `_match_status` + 持久 `persist_session_progress()`；
+  开跑归零 `reflection_iter`，终态落 `stage='done'/'failed'`。
+- `GET /match-status` 的 DB 兜底返回 `stage`/`reflection_iter` —— 重启/重入可据 DB 知断点
+  （此前 DB 只有终态、无中间态，`running` 仅活在易失内存里）。
+
+### 地基 2 · 决策记忆幂等化（守护跨机构记忆资产纯洁性）
+- `dd_match_items` 新增 `decisions_recorded` 幂等键（migration 50）。
+- `record_session_decisions` 改为只沉淀 `decisions_recorded=0` 的已确认项、沉淀后置 1：
+  resume / 重复 export **不再对同一确认重复 `confirm_count + 1`**，同时仍能在「后来又确认
+  几条再导出」时只计入新确认项。
+
+### 测试（+7，累计 933 passed）
+- `test_dd_l4_foundations.py`：进度落库/部分更新/开跑归零/失败终态 + 幂等重入零计数/增量计数/幂等键置位。
+
+---
+
 ## [1.18.1] — 2026-06-13  就绪状态自愈轮询 + 测试报告对齐 pytest
 
 > 起因：Codex 模拟人工测试 16 passed/1 failed，唯一失败是点「路演陪练」时按钮临时禁用
