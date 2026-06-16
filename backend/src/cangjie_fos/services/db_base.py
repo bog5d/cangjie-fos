@@ -263,7 +263,9 @@ CREATE TABLE IF NOT EXISTS dd_match_sessions (
     completed_at     REAL,
     folder_layout    TEXT NOT NULL DEFAULT 'flat',
     scenario         TEXT NOT NULL DEFAULT 'dd',
-    template_text    TEXT NOT NULL DEFAULT ''
+    template_text    TEXT NOT NULL DEFAULT '',
+    stage            TEXT NOT NULL DEFAULT '',
+    reflection_iter  INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_items (
@@ -283,7 +285,8 @@ CREATE TABLE IF NOT EXISTS dd_match_items (
     verdict           TEXT,
     evidence          TEXT,
     field_kind        TEXT NOT NULL DEFAULT '',
-    draft_answer      TEXT NOT NULL DEFAULT ''
+    draft_answer      TEXT NOT NULL DEFAULT '',
+    decisions_recorded INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS dd_decision_memory (
@@ -561,6 +564,11 @@ _MIGRATIONS: list[tuple[int, str]] = [
         importance  TEXT NOT NULL DEFAULT 'normal'
     )"""),
     (47, "CREATE INDEX IF NOT EXISTS idx_pkg_tpl_items ON package_template_items(template_id, tenant_id)"),
+    # ── L4 地基：持久化中间态（解决状态裂脑——运行时 stage/反思轮次落库，重启后可知断点）──
+    (48, "ALTER TABLE dd_match_sessions ADD COLUMN stage TEXT NOT NULL DEFAULT ''"),
+    (49, "ALTER TABLE dd_match_sessions ADD COLUMN reflection_iter INTEGER NOT NULL DEFAULT 0"),
+    # ── L4 地基：决策记忆幂等键（resume/重复 export 不再对同一确认重复计数，守护跨机构记忆资产）──
+    (50, "ALTER TABLE dd_match_items ADD COLUMN decisions_recorded INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

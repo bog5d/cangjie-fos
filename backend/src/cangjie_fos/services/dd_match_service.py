@@ -129,6 +129,8 @@ def run_matching(
             return
 
         total = len(items)
+        # L4 地基：开跑即把反思轮次归零（本轮的可恢复计数从 0 起）
+        persist_session_progress(session_id, stage="matching", reflection_iter=0)
         _emit_stage(stage_callback, "matching")  # 阶段：AI 粗筛（文件名+摘要）
         matches = _llm_batch_match(
             items, "", index_rows,
@@ -172,6 +174,7 @@ def run_matching(
 
         # ── 阶段1+2：全文精判 + 机器验证（红/黄/绿 + 原文证据）──
         # 只对「非记忆锁定」的已匹配项逐条按需抽取正文核对（解密/OCR 兜底见 _ensure_content_text）。
+        persist_session_progress(session_id, stage="verifying")
         _emit_stage(stage_callback, "verifying")  # 阶段：读正文精判 + 机器验证
         try:
             _refine_session_matches(session_id)
@@ -246,10 +249,41 @@ def _get_index_for_folder(folder_root: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def persist_session_progress(
+    session_id: str, stage: str | None = None, reflection_iter: int | None = None,
+) -> None:
+    """把运行时中间态（当前 stage / 反思轮次）落库到 dd_match_sessions。
+
+    L4 地基（解决状态裂脑）：进程内 _match_status 易失、重启即清；这里把同样的进度
+    写进持久表，使「重启 / 重入」能据 DB 知道断在哪一步、反思到第几轮，是后续
+    Evaluator→retrieval 有界回环可恢复的前提。与内存 dict 双写，互不替代。
+    """
+    sets: list[str] = []
+    vals: list = []
+    if stage is not None:
+        sets.append("stage = ?")
+        vals.append(stage)
+    if reflection_iter is not None:
+        sets.append("reflection_iter = ?")
+        vals.append(reflection_iter)
+    if not sets:
+        return
+    vals.append(session_id)
+    try:
+        with _connect() as conn:
+            conn.execute(
+                f"UPDATE dd_match_sessions SET {', '.join(sets)} WHERE session_id = ?",
+                vals,
+            )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("持久化 session 进度失败 %s: %s", session_id, e)
+
+
 def _mark_session_done(session_id: str) -> None:
     with _connect() as conn:
         conn.execute(
-            "UPDATE dd_match_sessions SET status = 'matched', completed_at = ? WHERE session_id = ?",
+            "UPDATE dd_match_sessions SET status = 'matched', stage = 'done', completed_at = ? "
+            "WHERE session_id = ?",
             (time.time(), session_id),
         )
 
@@ -258,7 +292,8 @@ def _mark_session_failed(session_id: str) -> None:
     """匹配中途崩溃时调用：标记 'failed'，前端据此提示重试，导出不当成已完成。"""
     with _connect() as conn:
         conn.execute(
-            "UPDATE dd_match_sessions SET status = 'failed', completed_at = ? WHERE session_id = ?",
+            "UPDATE dd_match_sessions SET status = 'failed', stage = 'failed', completed_at = ? "
+            "WHERE session_id = ?",
             (time.time(), session_id),
         )
 
@@ -839,19 +874,27 @@ def record_session_decisions(session_id: str) -> int:
     """把 session 中「已确认」的需求→文件映射写入 dd_decision_memory。
 
     每次人工确认即沉淀一条全局记忆（机构无关，按归一化需求聚合）。
-    返回写入/累加的条数。下一次任意机构遇到同类需求时即可直接沿用。
+    返回本次写入/累加的条数。下一次任意机构遇到同类需求时即可直接沿用。
+
+    L4 地基 · 幂等化（守护跨机构记忆资产的纯洁性）：
+      旧实现按 session 重跑会对同一确认重复 `confirm_count + 1` —— resume / 重复 export
+      会污染记忆的可信度计数。现以 **dd_match_items.decisions_recorded 作幂等键**：
+      每条已确认项的决策只沉淀一次（WHERE decisions_recorded = 0，沉淀后置 1）。
+      这样既防重入双计，又允许「后来又确认了几条再导出」时只计入新确认的那几条。
     """
     with _connect() as conn:
         rows = conn.execute(
-            """SELECT i.requirement, i.matched_file_path, i.matched_filename,
+            """SELECT i.id, i.requirement, i.matched_file_path, i.matched_filename,
                       s.institution_name
                FROM dd_match_items i
                JOIN dd_match_sessions s ON s.session_id = i.session_id
                WHERE i.session_id = ? AND i.user_confirmed = 1
+                 AND i.decisions_recorded = 0
                  AND i.matched_file_path IS NOT NULL AND i.matched_file_path != ''""",
             (session_id,),
         ).fetchall()
         n = 0
+        recorded_ids: list[str] = []
         now = time.time()
         for row in rows:
             req = row["requirement"] or ""
@@ -882,7 +925,14 @@ def record_session_decisions(session_id: str) -> int:
                     (mem_id, norm, req, path, row["matched_filename"] or "",
                      row["institution_name"] or "", now),
                 )
+            recorded_ids.append(row["id"])
             n += 1
+        # 幂等键落位：本次沉淀过的项标记为已记录，重入不再重复计数
+        if recorded_ids:
+            conn.executemany(
+                "UPDATE dd_match_items SET decisions_recorded = 1 WHERE id = ?",
+                [(rid,) for rid in recorded_ids],
+            )
     return n
 
 

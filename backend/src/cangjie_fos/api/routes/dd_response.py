@@ -444,15 +444,19 @@ def get_match_status(session_id: str):
     """
     if session_id in _match_status:
         return _match_status[session_id]
-    # DB 降级：服务重启后内存清空，前端仍能拿到终态
+    # DB 降级：服务重启后内存清空，前端仍能拿到终态 + 断点（stage/反思轮次，L4 地基）
     from cangjie_fos.services.db_base import _connect  # noqa: PLC0415
     with _connect() as conn:
         row = conn.execute(
-            "SELECT status FROM dd_match_sessions WHERE session_id = ?",
+            "SELECT status, stage, reflection_iter FROM dd_match_sessions WHERE session_id = ?",
             (session_id,),
         ).fetchone()
     if row:
-        return {"status": row["status"], "done": 0, "total": 0, "source": "db_fallback"}
+        return {
+            "status": row["status"], "done": 0, "total": 0,
+            "stage": row["stage"], "reflection_iter": row["reflection_iter"],
+            "source": "db_fallback",
+        }
     return {"status": "not_found", "done": 0, "total": 0}
 
 
