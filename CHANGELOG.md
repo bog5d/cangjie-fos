@@ -4,6 +4,25 @@
 
 ---
 
+## [1.19.1] — 2026-06-16  尽调清单解析：把不透明 500 收口为可定位的友好错误
+
+> 现场反馈：尽调台 Step2 粘贴/上传清单报「清单解析失败: Internal Server Error」。
+
+### 根因
+`create_session` 端点未捕获解析异常；`_llm_extract_chunk` 只接 `json.JSONDecodeError`，
+**不接 LLM 调用本身的异常**。当 DeepSeek/百炼 Key 缺失/失效、网络不通或限流时，
+`call_with_retry` 重试耗尽后抛异常 → 一路冒泡 → 裸 500「Internal Server Error」。
+
+### 修复
+- 端点边界捕获所有解析异常（LLM 鉴权/网络/限流、Excel 读不出等），分类成**可操作的中文 502**：
+  鉴权失败→提示配 Key；网络→提示查外网；限流→提示余额；文件损坏→提示换文件/粘贴文字。
+- 服务端 `logger.exception` 记完整 traceback；「解析出 0 项」仍走 400，与「解析崩溃」区分。
+
+### 测试（+3，累计 936 passed）
+- `test_dd_e2e.py::TestChecklistParseErrorHandling`：鉴权/网络异常 → 友好 502（非 500）；空结果仍 400。
+
+---
+
 ## [1.19.0] — 2026-06-16  尽调台 L4 地基：持久化中间态 + 决策记忆幂等化
 
 > 架构决策（务实，抵制过度工程）：HITL「挂起→重入」沿用 **DB-as-checkpointer + HTTP-as-resume**，
