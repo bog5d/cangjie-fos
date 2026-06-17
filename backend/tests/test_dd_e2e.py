@@ -515,3 +515,38 @@ class TestPostInvestmentScenario:
             )
 
         assert sid in fill_calls
+
+
+class TestChecklistParseErrorHandling:
+    """同事现场反馈：粘贴清单报『清单解析失败: Internal Server Error』(裸 500)。
+    根因：解析里 LLM 鉴权/网络异常未在端点捕获。修复后应为可定位的 502 友好错误。"""
+
+    def test_llm_auth_error_returns_friendly_502_not_500(self, client, tmp_path):
+        def _boom(_text):
+            raise RuntimeError("Error code: 401 - invalid_api_key: Incorrect API key provided")
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items", side_effect=_boom):
+            resp = client.post("/api/v1/dd/sessions", data={
+                "text": "1. 验资报告", "tenant_id": "test", "folder_root": str(tmp_path),
+            })
+        assert resp.status_code == 502           # 不再是 500
+        detail = resp.json()["detail"]
+        assert "Internal Server Error" not in detail
+        assert "Key" in detail or "鉴权" in detail  # 可操作的中文提示
+
+    def test_llm_network_error_returns_friendly_502(self, client, tmp_path):
+        def _boom(_text):
+            raise RuntimeError("Connection error: failed to connect (timed out)")
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items", side_effect=_boom):
+            resp = client.post("/api/v1/dd/sessions", data={
+                "text": "1. 验资报告", "tenant_id": "test", "folder_root": str(tmp_path),
+            })
+        assert resp.status_code == 502
+        assert "网络" in resp.json()["detail"]
+
+    def test_empty_items_still_400(self, client, tmp_path):
+        """LLM 正常但没解析出需求项 → 仍是 400（与解析崩溃区分开）。"""
+        with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items", return_value=[]):
+            resp = client.post("/api/v1/dd/sessions", data={
+                "text": "（空白）", "tenant_id": "test", "folder_root": str(tmp_path),
+            })
+        assert resp.status_code == 400

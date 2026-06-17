@@ -153,6 +153,26 @@ def _evict_oldest(d: dict, max_size: int = _MAX_STATUS_ENTRIES) -> None:
             del d[k]
 
 
+def _explain_parse_error(e: Exception) -> str:
+    """把清单解析异常分类成可操作的中文提示（替代不透明的 500 Internal Server Error）。"""
+    name = type(e).__name__
+    msg = str(e).lower()
+    if any(k in msg for k in ("auth", "api key", "api_key", "401", "unauthorized",
+                              "invalid_api_key", "no api key", "incorrect api key")):
+        return ("AI 解析服务鉴权失败：DeepSeek / 百炼 API Key 未配置或已失效。"
+                "请到右上角 ⚙️ 设置 填写有效 Key 后重试。")
+    if any(k in msg for k in ("connect", "timeout", "timed out", "network",
+                              "getaddrinfo", "connection", "ssl", "proxy")):
+        return ("无法连接 AI 解析服务（网络/防火墙/代理）。请确认服务器可访问外网后重试。")
+    if any(k in msg for k in ("rate", "429", "quota", "insufficient", "balance", "exceeded")):
+        return ("AI 服务限流或额度不足，请稍后重试，或检查 API 账户余额。")
+    if any(k in msg for k in ("zip", "badzip", "not a zip", "openpyxl", "corrupt",
+                              "unsupported", "encrypted", "password")):
+        return (f"清单文件无法读取（可能损坏/加密/格式不符）：{name}。"
+                "请确认是有效的 Excel/Word/PDF，或改用「粘贴文字」。")
+    return f"清单解析失败：{name}: {str(e)[:160]}"
+
+
 class ScanRequest(BaseModel):
     folder_path: str
     tenant_id: str = "default"
@@ -338,38 +358,49 @@ async def create_session(
     """
     template_text = ""
 
-    if file and file.filename:
-        suffix = Path(file.filename).suffix.lower()
-        type_map = {".xlsx": "excel", ".xls": "excel", ".docx": "word",
-                    ".doc": "word", ".pdf": "pdf"}
-        source_type = type_map.get(suffix, "text")
-        content = await file.read()
-        tmp_path: str | None = None
-        try:
-            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                tmp.write(content)
-                tmp_path = tmp.name
+    try:
+        if file and file.filename:
+            suffix = Path(file.filename).suffix.lower()
+            type_map = {".xlsx": "excel", ".xls": "excel", ".docx": "word",
+                        ".doc": "word", ".pdf": "pdf"}
+            source_type = type_map.get(suffix, "text")
+            content = await file.read()
+            tmp_path: str | None = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    tmp.write(content)
+                    tmp_path = tmp.name
+                if scenario == "post_investment":
+                    items = parse_report_template(tmp_path, source_type)
+                    # 存储模板原文以供导出时重建
+                    from cangjie_fos.services.dd_file_parser import extract_text  # noqa: PLC0415
+                    raw, _ = extract_text(tmp_path)
+                    template_text = raw
+                else:
+                    items = parse_checklist(tmp_path, source_type)
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            checklist_name = file.filename
+        elif text:
             if scenario == "post_investment":
-                items = parse_report_template(tmp_path, source_type)
-                # 存储模板原文以供导出时重建
-                from cangjie_fos.services.dd_file_parser import extract_text  # noqa: PLC0415
-                raw, _ = extract_text(tmp_path)
-                template_text = raw
+                items = parse_report_template(text, "text")
+                template_text = text
             else:
-                items = parse_checklist(tmp_path, source_type)
-        finally:
-            if tmp_path and os.path.exists(tmp_path):
-                os.unlink(tmp_path)
-        checklist_name = file.filename
-    elif text:
-        if scenario == "post_investment":
-            items = parse_report_template(text, "text")
-            template_text = text
+                items = parse_checklist(text, "text")
+            checklist_name = "粘贴文字"
         else:
-            items = parse_checklist(text, "text")
-        checklist_name = "粘贴文字"
-    else:
-        raise HTTPException(400, "必须提供 file 或 text")
+            raise HTTPException(400, "必须提供 file 或 text")
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        # 此前裸 500「Internal Server Error」的根因收口：清单/模板解析里任何未捕获异常
+        # （LLM 鉴权/网络/限流、Excel 读不出等）在此分类为可定位的友好错误，而非不透明 500。
+        logger.exception(
+            "清单/模板解析失败 tenant=%s scenario=%s file=%s",
+            tenant_id, scenario, getattr(file, "filename", None),
+        )
+        raise HTTPException(status_code=502, detail=_explain_parse_error(e))
 
     if not items:
         label = "季报模板" if scenario == "post_investment" else "清单"
