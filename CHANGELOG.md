@@ -4,6 +4,27 @@
 
 ---
 
+## [1.20.0] — 2026-06-16  材料库「预热」：扫描后提前抽全量正文 + 生成 .md
+
+> 痛点：尽调时现场抽正文很慢（几千份）。把「读懂材料」前置——扫描后后台一次跑完，
+> 正文回填缓存，尽调精判秒命中。
+
+### 新增 `dd_prefetch_service.prefetch_folder`
+- 深度=**仅文字层**（pdfplumber/docx/openpyxl），不走 OCR/视觉模型 → 零额外 API 花费、最快；
+  扫描件/加密件读不出 → 标记不可读，留给尽调时按需 OCR/解密兜底。
+- 产物=**额外生成 .md**：在 `<材料库>/_cangjie_预处理_md/` 下按原目录结构为每份文档生成 .md，
+  同时回填 `dd_asset_index.content_text`。⚠️ md 是机密衍生物，落数据目录、**不进 git**。
+- **可中断续传**：`content_text` 已有的文件跳过（`force=True` 强制重抽）；进度回调每 20 文件。
+
+### 新增端点
+- `POST /api/v1/dd/index/prefetch`（后台触发）+ `GET /api/v1/dd/index/prefetch/status`（进度轮询）。
+- 与扫描分两段：先 `/index` 扫描建文件名索引（快），再 `/index/prefetch` 后台预热正文（慢）。
+
+### 测试（+6，累计 942 passed）
+- `test_dd_prefetch.py`（抽取落库/生成md/续传跳过/force重抽/读不出标记/进度回调）+ 端点触发轮询。
+
+---
+
 ## [1.19.1] — 2026-06-16  尽调清单解析：把不透明 500 收口为可定位的友好错误
 
 > 现场反馈：尽调台 Step2 粘贴/上传清单报「清单解析失败: Internal Server Error」。

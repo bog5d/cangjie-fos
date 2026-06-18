@@ -550,3 +550,26 @@ class TestChecklistParseErrorHandling:
                 "text": "（空白）", "tenant_id": "test", "folder_root": str(tmp_path),
             })
         assert resp.status_code == 400
+
+
+class TestPrefetchEndpoint:
+    """材料库预热端点：触发 + 进度轮询。"""
+
+    def test_prefetch_trigger_and_status(self, client, tmp_path):
+        folder = tmp_path / "lib"
+        folder.mkdir()
+        (folder / "doc.txt").write_text("营业执照与公司章程", encoding="utf-8")
+        # 先建索引（预热遍历的是已索引行）
+        from cangjie_fos.services.dd_index_service import scan_and_index_folder
+        with patch("cangjie_fos.services.dd_index_service._llm_summarize", return_value="s"):
+            scan_and_index_folder(str(folder), "test")
+
+        resp = client.post("/api/v1/dd/index/prefetch", json={
+            "folder_root": str(folder), "md_out_dir": str(tmp_path / "md"),
+        })
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "started"
+        # TestClient 同步执行 BackgroundTask → 完成后状态可查
+        st = client.get("/api/v1/dd/index/prefetch/status",
+                        params={"folder_root": str(folder)}).json()
+        assert st["status"] in ("done", "running")

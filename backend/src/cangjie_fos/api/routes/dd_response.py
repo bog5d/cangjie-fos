@@ -327,6 +327,53 @@ def list_index(folder_root: str):
     return get_index_by_folder(folder_root)
 
 
+_prefetch_status: dict[str, dict] = {}
+
+
+class PrefetchRequest(BaseModel):
+    folder_root: str
+    md_out_dir: str | None = None
+    force: bool = False
+
+
+@router.post("/index/prefetch")
+def start_prefetch(req: PrefetchRequest, background_tasks: BackgroundTasks):
+    """材料库「预热」：后台把全量正文提前抽好（仅文字层）+ 生成 .md，落库缓存。
+
+    与扫描分两段：先 /index 扫描建文件名索引（快），再 /index/prefetch 后台预热正文（慢）。
+    进度通过 GET /index/prefetch/status 轮询。可中断续传（已抽过的跳过）。
+    """
+    from cangjie_fos.services.dd_prefetch_service import prefetch_folder  # noqa: PLC0415
+
+    _evict_oldest(_prefetch_status)
+    key = req.folder_root
+    _prefetch_status[key] = {"status": "running", "done": 0, "total": 0}
+
+    def _do_prefetch():
+        def _progress(done: int, total: int) -> None:
+            _prefetch_status[key].update({"done": done, "total": total})
+        try:
+            result = prefetch_folder(
+                req.folder_root, md_out_dir=req.md_out_dir, force=req.force,
+                progress_callback=_progress,
+            )
+            _prefetch_status[key] = {"status": "done", **result}
+        except Exception as e:  # noqa: BLE001
+            logger.exception("预热失败 folder=%s", req.folder_root)
+            _prefetch_status[key] = {"status": "error", "error": str(e)[:200]}
+
+    background_tasks.add_task(_do_prefetch)
+    return {"status": "started", "folder_root": req.folder_root}
+
+
+@router.get("/index/prefetch/status")
+def get_prefetch_status(folder_root: str):
+    """轮询预热进度。返回 {status, done, total, processed, skipped, unreadable, md_dir}。"""
+    if folder_root in _prefetch_status:
+        return _prefetch_status[folder_root]
+    return {"status": "not_found", "done": 0, "total": 0}
+
+
 @router.post("/index/password")
 def set_file_password(req: SetPasswordRequest):
     """为加密文件登记打开密码（gk 模式 F3：UI 收集，导出时原样附带，后端不解密）。"""
