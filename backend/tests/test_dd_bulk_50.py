@@ -62,7 +62,7 @@ def test_parse_50_items_single_chunk(monkeypatch):
     ]
     call_count = 0
 
-    def mock_extract_chunk(chunk_text: str) -> list[dict]:
+    def mock_extract_chunk(chunk_text: str, context: str = "") -> list[dict]:
         nonlocal call_count
         call_count += 1
         return expected
@@ -86,7 +86,7 @@ def test_parse_50_items_multi_chunk(monkeypatch):
     """50 条长需求文字 > 4000字 → 分多块 → _llm_extract_chunk 调用 >1 次，去重后条数 >= 1。"""
     call_count = 0
 
-    def mock_extract_chunk(chunk_text: str) -> list[dict]:
+    def mock_extract_chunk(chunk_text: str, context: str = "") -> list[dict]:
         nonlocal call_count
         call_count += 1
         return [{"item_no": str(call_count), "category": "财务", "requirement": f"需求块{call_count}"}]
