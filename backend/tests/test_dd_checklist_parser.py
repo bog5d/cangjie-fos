@@ -10,7 +10,7 @@ _MOCK_ITEMS = [
 ]
 
 
-def _fake_llm_extract(raw_text: str) -> list[dict]:
+def _fake_llm_extract(raw_text: str, context: str = "") -> list[dict]:
     return _MOCK_ITEMS
 
 
@@ -152,7 +152,7 @@ def test_long_checklist_splits_into_multiple_chunks(monkeypatch):
     """超过4000字的清单应分多块处理，两块都应有 LLM 调用。"""
     call_count = 0
 
-    def mock_extract_chunk(chunk_text: str) -> list[dict]:
+    def mock_extract_chunk(chunk_text: str, context: str = "") -> list[dict]:
         nonlocal call_count
         call_count += 1
         # 每块返回一个不同的需求项
@@ -172,7 +172,7 @@ def test_long_checklist_splits_into_multiple_chunks(monkeypatch):
 
 def test_chunked_deduplication_removes_overlap_duplicates(monkeypatch):
     """重叠区域的相同需求项不应出现两次。"""
-    def mock_extract_chunk(chunk_text: str) -> list[dict]:
+    def mock_extract_chunk(chunk_text: str, context: str = "") -> list[dict]:
         # 每块都返回同样两条需求（模拟重叠区域重复）
         return [
             {"item_no": "1", "category": "财务", "requirement": "验资报告"},

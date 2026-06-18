@@ -85,6 +85,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [checklistText, setChecklistText] = useState("");
   const [checklistFile, setChecklistFile] = useState<File | null>(null);
   const [institutionName, setInstitutionName] = useState("");
+  const [contextNote, setContextNote] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [matchStatus, setMatchStatus] = useState<string>("idle");
@@ -231,6 +232,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     formData.append("tenant_id", "default");
     formData.append("folder_root", folderPath.trim());
     formData.append("institution_name", institutionName.trim());
+    formData.append("context_note", contextNote.trim());
     formData.append("scenario", scenario);
     if (checklistFile) {
       formData.append("file", checklistFile);
@@ -344,7 +346,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
         }
       }
     }, 2000);
-  }, [folderPath, checklistFile, checklistText, institutionName, scenario]);
+  }, [folderPath, checklistFile, checklistText, institutionName, contextNote, scenario]);
 
   // ── Step 3: 批量确认 ──────────────────────────────────────────
   const handleBulkConfirm = useCallback(async () => {
@@ -836,6 +838,22 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   placeholder="例如：高瓴资本、IDG资本"
                   value={institutionName}
                   onChange={(e) => setInstitutionName(e.target.value)}
+                />
+              </div>
+
+              {/* 项目背景 / 注意事项（注入匹配+精判 prompt，显著提升准确率） */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  项目背景 / 注意事项
+                  <span className="ml-1 text-gray-400 font-normal text-xs">
+                    （选填，但强烈建议 — 喂给 AI 做匹配，越具体越准）
+                  </span>
+                </label>
+                <textarea
+                  className="w-full border rounded px-3 py-2 text-sm h-20 text-gray-900"
+                  placeholder="例如：本项目含「泽天湖南」和「四川」两个主体，材料须按主体区分；增值税申报表、成本结构等的年份/期间必须精确对应，差一年视为缺失；母子公司内部交易需单独识别。"
+                  value={contextNote}
+                  onChange={(e) => setContextNote(e.target.value)}
                 />
               </div>
 

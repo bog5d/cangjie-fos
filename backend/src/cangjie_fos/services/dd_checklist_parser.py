@@ -13,17 +13,18 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def parse_checklist(source: str, source_type: str) -> list[dict]:
+def parse_checklist(source: str, source_type: str, context: str = "") -> list[dict]:
     """
     解析尽调清单。
 
     source: 文件路径（str）或粘贴的文字内容（str）
     source_type: "excel" | "word" | "pdf" | "text"
+    context: 项目背景/注意事项（如多主体说明），注入 LLM 提取 prompt 提升拆分质量
 
     返回：[{"item_no": "1", "category": "基本情况", "requirement": "验资报告"}, ...]
     """
     raw_text = _extract_raw_text(source, source_type)
-    return _llm_extract_items(raw_text)
+    return _llm_extract_items(raw_text, context=context)
 
 
 def _extract_raw_text(source: str, source_type: str) -> str:
@@ -84,7 +85,7 @@ _CHUNK_SIZE = 4000
 _CHUNK_OVERLAP = 300
 
 
-def _llm_extract_items(raw_text: str) -> list[dict]:
+def _llm_extract_items(raw_text: str, context: str = "") -> list[dict]:
     """
     第二步：AI 从纯文字中提取结构化需求项。
     长文本自动分块（4000字符/块，300字符重叠），去重合并。
@@ -95,7 +96,7 @@ def _llm_extract_items(raw_text: str) -> list[dict]:
     seen: set[str] = set()
 
     for chunk in chunks:
-        chunk_items = _llm_extract_chunk(chunk)
+        chunk_items = _llm_extract_chunk(chunk, context=context)
         for item in chunk_items:
             # 以需求文字前60字符做去重 key（处理重叠区域）
             key = item["requirement"][:60].strip().lower()
@@ -125,13 +126,15 @@ def _split_into_chunks(text: str, chunk_size: int, overlap: int) -> list[str]:
     return chunks
 
 
-def _llm_extract_chunk(chunk_text: str) -> list[dict]:
+def _llm_extract_chunk(chunk_text: str, context: str = "") -> list[dict]:
     """对单个文本块调用 LLM 提取需求项（可被测试 monkeypatch）。使用 dd_llm_client 统一重试。"""
     from cangjie_fos.services.dd_llm_client import get_dd_llm_client, call_with_retry
 
     client = get_dd_llm_client()
+    ctx_block = (f"\n【项目背景 / 注意事项】\n{context.strip()}\n"
+                 if context and context.strip() else "")
     prompt = f"""以下是一份机构发来的尽调清单原始内容（可能包含表头、大类标题、说明行等噪音）：
-
+{ctx_block}
 {chunk_text}
 
 请提取所有具体的资料需求项（忽略大类标题行、表头行、空行、说明行）。

@@ -265,7 +265,8 @@ CREATE TABLE IF NOT EXISTS dd_match_sessions (
     scenario         TEXT NOT NULL DEFAULT 'dd',
     template_text    TEXT NOT NULL DEFAULT '',
     stage            TEXT NOT NULL DEFAULT '',
-    reflection_iter  INTEGER NOT NULL DEFAULT 0
+    reflection_iter  INTEGER NOT NULL DEFAULT 0,
+    context_note     TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS dd_match_items (
@@ -569,6 +570,8 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (49, "ALTER TABLE dd_match_sessions ADD COLUMN reflection_iter INTEGER NOT NULL DEFAULT 0"),
     # ── L4 地基：决策记忆幂等键（resume/重复 export 不再对同一确认重复计数，守护跨机构记忆资产）──
     (50, "ALTER TABLE dd_match_items ADD COLUMN decisions_recorded INTEGER NOT NULL DEFAULT 0"),
+    # ── 匹配质量：项目背景注入（多主体/年份精确等注意事项 → 喂进匹配/精判 prompt）──
+    (51, "ALTER TABLE dd_match_sessions ADD COLUMN context_note TEXT NOT NULL DEFAULT ''"),
 ]
 
 

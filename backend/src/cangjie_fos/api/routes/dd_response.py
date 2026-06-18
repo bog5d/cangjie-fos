@@ -397,6 +397,7 @@ async def create_session(
     folder_root: str = Form(...),
     institution_name: str = Form(""),
     scenario: str = Form("dd"),
+    context_note: str = Form(""),
 ):
     """上传尽调清单或投后季报模板，解析为需求项列表，创建匹配 session。
 
@@ -424,7 +425,7 @@ async def create_session(
                     raw, _ = extract_text(tmp_path)
                     template_text = raw
                 else:
-                    items = parse_checklist(tmp_path, source_type)
+                    items = parse_checklist(tmp_path, source_type, context=context_note)
             finally:
                 if tmp_path and os.path.exists(tmp_path):
                     os.unlink(tmp_path)
@@ -434,7 +435,7 @@ async def create_session(
                 items = parse_report_template(text, "text")
                 template_text = text
             else:
-                items = parse_checklist(text, "text")
+                items = parse_checklist(text, "text", context=context_note)
             checklist_name = "粘贴文字"
         else:
             raise HTTPException(400, "必须提供 file 或 text")
@@ -455,7 +456,7 @@ async def create_session(
 
     session_id = create_match_session(
         tenant_id, checklist_name, folder_root, items, institution_name,
-        scenario=scenario, template_text=template_text,
+        scenario=scenario, template_text=template_text, context_note=context_note,
     )
 
     # 尽调模式才更新机构阶段；投后模式不推进
