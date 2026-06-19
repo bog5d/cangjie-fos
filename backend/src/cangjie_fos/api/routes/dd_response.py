@@ -507,6 +507,13 @@ def submit_clarify_answers(session_id: str, req: ClarifyAnswersRequest):
         raise HTTPException(404, str(e))
 
 
+@router.get("/sessions/{session_id}/prompts")
+def get_session_prompts(session_id: str):
+    """开发者模式：查看本次各阶段实际注入 LLM 的 prompt（澄清/粗筛/精判）。"""
+    from cangjie_fos.services.dd_prompt_log import get_prompts  # noqa: PLC0415
+    return get_prompts(session_id)
+
+
 @router.post("/sessions/{session_id}/match")
 async def trigger_matching(
     session_id: str,

@@ -37,7 +37,7 @@ def test_parse_summary_counts():
 
 
 def test_generate_clarifications(monkeypatch):
-    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx: [dict(q) for q in _FAKE_Q])
+    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx, session_id=None: [dict(q) for q in _FAKE_Q])
     sid = _mk_session()
     out = clarify.generate_clarifications(sid)
     assert out["summary"]["total"] == 3
@@ -55,7 +55,7 @@ def test_generate_unknown_session_raises(monkeypatch):
 
 
 def test_submit_answers_appends_to_context(monkeypatch):
-    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx: [dict(q) for q in _FAKE_Q])
+    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx, session_id=None: [dict(q) for q in _FAKE_Q])
     sid = _mk_session(context_note="原始背景")
     out = clarify.generate_clarifications(sid)
     qid0 = out["questions"][0]["id"]
@@ -76,7 +76,7 @@ def test_submit_answers_appends_to_context(monkeypatch):
 
 def test_resubmit_replaces_not_accumulates(monkeypatch):
     """重答应替换旧澄清块，不累积。"""
-    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx: [dict(q) for q in _FAKE_Q])
+    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx, session_id=None: [dict(q) for q in _FAKE_Q])
     sid = _mk_session(context_note="背景X")
     out = clarify.generate_clarifications(sid)
     qid0 = out["questions"][0]["id"]
@@ -107,7 +107,7 @@ def test_llm_failure_returns_no_questions(monkeypatch):
 def test_clarify_endpoints_e2e(monkeypatch):
     from fastapi.testclient import TestClient
     from cangjie_fos.main import create_app
-    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx: [dict(q) for q in _FAKE_Q])
+    monkeypatch.setattr(clarify, "_llm_clarify", lambda items, ctx, session_id=None: [dict(q) for q in _FAKE_Q])
     c = TestClient(create_app(), raise_server_exceptions=False)
     sid = _mk_session(context_note="背景")
 
