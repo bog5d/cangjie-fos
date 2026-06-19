@@ -575,6 +575,14 @@ _MIGRATIONS: list[tuple[int, str]] = [
     (51, "ALTER TABLE dd_match_sessions ADD COLUMN context_note TEXT NOT NULL DEFAULT ''"),
     # ── 解析后人类在环：AI 自检生成的澄清选择题 + 人工回答（JSON）──
     (52, "ALTER TABLE dd_match_sessions ADD COLUMN clarify_json TEXT NOT NULL DEFAULT ''"),
+    # ── 开发者可见：每步实际注入的 prompt（每 session 每 stage 留最新一条）──
+    (53, """CREATE TABLE IF NOT EXISTS dd_prompt_log (
+        session_id  TEXT NOT NULL,
+        stage       TEXT NOT NULL,
+        prompt_text TEXT NOT NULL DEFAULT '',
+        created_at  REAL NOT NULL,
+        PRIMARY KEY (session_id, stage)
+    )"""),
 ]
 
 

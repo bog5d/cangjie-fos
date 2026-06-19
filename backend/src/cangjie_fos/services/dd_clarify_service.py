@@ -58,7 +58,7 @@ def generate_clarifications(session_id: str) -> dict:
     items = _load_items(session_id)
     summary = parse_summary(items)
 
-    questions = _llm_clarify(items, session.get("context_note") or "")
+    questions = _llm_clarify(items, session.get("context_note") or "", session_id=session_id)
     # 规整 + 封顶 + 加 id
     norm: list[dict] = []
     for q in questions[:_MAX_QUESTIONS]:
@@ -144,7 +144,7 @@ def _strip_clarify_block(context: str) -> str:
     return context[:idx].strip() if idx >= 0 else context
 
 
-def _llm_clarify(items: list[dict], context_note: str) -> list[dict]:
+def _llm_clarify(items: list[dict], context_note: str, session_id: str | None = None) -> list[dict]:
     """AI 自检：对会影响匹配准确性、但拿不准的点生成选择题（可被测试 monkeypatch）。"""
     if not items:
         return []
@@ -164,6 +164,9 @@ def _llm_clarify(items: list[dict], context_note: str) -> list[dict]:
 返回 JSON 数组：
 [{{"question": "问题", "options": ["选项1","选项2"], "allow_multi": false}}]
 只返回 JSON："""
+
+    from cangjie_fos.services.dd_prompt_log import record_prompt  # noqa: PLC0415
+    record_prompt(session_id, "clarify", prompt)
 
     def _call() -> list:
         client = get_dd_llm_client()

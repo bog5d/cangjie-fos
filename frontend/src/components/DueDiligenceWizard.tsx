@@ -99,6 +99,9 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   } | null>(null);
   const [clarifyAnswers, setClarifyAnswers] = useState<Record<string, string>>({});
   const [clarifyBusy, setClarifyBusy] = useState(false);
+  // 开发者可见：各阶段实际注入的 prompt
+  const [showPrompts, setShowPrompts] = useState(false);
+  const [promptList, setPromptList] = useState<{ stage: string; label: string; prompt_text: string }[]>([]);
   const pollMatchRef = useRef<number | null>(null);
 
   // Step 3 state
@@ -385,6 +388,16 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     setClarifyBusy(false);
     runMatch(sessionId);
   }, [sessionId, clarifyAnswers, runMatch]);
+
+  // 开发者：拉取本次各阶段实际注入的 prompt
+  const openPrompts = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const r = await fetch(`/api/v1/dd/sessions/${sessionId}/prompts`);
+      setPromptList(r.ok ? await r.json() : []);
+    } catch { setPromptList([]); }
+    setShowPrompts(true);
+  }, [sessionId]);
 
   // ── Step 3: 批量确认 ──────────────────────────────────────────
   const handleBulkConfirm = useCallback(async () => {
@@ -702,6 +715,41 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       style={{ pointerEvents: "auto" }}
     >
+      {/* 开发者：各阶段实际注入 AI 的提示词 */}
+      {showPrompts && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowPrompts(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b">
+              <h3 className="font-bold text-gray-800">🔧 本次注入 AI 的提示词（开发者视图）</h3>
+              <button onClick={() => setShowPrompts(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {promptList.length === 0 ? (
+                <p className="text-sm text-gray-400">尚无记录（需先解析/匹配产生 LLM 调用）。</p>
+              ) : (
+                promptList.map((p) => (
+                  <div key={p.stage}>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">{p.label}</p>
+                    <pre className="whitespace-pre-wrap text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded p-3 max-h-[40vh] overflow-y-auto">
+                      {p.prompt_text}
+                    </pre>
+                  </div>
+                ))
+              )}
+              <p className="text-xs text-gray-400">
+                注：每阶段留最新一条；文件正文/列表为运行时数据，规则与注入背景为提示词设计部分。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -1109,7 +1157,16 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                       />
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">确认进度 {pct}%</span>
+                      <span className="text-xs text-gray-400">
+                        确认进度 {pct}%
+                        <button
+                          onClick={() => void openPrompts()}
+                          title="开发者：查看本次各阶段实际注入 AI 的提示词"
+                          className="ml-3 text-gray-300 hover:text-gray-500"
+                        >
+                          🔧 提示词
+                        </button>
+                      </span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => void handleExtractQA()}
