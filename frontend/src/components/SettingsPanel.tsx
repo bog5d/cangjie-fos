@@ -55,6 +55,8 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
     }
   }, []);
 
+  const autoValidatedRef = useRef(false);
+
   useEffect(() => {
     if (open) {
       void loadStatus();
@@ -62,8 +64,24 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
       setDeepseekTest(null);
       setDashscopeTest(null);
       setSavedMsg("");
+      autoValidatedRef.current = false;
     }
   }, [open, loadStatus]);
+
+  // 打开面板即自动验证已填写的 Key（直接亮红/绿）——解决"已填写≠有效、ready 误报健康"。
+  // 每次打开只自动验一次；验证的是已存储的 Key（不含输入框未保存内容）。
+  useEffect(() => {
+    if (!open || !keyStatus || autoValidatedRef.current) return;
+    autoValidatedRef.current = true;
+    if (keyStatus.DEEPSEEK_API_KEY) {
+      void api.post<TestResult>("/api/v1/settings/api-keys/test-deepseek")
+        .then((r) => setDeepseekTest(r.data)).catch(() => {});
+    }
+    if (keyStatus.DASHSCOPE_API_KEY) {
+      void api.post<TestResult>("/api/v1/settings/api-keys/test-dashscope")
+        .then((r) => setDashscopeTest(r.data)).catch(() => {});
+    }
+  }, [open, keyStatus]);
 
   // 点击面板外关闭
   useEffect(() => {
