@@ -92,6 +92,13 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
   const [matchError, setMatchError] = useState<string>("");
   const [matchProgress, setMatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [matchStage, setMatchStage] = useState<string>("");
+  // 解析后人类在环（HITL）：AI 自检澄清
+  const [clarifyData, setClarifyData] = useState<{
+    summary: { total: number; by_category: Record<string, number> };
+    questions: { id: string; question: string; options: string[]; allow_multi: boolean; answer: string }[];
+  } | null>(null);
+  const [clarifyAnswers, setClarifyAnswers] = useState<Record<string, string>>({});
+  const [clarifyBusy, setClarifyBusy] = useState(false);
   const pollMatchRef = useRef<number | null>(null);
 
   // Step 3 state
@@ -224,44 +231,17 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     }, 1500);
   }, [folderPath]);
 
-  // ── Step 2: 解析清单 + 触发匹配 ──────────────────────────────
-  const handleParseAndMatch = useCallback(async () => {
-    setParsing(true);
-    setMatchError("");
-    const formData = new FormData();
-    formData.append("tenant_id", "default");
-    formData.append("folder_root", folderPath.trim());
-    formData.append("institution_name", institutionName.trim());
-    formData.append("context_note", contextNote.trim());
-    formData.append("scenario", scenario);
-    if (checklistFile) {
-      formData.append("file", checklistFile);
-    } else {
-      formData.append("text", checklistText);
-    }
-    let sessionData: { session_id: string };
-    try {
-      const resp = await fetch("/api/v1/dd/sessions", { method: "POST", body: formData });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
-        setParsing(false);
-        setMatchError(`❌ 清单解析失败：${err.detail || resp.statusText}`);
-        return;
-      }
-      sessionData = await resp.json();
-    } catch (e) {
-      setParsing(false);
-      setMatchError(`❌ 网络错误：${e instanceof Error ? e.message : "请求失败"}`);
-      return;
-    }
-    setSessionId(sessionData.session_id);
-    setParsing(false);
+  // ── Step 2: 解析清单 → 澄清确认（HITL）→ 触发匹配 ──────────────
+  // 匹配 + 轮询（从解析拆出，供"确认澄清后"或"跳过澄清"复用）
+  const runMatch = useCallback((sid: string) => {
+    setClarifyData(null);
     setMatchStatus("running");
     setMatchProgress(null);
     setMatchStage("matching");
+    void (async () => {
     try {
       const matchResp = await fetch(
-        `/api/v1/dd/sessions/${sessionData.session_id}/match?folder_root=${encodeURIComponent(folderPath.trim())}`,
+        `/api/v1/dd/sessions/${sid}/match?folder_root=${encodeURIComponent(folderPath.trim())}`,
         { method: "POST" }
       );
       if (!matchResp.ok) {
@@ -276,7 +256,6 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     }
     let attempts = 0;
     const MAX_MATCH = 120;  // 最多等 4 分钟（120 × 2s）
-    const sid = sessionData.session_id;
     pollMatchRef.current = window.setInterval(async () => {
       attempts++;
       try {
@@ -346,7 +325,66 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
         }
       }
     }, 2000);
-  }, [folderPath, checklistFile, checklistText, institutionName, contextNote, scenario]);
+    })();
+  }, [folderPath]);
+
+  // 解析清单 → 生成 AI 自检澄清问题（匹配前先跟人确认）
+  const handleParse = useCallback(async () => {
+    setParsing(true);
+    setMatchError("");
+    setClarifyData(null);
+    setClarifyAnswers({});
+    const formData = new FormData();
+    formData.append("tenant_id", "default");
+    formData.append("folder_root", folderPath.trim());
+    formData.append("institution_name", institutionName.trim());
+    formData.append("context_note", contextNote.trim());
+    formData.append("scenario", scenario);
+    if (checklistFile) formData.append("file", checklistFile);
+    else formData.append("text", checklistText);
+    let sessionData: { session_id: string };
+    try {
+      const resp = await fetch("/api/v1/dd/sessions", { method: "POST", body: formData });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+        setParsing(false);
+        setMatchError(`❌ 清单解析失败：${err.detail || resp.statusText}`);
+        return;
+      }
+      sessionData = await resp.json();
+    } catch (e) {
+      setParsing(false);
+      setMatchError(`❌ 网络错误：${e instanceof Error ? e.message : "请求失败"}`);
+      return;
+    }
+    setSessionId(sessionData.session_id);
+    // 生成澄清问题（失败不阻断，直接进匹配）
+    try {
+      const cr = await fetch(`/api/v1/dd/sessions/${sessionData.session_id}/clarify`, { method: "POST" });
+      if (cr.ok) {
+        setParsing(false);
+        setClarifyData(await cr.json());
+        return; // 停在澄清面板，等人确认
+      }
+    } catch (_) { /* 澄清失败 → 直接匹配 */ }
+    setParsing(false);
+    runMatch(sessionData.session_id);
+  }, [folderPath, checklistFile, checklistText, institutionName, contextNote, scenario, runMatch]);
+
+  // 确认澄清答案 → 回灌 context_note → 匹配
+  const confirmAndMatch = useCallback(async () => {
+    if (!sessionId) return;
+    setClarifyBusy(true);
+    try {
+      await fetch(`/api/v1/dd/sessions/${sessionId}/clarify/answers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: clarifyAnswers }),
+      });
+    } catch (_) { /* 回灌失败不阻断匹配 */ }
+    setClarifyBusy(false);
+    runMatch(sessionId);
+  }, [sessionId, clarifyAnswers, runMatch]);
 
   // ── Step 3: 批量确认 ──────────────────────────────────────────
   const handleBulkConfirm = useCallback(async () => {
@@ -891,23 +929,108 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                   {matchError}
                 </p>
               )}
+
+              {/* ── 解析后人类在环（HITL）：确认拆解 + AI 自检澄清 ── */}
+              {clarifyData && matchStatus !== "running" && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 space-y-3">
+                  <div className="text-sm text-gray-700">
+                    ✅ 已解析出 <b>{clarifyData.summary.total}</b> 条需求
+                    {Object.keys(clarifyData.summary.by_category || {}).length > 0 && (
+                      <span className="text-gray-500">
+                        （{Object.entries(clarifyData.summary.by_category).map(([k, v]) => `${k} ${v}`).join(" · ")}）
+                      </span>
+                    )}
+                  </div>
+                  {clarifyData.questions.length > 0 ? (
+                    <>
+                      <p className="text-xs text-gray-500">
+                        匹配前，AI 有几个拿不准的点想先跟你确认（点选项即可，不答也能直接匹配）：
+                      </p>
+                      {clarifyData.questions.map((q) => {
+                        const picked = (clarifyAnswers[q.id] || "").split("、").filter(Boolean);
+                        return (
+                          <div key={q.id} className="space-y-1">
+                            <p className="text-sm font-medium text-gray-800">
+                              {q.question}{q.allow_multi && <span className="ml-1 text-xs text-gray-400">(可多选)</span>}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {q.options.map((opt) => {
+                                const selected = picked.includes(opt);
+                                return (
+                                  <button
+                                    key={opt}
+                                    type="button"
+                                    onClick={() => setClarifyAnswers((prev) => {
+                                      if (q.allow_multi) {
+                                        const cur = (prev[q.id] || "").split("、").filter(Boolean);
+                                        const next = cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt];
+                                        return { ...prev, [q.id]: next.join("、") };
+                                      }
+                                      return { ...prev, [q.id]: opt };
+                                    })}
+                                    className={`px-2.5 py-1 rounded text-xs border transition ${
+                                      selected
+                                        ? "bg-blue-600 text-white border-blue-600"
+                                        : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500">AI 没有需要澄清的点，确认无误即可开始匹配。</p>
+                  )}
+                  <div className="flex gap-2 flex-wrap pt-1">
+                    <button
+                      onClick={() => void confirmAndMatch()}
+                      disabled={clarifyBusy}
+                      className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+                    >
+                      {clarifyBusy ? "处理中…" : "确认，开始匹配"}
+                    </button>
+                    {clarifyData.questions.length > 0 && (
+                      <button
+                        onClick={() => { if (sessionId) runMatch(sessionId); }}
+                        className="px-4 py-2 border rounded text-sm text-gray-500"
+                      >
+                        跳过澄清，直接匹配
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setClarifyData(null); setClarifyAnswers({}); }}
+                      className="px-4 py-2 border rounded text-sm text-gray-400"
+                    >
+                      重新解析
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 flex-wrap">
                 <button onClick={() => setStep(1)} className="px-4 py-2 border rounded text-sm text-gray-600">
                   ← 上一步
                 </button>
-                <button
-                  onClick={() => void handleParseAndMatch()}
-                  disabled={parsing || matchStatus === "running" || (!checklistFile && !checklistText.trim())}
-                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
-                >
-                  {parsing
-                    ? "解析中…"
-                    : matchStatus === "running"
-                      ? matchProgress && matchProgress.total > 0
-                        ? `匹配中… ${matchProgress.done}/${matchProgress.total} 项`
-                        : scenario === "post_investment" ? "AI 匹配 & 填充中…" : "AI 匹配中…"
-                      : scenario === "post_investment" ? "解析模板 & 开始匹配" : "解析 & 开始匹配"}
-                </button>
+                {!clarifyData && (
+                  <button
+                    onClick={() => void handleParse()}
+                    disabled={parsing || matchStatus === "running" || (!checklistFile && !checklistText.trim())}
+                    className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+                  >
+                    {parsing
+                      ? "解析中…"
+                      : matchStatus === "running"
+                        ? matchProgress && matchProgress.total > 0
+                          ? `匹配中… ${matchProgress.done}/${matchProgress.total} 项`
+                          : scenario === "post_investment" ? "AI 匹配 & 填充中…" : "AI 匹配中…"
+                        : scenario === "post_investment" ? "解析模板" : "解析清单"}
+                  </button>
+                )}
                 {matchStatus === "error" && (
                   <button
                     onClick={() => { setMatchStatus("idle"); setMatchError(""); }}
