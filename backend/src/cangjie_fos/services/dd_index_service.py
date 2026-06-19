@@ -18,6 +18,20 @@ logger = logging.getLogger(__name__)
 # 超过此数量的文件夹不做 LLM 摘要，只索引文件名+类型，避免几小时的 API 调用
 MAX_LLM_SUMMARIZE_FILES = 200
 
+# 仓颉自己生成的派生缓存目录前缀（如预热产物 _cangjie_预处理_md/）。
+# 这些是原材料的派生物，绝不能再被当成材料二次入库，否则污染候选集/主体识别/文件数。
+_CANGJIE_INTERNAL_PREFIX = "_cangjie_"
+
+
+def _is_cangjie_internal(file_path, root) -> bool:
+    """文件是否落在仓颉派生缓存目录内（路径任一层以 _cangjie_ 开头）。"""
+    try:
+        parts = file_path.relative_to(root).parts
+    except ValueError:
+        parts = file_path.parts
+    return any(p.startswith(_CANGJIE_INTERNAL_PREFIX) for p in parts)
+
+
 def clean_filename(name: str) -> str:
     """去除文件名中的日期、版本号、噪音词，提升二元组预筛准确率。"""
     name = re.sub(r'\.\w+$', '', name)
@@ -58,6 +72,7 @@ def scan_and_index_folder(
     files = [
         f for f in root.rglob("*")
         if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+        and not _is_cangjie_internal(f, root)
     ]
 
     # per_institution 布局：同名文件跨机构子文件夹去重，只留 mtime 最新一份
@@ -147,7 +162,14 @@ def _index_single_file(
     #   - content_text 留空，待精判按需抽取并回填（dd_match_service._ensure_content_text）。
     if use_llm:
         light_text, readable = extract_text(file_path, max_chars=800)
-        summary = _llm_summarize(file_path.name, light_text) if (readable and light_text) else None
+        # 摘要失败（如 Key 失效 401）不应让可读文件整份不入库：降级为 summary=None，
+        # 文件名 + readable 仍落库，匹配靠文件名、正文待预热/精判按需抽取。
+        summary = None
+        if readable and light_text:
+            try:
+                summary = _llm_summarize(file_path.name, light_text)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("摘要失败，降级仅索引文件名 %s: %s", file_path.name, e)
     else:
         light_text, readable, summary = "", True, None
     content_text = None  # 延迟到精判按需抽取
