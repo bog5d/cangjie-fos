@@ -793,6 +793,45 @@ def _llm_refine_candidate(
     return call_with_retry(_call, max_retries=2)
 
 
+# 评估器反思回环：单个红判项最多再试几个备选候选（candidates_json 通常 ≤2）
+_REFLECT_MAX_ALT = 2
+
+
+def _content_for_path(file_path: str) -> str:
+    """取某文件正文：先读 dd_asset_index.content_text（已缓存），空则按需抽取磁盘正文。"""
+    if not file_path:
+        return ""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT content_text FROM dd_asset_index WHERE file_path = ?", (file_path,),
+        ).fetchone()
+    cached = (row["content_text"] if row else "") or ""
+    if cached.strip():
+        return cached
+    return _ensure_content_text(file_path)
+
+
+def _parse_alt_candidates(candidates_json: str | None, exclude_path: str | None) -> list[dict]:
+    """从 candidates_json 解析备选候选（粗筛保留的次优文件），排除当前已判的那个。
+
+    返回 [{file_path, filename}, ...]，供评估器判红后「换候选重判」。
+    """
+    if not candidates_json:
+        return []
+    try:
+        cands = json.loads(candidates_json)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    out: list[dict] = []
+    seen: set[str] = {exclude_path or ""}
+    for c in (cands if isinstance(cands, list) else []):
+        fp = c.get("file_path") if isinstance(c, dict) else None
+        if fp and fp not in seen:
+            seen.add(fp)
+            out.append({"file_path": fp, "filename": c.get("filename") or ""})
+    return out
+
+
 def _refine_session_matches(session_id: str, context: str = "") -> None:
     """对 session 已匹配项做全文精判 + 验证，写回 confidence/verdict/evidence。
 
@@ -809,7 +848,7 @@ def _refine_session_matches(session_id: str, context: str = "") -> None:
     with _connect() as conn:
         rows = [dict(r) for r in conn.execute(
             """SELECT i.id, i.requirement, i.matched_file_path, i.matched_filename,
-                      i.confidence, i.match_reason, a.content_text
+                      i.confidence, i.match_reason, i.candidates_json, a.content_text
                FROM dd_match_items i
                LEFT JOIN dd_asset_index a ON a.file_path = i.matched_file_path
                WHERE i.session_id = ?""",
@@ -829,10 +868,12 @@ def _refine_session_matches(session_id: str, context: str = "") -> None:
     # 累积更新，最后一把写库（避免每条 item 各开一个连接 → 连接 churn + 锁竞争）
     upd_conf: list[tuple] = []     # (confidence, verdict, evidence, id)
     upd_verdict: list[tuple] = []  # (verdict, evidence, id)
+    upd_match: list[tuple] = []    # (matched_file_path, matched_filename, id) — 反思换候选后改匹配文件
 
     consecutive_fails = 0  # 精判连续失败计数（熔断用）
     llm_calls = 0
     llm_down = False       # 触发熔断后置真：剩余项一律降级，不再调 LLM
+    reflections = 0        # 评估器反思回环触发的换候选重判次数（落库供观测/恢复）
 
     for r in rows:
         item_id = r["id"]
@@ -892,7 +933,42 @@ def _refine_session_matches(session_id: str, context: str = "") -> None:
             continue
 
         satisfies = bool(res.get("satisfies", True))
-        evidence = str(res.get("evidence", ""))[:200]
+        reflect_note = ""
+
+        # ── 评估器反思回环（Evaluator→retrieval 有界回边）──
+        # 判「不满足」不直接判红：从粗筛保留的备选候选里换下一个/换主体重判，
+        # 命中即采用并改匹配文件；封顶 _REFLECT_MAX_ALT 次，受同一 LLM 预算/熔断约束。
+        if not satisfies:
+            for alt in _parse_alt_candidates(r.get("candidates_json"), path)[:_REFLECT_MAX_ALT]:
+                if llm_down or llm_calls >= _REFINE_MAX_CALLS:
+                    break
+                alt_content = _content_for_path(alt["file_path"]).strip()
+                if not alt_content:
+                    continue
+                try:
+                    alt_res = _llm_refine_candidate(
+                        client, r["requirement"], alt.get("filename") or "", alt_content,
+                        context=context, session_id=session_id,
+                    )
+                    llm_calls += 1
+                    reflections += 1
+                    consecutive_fails = 0
+                except Exception as e:  # noqa: BLE001
+                    consecutive_fails += 1
+                    if consecutive_fails >= _REFINE_MAX_CONSECUTIVE_FAILS:
+                        llm_down = True
+                    logger.warning("反思换候选精判失败 item=%s: %s", item_id, e)
+                    continue
+                if bool(alt_res.get("satisfies", False)):
+                    # 换候选成功：采用该候选，改匹配文件
+                    res = alt_res
+                    satisfies = True
+                    content = alt_content
+                    upd_match.append((alt["file_path"], alt.get("filename") or "", item_id))
+                    reflect_note = "🔁 反思换候选 "
+                    break
+
+        evidence = (reflect_note + str(res.get("evidence", "")))[:200]
         try:
             refined_conf = float(res.get("confidence", cur_conf))
         except (TypeError, ValueError):
@@ -912,8 +988,13 @@ def _refine_session_matches(session_id: str, context: str = "") -> None:
         upd_conf.append((new_conf, _confidence_to_verdict(new_conf), evidence, item_id))
 
     # ── 一把写库 ──
-    if upd_conf or upd_verdict:
+    if upd_conf or upd_verdict or upd_match:
         with _connect() as conn:
+            if upd_match:  # 反思换候选：先改匹配文件，再写 confidence/verdict
+                conn.executemany(
+                    "UPDATE dd_match_items SET matched_file_path=?, matched_filename=? WHERE id=?",
+                    upd_match,
+                )
             if upd_conf:
                 conn.executemany(
                     "UPDATE dd_match_items SET confidence=?, verdict=?, evidence=? WHERE id=?",
@@ -924,6 +1005,10 @@ def _refine_session_matches(session_id: str, context: str = "") -> None:
                     "UPDATE dd_match_items SET verdict=?, evidence=? WHERE id=?",
                     upd_verdict,
                 )
+
+    # 反思轮次落库（L4：供观测 / 重入恢复）
+    if reflections:
+        persist_session_progress(session_id, reflection_iter=reflections)
 
     _apply_period_guard(session_id)
 
