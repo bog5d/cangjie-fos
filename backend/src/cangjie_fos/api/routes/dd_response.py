@@ -472,6 +472,41 @@ async def create_session(
     return {"session_id": session_id, "items": items, "count": len(items), "scenario": scenario}
 
 
+# ── 解析后人类在环（HITL）：AI 自检澄清，匹配前先跟人确认 ──────────────
+class ClarifyAnswersRequest(BaseModel):
+    answers: dict[str, str] = {}
+
+
+@router.post("/sessions/{session_id}/clarify")
+def gen_clarifications(session_id: str):
+    """生成解析摘要 + AI 自检澄清选择题（匹配前调用，供人确认/回答）。"""
+    from cangjie_fos.services import dd_clarify_service as clarify  # noqa: PLC0415
+    try:
+        return clarify.generate_clarifications(session_id)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.get("/sessions/{session_id}/clarify")
+def get_clarifications_route(session_id: str):
+    """读取已生成的澄清问题与摘要（含已填答案）。"""
+    from cangjie_fos.services import dd_clarify_service as clarify  # noqa: PLC0415
+    data = clarify.get_clarifications(session_id)
+    if data is None:
+        raise HTTPException(404, "尚未生成澄清问题")
+    return data
+
+
+@router.post("/sessions/{session_id}/clarify/answers")
+def submit_clarify_answers(session_id: str, req: ClarifyAnswersRequest):
+    """提交澄清答案 → 汇总进 context_note，供后续匹配/精判 prompt 注入。"""
+    from cangjie_fos.services import dd_clarify_service as clarify  # noqa: PLC0415
+    try:
+        return clarify.submit_answers(session_id, req.answers)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
 @router.post("/sessions/{session_id}/match")
 async def trigger_matching(
     session_id: str,
