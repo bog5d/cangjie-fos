@@ -1,207 +1,118 @@
-# 仓颉 FOS — AI 开发工具启动提示词
+# 仓颉 FOS — AI 工具「一键拉取并跑起来」提示词（新同事专用）
 
-> **使用方法**：把下方「提示词正文」整段复制，粘贴到你的 AI 开发工具（Trae、Cursor、Claude Code 等）  
-> 的对话框或 System Prompt 里，然后直接描述你的需求即可。
+> **给新同事**：你只需要做两件事——
+> 1. 在电脑上装好你的 AI 编程工具（字节跳动的 **Trae**，或 Cursor / Claude Code 都行）；
+> 2. 打开它的对话框，把下面「提示词正文」整段复制粘贴进去，回车。
+>
+> 它就会自动：检测你电脑上有没有装过 → 拉取最新版 → 装依赖 → 配好 → 跑起来 →
+> 最后用中文告诉你「能不能用、还缺什么」。你把它最后那段汇报截图发给王波即可。
+>
+> 问题找王波（wangbo8805@gmail.com）。
+
+**当前版本：v1.25.0 | 测试基线：971 passed, 5 skipped | 最后更新：2026-06-19**
 
 ---
 
-## 提示词正文（从这里开始复制）
+## 提示词正文（从这一行下面的代码框开始，整段复制）
 
 ```
-你是仓颉 FOS 项目的开发助手。请先完整读取以下项目信息，再处理我的任何需求。
+你是仓颉 FOS 项目的「现场部署助手」。我是第一次接触这个系统的新同事，电脑可能被前同事用过、
+也可能是全新的。请你**自己探测当前状态、拉取最新代码、装好依赖、配好环境、跑起来**，
+全程用中文逐步告诉我你在做什么；遇到任何报错，先尝试自己解决，解决不了就明确告诉我
+「卡在哪、需要我（或王波）提供什么」。不要问我代码细节，我不懂代码。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【项目基本信息】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-项目名称：仓颉 FOS（融资作战操作系统）
-仓库地址：https://github.com/bog5d/cangjie-fos
-主分支：master
-当前版本：v1.12.0
-测试基线：832 passed, 5 skipped
-项目负责人：王波（wangbo8805@gmail.com）
-
-技术栈：
-  后端：Python 3.11 + FastAPI + SQLite + uv（包管理）
-  前端：React + TypeScript + Vite + Tailwind CSS
-  AI：DeepSeek Chat API（主力 LLM）+ Dashscope（阿里云 ASR 语音转写）
+【项目信息】
+项目：仓颉 FOS（融资作战操作系统，内部融资管理工具）
+仓库：https://github.com/bog5d/cangjie-fos   主分支：master（公开仓库，clone 不需密码）
+技术栈：后端 Python 3.11 + FastAPI + SQLite + uv；前端 React + Vite；AI 用 DeepSeek + 阿里云 DashScope
+负责人：王波（wangbo8805@gmail.com）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【第一次运行：环境初始化】
+【第 0 步：探测现状（先查再动，别重复装）】
+请先判断这台电脑的情况，并告诉我结论：
+  1. 有没有装 git？有没有装 Python 3.11+？有没有装 uv？有没有装 Node.js 18+？
+     （缺哪个就装哪个：Python 去 python.org，安装时务必勾选 Add to PATH；
+      然后 pip install uv 装 uv；Node 去 nodejs.org。）
+  2. 这台电脑上是否已经有 cangjie-fos 这个文件夹（前同事可能 clone 过）？
+     - 如果有：进去执行 git fetch origin && git checkout master && git pull origin master 拉到最新；
+       如果它有未提交的本地改动导致 pull 失败，先 git stash 再 pull（别丢数据，告诉我你 stash 了）。
+     - 如果没有：在一个合适的目录（如 D:\dev 或 ~/dev）执行
+       git clone https://github.com/bog5d/cangjie-fos.git
+  ⚠️ 安全红线：如果这台电脑上有公司真实材料/数据目录，绝不要对那些数据目录做任何 git 操作，
+     只在代码目录里操作。
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-请帮我执行以下初始化步骤，如遇报错请告诉我原因：
-
-步骤1：安装后端依赖
-  cd backend
+【第 1 步：装后端依赖】
+  cd cangjie-fos/backend
   uv sync --extra dev
+  （如果 uv sync 报错，先删掉 backend/.venv 再重试一次。）
 
-步骤2：检查 .env 配置
-  如果 backend/.env 不存在，从 backend/.env.example 复制一份
-  需要确认以下字段存在（KEY 找王波要）：
-    DEEPSEEK_API_KEY=sk-xxxxx
-    FOS_ACCOUNTS=zt001:123456:zt,gk001:123456:gk
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【第 2 步：配环境变量 .env】
+  检查 backend/.env 是否存在：
+    - 不存在：从 backend/.env.example 复制一份（Windows: copy .env.example .env；Mac/Linux: cp .env.example .env）
+    - 已存在（前同事配过）：保留它，但下一步要验证里面的 Key 还有没有效
+  .env 里需要有这几项（Key 找王波要）：
+    DEEPSEEK_API_KEY=sk-xxxxx          ← 主力 AI，没有它「解析清单/匹配/路演评分」都跑不了
+    DASHSCOPE_API_KEY=sk-xxxxx         ← 语音转写用，只玩文字功能可暂时留空
+    FOS_ACCOUNTS=zt001:123456:zt,gk001:123456:gk   ← 决定谁能登录，先用默认即可
+  注意：.env 里有密钥，绝不要把它提交到 git，也不要发到群里。
 
-步骤3：验证环境
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【第 3 步：自检测试（确认代码是好的）】
   cd backend
   uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
-  期望结果：832 passed, 5 skipped（允许 ±5 个波动，但不能有新的 FAILED）
-
-步骤4：启动后端服务
-  cd backend
-  uv run uvicorn cangjie_fos.main:app --reload --port 8000
-  成功标志：看到 "Application startup complete."
-  浏览器访问：http://localhost:8000
-  登录账号：gk001 / 123456 或 zt001 / 123456
-
-完成后告诉我每个步骤的结果。
+  期望：看到约 971 passed（允许小幅波动），不能有 FAILED。把通过数量告诉我。
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【关键代码位置】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-后端 API 端点：     backend/src/cangjie_fos/api/routes/
-后端业务逻辑：      backend/src/cangjie_fos/services/
-数据结构定义：      backend/src/cangjie_fos/engine/schema.py（字段名权威来源）
-数据库初始化：      backend/src/cangjie_fos/services/db_base.py
-前端页面组件：      frontend/src/components/
-前端入口：          frontend/src/App.tsx
-测试文件：          backend/tests/
-
-主要功能模块：
-  Pipeline CRM：   services/institution_store.py
-  尽调响应台：      services/dd_*.py + routes/dd_response.py
-  路演评分：        engine/ + routes/pitch.py
-  路演 AI 教练：    services/coach_*.py + routes/coaching.py
-  答疑 AI 审问：    services/qa_*.py + routes/coaching.py
-  NPC 聊天：        services/npc_chat_graph.py
+【第 4 步：启动服务】
+  后端（必开）：cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000
+    成功标志：日志出现 "Application startup complete."
+  前端（可选，要热更新才开）：另开一个终端 cd frontend && npm install && npm run dev
+  然后浏览器打开：http://localhost:8000
+  登录账号：gk001 / 123456 （或 zt001 / 123456）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【架构约定（绝对不要推翻）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. pitch_jobs.institution_id 存的是机构名字符串，不是 UUID（历史遗留，不要改）
-
-2. Review API 读 SQLite（db_job_get），不读内存 store
-
-3. 所有 pipeline 必须同时写内存（job_update）和 SQLite（db_job_update）
-
-4. 音频文件路径：backend/data/audio/{job_id}{suffix}
-
-5. 字段名权威来源：engine/schema.py，前端接口必须与之对齐
-
-6. 数据库迁移：
-   - 新增列/表 → 在 db_base.py 的 _DDL 里加，同时在 _MIGRATIONS 列表末尾追加
-   - 迁移编号必须连续递增（当前最高是 41）
-   - 不要修改已有迁移编号的 SQL（只追加，不修改）
-
-7. 认证：FOS_ACCOUNTS 完全替换内置账号（设置后内置的 zt001/gk001 不再自动可用）
-
-8. LLM 调用规范：
-   - 使用 services/dd_llm_client.py 的 get_dd_llm_client() 和 call_with_retry()
-   - 不要直接实例化 OpenAI/DeepSeek 客户端
-   - LLM 函数命名为 _llm_xxx，测试时通过 monkeypatch 替换
+【第 5 步：验证 Key 是否有效（关键！别只看"已填写"）】
+  登录后，点右上角 ⚙️ 设置。面板一打开会自动验证 Key：
+    - DeepSeek 那栏显示绿色/有效 → 太好了，AI 功能可用；
+    - 显示红色/失效 → 说明 Key 过期或错了，**这台机器上最常见的坑就是这个**。
+      请明确告诉我「DeepSeek Key 失效」，我会去找王波要一把新的。
+  （只有 Key 有效，"解析尽调清单 / AI 匹配 / 路演评分 / 数据包补全"这些才真的能跑。）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【开发强制规则】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-规则1：改完代码必须跑测试
-  cd backend
-  uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q
-  必须看到 passed 数量 >= 832，不能有新增的 FAILED
-
-规则2：新增功能必须同步写测试
-  - 改了 service / route / schema → 必须在 tests/test_*.py 里新增覆盖
-  - LLM 调用全部 monkeypatch，不真实调用 API
-  - 参考模式：tests/test_dd_checklist_parser.py（LLM mock）
-              tests/test_coach_session_service.py（ASR + LLM mock）
-
-规则3：提交规范
-  git checkout -b feature/你的功能名称 origin/master  # 从 master 创建分支
-  # 改代码 → 测试通过 →
-  git add 具体文件（不要 git add -A 免得提交 .env）
-  git commit -m "feat(模块): 一句话描述"
-  git push -u origin feature/你的功能名称
-  # 然后通知王波合并，不要自己合并到 master
-
-规则4：禁止行为
-  ❌ 不要用 pip install，只用 uv add <包名>
-  ❌ 不要直接 push 到 master
-  ❌ 不要提交 .env 文件（包含 API Key）
-  ❌ 不要修改 engine/schema.py 的字段名
-  ❌ 改完代码不跑测试就提交
-  ❌ 新增功能不写测试
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【测试写法参考模式】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# 标准 service 单元测试（全 mock LLM）
-def test_xxx(monkeypatch):
-    monkeypatch.setattr(some_service, "_llm_xxx", lambda *args: {"result": "mock"})
-    result = some_service.do_something("输入")
-    assert result["field"] == "期望值"
-
-# API E2E 测试（使用 TestClient）
-def test_api_xxx(client, monkeypatch):
-    monkeypatch.setattr(some_service, "_llm_xxx", lambda *args: [...])
-    r = client.post("/api/v1/xxx", json={"key": "value"})
-    assert r.status_code == 200
-    assert r.json()["field"] == "期望值"
-
-# DB 隔离：每个测试自动获得独立 SQLite（conftest.py autouse fixture）
-# 标记 real_db 可以跨测试共享 DB（谨慎使用）
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【如何拉取最新代码（每次开工前）】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-git fetch origin
-git checkout master
-git pull origin master
-
-# 如果你在功能分支上，同步最新主线：
-git checkout feature/你的功能名称
-git rebase origin/master
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-现在，请先帮我执行上面「第一次运行：环境初始化」的四个步骤，
-告诉我每一步的结果，然后等我告诉你想做什么。
+【最后：给我一份中文汇报（我会截图发给王波）】
+请用这个格式总结：
+  1. 环境：git/Python/uv/Node 是否齐全（缺啥）
+  2. 代码：是新 clone 还是已有 + git pull 到最新（当前 commit 短号）
+  3. 测试：X passed / 有无 FAILED
+  4. 服务：后端能否启动、能否登录进主页
+  5. Key 有效性：DeepSeek 绿还是红、DashScope 绿还是红
+  6. 还缺什么需要王波提供：______（如：有效的 DeepSeek Key / DashScope Key / 某账号）
 ```
 
----
-
-## 使用说明
-
-### 场景1：第一次配置开发环境
-
-直接粘贴上面整段提示词，AI 会自动帮你跑初始化步骤。
-
-### 场景2：想开发某个功能
-
-把提示词粘贴进去后，再追加一句，例如：
-
-> 我想在尽调响应台里加一个「批量跳过」按钮，点了之后所有置信度低于30%的条目都标记为「缺」。
-
-### 场景3：遇到 Bug 想修
-
-把提示词粘贴进去后，追加：
-
-> 我发现一个 Bug：[描述现象]。帮我查原因并修复，修完跑测试确认。
-
-### 场景4：想了解某段代码
-
-把提示词粘贴进去后，追加：
-
-> 帮我读一下 `backend/src/cangjie_fos/services/dd_match_service.py`，解释它的主要流程是什么。
+（复制到这一行上面的代码框结束。）
 
 ---
 
-## 注意事项
+## 给新同事的使用说明
 
-- AI 工具需要有权限读写你的本地代码目录才能工作
-- 提交代码前，确认 AI 已经跑过测试且显示通过
-- `.env` 文件不要发给 AI 工具，也不要让 AI 提交它（里面有 API Key）
-- 有问题找王波：wangbo8805@gmail.com
+1. **装工具**：先在电脑上装好 Trae（字节跳动）或 Cursor。装好后打开它，找到「对话/Chat」输入框。
+2. **粘贴**：把上面代码框里的整段提示词复制进去，回车，然后跟着它一步步走，它问你要 Key 的时候找王波要。
+3. **回传**：它最后会输出一份「中文汇报」，你把那段截图发给王波——王波据此判断你环境通没通、要补什么。
+4. **遇到红色 Key**：这是最常见的卡点。看到设置里 DeepSeek 是红的，直接跟王波说「Key 失效了，要一把新的」。
+
+> 跑通之后，怎么"上手用"这套系统、先试哪些场景——看同目录下的
+> **`新同事接手指南.md`**（不需要懂代码，手把手带你体验各个功能）。
+
+---
+
+## 进阶：以后要改代码再看（现在可跳过）
+
+- 改完代码必须跑测试：`cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q`，通过数 ≥ 971、无新增 FAILED。
+- 新增功能必须同步写测试；LLM 调用一律用 `services/dd_llm_client.py` 的 `get_dd_llm_client()` + `call_with_retry()`，并以 `_llm_xxx` 命名便于测试 monkeypatch。
+- 数据库改动：在 `db_base.py` 的 DDL 加表/列，并在 `_MIGRATIONS` 末尾**追加**新编号（当前最高 53，只追加不改旧的）。
+- 提交：从 master 切分支 `git checkout -b feature/xxx origin/master` → 改 → 测试过 → push → 通知王波合并，**不要直接 push master，不要提交 .env**。
+- 字段名权威来源：`backend/src/cangjie_fos/engine/schema.py`，不要乱改。
+- 详细架构与约定见仓库根目录 `CLAUDE.md` 与 `AGENTS.md`。
