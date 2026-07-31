@@ -27,6 +27,9 @@ export interface InstitutionProfile {
   agreement_signed: boolean;
   deal_closed: boolean;
   referral_source: string;
+  // 卡点备注 + 人工确认锁（v1.13.0）
+  blocker_note?: string;
+  review_locked?: boolean;
 }
 
 export interface MilestoneStats {

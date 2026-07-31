@@ -207,6 +207,49 @@ AGGREGATE_INSTITUTION_CONCERNS: dict = {
     },
 }
 
+CHECK_CONSISTENCY: dict = {
+    "type": "function",
+    "function": {
+        "name": "check_consistency",
+        "description": (
+            "跨最近几场路演/高管访谈录音，检查关键指标口径是否一致（如营收/估值/技术路线"
+            "在不同场次、不同人之间对不对得上）。当用户问「口径一致吗」「CEO和我说的对得上吗」"
+            "「不同高管说的一致吗」「有没有前后矛盾/数字对不上」时调用。",
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "只看某家机构相关录音时填；不填则看全部最近录音",
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+GENERATE_INTERVIEW_PREP: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_interview_prep",
+        "description": (
+            "为某位高管生成访谈前重点准备清单（基于其历史易错点/错题本）。"
+            "当用户说「帮我准备访谈 XX 高管」「访谈前该重点核查什么」「给 CTO 出个访谈准备清单」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "executive_name": {
+                    "type": "string",
+                    "description": "高管姓名/标识，如 张总、CTO",
+                }
+            },
+            "required": ["executive_name"],
+        },
+    },
+}
+
 GENERATE_RECEPTION_CHECKLIST: dict = {
     "type": "function",
     "function": {
@@ -240,6 +283,8 @@ ALL_TOOLS = [
     GET_DEAL_PROBABILITY,
     SUMMARIZE_COMMON_WEAKNESSES,
     AGGREGATE_INSTITUTION_CONCERNS,
+    CHECK_CONSISTENCY,
+    GENERATE_INTERVIEW_PREP,
     GENERATE_RECEPTION_CHECKLIST,
 ]
 
@@ -275,6 +320,10 @@ def execute_tool(tool_name: str, arguments: dict, *, tenant_id: str) -> str:
             return _exec_aggregate_institution_concerns(tenant_id=tenant_id)
         if tool_name == "generate_reception_checklist":
             return _exec_generate_reception_checklist(arguments)
+        if tool_name == "check_consistency":
+            return _exec_check_consistency(arguments, tenant_id=tenant_id)
+        if tool_name == "generate_interview_prep":
+            return _exec_generate_interview_prep(arguments, tenant_id=tenant_id)
         return f"未知工具：{tool_name}"
     except Exception as e:
         logger.warning("npc_tool_exec_failed tool=%s: %s", tool_name, e)
@@ -665,6 +714,90 @@ def _exec_generate_reception_checklist(args: dict) -> str:
             "【接待中】前台引导 · 参观讲解 · 核心数据备好 · 全程录音（可用会议纪要提炼）\n"
             "【接待后】送客 · 整理会议纪要 · 更新机构档案 · 安排跟进"
         )
+
+
+def _exec_check_consistency(args: dict, *, tenant_id: str) -> str:
+    """跨录音口径一致性对比，返回可读结论。"""
+    from cangjie_fos.services.consistency_service import run_consistency_check
+
+    institution = (args.get("institution_name") or "").strip()
+    result = run_consistency_check(tenant_id, institution_filter=institution)
+    sources = result.get("checked_sources") or []
+    if not sources:
+        return result.get("note", "最近没有可对比的录音。")
+
+    incons = result.get("inconsistencies") or []
+    if not incons:
+        return f"对比了最近 {len(sources)} 场录音，关键指标口径未发现明显不一致。"
+
+    lines = [f"对比了最近 {len(sources)} 场录音，发现 {len(incons)} 处口径需核对："]
+    for it in incons:
+        flag = "⚠️冲突" if it.get("verdict") == "inconsistent" else "🔶待核对"
+        lines.append(f"\n{flag}【{it['topic']}】{it.get('note','')}")
+        for e in it.get("entries", []):
+            lines.append(f"  · {e['source']}：{e['statement']}")
+    return "\n".join(lines)
+
+
+def _exec_generate_interview_prep(args: dict, *, tenant_id: str) -> str:
+    """基于高管历史易错点生成访谈前重点准备清单。"""
+    name = (args.get("executive_name") or "").strip()
+    if not name:
+        return "请告诉我要准备哪位高管（如 张总 / CTO）。"
+
+    # 取该高管的错题本条目（历史易错点）
+    memories: list[dict] = []
+    try:
+        from cangjie_fos.engine.coach.agent_tenant import resolve_memory_company_id
+        from cangjie_fos.services.memory_db import db_exec_memory_list
+        cid = resolve_memory_company_id(tenant_id)
+        if cid:
+            memories = db_exec_memory_list(cid, tag=name) or []
+    except Exception as e:  # noqa: BLE001
+        logger.warning("读取高管错题本失败: %s", e)
+
+    if not memories:
+        return (
+            f"暂无「{name}」的历史易错点记录（错题本为空）。"
+            "先跑几场该高管的访谈复盘并确认风险点，之后这里就能自动生成针对性准备清单。"
+        )
+    try:
+        return _llm_interview_prep(name, memories)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("生成访谈准备清单 LLM 失败: %s", e)
+        lines = [f"「{name}」历史易错点（访谈前重点核查）："]
+        for m in memories[:8]:
+            raw = (m.get("raw_text") or "").strip()
+            corr = (m.get("correction") or "").strip()
+            lines.append(f"• {raw}" + (f" → 标准口径：{corr}" if corr else ""))
+        return "\n".join(lines)
+
+
+def _llm_interview_prep(name: str, memories: list[dict]) -> str:
+    """把高管错题本喂 LLM 生成访谈前准备清单（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    items = "\n".join(
+        f"- 易错表述：{(m.get('raw_text') or '').strip()}；标准口径：{(m.get('correction') or '').strip()}"
+        for m in memories[:12]
+    )
+    prompt = (
+        f"以下是高管「{name}」过往访谈中被标注的易错点和标准口径：\n{items}\n\n"
+        "请生成一份**访谈前重点准备清单**：提醒他这次访谈要特别注意哪些问题、"
+        "被追问时怎么答才不跑偏。每条一行、可勾选、动词开头。只输出清单。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.4,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
 
 
 def _llm_reception_checklist(context: str) -> str:

@@ -200,6 +200,62 @@ def run_pitch_upload_job(
             tmp.unlink(missing_ok=True)  # only unlink if move failed
 
 
+def sync_roadshow_institution(
+    tenant_id: str, institution_name: str, report_dict: dict, job_id: str,
+) -> bool:
+    """路演完成后把机构写入/更新 Pipeline CRM。返回是否实际写入。
+
+    F4 人工确认锁：机构档案被人工锁定（review_locked）后，AI 自动分析不再覆盖，
+    落实"谁路演谁主笔"，避免手动确认的版本被后台分析冲掉 → 返回 False。
+    占位符机构名（"待确认_YYYY-MM-DD"）或空名 → 不写，返回 False。
+    """
+    institution_name = (institution_name or "").strip()
+    if not institution_name or institution_name.startswith("待确认_"):
+        return False
+
+    from cangjie_fos.services.institution_store import get_by_name, upsert_institution
+    from cangjie_fos.schemas.institution import (
+        InstitutionProfile, InstitutionThermal, PipelineStage,
+    )
+    import time as _time, uuid as _uuid
+
+    existing = get_by_name(tenant_id=tenant_id, name=institution_name)
+    if existing and getattr(existing, "review_locked", False):
+        logger.info(
+            "roadshow institution_crm_sync 跳过（已人工锁定）job_id=%s inst=%s",
+            job_id, institution_name,
+        )
+        return False
+
+    stage_order = {"targeted": 0, "pitched": 1, "dd": 2, "term_sheet": 3}
+    new_stage = PipelineStage.PITCHED
+    if existing and stage_order.get(existing.stage.value, 0) > stage_order["pitched"]:
+        new_stage = existing.stage  # 保留更高阶段
+
+    atmosphere = (report_dict or {}).get("meeting_atmosphere", "warm")
+    thermal_map = {"hot": InstitutionThermal.HOT, "cold": InstitutionThermal.COLD}
+    thermal = thermal_map.get(atmosphere, InstitutionThermal.WARM)
+
+    profile = InstitutionProfile(
+        institution_id=existing.institution_id if existing else _uuid.uuid4().hex,
+        tenant_id=tenant_id,
+        name=institution_name,
+        stage=new_stage,
+        thermal=thermal,
+        preferences=existing.preferences if existing else "",
+        concerns=existing.concerns if existing else "",
+        ai_summary=existing.ai_summary if existing else "",
+        updated_at=_time.time(),
+        source_trace_id=job_id,
+    )
+    upsert_institution(profile)
+    logger.info(
+        "roadshow institution_crm_synced job_id=%s inst=%s stage=%s",
+        job_id, institution_name, new_stage,
+    )
+    return True
+
+
 # ── 路演分析专属 Pipeline ──────────────────────────────────────────────────────
 
 def run_roadshow_asr_job(
@@ -383,55 +439,14 @@ def resume_roadshow_analysis(
                 logger.warning("roadshow participants_save failed job_id=%s: %s", job_id, pe)
 
         # ── 自动写入 Pipeline CRM（数据打通）──────────────────────────────────
-        # 路演完成后自动将机构写入/更新 Pipeline CRM，使 War Room 大屏实时反映
         institution_name = (job_row.get("institution_id") or "").strip()
-        # 过滤占位符（"待确认_YYYY-MM-DD" 格式）
-        if institution_name and not institution_name.startswith("待确认_"):
-            try:
-                from cangjie_fos.services.institution_store import (  # noqa: PLC0415
-                    get_by_name, upsert_institution,
-                )
-                from cangjie_fos.schemas.institution import (  # noqa: PLC0415
-                    InstitutionProfile, InstitutionThermal, PipelineStage,
-                )
-                import time as _time, uuid as _uuid  # noqa: PLC0415
-
-                existing = get_by_name(tenant_id=tenant_id, name=institution_name)
-                # 已有机构保留阶段（不降级：如已是 DD，维持 DD）
-                stage_order = {
-                    "targeted": 0, "pitched": 1, "dd": 2, "term_sheet": 3,
-                }
-                new_stage = PipelineStage.PITCHED
-                if existing and stage_order.get(existing.stage.value, 0) > stage_order["pitched"]:
-                    new_stage = existing.stage  # 保留更高阶段
-
-                # 从路演报告中提取 meeting_atmosphere → 机构热度
-                atmosphere = report_dict.get("meeting_atmosphere", "warm")
-                thermal_map = {"hot": InstitutionThermal.HOT, "cold": InstitutionThermal.COLD}
-                thermal = thermal_map.get(atmosphere, InstitutionThermal.WARM)
-
-                profile = InstitutionProfile(
-                    institution_id=existing.institution_id if existing else _uuid.uuid4().hex,
-                    tenant_id=tenant_id,
-                    name=institution_name,
-                    stage=new_stage,
-                    thermal=thermal,
-                    preferences=existing.preferences if existing else "",
-                    concerns=existing.concerns if existing else "",
-                    ai_summary=existing.ai_summary if existing else "",
-                    updated_at=_time.time(),
-                    source_trace_id=job_id,
-                )
-                upsert_institution(profile)
-                logger.info(
-                    "roadshow institution_crm_synced job_id=%s inst=%s stage=%s",
-                    job_id, institution_name, new_stage,
-                )
-            except Exception as crm_exc:  # noqa: BLE001
-                logger.warning(
-                    "roadshow institution_crm_sync 失败（非致命）job_id=%s exc=%s",
-                    job_id, crm_exc,
-                )
+        try:
+            sync_roadshow_institution(tenant_id, institution_name, report_dict, job_id)
+        except Exception as crm_exc:  # noqa: BLE001
+            logger.warning(
+                "roadshow institution_crm_sync 失败（非致命）job_id=%s exc=%s",
+                job_id, crm_exc,
+            )
 
         # GitHub 同步（非阻塞）
         try:

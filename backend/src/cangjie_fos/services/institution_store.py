@@ -58,6 +58,9 @@ def _conn() -> sqlite3.Connection:
         "agreement_signed INTEGER NOT NULL DEFAULT 0",
         "deal_closed INTEGER NOT NULL DEFAULT 0",
         "referral_source TEXT NOT NULL DEFAULT ''",
+        # 卡点备注（F2）+ 人工确认锁（F4，防 AI 自动覆盖）
+        "blocker_note TEXT NOT NULL DEFAULT ''",
+        "review_locked INTEGER NOT NULL DEFAULT 0",
     ]:
         try:
             c.execute(f"ALTER TABLE institutions ADD COLUMN {col_def}")  # noqa: S608
@@ -138,8 +141,9 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 preferences, concerns, ai_summary, updated_at, source_trace_id,
                 contact_name, contact_title, valuation, deal_size, probability, legal_status,
                 nda_signed, offline_meeting_count, project_approved, committee_approved,
-                onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source,
+                blocker_note, review_locked
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(tenant_id, name) DO UPDATE SET
                 stage=excluded.stage,
                 thermal=excluded.thermal,
@@ -162,7 +166,9 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 external_dd_done=excluded.external_dd_done,
                 agreement_signed=excluded.agreement_signed,
                 deal_closed=excluded.deal_closed,
-                referral_source=excluded.referral_source
+                referral_source=excluded.referral_source,
+                blocker_note=excluded.blocker_note,
+                review_locked=excluded.review_locked
             """,
             (
                 row.institution_id,
@@ -190,6 +196,8 @@ def upsert_institution(row: InstitutionProfile) -> None:
                 int(row.agreement_signed),
                 int(row.deal_closed),
                 row.referral_source,
+                row.blocker_note,
+                int(row.review_locked),
             ),
         )
         c.commit()
@@ -235,7 +243,8 @@ def list_institutions(*, tenant_id: str, limit: int = 200) -> list[InstitutionPr
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
                       contact_name, contact_title, valuation, deal_size, probability, legal_status,
                       nda_signed, offline_meeting_count, project_approved, committee_approved,
-                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source,
+                      blocker_note, review_locked
                FROM institutions WHERE tenant_id = ? ORDER BY updated_at DESC LIMIT ?""",  # noqa: E501
             (tenant_id, limit),
         )
@@ -294,6 +303,8 @@ def update_institution(
     agreement_signed: bool | None = None,
     deal_closed: bool | None = None,
     referral_source: str | None = None,
+    blocker_note: str | None = None,
+    review_locked: bool | None = None,
 ) -> InstitutionProfile | None:
     """部分更新机构字段，返回更新后的档案；找不到则返回 None。"""
     import time as _time
@@ -340,6 +351,10 @@ def update_institution(
         updates["deal_closed"] = int(deal_closed)
     if referral_source is not None:
         updates["referral_source"] = referral_source
+    if blocker_note is not None:
+        updates["blocker_note"] = blocker_note
+    if review_locked is not None:
+        updates["review_locked"] = int(review_locked)
     if not updates:
         return None
     set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -357,7 +372,8 @@ def update_institution(
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
                       contact_name, contact_title, valuation, deal_size, probability, legal_status,
                       nda_signed, offline_meeting_count, project_approved, committee_approved,
-                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source,
+                      blocker_note, review_locked
                FROM institutions WHERE tenant_id = ? AND institution_id = ?""",
             (tenant_id, institution_id),
         ).fetchone()
@@ -391,6 +407,8 @@ def row_to_profile(row: tuple[Any, ...]) -> InstitutionProfile:
         agreement_signed=bool(row[22]) if len(row) > 22 else False,
         deal_closed=bool(row[23]) if len(row) > 23 else False,
         referral_source=row[24] if len(row) > 24 else "",
+        blocker_note=row[25] if len(row) > 25 else "",
+        review_locked=bool(row[26]) if len(row) > 26 else False,
     )
 
 
@@ -401,7 +419,8 @@ def get_by_id(*, institution_id: str) -> InstitutionProfile | None:
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
                       contact_name, contact_title, valuation, deal_size, probability, legal_status,
                       nda_signed, offline_meeting_count, project_approved, committee_approved,
-                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source,
+                      blocker_note, review_locked
                FROM institutions WHERE institution_id = ? LIMIT 1""",
             (institution_id,),
         )
@@ -419,7 +438,8 @@ def get_by_name(*, tenant_id: str, name: str) -> InstitutionProfile | None:
                       preferences, concerns, ai_summary, updated_at, source_trace_id,
                       contact_name, contact_title, valuation, deal_size, probability, legal_status,
                       nda_signed, offline_meeting_count, project_approved, committee_approved,
-                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source
+                      onsite_dd_done, external_dd_done, agreement_signed, deal_closed, referral_source,
+                      blocker_note, review_locked
                FROM institutions WHERE tenant_id = ? AND name = ? LIMIT 1""",
             (tenant_id, name),
         )

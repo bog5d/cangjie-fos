@@ -622,6 +622,14 @@ def update_item(session_id: str, item_id: str, req: ItemUpdateRequest, backgroun
     return {"ok": True}
 
 
+@router.post("/sessions/{session_id}/gaps-to-tasks")
+def gaps_to_tasks(session_id: str):
+    """把本 session 的缺口项（标缺/未匹配）转成跟进任务，返回新建任务数。"""
+    from cangjie_fos.services.dd_match_service import create_tasks_from_gaps  # noqa: PLC0415
+    n = create_tasks_from_gaps(session_id)
+    return {"ok": True, "created": n}
+
+
 @router.post("/sessions/{session_id}/export")
 def export_session(session_id: str, req: ExportRequest, background_tasks: BackgroundTasks):
     """将已确认的匹配文件导出到本地文件夹，生成缺失清单，并异步同步到 GitHub 和学习飞轮。"""

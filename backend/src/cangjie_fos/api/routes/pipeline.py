@@ -69,6 +69,8 @@ def patch_institution(
         agreement_signed=body.agreement_signed,
         deal_closed=body.deal_closed,
         referral_source=body.referral_source,
+        blocker_note=body.blocker_note,
+        review_locked=body.review_locked,
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="not_found")

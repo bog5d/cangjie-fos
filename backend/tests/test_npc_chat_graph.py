@@ -656,6 +656,73 @@ class TestNpcAggregationTools:
             {"context": "明天有客户来"}, tenant_id="t1")
         assert "接待前" in result  # 降级模板
 
+    def test_check_consistency_tool(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.consistency_service.run_consistency_check",
+            lambda tenant_id, institution_filter="": {
+                "checked_sources": ["张总·红杉", "李总·高瓴"],
+                "inconsistencies": [{
+                    "topic": "毛利率", "verdict": "inconsistent", "note": "60% vs 40%",
+                    "entries": [{"source": "张总·红杉", "statement": "毛利率60%"},
+                                {"source": "李总·高瓴", "statement": "毛利率40%"}],
+                }],
+                "note": "对比了 2 场",
+            },
+        )
+        result = npc_tools.execute_tool("check_consistency", {}, tenant_id="t1")
+        assert "毛利率" in result
+        assert "冲突" in result
+
+    def test_check_consistency_none(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.consistency_service.run_consistency_check",
+            lambda tenant_id, institution_filter="": {
+                "checked_sources": ["张总·红杉", "张总·高瓴"], "inconsistencies": [], "note": "",
+            },
+        )
+        result = npc_tools.execute_tool("check_consistency", {}, tenant_id="t1")
+        assert "未发现明显不一致" in result
+
+    def test_interview_prep_with_memories(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.engine.coach.agent_tenant.resolve_memory_company_id",
+            lambda tenant_id: "company-1",
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.services.memory_db.db_exec_memory_list",
+            lambda cid, tag=None, limit=100: [
+                {"raw_text": "技术路线说成X", "correction": "标准口径是Y"},
+            ],
+        )
+        monkeypatch.setattr(
+            npc_tools, "_llm_interview_prep",
+            lambda name, mems: "□ 重申技术路线为Y，勿说X",
+        )
+        result = npc_tools.execute_tool(
+            "generate_interview_prep", {"executive_name": "CTO"}, tenant_id="t1")
+        assert "技术路线" in result
+
+    def test_interview_prep_no_memories(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.engine.coach.agent_tenant.resolve_memory_company_id",
+            lambda tenant_id: "company-1",
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.services.memory_db.db_exec_memory_list",
+            lambda cid, tag=None, limit=100: [],
+        )
+        result = npc_tools.execute_tool(
+            "generate_interview_prep", {"executive_name": "新高管"}, tenant_id="t1")
+        assert "错题本为空" in result or "暂无" in result
+
     def test_new_tools_registered(self):
         from cangjie_fos.services import npc_tools
 
@@ -663,3 +730,5 @@ class TestNpcAggregationTools:
         assert "summarize_common_weaknesses" in names
         assert "aggregate_institution_concerns" in names
         assert "generate_reception_checklist" in names
+        assert "check_consistency" in names
+        assert "generate_interview_prep" in names
