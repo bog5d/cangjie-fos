@@ -1,10 +1,15 @@
 """NPC Chat 工具集：DeepSeek 可按需调用的查询工具。
 
-四个徒弟：
-  1. get_institution_detail    — 查单家机构档案（参数提取型）
-  2. query_pipeline_overview   — 融资全景大盘（无参数型）
-  3. list_recent_roadshows     — 最近几场路演记录
-  4. list_pending_followups    — 未完成的待办行动项
+工具清单：
+  1. get_institution_detail        — 查单家机构档案（参数提取型）
+  2. query_pipeline_overview       — 融资全景大盘（无参数型）
+  3. list_recent_roadshows         — 最近几场路演记录
+  4. list_pending_followups        — 未完成的待办行动项
+  5. suggest_pitch_improvements    — 单场路演改进建议
+  6. generate_followup_message     — 生成跟进话术
+  7. get_deal_probability          — 成交概率
+  8. summarize_common_weaknesses   — 跨多场路演归纳共同弱点（聚合分析）
+  9. aggregate_institution_concerns— 跨机构归纳最关心的问题（聚合分析）
 """
 from __future__ import annotations
 
@@ -162,7 +167,47 @@ GET_DEAL_PROBABILITY: dict = {
     },
 }
 
-# 全量七个工具
+SUMMARIZE_COMMON_WEAKNESSES: dict = {
+    "type": "function",
+    "function": {
+        "name": "summarize_common_weaknesses",
+        "description": (
+            "跨多场路演聚合分析，归纳出反复出现的共同弱点 Top3。"
+            "当用户问「最近几场路演的共同问题/共同弱点是什么」「我总是在哪些地方讲不好」"
+            "「这段时间路演反复出现的短板」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "回看最近多少场已完成路演，默认 5，最多 20",
+                    "default": 5,
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+AGGREGATE_INSTITUTION_CONCERNS: dict = {
+    "type": "function",
+    "function": {
+        "name": "aggregate_institution_concerns",
+        "description": (
+            "跨机构聚合分析，归纳出投资机构最关心的 Top3 问题/关注点。"
+            "当用户问「最近机构最关心哪几个问题」「投资人普遍在意什么」"
+            "「大家反复问的点是什么」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+# 全量工具
 ALL_TOOLS = [
     GET_INSTITUTION_DETAIL,
     QUERY_PIPELINE_OVERVIEW,
@@ -171,6 +216,8 @@ ALL_TOOLS = [
     SUGGEST_PITCH_IMPROVEMENTS,
     GENERATE_FOLLOWUP_MESSAGE,
     GET_DEAL_PROBABILITY,
+    SUMMARIZE_COMMON_WEAKNESSES,
+    AGGREGATE_INSTITUTION_CONCERNS,
 ]
 
 # 向后兼容别名
@@ -199,6 +246,10 @@ def execute_tool(tool_name: str, arguments: dict, *, tenant_id: str) -> str:
             return _exec_generate_followup_message(arguments, tenant_id=tenant_id)
         if tool_name == "get_deal_probability":
             return _exec_get_deal_probability(arguments, tenant_id=tenant_id)
+        if tool_name == "summarize_common_weaknesses":
+            return _exec_summarize_common_weaknesses(arguments, tenant_id=tenant_id)
+        if tool_name == "aggregate_institution_concerns":
+            return _exec_aggregate_institution_concerns(tenant_id=tenant_id)
         return f"未知工具：{tool_name}"
     except Exception as e:
         logger.warning("npc_tool_exec_failed tool=%s: %s", tool_name, e)
@@ -445,3 +496,130 @@ def _exec_get_deal_probability(args: dict, *, tenant_id: str) -> str:
         lines.append("判断：概率偏低，建议复盘卡点或考虑重新激活策略。")
 
     return "\n".join(lines)
+
+
+# ── 聚合分析工具（跨会话/跨机构）──────────────────────────────────────────────
+
+def _collect_recent_weakness_texts(tenant_id: str, limit: int) -> list[str]:
+    """从最近 limit 场已完成路演里，摊平所有风险点的「问题简述」文本。"""
+    from cangjie_fos.services.pitch_job_db import db_job_list_risk_keywords
+
+    jobs = db_job_list_risk_keywords(tenant_id, limit=limit)
+    problems: list[str] = []
+    for job in jobs:
+        for rp in job.get("risk_points") or []:
+            if not isinstance(rp, dict):
+                continue
+            text = (rp.get("problem_summary") or rp.get("issue")
+                    or rp.get("description") or "").strip()
+            if text:
+                problems.append(text)
+    return problems
+
+
+def _exec_summarize_common_weaknesses(args: dict, *, tenant_id: str) -> str:
+    """跨多场路演归纳共同弱点 Top3。
+
+    数据来源：db_job_list_risk_keywords（最近 N 场已完成路演的全部风险点）。
+    先用 LLM 聚类；LLM 不可用时降级为词频统计，保证始终有可读输出。
+    """
+    limit = min(int(args.get("limit") or 5), 20)
+    problems = _collect_recent_weakness_texts(tenant_id, limit)
+    if not problems:
+        return "最近还没有带风险点的已完成路演记录，先跑几场路演复盘再来分析。"
+
+    n_jobs = min(limit, len(problems))
+    try:
+        summary = _llm_cluster_weaknesses(problems)
+        if summary:
+            return f"回看最近路演的 {len(problems)} 条风险点，反复出现的共同弱点：\n{summary}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("summarize_common_weaknesses LLM 失败，降级词频: %s", e)
+
+    # 降级：字符串出现次数粗排
+    freq: dict[str, int] = {}
+    for p in problems:
+        freq[p] = freq.get(p, 0) + 1
+    top = sorted(freq.items(), key=lambda x: -x[1])[:3]
+    lines = [f"回看最近的 {len(problems)} 条风险点，出现最多的问题："]
+    lines += [f"{i+1}. {p}（{c} 次）" for i, (p, c) in enumerate(top)]
+    return "\n".join(lines)
+
+
+def _exec_aggregate_institution_concerns(*, tenant_id: str) -> str:
+    """跨机构归纳最关心的问题 Top3。
+
+    数据来源：机构档案的 concerns 字段（路演情报持续沉淀进来）。
+    先用 LLM 归纳；不可用时降级为直接罗列。
+    """
+    from cangjie_fos.services.institution_store import list_institutions
+
+    insts = list_institutions(tenant_id=tenant_id, limit=500)
+    concern_texts: list[str] = []
+    for inst in insts:
+        c = (getattr(inst, "concerns", "") or "").strip()
+        if c:
+            concern_texts.append(f"{inst.name}：{c}")
+    if not concern_texts:
+        return "机构档案里还没有记录关注点。多传几场路演情报后，系统会自动沉淀机构关注点。"
+
+    try:
+        summary = _llm_summarize_concerns(concern_texts)
+        if summary:
+            return f"综合 {len(concern_texts)} 家机构的关注点，投资人最在意的：\n{summary}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("aggregate_institution_concerns LLM 失败，降级罗列: %s", e)
+
+    lines = [f"已记录关注点的机构（共 {len(concern_texts)} 家）："]
+    lines += [f"  {t}" for t in concern_texts[:8]]
+    return "\n".join(lines)
+
+
+def _llm_cluster_weaknesses(problems: list[str]) -> str:
+    """把多条风险点文本喂 LLM，归纳共同弱点 Top3（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    joined = "\n".join(f"- {p}" for p in problems[:60])
+    prompt = (
+        "以下是同一个人最近多场路演被指出的风险点/问题（每行一条）：\n"
+        f"{joined}\n\n"
+        "请归纳出反复出现、最值得优先改进的 3 个共同弱点。"
+        "每条一行，格式「1. 弱点概括：一句话说明+改进方向」，不要复述原文，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _llm_summarize_concerns(concern_texts: list[str]) -> str:
+    """把多家机构关注点喂 LLM，归纳共同关注 Top3（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    joined = "\n".join(f"- {t}" for t in concern_texts[:60])
+    prompt = (
+        "以下是多家投资机构对本项目的关注点/疑虑（每行一家）：\n"
+        f"{joined}\n\n"
+        "请归纳出投资人最普遍关心的 3 个问题。"
+        "每条一行，格式「1. 关注主题：一句话说明」，不要复述原文，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)

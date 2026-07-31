@@ -448,3 +448,125 @@ def resume_roadshow_analysis(
         job_update(job_id, status=PitchJobStatus.FAILED, **failure_kwargs)
         db_update_kwargs = {k: v for k, v in failure_kwargs.items() if k != "status"}
         db_job_update(job_id, status=str(PitchJobStatus.FAILED), substatus=None, **db_update_kwargs)
+
+
+# ── 通用会议纪要专属 Pipeline（单阶段：压缩 → ASR → 纪要 → 完成）─────────────────
+
+def run_meeting_minutes_job(
+    *,
+    job_id: str,
+    filename: str,
+    tenant_id: str,
+    meeting_title: str = "",
+    raw_bytes: bytes | None = None,
+    pre_written_path: Path | None = None,
+) -> None:
+    """会议纪要专属：压缩 + ASR + 纪要提炼一气呵成，无需确认发言人。
+
+    与路演两阶段不同，普通会议不必逐一标注说话人身份，上传即得纪要初稿。
+    """
+    if raw_bytes is None and pre_written_path is None:
+        raise ValueError("run_meeting_minutes_job: raw_bytes 和 pre_written_path 必须提供其一")
+
+    tmp: Path | None = None
+    audio_path: Path | None = None
+    try:
+        audio_dir = get_audio_dir()
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        suffix = Path(filename).suffix or ".bin"
+
+        if pre_written_path is not None:
+            orig_size = pre_written_path.stat().st_size
+            raw_for_compress = pre_written_path.read_bytes()
+            source_path: Path | None = pre_written_path
+        else:
+            assert raw_bytes is not None
+            orig_size = len(raw_bytes)
+            raw_for_compress = raw_bytes
+            source_path = None
+
+        # ── 压缩 ────────────────────────────────────────────────────────────
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.TRANSCRIBING),
+            substatus=f"正在压缩音频（{_mb(orig_size)}）…" if orig_size >= _COMPRESS_THRESHOLD_BYTES else "准备转写…",
+            category="06_通用会议纪要",
+            interviewee=meeting_title or "会议",
+            is_roadshow=0,
+        )
+        job_update(job_id, status=PitchJobStatus.TRANSCRIBING)
+
+        compressed = AudioService.smart_compress_media(raw_for_compress, filename_hint=filename)
+        data = compressed.data
+
+        audio_path = audio_dir / f"{job_id}{suffix}"
+        if source_path is not None and not getattr(compressed, "did_compress", False):
+            shutil.move(str(source_path), str(audio_path))
+            source_path = None
+        else:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+                f.write(data)
+                tmp = Path(f.name)
+            shutil.move(str(tmp), str(audio_path))
+            tmp = None
+            if source_path is not None:
+                source_path.unlink(missing_ok=True)
+
+        # ── ASR ──────────────────────────────────────────────────────────────
+        db_job_update(job_id, substatus="ASR 转写中，较长录音请耐心等待…")
+        words = transcribe_audio(audio_path)
+        word_count = len(words)
+
+        db_job_update(
+            job_id,
+            words_json=[w.model_dump() for w in words],
+            audio_path=str(audio_path),
+            status=str(PitchJobStatus.EVALUATING),
+            substatus=f"转写完成（{word_count} 词），正在提炼会议纪要…",
+        )
+        job_update(job_id, status=PitchJobStatus.EVALUATING)
+
+        # ── 会议纪要提炼（走 biz_type=='06_通用会议纪要' 分支）──────────────────
+        explicit_context: dict = {
+            "source": "meeting_minutes",
+            "filename": meeting_title or job_id,
+            "interviewee": meeting_title or "会议",
+            "biz_type": "06_通用会议纪要",
+        }
+        report, _excerpt = PitchGraphService.run_evaluation_with_state(
+            tenant_id=tenant_id,
+            words=words,
+            model_choice="deepseek",
+            explicit_context=explicit_context,
+            qa_text="",
+            company_background="",
+            trace_id=job_id,
+        )
+        report_dict = report.model_dump()
+
+        job_update(
+            job_id,
+            status=PitchJobStatus.COMPLETED,
+            report=report_dict,
+            exp_delta=10,
+            exp_reason="会议纪要生成完成",
+        )
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.COMPLETED),
+            original_report=report_dict,
+            exp_delta=10,
+            exp_reason="会议纪要生成完成",
+            substatus=None,
+        )
+        logger.info("meeting_minutes_done job_id=%s word_count=%d", job_id, word_count)
+
+    except Exception as e:  # noqa: BLE001
+        logger.exception("meeting_minutes_job_failed job_id=%s", job_id)
+        failure_kwargs = job_failure_update_kwargs(e, job_id=job_id)
+        job_update(job_id, status=PitchJobStatus.FAILED, **failure_kwargs)
+        db_update_kwargs = {k: v for k, v in failure_kwargs.items() if k != "status"}
+        db_job_update(job_id, status=str(PitchJobStatus.FAILED), substatus=None, **db_update_kwargs)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)

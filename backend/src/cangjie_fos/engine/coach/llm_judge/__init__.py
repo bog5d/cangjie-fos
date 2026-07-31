@@ -37,6 +37,9 @@ from cangjie_fos.engine.coach.llm_judge._refinement import (
 from cangjie_fos.engine.coach.llm_judge._roadshow import (
     _save_report, run_roadshow_intel_analysis,
 )
+from cangjie_fos.engine.coach.llm_judge._minutes import (
+    run_meeting_minutes_analysis,
+)
 
 __all__ = [
     "DISPLAY_NAME", "JUDGE_MODEL_KEYS", "MAX_COMPANY_BG_CHARS",
@@ -52,4 +55,5 @@ __all__ = [
     "distill_executive_memory_from_diff", "load_transcription_words",
     "refine_risk_point", "refine_single_risk_point", "polish_manual_risk_point",
     "run_roadshow_intel_analysis", "_save_report",
+    "run_meeting_minutes_analysis",
 ]

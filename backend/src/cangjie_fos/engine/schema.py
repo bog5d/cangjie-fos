@@ -267,6 +267,43 @@ class RoadshowIntelReport(BaseModel):
     )
 
 
+class MeetingMinutesReport(BaseModel):
+    """通用会议纪要报告：非路演场景（高管访谈 / 内部会 / 客户会）。
+
+    不打分、不做投资人情报分析，只把录音转写提炼成结构化纪要：
+    要点 / 决议 / 待办 / 遗留问题。供人工审核 15 分钟后导出。
+    """
+    report_type: Literal["meeting_minutes"] = Field(
+        default="meeting_minutes",
+        description="固定值，供前端识别报告类型",
+    )
+    meeting_title: str = Field(default="", description="会议主题/标题")
+    attendees: List[str] = Field(
+        default_factory=list,
+        description="参会人（能识别就填，识别不到留空），最多12人",
+    )
+    summary: str = Field(
+        ...,
+        description="150字内会议整体纪要：讨论了什么、达成了什么、下一步是什么",
+    )
+    key_points: List[str] = Field(
+        default_factory=list,
+        description="讨论要点（按主题归纳，每条一句话），最多12条",
+    )
+    decisions: List[str] = Field(
+        default_factory=list,
+        description="会上明确达成的决议/结论，每条一句话，最多8条",
+    )
+    action_items: List[IntelAction] = Field(
+        default_factory=list,
+        description="待办行动项（复用 IntelAction：source/actor/action/priority）",
+    )
+    open_questions: List[str] = Field(
+        default_factory=list,
+        description="未解决/待跟进的遗留问题，每条30字内，最多6条",
+    )
+
+
 class SessionAnnotation(BaseModel):
     """Phase 2 · Slice B —— 场次级团队注释（只读层）。
 

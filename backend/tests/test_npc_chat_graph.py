@@ -525,3 +525,108 @@ class TestNpcToolExecutors:
         )
         tag = npc_chat_graph._infer_memory_tag_from_user_text("今天天气怎么样", tenant_id="t1")
         assert tag == "default"
+
+
+class TestNpcAggregationTools:
+    """跨会话/跨机构聚合分析工具（summarize_common_weaknesses / aggregate_institution_concerns）。"""
+
+    def test_common_weaknesses_llm_summary(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        fake_jobs = [
+            {"job_id": "j1", "risk_points": [
+                {"problem_summary": "估值说不清"}, {"problem_summary": "语速太快"}], "created_at": 1.0},
+            {"job_id": "j2", "risk_points": [
+                {"problem_summary": "估值逻辑弱"}], "created_at": 2.0},
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_risk_keywords",
+            lambda tenant_id, limit=10: fake_jobs,
+        )
+        monkeypatch.setattr(
+            npc_tools, "_llm_cluster_weaknesses",
+            lambda problems: "1. 估值论证薄弱：准备对标数据\n2. 语速偏快：练习节奏",
+        )
+        result = npc_tools.execute_tool(
+            "summarize_common_weaknesses", {"limit": 5}, tenant_id="t1")
+        assert "估值论证薄弱" in result
+        assert "语速偏快" in result
+
+    def test_common_weaknesses_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_risk_keywords",
+            lambda tenant_id, limit=10: [],
+        )
+        result = npc_tools.execute_tool(
+            "summarize_common_weaknesses", {}, tenant_id="t1")
+        assert "还没有" in result
+
+    def test_common_weaknesses_llm_fail_degrades_to_frequency(self, monkeypatch):
+        """LLM 抛错时降级为词频统计，仍返回可读结果。"""
+        from cangjie_fos.services import npc_tools
+
+        fake_jobs = [
+            {"job_id": "j1", "risk_points": [{"problem_summary": "估值说不清"}], "created_at": 1.0},
+            {"job_id": "j2", "risk_points": [{"problem_summary": "估值说不清"}], "created_at": 2.0},
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_risk_keywords",
+            lambda tenant_id, limit=10: fake_jobs,
+        )
+
+        def _boom(problems):
+            raise RuntimeError("LLM down")
+
+        monkeypatch.setattr(npc_tools, "_llm_cluster_weaknesses", _boom)
+        result = npc_tools.execute_tool(
+            "summarize_common_weaknesses", {}, tenant_id="t1")
+        assert "估值说不清" in result
+        assert "2 次" in result  # 词频降级
+
+    def test_aggregate_concerns_llm_summary(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        class FakeInst:
+            def __init__(self, name, concerns):
+                self.name = name
+                self.concerns = concerns
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: [
+                FakeInst("红杉", "毛利率能否持续"),
+                FakeInst("高瓴", "退出路径不清晰"),
+            ],
+        )
+        monkeypatch.setattr(
+            npc_tools, "_llm_summarize_concerns",
+            lambda texts: "1. 盈利可持续性\n2. 退出路径\n3. 竞争壁垒",
+        )
+        result = npc_tools.execute_tool(
+            "aggregate_institution_concerns", {}, tenant_id="t1")
+        assert "盈利可持续性" in result
+        assert "退出路径" in result
+
+    def test_aggregate_concerns_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        class FakeInst:
+            name = "红杉"
+            concerns = ""
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: [FakeInst()],
+        )
+        result = npc_tools.execute_tool(
+            "aggregate_institution_concerns", {}, tenant_id="t1")
+        assert "还没有记录关注点" in result
+
+    def test_new_tools_registered(self):
+        from cangjie_fos.services import npc_tools
+
+        names = {t["function"]["name"] for t in npc_tools.ALL_TOOLS}
+        assert "summarize_common_weaknesses" in names
+        assert "aggregate_institution_concerns" in names

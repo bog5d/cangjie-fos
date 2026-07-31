@@ -583,3 +583,86 @@ class TestPackageGapWizardSmoke:
         assert blocking == [], (
             f"关闭数据包补全向导后仍有叠层：{blocking}"
         )
+
+
+# ── TestMeetingMinutesSmoke ────────────────────────────────────────────────────
+
+class TestMeetingMinutesSmoke:
+    """通用会议纪要向导浏览器冒烟。
+
+    每次改动 MeetingMinutesWizard.tsx 后必须跑此组测试。
+    服务未启动时自动 skip，不阻断常规 CI。
+    """
+
+    def test_minutes_button_visible(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """主页应有「会议纪要」入口按钮。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        btn = page.locator("button:has-text('会议纪要')")
+        try:
+            expect(btn).to_be_visible(timeout=8_000)
+            ui_reporter.capture(page, "登录后主页 — 「会议纪要」入口可见",
+                                status="ok", note="找到会议纪要按钮")
+        except AssertionError:
+            ui_reporter.fail(page, "登录后主页 — 找不到「会议纪要」入口",
+                             note="主页缺少会议纪要按钮")
+            raise
+
+    def test_minutes_wizard_opens_step1(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """点击「会议纪要」后向导 Step 1 应正常打开，显示会议主题输入。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('会议纪要')").click()
+        page.wait_for_timeout(800)
+        try:
+            expect(page.get_by_text("会议主题", exact=False).first).to_be_visible(timeout=6_000)
+            ui_reporter.capture(page, "会议纪要向导 Step 1 — 会议主题输入",
+                                status="ok", note="向导正常打开")
+        except AssertionError:
+            ui_reporter.fail(page, "会议纪要向导 Step 1 打开失败",
+                             note="点击后未出现会议主题输入")
+            raise
+
+    def test_minutes_wizard_has_start_button(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """Step 1 应有「开始生成纪要」按钮可见。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('会议纪要')").click()
+        page.wait_for_timeout(800)
+        try:
+            expect(page.locator("button:has-text('开始生成纪要')")).to_be_visible(timeout=6_000)
+            ui_reporter.capture(page, "Step 1 — 「开始生成纪要」按钮可见", status="ok")
+        except AssertionError:
+            ui_reporter.fail(page, "Step 1 — 缺少「开始生成纪要」按钮")
+            raise
+
+    def test_minutes_wizard_close_no_overlay(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        """关闭会议纪要向导后不应残留叠层（Chrome 叠层 Bug 回归）。"""
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('会议纪要')").click()
+        page.wait_for_timeout(800)
+
+        close = page.locator("button:has-text('✕'), button:has-text('×')").first
+        if close.is_visible():
+            close.click()
+        else:
+            page.keyboard.press("Escape")
+        page.wait_for_timeout(600)
+
+        blocking = page.evaluate(_OVERLAY_JS)
+        if blocking == []:
+            ui_reporter.capture(page, "关闭会议纪要向导后 — 无残留叠层",
+                                status="ok", note="无大面积 fixed 遮罩")
+        else:
+            ui_reporter.fail(page, "关闭会议纪要向导后仍有叠层",
+                             note=f"残留 {len(blocking)} 个遮罩")
+        assert blocking == [], f"关闭会议纪要向导后仍有叠层：{blocking}"
