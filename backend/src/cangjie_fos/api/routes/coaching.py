@@ -49,8 +49,13 @@ async def create_coaching_session(
     bp_text: str | None = Form(None),
     tenant_id: str = Form("default"),
     title: str = Form(""),
+    mode: str = Form("coach"),
 ):
-    """上传 BP 文件或粘贴逐字稿，提炼要点并创建教练会话。"""
+    """上传 BP/讲解稿 或粘贴逐字稿，提炼要点并创建教练会话。
+
+    mode: "coach"（路演陪练，默认）或 "tour"（接待/参观讲解陪练）。
+    """
+    mode = mode if mode in ("coach", "tour") else "coach"
     text = bp_text or ""
     if file and file.filename:
         from cangjie_fos.engine.document_reader import extract_text_from_files  # noqa: PLC0415
@@ -69,7 +74,7 @@ async def create_coaching_session(
         raise HTTPException(400, "必须提供 BP 文件或逐字稿文字")
 
     try:
-        result = create_session(tenant_id, text, title=title, mode="coach")
+        result = create_session(tenant_id, text, title=title, mode=mode)
     except ValueError as e:
         raise HTTPException(400, str(e))
     return result

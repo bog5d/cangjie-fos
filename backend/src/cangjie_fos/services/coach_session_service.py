@@ -28,10 +28,13 @@ def create_session(
     mode: str = "coach",
     bp_doc_path: str = "",
 ) -> dict:
-    """提炼 BP 要点并创建教练会话。返回 {session_id, key_points, count}。"""
-    key_points = extract_key_points(bp_text)
+    """提炼要点并创建教练会话。返回 {session_id, key_points, count}。
+
+    mode="tour" 时按接待/参观讲解口径提炼要点；其余按 BP 路演口径。
+    """
+    key_points = extract_key_points(bp_text, mode=mode)
     if not key_points:
-        raise ValueError("未能从 BP 提炼出任何要点，请检查逐字稿内容")
+        raise ValueError("未能从逐字稿提炼出任何要点，请检查内容")
 
     session_id = str(uuid.uuid4())
     with _connect() as conn:

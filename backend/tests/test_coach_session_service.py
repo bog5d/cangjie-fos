@@ -21,7 +21,7 @@ def _word(text, start, end, idx=0):
 @pytest.fixture()
 def patched(monkeypatch):
     """统一打桩：要点提炼 + ASR + 覆盖率判定。"""
-    monkeypatch.setattr(kp_svc, "_llm_extract_keypoints_chunk", lambda chunk: [dict(p) for p in _FAKE_POINTS])
+    monkeypatch.setattr(kp_svc, "_llm_extract_keypoints_chunk", lambda chunk, mode="coach": [dict(p) for p in _FAKE_POINTS])
     monkeypatch.setattr(sess_svc, "_transcribe", lambda path: [_word("我们做SaaS订阅", 0.0, 30.0, 0)])
     monkeypatch.setattr(score_svc, "_llm_judge_coverage", lambda kp, t: {
         "1": {"status": "covered"}, "2": {"status": "missed"},
@@ -38,9 +38,32 @@ def test_create_session_extracts_points(patched):
 
 
 def test_create_session_no_points_raises(monkeypatch):
-    monkeypatch.setattr(kp_svc, "_llm_extract_keypoints_chunk", lambda chunk: [])
+    monkeypatch.setattr(kp_svc, "_llm_extract_keypoints_chunk", lambda chunk, mode="coach": [])
     with pytest.raises(ValueError):
         sess_svc.create_session("zt", "空洞内容")
+
+
+def test_tour_mode_uses_tour_prompt_and_persists(monkeypatch):
+    """mode='tour' 时按讲解口径提炼要点，并写入 coaching_sessions.mode。"""
+    captured_modes: list[str] = []
+
+    def _fake_chunk(chunk, mode="coach"):
+        captured_modes.append(mode)
+        return [{"page_no": 1, "point_text": "介绍核心产品线", "weight": "core"}]
+
+    monkeypatch.setattr(kp_svc, "_llm_extract_keypoints_chunk", _fake_chunk)
+    result = sess_svc.create_session("zt", "讲解稿……", title="参观讲解", mode="tour")
+    assert result["count"] == 1
+    assert captured_modes == ["tour"]  # mode 正确透传到提炼器
+    got = sess_svc.get_session(result["session_id"])
+    assert got["mode"] == "tour"
+
+
+def test_tour_prompt_differs_from_coach():
+    """tour 与 coach 走不同的提炼 prompt（参观讲解 vs 投资人）。"""
+    import inspect
+    src = inspect.getsource(kp_svc._llm_extract_keypoints_chunk)
+    assert "讲解稿" in src and "参观" in src  # tour 分支存在
 
 
 def test_submit_round_scores_and_persists(patched):

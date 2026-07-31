@@ -25,7 +25,7 @@ def _word(text, start, end, idx=0):
 
 @pytest.fixture()
 def patched(monkeypatch):
-    monkeypatch.setattr(kp_svc, "_llm_extract_keypoints_chunk", lambda chunk: [
+    monkeypatch.setattr(kp_svc, "_llm_extract_keypoints_chunk", lambda chunk, mode="coach": [
         {"page_no": 1, "point_text": "SaaS 订阅模式", "weight": "core"},
         {"page_no": 1, "point_text": "30 家客户", "weight": "normal"},
     ])

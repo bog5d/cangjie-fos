@@ -624,9 +624,42 @@ class TestNpcAggregationTools:
             "aggregate_institution_concerns", {}, tenant_id="t1")
         assert "还没有记录关注点" in result
 
+    def test_reception_checklist_llm(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            npc_tools, "_llm_reception_checklist",
+            lambda ctx: "【接待前】预约会议室\n【接待中】参观讲解\n【接待后】更新档案",
+        )
+        result = npc_tools.execute_tool(
+            "generate_reception_checklist",
+            {"context": "明天红杉3人来参观"}, tenant_id="t1")
+        assert "接待前" in result
+        assert "参观讲解" in result
+
+    def test_reception_checklist_empty_context(self):
+        from cangjie_fos.services import npc_tools
+
+        result = npc_tools.execute_tool(
+            "generate_reception_checklist", {"context": "  "}, tenant_id="t1")
+        assert "来访背景" in result
+
+    def test_reception_checklist_llm_fail_degrades(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        def _boom(ctx):
+            raise RuntimeError("down")
+
+        monkeypatch.setattr(npc_tools, "_llm_reception_checklist", _boom)
+        result = npc_tools.execute_tool(
+            "generate_reception_checklist",
+            {"context": "明天有客户来"}, tenant_id="t1")
+        assert "接待前" in result  # 降级模板
+
     def test_new_tools_registered(self):
         from cangjie_fos.services import npc_tools
 
         names = {t["function"]["name"] for t in npc_tools.ALL_TOOLS}
         assert "summarize_common_weaknesses" in names
         assert "aggregate_institution_concerns" in names
+        assert "generate_reception_checklist" in names

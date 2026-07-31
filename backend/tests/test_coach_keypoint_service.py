@@ -10,7 +10,7 @@ def test_extract_key_points_basic(monkeypatch):
         {"page_no": 1, "point_text": "我们做 AI 尽调自动化", "weight": "core"},
         {"page_no": 2, "point_text": "已签约 30 家机构客户", "weight": "normal"},
     ]
-    monkeypatch.setattr(svc, "_llm_extract_keypoints_chunk", lambda chunk: list(fake))
+    monkeypatch.setattr(svc, "_llm_extract_keypoints_chunk", lambda chunk, mode="coach": list(fake))
     points = svc.extract_key_points("第一页：我们做...\n第二页：客户...")
     assert len(points) == 2
     assert points[0]["point_no"] == "1"
@@ -22,7 +22,7 @@ def test_extract_key_points_basic(monkeypatch):
 def test_extract_dedup_across_chunks(monkeypatch):
     """重叠分块产生的重复要点应被去重。"""
     dup = {"page_no": 1, "point_text": "我们做 AI 尽调自动化平台", "weight": "core"}
-    monkeypatch.setattr(svc, "_llm_extract_keypoints_chunk", lambda chunk: [dict(dup)])
+    monkeypatch.setattr(svc, "_llm_extract_keypoints_chunk", lambda chunk, mode="coach": [dict(dup)])
     # 强制多块：构造超长文本
     long_text = "我们做 AI 尽调自动化平台。" * 500
     points = svc.extract_key_points(long_text)

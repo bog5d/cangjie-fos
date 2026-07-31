@@ -207,6 +207,28 @@ AGGREGATE_INSTITUTION_CONCERNS: dict = {
     },
 }
 
+GENERATE_RECEPTION_CHECKLIST: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_reception_checklist",
+        "description": (
+            "为一次来访接待生成结构化准备清单（接待前/中/后各项待办）。"
+            "当用户说「帮我生成 XX 来访的接待清单」「明天有机构来参观，要准备什么」"
+            "「接待准备清单」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "type": "string",
+                    "description": "来访背景一句话，如「明天上午10点红杉资本3人来参观」",
+                }
+            },
+            "required": ["context"],
+        },
+    },
+}
+
 # 全量工具
 ALL_TOOLS = [
     GET_INSTITUTION_DETAIL,
@@ -218,6 +240,7 @@ ALL_TOOLS = [
     GET_DEAL_PROBABILITY,
     SUMMARIZE_COMMON_WEAKNESSES,
     AGGREGATE_INSTITUTION_CONCERNS,
+    GENERATE_RECEPTION_CHECKLIST,
 ]
 
 # 向后兼容别名
@@ -250,6 +273,8 @@ def execute_tool(tool_name: str, arguments: dict, *, tenant_id: str) -> str:
             return _exec_summarize_common_weaknesses(arguments, tenant_id=tenant_id)
         if tool_name == "aggregate_institution_concerns":
             return _exec_aggregate_institution_concerns(tenant_id=tenant_id)
+        if tool_name == "generate_reception_checklist":
+            return _exec_generate_reception_checklist(arguments)
         return f"未知工具：{tool_name}"
     except Exception as e:
         logger.warning("npc_tool_exec_failed tool=%s: %s", tool_name, e)
@@ -619,6 +644,47 @@ def _llm_summarize_concerns(concern_texts: list[str]) -> str:
             messages=[{"role": "user", "content": prompt}],
             max_tokens=400,
             temperature=0.3,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _exec_generate_reception_checklist(args: dict) -> str:
+    """为一次来访接待生成结构化准备清单。"""
+    context = (args.get("context") or "").strip()
+    if not context:
+        return "请描述一下来访背景（谁、什么时候来、几个人、是否参观等）。"
+    try:
+        return _llm_reception_checklist(context)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("generate_reception_checklist LLM 失败: %s", e)
+        return (
+            "生成失败，先给你一个通用接待清单模板：\n"
+            "【接待前】确认到访时间/人数 · 预约会议室 · 录入停车牌 · 准备接待物料/水果茶点 · 打印公司介绍\n"
+            "【接待中】前台引导 · 参观讲解 · 核心数据备好 · 全程录音（可用会议纪要提炼）\n"
+            "【接待后】送客 · 整理会议纪要 · 更新机构档案 · 安排跟进"
+        )
+
+
+def _llm_reception_checklist(context: str) -> str:
+    """调 LLM 生成接待准备清单（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    prompt = (
+        f"来访背景：{context}\n\n"
+        "请生成一份接待准备清单，分【接待前】【接待中】【接待后】三段，"
+        "每段列出具体待办（每条一行、动词开头、可勾选）。贴合投融资团队接待投资机构的场景，"
+        "涵盖会议室/停车/物料/讲解/录音纪要/跟进等要点。只输出清单，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.5,
         )
         return (resp.choices[0].message.content or "").strip()
 
