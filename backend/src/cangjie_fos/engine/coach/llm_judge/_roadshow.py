@@ -99,6 +99,9 @@ def run_roadshow_intel_analysis(
    - verbatim: 问题原话（逐字摘录，不润色）
    - underlying_concern: 问题背后的真实关切（30字内）
    - priority: high/medium/low
+   - theme: 问题主题归类，只能取以下之一：技术/市场/财务/竞争/合规/团队/其他
+            （技术=产品技术架构、市场=行业赛道客户、财务=收入成本估值、
+             竞争=竞品对比壁垒、合规=法务牌照监管、团队=创始人组织、其他=不属以上）
 5. interest_signals: 兴趣信号（最多10条），每条含：
    - speaker_id: 说话人ID
    - verbatim: 原话摘录（逐字）

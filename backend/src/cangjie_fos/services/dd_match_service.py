@@ -244,6 +244,31 @@ def _ensure_content_text(file_path: str) -> str:
     return text or ""
 
 
+def get_file_usage_history(file_path: str) -> list[dict]:
+    """反查某文件的「使用履历」：被哪些机构、在哪些尽调 session 里选中过。
+
+    材料库与资产台账可能扫描不同根目录，故以**文件名(basename)**为主匹配键，
+    同时兼容完整路径匹配，跨根目录也能关联。
+
+    返回按时间倒序的记录列表，每条：
+      {institution_name, checklist_name, created_at, requirement, confidence, user_confirmed}
+    """
+    name = os.path.basename(file_path) if file_path else ""
+    if not name:
+        return []
+    with _connect() as conn:
+        rows = conn.execute(
+            """SELECT s.institution_name, s.checklist_name, s.created_at,
+                      i.requirement, i.confidence, i.user_confirmed
+               FROM dd_match_items i
+               JOIN dd_match_sessions s ON i.session_id = s.session_id
+               WHERE i.matched_filename = ? OR i.matched_file_path = ?
+               ORDER BY s.created_at DESC""",
+            (name, file_path),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def _get_index_for_folder(folder_root: str) -> list[dict]:
     """返回文件夹下所有已索引文件。
     注意：不再过滤 readable=1，确保图片型PDF、加密文件等仍通过文件名参与匹配。

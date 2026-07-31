@@ -264,12 +264,23 @@ function TabBtn({ label, count, active, dot, onClick }: {
 
 // ─── 资产 Wiki 浮层 ──────────────────────────────────────────────────────────
 
+interface DdUsageRecord {
+  institution_name?: string;
+  checklist_name?: string;
+  created_at?: number;
+  requirement?: string;
+  confidence?: number;
+  user_confirmed?: number;
+}
+
 interface AssetWikiData {
   total_selected: number;
   total_shown: number;
   selection_rate: number;
   institutions: { institution: string; times: number }[];
   last_selected: number | null;
+  dd_usage?: DdUsageRecord[];
+  dd_institutions?: string[];
 }
 
 function AssetWikiPanel({ path, onClose }: { path: string; onClose: () => void }) {
@@ -287,27 +298,64 @@ function AssetWikiPanel({ path, onClose }: { path: string; onClose: () => void }
     try { return new Date(ts * 1000).toISOString().slice(0, 10); } catch { return "—"; }
   }
 
+  const ddUsage = data?.dd_usage ?? [];
+  const ddInstitutions = data?.dd_institutions ?? [];
+  const hasAny = !!data && (data.total_shown > 0 || ddUsage.length > 0);
+
   return (
     <tr className="bg-slate-900/60">
       <td colSpan={7} className="px-4 pb-3 pt-0">
         <div className="rounded-xl border border-white/8 bg-black/30 p-3 text-xs">
           {loading ? (
             <p className="text-slate-500">加载历史…</p>
-          ) : data && data.total_shown > 0 ? (
-            <div className="space-y-1.5">
-              <div className="flex gap-4 text-slate-400">
-                <span>📤 被选中 <strong className="text-white">{data.total_selected}</strong> 次</span>
-                <span>出现 <strong className="text-white">{data.total_shown}</strong> 次</span>
-                <span>选中率 <strong className="text-white">{Math.round(data.selection_rate * 100)}%</strong></span>
-                <span>最近选中 <strong className="text-white">{fmtDate(data.last_selected)}</strong></span>
-              </div>
-              {data.institutions.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {data.institutions.map(i => (
-                    <span key={i.institution} className="rounded border border-cyan-500/20 bg-cyan-950/20 px-1.5 py-0.5 text-[10px] text-cyan-400">
-                      {i.institution} ×{i.times}
-                    </span>
-                  ))}
+          ) : hasAny ? (
+            <div className="space-y-2">
+              {data && data.total_shown > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex gap-4 text-slate-400">
+                    <span>📤 被选中 <strong className="text-white">{data.total_selected}</strong> 次</span>
+                    <span>出现 <strong className="text-white">{data.total_shown}</strong> 次</span>
+                    <span>选中率 <strong className="text-white">{Math.round(data.selection_rate * 100)}%</strong></span>
+                    <span>最近选中 <strong className="text-white">{fmtDate(data.last_selected)}</strong></span>
+                  </div>
+                  {data.institutions.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {data.institutions.map(i => (
+                        <span key={i.institution} className="rounded border border-cyan-500/20 bg-cyan-950/20 px-1.5 py-0.5 text-[10px] text-cyan-400">
+                          {i.institution} ×{i.times}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 尽调响应台使用履历（哪些机构、哪些尽调要过这份文件）*/}
+              {ddUsage.length > 0 && (
+                <div className="space-y-1.5 border-t border-white/8 pt-2">
+                  <p className="text-[11px] font-bold text-indigo-300">
+                    📋 尽调使用履历（{ddUsage.length} 条）
+                  </p>
+                  {ddInstitutions.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {ddInstitutions.map(name => (
+                        <span key={name} className="rounded border border-indigo-500/25 bg-indigo-950/25 px-1.5 py-0.5 text-[10px] text-indigo-300">
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <ul className="space-y-0.5">
+                    {ddUsage.slice(0, 6).map((u, i) => (
+                      <li key={i} className="text-[10px] text-slate-400">
+                        <span className="text-slate-500">{fmtDate(u.created_at ?? null)}</span>
+                        {" · "}
+                        <span className="text-slate-300">{u.institution_name || "（未填机构）"}</span>
+                        {u.requirement ? <span className="text-slate-500">：{u.requirement}</span> : null}
+                        {u.user_confirmed ? <span className="text-emerald-400"> ✓已确认</span> : null}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

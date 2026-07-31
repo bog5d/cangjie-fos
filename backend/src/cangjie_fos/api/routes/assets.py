@@ -340,9 +340,32 @@ def get_asset_wiki_route(relative_path: str) -> dict[str, Any]:
     """返回指定资产的 wiki 摘要：选用历史、关联机构、选中率。
 
     `relative_path` 使用路径参数（支持含 `/` 的多级路径）。
-    数据来源：match_outcomes 表聚合，零延迟。
+    数据来源：
+      - match_outcomes 表聚合（老 MatchMaker 选用历史）
+      - dd_match_items ⋈ dd_match_sessions（尽调响应台使用履历，按文件名关联）
     """
-    return db_asset_wiki_summary(relative_path)
+    briefing = db_asset_wiki_summary(relative_path)
+
+    # ── 尽调响应台使用履历（哪些机构、哪些尽调要过这份文件）──────────────────
+    try:
+        from cangjie_fos.services.dd_match_service import get_file_usage_history  # noqa: PLC0415
+
+        dd_usage = get_file_usage_history(relative_path)
+        briefing["dd_usage"] = dd_usage
+        # 关联机构去重（供前端「哪些机构要过」一栏）
+        dd_institutions = sorted({
+            (u.get("institution_name") or "").strip()
+            for u in dd_usage
+            if (u.get("institution_name") or "").strip()
+        })
+        briefing["dd_institutions"] = dd_institutions
+        if dd_usage and not briefing.get("has_history"):
+            briefing["has_history"] = True
+    except Exception:  # noqa: BLE001
+        briefing.setdefault("dd_usage", [])
+        briefing.setdefault("dd_institutions", [])
+
+    return briefing
 
 
 # ---------------------------------------------------------------------------

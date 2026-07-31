@@ -39,6 +39,9 @@ const SIGNAL_LABEL: Record<string, string> = {
   neutral: "中性陈述",
 };
 
+const THEME_ORDER = ["技术", "市场", "财务", "竞争", "合规", "团队", "其他"] as const;
+const THEME_BADGE = "bg-indigo-500/15 text-indigo-300 border-indigo-500/30";
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan/70 mb-3 mt-5 first:mt-0">
@@ -86,6 +89,15 @@ function QuestionCard({
             <option value="medium">关注</option>
             <option value="low">礼节</option>
           </select>
+          <select
+            className="rounded border border-white/15 bg-black/35 px-2 py-0.5 text-[10px] text-slate-300 outline-none"
+            value={q.theme ?? "其他"}
+            onChange={(e) => onChange({ ...q, theme: e.target.value as IntelQuestion["theme"] })}
+          >
+            {THEME_ORDER.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </div>
         <textarea
           className={TA}
@@ -116,6 +128,9 @@ function QuestionCard({
         <Badge cls={PRIORITY_BADGE[q.priority] ?? PRIORITY_BADGE.medium}>
           {q.priority === "high" ? "核心" : q.priority === "medium" ? "关注" : "礼节"}
         </Badge>
+        {q.theme && q.theme !== "其他" && (
+          <Badge cls={THEME_BADGE}>🏷 {q.theme}</Badge>
+        )}
       </div>
       <p className="text-xs text-slate-200 leading-relaxed mb-2">「{q.verbatim}」</p>
       <p className="text-[11px] text-slate-400">
@@ -267,6 +282,17 @@ export default function RoadshowIntelView({ report, interviewee, onSave, saving 
   }
 
   const cur = editMode ? draft : report;
+  const [groupByTheme, setGroupByTheme] = useState(false);
+
+  // 按主题分组（保持 THEME_ORDER 顺序），供「按主题学习」视图
+  const questionsByTheme = THEME_ORDER
+    .map((theme) => ({
+      theme,
+      items: cur.key_questions
+        .map((q, i) => ({ q, i }))
+        .filter(({ q }) => (q.theme ?? "其他") === theme),
+    }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="space-y-1 pb-8">
@@ -332,9 +358,24 @@ export default function RoadshowIntelView({ report, interviewee, onSave, saving 
       {/* Key questions */}
       {cur.key_questions.length > 0 && (
         <>
-          <SectionTitle>对方关键问题 ({cur.key_questions.length})</SectionTitle>
-          <div className="space-y-2">
-            {cur.key_questions.map((q, i) => (
+          <div className="flex items-center justify-between">
+            <SectionTitle>对方关键问题 ({cur.key_questions.length})</SectionTitle>
+            {!editMode && (
+              <button
+                type="button"
+                onClick={() => setGroupByTheme((v) => !v)}
+                className={`text-[10px] rounded px-2 py-0.5 border transition-colors ${
+                  groupByTheme
+                    ? "text-indigo-300 border-indigo-400/40 bg-indigo-500/10"
+                    : "text-slate-400 border-slate-500/30 hover:text-slate-300"
+                }`}
+              >
+                {groupByTheme ? "✓ 按主题分组" : "🏷 按主题分组"}
+              </button>
+            )}
+          </div>
+          {(() => {
+            const renderCard = (q: IntelQuestion, i: number) => (
               <QuestionCard
                 key={i}
                 q={q}
@@ -347,8 +388,25 @@ export default function RoadshowIntelView({ report, interviewee, onSave, saving 
                   }))
                 }
               />
-            ))}
-          </div>
+            );
+            if (groupByTheme && !editMode) {
+              return (
+                <div className="space-y-4">
+                  {questionsByTheme.map((g) => (
+                    <div key={g.theme}>
+                      <p className="mb-1.5 text-[11px] font-bold text-indigo-300">
+                        🏷 {g.theme}（{g.items.length}）
+                      </p>
+                      <div className="space-y-2">
+                        {g.items.map(({ q, i }) => renderCard(q, i))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+            return <div className="space-y-2">{cur.key_questions.map((q, i) => renderCard(q, i))}</div>;
+          })()}
         </>
       )}
 

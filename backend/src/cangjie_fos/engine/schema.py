@@ -179,6 +179,10 @@ class IntelQuestion(BaseModel):
         default="medium",
         description="该问题的重要程度：high=核心关切、medium=一般关注、low=礼节性提问",
     )
+    theme: Literal["技术", "市场", "财务", "竞争", "合规", "团队", "其他"] = Field(
+        default="其他",
+        description="问题主题归类，供按主题学习：技术/市场/财务/竞争/合规/团队/其他",
+    )
 
 
 class IntelSignal(BaseModel):

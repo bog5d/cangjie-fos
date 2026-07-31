@@ -420,27 +420,39 @@ def _build_roadshow_html(report: dict, meta: dict) -> str:
 
     sections: list[str] = []
 
-    # ── 关键问题 ──────────────────────────────────────────────────────────────
+    # ── 关键问题（按主题分组，供学习）──────────────────────────────────────────
     key_questions = report.get("key_questions") or []
     if key_questions:
-        rows = ""
-        for i, q in enumerate(key_questions, 1):
-            pri = q.get("priority", "medium")
-            col = priority_color.get(pri, "#f59e0b")
-            pri_label = {"high": "核心", "medium": "关注", "low": "礼节"}.get(pri, pri)
-            speaker = f'<span class="tag">{e(q["speaker_id"])}</span> ' if q.get("speaker_id") else ""
-            rows += (
-                f"<tr><td>{i}</td><td>{speaker}"
-                f'<span class="tag" style="background:{col}22;color:{col};border-color:{col}44">{e(pri_label)}</span>'
-                f"</td>"
-                f"<td>「{e(q.get('verbatim',''))}」</td>"
-                f"<td>{e(q.get('underlying_concern',''))}</td></tr>"
+        # 按 theme 分组，主题内保持原顺序；主题按固定顺序展示
+        theme_order = ["技术", "市场", "财务", "竞争", "合规", "团队", "其他"]
+        grouped: dict[str, list] = {}
+        for q in key_questions:
+            grouped.setdefault(q.get("theme") or "其他", []).append(q)
+
+        blocks = ""
+        for theme in theme_order:
+            group = grouped.get(theme)
+            if not group:
+                continue
+            rows = ""
+            for i, q in enumerate(group, 1):
+                pri = q.get("priority", "medium")
+                col = priority_color.get(pri, "#f59e0b")
+                pri_label = {"high": "核心", "medium": "关注", "low": "礼节"}.get(pri, pri)
+                speaker = f'<span class="tag">{e(q["speaker_id"])}</span> ' if q.get("speaker_id") else ""
+                rows += (
+                    f"<tr><td>{i}</td><td>{speaker}"
+                    f'<span class="tag" style="background:{col}22;color:{col};border-color:{col}44">{e(pri_label)}</span>'
+                    f"</td>"
+                    f"<td>「{e(q.get('verbatim',''))}」</td>"
+                    f"<td>{e(q.get('underlying_concern',''))}</td></tr>"
+                )
+            blocks += (
+                f'<h3 class="theme-head">🏷 {e(theme)}（{len(group)}）</h3>'
+                f'<table><thead><tr><th>#</th><th>优先级</th><th>原话</th><th>背后关切</th></tr></thead>'
+                f'<tbody>{rows}</tbody></table>'
             )
-        sections.append(
-            f'<h2>对方关键问题 ({len(key_questions)})</h2>'
-            f'<table><thead><tr><th>#</th><th>优先级</th><th>原话</th><th>背后关切</th></tr></thead>'
-            f'<tbody>{rows}</tbody></table>'
-        )
+        sections.append(f'<h2>对方关键问题 ({len(key_questions)}) · 按主题</h2>{blocks}')
 
     # ── 兴趣信号 ──────────────────────────────────────────────────────────────
     interest_signals = report.get("interest_signals") or []
@@ -522,6 +534,7 @@ def _build_roadshow_html(report: dict, meta: dict) -> str:
   .stage-badge{{display:inline-block;padding:4px 10px;border-radius:6px;font-size:.8em;border:1px solid #334155;background:#1e293b;color:#94a3b8}}
   .summary{{margin-top:12px;color:#cbd5e1;line-height:1.7;font-size:.9em}}
   h2{{color:#67e8f9;font-size:1em;text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid #1e3a5f;padding-bottom:6px;margin:24px 0 12px}}
+  h3.theme-head{{color:#a5b4fc;font-size:.9em;margin:16px 0 6px;font-weight:600}}
   table{{width:100%;border-collapse:collapse;font-size:.85em;margin-bottom:16px}}
   th{{background:#1e293b;color:#94a3b8;text-align:left;padding:8px 10px;font-weight:600;font-size:.75em;text-transform:uppercase;letter-spacing:.05em}}
   td{{padding:8px 10px;border-bottom:1px solid #1e293b;vertical-align:top;line-height:1.6}}
