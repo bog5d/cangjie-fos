@@ -200,6 +200,62 @@ def run_pitch_upload_job(
             tmp.unlink(missing_ok=True)  # only unlink if move failed
 
 
+def sync_roadshow_institution(
+    tenant_id: str, institution_name: str, report_dict: dict, job_id: str,
+) -> bool:
+    """路演完成后把机构写入/更新 Pipeline CRM。返回是否实际写入。
+
+    F4 人工确认锁：机构档案被人工锁定（review_locked）后，AI 自动分析不再覆盖，
+    落实"谁路演谁主笔"，避免手动确认的版本被后台分析冲掉 → 返回 False。
+    占位符机构名（"待确认_YYYY-MM-DD"）或空名 → 不写，返回 False。
+    """
+    institution_name = (institution_name or "").strip()
+    if not institution_name or institution_name.startswith("待确认_"):
+        return False
+
+    from cangjie_fos.services.institution_store import get_by_name, upsert_institution
+    from cangjie_fos.schemas.institution import (
+        InstitutionProfile, InstitutionThermal, PipelineStage,
+    )
+    import time as _time, uuid as _uuid
+
+    existing = get_by_name(tenant_id=tenant_id, name=institution_name)
+    if existing and getattr(existing, "review_locked", False):
+        logger.info(
+            "roadshow institution_crm_sync 跳过（已人工锁定）job_id=%s inst=%s",
+            job_id, institution_name,
+        )
+        return False
+
+    stage_order = {"targeted": 0, "pitched": 1, "dd": 2, "term_sheet": 3}
+    new_stage = PipelineStage.PITCHED
+    if existing and stage_order.get(existing.stage.value, 0) > stage_order["pitched"]:
+        new_stage = existing.stage  # 保留更高阶段
+
+    atmosphere = (report_dict or {}).get("meeting_atmosphere", "warm")
+    thermal_map = {"hot": InstitutionThermal.HOT, "cold": InstitutionThermal.COLD}
+    thermal = thermal_map.get(atmosphere, InstitutionThermal.WARM)
+
+    profile = InstitutionProfile(
+        institution_id=existing.institution_id if existing else _uuid.uuid4().hex,
+        tenant_id=tenant_id,
+        name=institution_name,
+        stage=new_stage,
+        thermal=thermal,
+        preferences=existing.preferences if existing else "",
+        concerns=existing.concerns if existing else "",
+        ai_summary=existing.ai_summary if existing else "",
+        updated_at=_time.time(),
+        source_trace_id=job_id,
+    )
+    upsert_institution(profile)
+    logger.info(
+        "roadshow institution_crm_synced job_id=%s inst=%s stage=%s",
+        job_id, institution_name, new_stage,
+    )
+    return True
+
+
 # ── 路演分析专属 Pipeline ──────────────────────────────────────────────────────
 
 def run_roadshow_asr_job(
@@ -383,55 +439,14 @@ def resume_roadshow_analysis(
                 logger.warning("roadshow participants_save failed job_id=%s: %s", job_id, pe)
 
         # ── 自动写入 Pipeline CRM（数据打通）──────────────────────────────────
-        # 路演完成后自动将机构写入/更新 Pipeline CRM，使 War Room 大屏实时反映
         institution_name = (job_row.get("institution_id") or "").strip()
-        # 过滤占位符（"待确认_YYYY-MM-DD" 格式）
-        if institution_name and not institution_name.startswith("待确认_"):
-            try:
-                from cangjie_fos.services.institution_store import (  # noqa: PLC0415
-                    get_by_name, upsert_institution,
-                )
-                from cangjie_fos.schemas.institution import (  # noqa: PLC0415
-                    InstitutionProfile, InstitutionThermal, PipelineStage,
-                )
-                import time as _time, uuid as _uuid  # noqa: PLC0415
-
-                existing = get_by_name(tenant_id=tenant_id, name=institution_name)
-                # 已有机构保留阶段（不降级：如已是 DD，维持 DD）
-                stage_order = {
-                    "targeted": 0, "pitched": 1, "dd": 2, "term_sheet": 3,
-                }
-                new_stage = PipelineStage.PITCHED
-                if existing and stage_order.get(existing.stage.value, 0) > stage_order["pitched"]:
-                    new_stage = existing.stage  # 保留更高阶段
-
-                # 从路演报告中提取 meeting_atmosphere → 机构热度
-                atmosphere = report_dict.get("meeting_atmosphere", "warm")
-                thermal_map = {"hot": InstitutionThermal.HOT, "cold": InstitutionThermal.COLD}
-                thermal = thermal_map.get(atmosphere, InstitutionThermal.WARM)
-
-                profile = InstitutionProfile(
-                    institution_id=existing.institution_id if existing else _uuid.uuid4().hex,
-                    tenant_id=tenant_id,
-                    name=institution_name,
-                    stage=new_stage,
-                    thermal=thermal,
-                    preferences=existing.preferences if existing else "",
-                    concerns=existing.concerns if existing else "",
-                    ai_summary=existing.ai_summary if existing else "",
-                    updated_at=_time.time(),
-                    source_trace_id=job_id,
-                )
-                upsert_institution(profile)
-                logger.info(
-                    "roadshow institution_crm_synced job_id=%s inst=%s stage=%s",
-                    job_id, institution_name, new_stage,
-                )
-            except Exception as crm_exc:  # noqa: BLE001
-                logger.warning(
-                    "roadshow institution_crm_sync 失败（非致命）job_id=%s exc=%s",
-                    job_id, crm_exc,
-                )
+        try:
+            sync_roadshow_institution(tenant_id, institution_name, report_dict, job_id)
+        except Exception as crm_exc:  # noqa: BLE001
+            logger.warning(
+                "roadshow institution_crm_sync 失败（非致命）job_id=%s exc=%s",
+                job_id, crm_exc,
+            )
 
         # GitHub 同步（非阻塞）
         try:
@@ -448,3 +463,125 @@ def resume_roadshow_analysis(
         job_update(job_id, status=PitchJobStatus.FAILED, **failure_kwargs)
         db_update_kwargs = {k: v for k, v in failure_kwargs.items() if k != "status"}
         db_job_update(job_id, status=str(PitchJobStatus.FAILED), substatus=None, **db_update_kwargs)
+
+
+# ── 通用会议纪要专属 Pipeline（单阶段：压缩 → ASR → 纪要 → 完成）─────────────────
+
+def run_meeting_minutes_job(
+    *,
+    job_id: str,
+    filename: str,
+    tenant_id: str,
+    meeting_title: str = "",
+    raw_bytes: bytes | None = None,
+    pre_written_path: Path | None = None,
+) -> None:
+    """会议纪要专属：压缩 + ASR + 纪要提炼一气呵成，无需确认发言人。
+
+    与路演两阶段不同，普通会议不必逐一标注说话人身份，上传即得纪要初稿。
+    """
+    if raw_bytes is None and pre_written_path is None:
+        raise ValueError("run_meeting_minutes_job: raw_bytes 和 pre_written_path 必须提供其一")
+
+    tmp: Path | None = None
+    audio_path: Path | None = None
+    try:
+        audio_dir = get_audio_dir()
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        suffix = Path(filename).suffix or ".bin"
+
+        if pre_written_path is not None:
+            orig_size = pre_written_path.stat().st_size
+            raw_for_compress = pre_written_path.read_bytes()
+            source_path: Path | None = pre_written_path
+        else:
+            assert raw_bytes is not None
+            orig_size = len(raw_bytes)
+            raw_for_compress = raw_bytes
+            source_path = None
+
+        # ── 压缩 ────────────────────────────────────────────────────────────
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.TRANSCRIBING),
+            substatus=f"正在压缩音频（{_mb(orig_size)}）…" if orig_size >= _COMPRESS_THRESHOLD_BYTES else "准备转写…",
+            category="06_通用会议纪要",
+            interviewee=meeting_title or "会议",
+            is_roadshow=0,
+        )
+        job_update(job_id, status=PitchJobStatus.TRANSCRIBING)
+
+        compressed = AudioService.smart_compress_media(raw_for_compress, filename_hint=filename)
+        data = compressed.data
+
+        audio_path = audio_dir / f"{job_id}{suffix}"
+        if source_path is not None and not getattr(compressed, "did_compress", False):
+            shutil.move(str(source_path), str(audio_path))
+            source_path = None
+        else:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+                f.write(data)
+                tmp = Path(f.name)
+            shutil.move(str(tmp), str(audio_path))
+            tmp = None
+            if source_path is not None:
+                source_path.unlink(missing_ok=True)
+
+        # ── ASR ──────────────────────────────────────────────────────────────
+        db_job_update(job_id, substatus="ASR 转写中，较长录音请耐心等待…")
+        words = transcribe_audio(audio_path)
+        word_count = len(words)
+
+        db_job_update(
+            job_id,
+            words_json=[w.model_dump() for w in words],
+            audio_path=str(audio_path),
+            status=str(PitchJobStatus.EVALUATING),
+            substatus=f"转写完成（{word_count} 词），正在提炼会议纪要…",
+        )
+        job_update(job_id, status=PitchJobStatus.EVALUATING)
+
+        # ── 会议纪要提炼（走 biz_type=='06_通用会议纪要' 分支）──────────────────
+        explicit_context: dict = {
+            "source": "meeting_minutes",
+            "filename": meeting_title or job_id,
+            "interviewee": meeting_title or "会议",
+            "biz_type": "06_通用会议纪要",
+        }
+        report, _excerpt = PitchGraphService.run_evaluation_with_state(
+            tenant_id=tenant_id,
+            words=words,
+            model_choice="deepseek",
+            explicit_context=explicit_context,
+            qa_text="",
+            company_background="",
+            trace_id=job_id,
+        )
+        report_dict = report.model_dump()
+
+        job_update(
+            job_id,
+            status=PitchJobStatus.COMPLETED,
+            report=report_dict,
+            exp_delta=10,
+            exp_reason="会议纪要生成完成",
+        )
+        db_job_update(
+            job_id,
+            status=str(PitchJobStatus.COMPLETED),
+            original_report=report_dict,
+            exp_delta=10,
+            exp_reason="会议纪要生成完成",
+            substatus=None,
+        )
+        logger.info("meeting_minutes_done job_id=%s word_count=%d", job_id, word_count)
+
+    except Exception as e:  # noqa: BLE001
+        logger.exception("meeting_minutes_job_failed job_id=%s", job_id)
+        failure_kwargs = job_failure_update_kwargs(e, job_id=job_id)
+        job_update(job_id, status=PitchJobStatus.FAILED, **failure_kwargs)
+        db_update_kwargs = {k: v for k, v in failure_kwargs.items() if k != "status"}
+        db_job_update(job_id, status=str(PitchJobStatus.FAILED), substatus=None, **db_update_kwargs)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)

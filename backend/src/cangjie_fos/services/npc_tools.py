@@ -1,10 +1,15 @@
 """NPC Chat 工具集：DeepSeek 可按需调用的查询工具。
 
-四个徒弟：
-  1. get_institution_detail    — 查单家机构档案（参数提取型）
-  2. query_pipeline_overview   — 融资全景大盘（无参数型）
-  3. list_recent_roadshows     — 最近几场路演记录
-  4. list_pending_followups    — 未完成的待办行动项
+工具清单：
+  1. get_institution_detail        — 查单家机构档案（参数提取型）
+  2. query_pipeline_overview       — 融资全景大盘（无参数型）
+  3. list_recent_roadshows         — 最近几场路演记录
+  4. list_pending_followups        — 未完成的待办行动项
+  5. suggest_pitch_improvements    — 单场路演改进建议
+  6. generate_followup_message     — 生成跟进话术
+  7. get_deal_probability          — 成交概率
+  8. summarize_common_weaknesses   — 跨多场路演归纳共同弱点（聚合分析）
+  9. aggregate_institution_concerns— 跨机构归纳最关心的问题（聚合分析）
 """
 from __future__ import annotations
 
@@ -162,7 +167,112 @@ GET_DEAL_PROBABILITY: dict = {
     },
 }
 
-# 全量七个工具
+SUMMARIZE_COMMON_WEAKNESSES: dict = {
+    "type": "function",
+    "function": {
+        "name": "summarize_common_weaknesses",
+        "description": (
+            "跨多场路演聚合分析，归纳出反复出现的共同弱点 Top3。"
+            "当用户问「最近几场路演的共同问题/共同弱点是什么」「我总是在哪些地方讲不好」"
+            "「这段时间路演反复出现的短板」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "回看最近多少场已完成路演，默认 5，最多 20",
+                    "default": 5,
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+AGGREGATE_INSTITUTION_CONCERNS: dict = {
+    "type": "function",
+    "function": {
+        "name": "aggregate_institution_concerns",
+        "description": (
+            "跨机构聚合分析，归纳出投资机构最关心的 Top3 问题/关注点。"
+            "当用户问「最近机构最关心哪几个问题」「投资人普遍在意什么」"
+            "「大家反复问的点是什么」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+CHECK_CONSISTENCY: dict = {
+    "type": "function",
+    "function": {
+        "name": "check_consistency",
+        "description": (
+            "跨最近几场路演/高管访谈录音，检查关键指标口径是否一致（如营收/估值/技术路线"
+            "在不同场次、不同人之间对不对得上）。当用户问「口径一致吗」「CEO和我说的对得上吗」"
+            "「不同高管说的一致吗」「有没有前后矛盾/数字对不上」时调用。",
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "只看某家机构相关录音时填；不填则看全部最近录音",
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+GENERATE_INTERVIEW_PREP: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_interview_prep",
+        "description": (
+            "为某位高管生成访谈前重点准备清单（基于其历史易错点/错题本）。"
+            "当用户说「帮我准备访谈 XX 高管」「访谈前该重点核查什么」「给 CTO 出个访谈准备清单」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "executive_name": {
+                    "type": "string",
+                    "description": "高管姓名/标识，如 张总、CTO",
+                }
+            },
+            "required": ["executive_name"],
+        },
+    },
+}
+
+GENERATE_RECEPTION_CHECKLIST: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_reception_checklist",
+        "description": (
+            "为一次来访接待生成结构化准备清单（接待前/中/后各项待办）。"
+            "当用户说「帮我生成 XX 来访的接待清单」「明天有机构来参观，要准备什么」"
+            "「接待准备清单」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "type": "string",
+                    "description": "来访背景一句话，如「明天上午10点红杉资本3人来参观」",
+                }
+            },
+            "required": ["context"],
+        },
+    },
+}
+
+# 全量工具
 ALL_TOOLS = [
     GET_INSTITUTION_DETAIL,
     QUERY_PIPELINE_OVERVIEW,
@@ -171,6 +281,11 @@ ALL_TOOLS = [
     SUGGEST_PITCH_IMPROVEMENTS,
     GENERATE_FOLLOWUP_MESSAGE,
     GET_DEAL_PROBABILITY,
+    SUMMARIZE_COMMON_WEAKNESSES,
+    AGGREGATE_INSTITUTION_CONCERNS,
+    CHECK_CONSISTENCY,
+    GENERATE_INTERVIEW_PREP,
+    GENERATE_RECEPTION_CHECKLIST,
 ]
 
 # 向后兼容别名
@@ -199,6 +314,16 @@ def execute_tool(tool_name: str, arguments: dict, *, tenant_id: str) -> str:
             return _exec_generate_followup_message(arguments, tenant_id=tenant_id)
         if tool_name == "get_deal_probability":
             return _exec_get_deal_probability(arguments, tenant_id=tenant_id)
+        if tool_name == "summarize_common_weaknesses":
+            return _exec_summarize_common_weaknesses(arguments, tenant_id=tenant_id)
+        if tool_name == "aggregate_institution_concerns":
+            return _exec_aggregate_institution_concerns(tenant_id=tenant_id)
+        if tool_name == "generate_reception_checklist":
+            return _exec_generate_reception_checklist(arguments)
+        if tool_name == "check_consistency":
+            return _exec_check_consistency(arguments, tenant_id=tenant_id)
+        if tool_name == "generate_interview_prep":
+            return _exec_generate_interview_prep(arguments, tenant_id=tenant_id)
         return f"未知工具：{tool_name}"
     except Exception as e:
         logger.warning("npc_tool_exec_failed tool=%s: %s", tool_name, e)
@@ -445,3 +570,255 @@ def _exec_get_deal_probability(args: dict, *, tenant_id: str) -> str:
         lines.append("判断：概率偏低，建议复盘卡点或考虑重新激活策略。")
 
     return "\n".join(lines)
+
+
+# ── 聚合分析工具（跨会话/跨机构）──────────────────────────────────────────────
+
+def _collect_recent_weakness_texts(tenant_id: str, limit: int) -> list[str]:
+    """从最近 limit 场已完成路演里，摊平所有风险点的「问题简述」文本。"""
+    from cangjie_fos.services.pitch_job_db import db_job_list_risk_keywords
+
+    jobs = db_job_list_risk_keywords(tenant_id, limit=limit)
+    problems: list[str] = []
+    for job in jobs:
+        for rp in job.get("risk_points") or []:
+            if not isinstance(rp, dict):
+                continue
+            text = (rp.get("problem_summary") or rp.get("issue")
+                    or rp.get("description") or "").strip()
+            if text:
+                problems.append(text)
+    return problems
+
+
+def _exec_summarize_common_weaknesses(args: dict, *, tenant_id: str) -> str:
+    """跨多场路演归纳共同弱点 Top3。
+
+    数据来源：db_job_list_risk_keywords（最近 N 场已完成路演的全部风险点）。
+    先用 LLM 聚类；LLM 不可用时降级为词频统计，保证始终有可读输出。
+    """
+    limit = min(int(args.get("limit") or 5), 20)
+    problems = _collect_recent_weakness_texts(tenant_id, limit)
+    if not problems:
+        return "最近还没有带风险点的已完成路演记录，先跑几场路演复盘再来分析。"
+
+    n_jobs = min(limit, len(problems))
+    try:
+        summary = _llm_cluster_weaknesses(problems)
+        if summary:
+            return f"回看最近路演的 {len(problems)} 条风险点，反复出现的共同弱点：\n{summary}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("summarize_common_weaknesses LLM 失败，降级词频: %s", e)
+
+    # 降级：字符串出现次数粗排
+    freq: dict[str, int] = {}
+    for p in problems:
+        freq[p] = freq.get(p, 0) + 1
+    top = sorted(freq.items(), key=lambda x: -x[1])[:3]
+    lines = [f"回看最近的 {len(problems)} 条风险点，出现最多的问题："]
+    lines += [f"{i+1}. {p}（{c} 次）" for i, (p, c) in enumerate(top)]
+    return "\n".join(lines)
+
+
+def _exec_aggregate_institution_concerns(*, tenant_id: str) -> str:
+    """跨机构归纳最关心的问题 Top3。
+
+    数据来源：机构档案的 concerns 字段（路演情报持续沉淀进来）。
+    先用 LLM 归纳；不可用时降级为直接罗列。
+    """
+    from cangjie_fos.services.institution_store import list_institutions
+
+    insts = list_institutions(tenant_id=tenant_id, limit=500)
+    concern_texts: list[str] = []
+    for inst in insts:
+        c = (getattr(inst, "concerns", "") or "").strip()
+        if c:
+            concern_texts.append(f"{inst.name}：{c}")
+    if not concern_texts:
+        return "机构档案里还没有记录关注点。多传几场路演情报后，系统会自动沉淀机构关注点。"
+
+    try:
+        summary = _llm_summarize_concerns(concern_texts)
+        if summary:
+            return f"综合 {len(concern_texts)} 家机构的关注点，投资人最在意的：\n{summary}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("aggregate_institution_concerns LLM 失败，降级罗列: %s", e)
+
+    lines = [f"已记录关注点的机构（共 {len(concern_texts)} 家）："]
+    lines += [f"  {t}" for t in concern_texts[:8]]
+    return "\n".join(lines)
+
+
+def _llm_cluster_weaknesses(problems: list[str]) -> str:
+    """把多条风险点文本喂 LLM，归纳共同弱点 Top3（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    joined = "\n".join(f"- {p}" for p in problems[:60])
+    prompt = (
+        "以下是同一个人最近多场路演被指出的风险点/问题（每行一条）：\n"
+        f"{joined}\n\n"
+        "请归纳出反复出现、最值得优先改进的 3 个共同弱点。"
+        "每条一行，格式「1. 弱点概括：一句话说明+改进方向」，不要复述原文，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _llm_summarize_concerns(concern_texts: list[str]) -> str:
+    """把多家机构关注点喂 LLM，归纳共同关注 Top3（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    joined = "\n".join(f"- {t}" for t in concern_texts[:60])
+    prompt = (
+        "以下是多家投资机构对本项目的关注点/疑虑（每行一家）：\n"
+        f"{joined}\n\n"
+        "请归纳出投资人最普遍关心的 3 个问题。"
+        "每条一行，格式「1. 关注主题：一句话说明」，不要复述原文，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _exec_generate_reception_checklist(args: dict) -> str:
+    """为一次来访接待生成结构化准备清单。"""
+    context = (args.get("context") or "").strip()
+    if not context:
+        return "请描述一下来访背景（谁、什么时候来、几个人、是否参观等）。"
+    try:
+        return _llm_reception_checklist(context)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("generate_reception_checklist LLM 失败: %s", e)
+        return (
+            "生成失败，先给你一个通用接待清单模板：\n"
+            "【接待前】确认到访时间/人数 · 预约会议室 · 录入停车牌 · 准备接待物料/水果茶点 · 打印公司介绍\n"
+            "【接待中】前台引导 · 参观讲解 · 核心数据备好 · 全程录音（可用会议纪要提炼）\n"
+            "【接待后】送客 · 整理会议纪要 · 更新机构档案 · 安排跟进"
+        )
+
+
+def _exec_check_consistency(args: dict, *, tenant_id: str) -> str:
+    """跨录音口径一致性对比，返回可读结论。"""
+    from cangjie_fos.services.consistency_service import run_consistency_check
+
+    institution = (args.get("institution_name") or "").strip()
+    result = run_consistency_check(tenant_id, institution_filter=institution)
+    sources = result.get("checked_sources") or []
+    if not sources:
+        return result.get("note", "最近没有可对比的录音。")
+
+    incons = result.get("inconsistencies") or []
+    if not incons:
+        return f"对比了最近 {len(sources)} 场录音，关键指标口径未发现明显不一致。"
+
+    lines = [f"对比了最近 {len(sources)} 场录音，发现 {len(incons)} 处口径需核对："]
+    for it in incons:
+        flag = "⚠️冲突" if it.get("verdict") == "inconsistent" else "🔶待核对"
+        lines.append(f"\n{flag}【{it['topic']}】{it.get('note','')}")
+        for e in it.get("entries", []):
+            lines.append(f"  · {e['source']}：{e['statement']}")
+    return "\n".join(lines)
+
+
+def _exec_generate_interview_prep(args: dict, *, tenant_id: str) -> str:
+    """基于高管历史易错点生成访谈前重点准备清单。"""
+    name = (args.get("executive_name") or "").strip()
+    if not name:
+        return "请告诉我要准备哪位高管（如 张总 / CTO）。"
+
+    # 取该高管的错题本条目（历史易错点）
+    memories: list[dict] = []
+    try:
+        from cangjie_fos.engine.coach.agent_tenant import resolve_memory_company_id
+        from cangjie_fos.services.memory_db import db_exec_memory_list
+        cid = resolve_memory_company_id(tenant_id)
+        if cid:
+            memories = db_exec_memory_list(cid, tag=name) or []
+    except Exception as e:  # noqa: BLE001
+        logger.warning("读取高管错题本失败: %s", e)
+
+    if not memories:
+        return (
+            f"暂无「{name}」的历史易错点记录（错题本为空）。"
+            "先跑几场该高管的访谈复盘并确认风险点，之后这里就能自动生成针对性准备清单。"
+        )
+    try:
+        return _llm_interview_prep(name, memories)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("生成访谈准备清单 LLM 失败: %s", e)
+        lines = [f"「{name}」历史易错点（访谈前重点核查）："]
+        for m in memories[:8]:
+            raw = (m.get("raw_text") or "").strip()
+            corr = (m.get("correction") or "").strip()
+            lines.append(f"• {raw}" + (f" → 标准口径：{corr}" if corr else ""))
+        return "\n".join(lines)
+
+
+def _llm_interview_prep(name: str, memories: list[dict]) -> str:
+    """把高管错题本喂 LLM 生成访谈前准备清单（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    items = "\n".join(
+        f"- 易错表述：{(m.get('raw_text') or '').strip()}；标准口径：{(m.get('correction') or '').strip()}"
+        for m in memories[:12]
+    )
+    prompt = (
+        f"以下是高管「{name}」过往访谈中被标注的易错点和标准口径：\n{items}\n\n"
+        "请生成一份**访谈前重点准备清单**：提醒他这次访谈要特别注意哪些问题、"
+        "被追问时怎么答才不跑偏。每条一行、可勾选、动词开头。只输出清单。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.4,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _llm_reception_checklist(context: str) -> str:
+    """调 LLM 生成接待准备清单（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    prompt = (
+        f"来访背景：{context}\n\n"
+        "请生成一份接待准备清单，分【接待前】【接待中】【接待后】三段，"
+        "每段列出具体待办（每条一行、动词开头、可勾选）。贴合投融资团队接待投资机构的场景，"
+        "涵盖会议室/停车/物料/讲解/录音纪要/跟进等要点。只输出清单，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.5,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)

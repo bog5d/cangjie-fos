@@ -40,8 +40,12 @@ class KeyPoint(BaseModel):
     evidence: str = Field("", description="材料原句出处")
 
 
-def extract_key_points(bp_text: str) -> list[dict]:
-    """从 BP 逐字稿提取结构化要点列表。
+def extract_key_points(bp_text: str, mode: str = "coach") -> list[dict]:
+    """从逐字稿提取结构化要点列表。
+
+    mode:
+      - "coach"（默认）：BP 路演逐字稿 → 投资人必听的核心要点
+      - "tour"：接待/参观讲解稿 → 带客户参观必须讲到的讲解要点
 
     返回 [{point_no, page_no, point_text, weight}, ...]，
     point_no 连续重编号；去重以 point_text 前 50 字为 key。
@@ -54,7 +58,7 @@ def extract_key_points(bp_text: str) -> list[dict]:
     seen: set[str] = set()
 
     for chunk in chunks:
-        for point in _llm_extract_keypoints_chunk(chunk):
+        for point in _llm_extract_keypoints_chunk(chunk, mode=mode):
             key = point["point_text"][:50].strip().lower()
             if key and key not in seen:
                 seen.add(key)
@@ -80,10 +84,26 @@ def _split_into_chunks(text: str, chunk_size: int, overlap: int) -> list[str]:
     return chunks
 
 
-def _llm_extract_keypoints_chunk(chunk_text: str) -> list[dict]:
-    """对单个文本块调用 LLM 提取要点（可被测试 monkeypatch）。"""
+def _llm_extract_keypoints_chunk(chunk_text: str, mode: str = "coach") -> list[dict]:
+    """对单个文本块调用 LLM 提取要点（可被测试 monkeypatch）。
+
+    mode="tour" 时用「接待/参观讲解」的提炼口径，其余走 BP 路演口径。
+    """
     client = get_dd_llm_client()
-    prompt = f"""以下是一份创业公司 BP（商业计划书）路演逐字稿的片段：
+    if mode == "tour":
+        prompt = f"""以下是一份公司接待/参观讲解稿的片段：
+
+{chunk_text}
+
+请提取讲解员带客户参观时应当讲到的「讲解要点」（忽略口水话、过渡句、寒暄）。
+以 JSON 数组返回，每项格式：
+{{"page_no": 环节序号(未知填0), "point_text": "一句话讲解要点", "weight": "core或normal或minor"}}
+weight 判断：参观必讲的关键信息(如核心产品/技术亮点/关键数据)=core；
+应当覆盖的支撑信息=normal；锦上添花=minor。
+
+只返回 JSON 数组，不要任何解释或 markdown 标记："""
+    else:
+        prompt = f"""以下是一份创业公司 BP（商业计划书）路演逐字稿的片段：
 
 {chunk_text}
 

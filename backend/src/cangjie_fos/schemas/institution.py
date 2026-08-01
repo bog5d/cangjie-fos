@@ -51,6 +51,9 @@ class InstitutionProfile(BaseModel):
     agreement_signed: bool = Field(False, description="已签署投资协议")
     deal_closed: bool = Field(False, description="已完成交割")
     referral_source: str = Field("", description="引荐方/来源 FA")
+    # 卡点备注 + 人工确认锁（v1.13.0）
+    blocker_note: str = Field("", description="当前卡点原因，如「尽调卡在法务，对方律师休假」")
+    review_locked: bool = Field(False, description="人工已确认锁定，AI 自动分析不再覆盖本档案")
 
 
 class InstitutionProfileCreate(BaseModel):
@@ -103,6 +106,8 @@ class InstitutionProfileUpdate(BaseModel):
     agreement_signed: bool | None = None
     deal_closed: bool | None = None
     referral_source: str | None = None
+    blocker_note: str | None = None
+    review_locked: bool | None = None
 
 
 class PipelineCountsResponse(BaseModel):

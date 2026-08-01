@@ -244,6 +244,93 @@ def _ensure_content_text(file_path: str) -> str:
     return text or ""
 
 
+def create_tasks_from_gaps(session_id: str) -> int:
+    """把某尽调 session 的缺口项（标记缺 / 未匹配到文件）转成跟进任务。
+
+    缺口定义：user_skipped=1（人工标"缺"）或 没有 matched_file_path（没匹配上）。
+    每条缺口写一条 follow_up_item：action=补充材料+需求，关联机构，source='dd_gap'，
+    幂等去重：同一 session+需求 已建过的任务不重复建。返回新建任务数。
+    """
+    from cangjie_fos.services.pitch_job_db import db_follow_up_insert, db_follow_up_list
+
+    with _connect() as conn:
+        srow = conn.execute(
+            "SELECT tenant_id, institution_name FROM dd_match_sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+        if not srow:
+            return 0
+        tenant_id = srow["tenant_id"]
+        institution = srow["institution_name"] or ""
+        gaps = conn.execute(
+            """SELECT requirement FROM dd_match_items
+               WHERE session_id = ?
+                 AND (user_skipped = 1
+                      OR matched_file_path IS NULL OR matched_file_path = '')""",
+            (session_id,),
+        ).fetchall()
+
+    if not gaps:
+        return 0
+
+    # 幂等：已存在的 dd_gap 任务按 action 去重
+    try:
+        existing = {
+            i.get("action") for i in db_follow_up_list(tenant_id, limit=500, include_done=True)
+        }
+    except Exception:  # noqa: BLE001
+        existing = set()
+
+    n = 0
+    for g in gaps:
+        req = (g["requirement"] or "").strip()
+        if not req:
+            continue
+        action = f"补充尽调材料：{req}"
+        if action in existing:
+            continue
+        try:
+            db_follow_up_insert(
+                tenant_id=tenant_id,
+                job_id="",
+                institution_id=institution,
+                actor="我方",
+                action=action,
+                priority="high",
+                source="dd_gap",
+            )
+            existing.add(action)
+            n += 1
+        except Exception as e:  # noqa: BLE001
+            logger.warning("缺口转任务失败 req=%s: %s", req, e)
+    return n
+
+
+def get_file_usage_history(file_path: str) -> list[dict]:
+    """反查某文件的「使用履历」：被哪些机构、在哪些尽调 session 里选中过。
+
+    材料库与资产台账可能扫描不同根目录，故以**文件名(basename)**为主匹配键，
+    同时兼容完整路径匹配，跨根目录也能关联。
+
+    返回按时间倒序的记录列表，每条：
+      {institution_name, checklist_name, created_at, requirement, confidence, user_confirmed}
+    """
+    name = os.path.basename(file_path) if file_path else ""
+    if not name:
+        return []
+    with _connect() as conn:
+        rows = conn.execute(
+            """SELECT s.institution_name, s.checklist_name, s.created_at,
+                      i.requirement, i.confidence, i.user_confirmed
+               FROM dd_match_items i
+               JOIN dd_match_sessions s ON i.session_id = s.session_id
+               WHERE i.matched_filename = ? OR i.matched_file_path = ?
+               ORDER BY s.created_at DESC""",
+            (name, file_path),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def _get_index_for_folder(folder_root: str) -> list[dict]:
     """返回文件夹下所有已索引文件。
     注意：不再过滤 readable=1，确保图片型PDF、加密文件等仍通过文件名参与匹配。

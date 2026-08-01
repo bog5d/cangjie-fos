@@ -8,12 +8,14 @@ from cangjie_fos.api.routes import (
     assets,
     auth,
     coaching,
+    consistency,
     dashboard,
     dd_response,
     feedback,
     follow_ups,
     health,
     materials,
+    meeting_minutes,
     npc,
     package_response,
     participants,
@@ -53,6 +55,8 @@ api_router.include_router(wiki.router)
 api_router.include_router(follow_ups.router)
 api_router.include_router(settings.router)
 api_router.include_router(roadshow.router)
+api_router.include_router(meeting_minutes.router)
 api_router.include_router(dd_response.router)
 api_router.include_router(coaching.router)
+api_router.include_router(consistency.router)
 api_router.include_router(package_response.router)

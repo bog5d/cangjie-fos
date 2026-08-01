@@ -525,3 +525,210 @@ class TestNpcToolExecutors:
         )
         tag = npc_chat_graph._infer_memory_tag_from_user_text("今天天气怎么样", tenant_id="t1")
         assert tag == "default"
+
+
+class TestNpcAggregationTools:
+    """跨会话/跨机构聚合分析工具（summarize_common_weaknesses / aggregate_institution_concerns）。"""
+
+    def test_common_weaknesses_llm_summary(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        fake_jobs = [
+            {"job_id": "j1", "risk_points": [
+                {"problem_summary": "估值说不清"}, {"problem_summary": "语速太快"}], "created_at": 1.0},
+            {"job_id": "j2", "risk_points": [
+                {"problem_summary": "估值逻辑弱"}], "created_at": 2.0},
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_risk_keywords",
+            lambda tenant_id, limit=10: fake_jobs,
+        )
+        monkeypatch.setattr(
+            npc_tools, "_llm_cluster_weaknesses",
+            lambda problems: "1. 估值论证薄弱：准备对标数据\n2. 语速偏快：练习节奏",
+        )
+        result = npc_tools.execute_tool(
+            "summarize_common_weaknesses", {"limit": 5}, tenant_id="t1")
+        assert "估值论证薄弱" in result
+        assert "语速偏快" in result
+
+    def test_common_weaknesses_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_risk_keywords",
+            lambda tenant_id, limit=10: [],
+        )
+        result = npc_tools.execute_tool(
+            "summarize_common_weaknesses", {}, tenant_id="t1")
+        assert "还没有" in result
+
+    def test_common_weaknesses_llm_fail_degrades_to_frequency(self, monkeypatch):
+        """LLM 抛错时降级为词频统计，仍返回可读结果。"""
+        from cangjie_fos.services import npc_tools
+
+        fake_jobs = [
+            {"job_id": "j1", "risk_points": [{"problem_summary": "估值说不清"}], "created_at": 1.0},
+            {"job_id": "j2", "risk_points": [{"problem_summary": "估值说不清"}], "created_at": 2.0},
+        ]
+        monkeypatch.setattr(
+            "cangjie_fos.services.pitch_job_db.db_job_list_risk_keywords",
+            lambda tenant_id, limit=10: fake_jobs,
+        )
+
+        def _boom(problems):
+            raise RuntimeError("LLM down")
+
+        monkeypatch.setattr(npc_tools, "_llm_cluster_weaknesses", _boom)
+        result = npc_tools.execute_tool(
+            "summarize_common_weaknesses", {}, tenant_id="t1")
+        assert "估值说不清" in result
+        assert "2 次" in result  # 词频降级
+
+    def test_aggregate_concerns_llm_summary(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        class FakeInst:
+            def __init__(self, name, concerns):
+                self.name = name
+                self.concerns = concerns
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: [
+                FakeInst("红杉", "毛利率能否持续"),
+                FakeInst("高瓴", "退出路径不清晰"),
+            ],
+        )
+        monkeypatch.setattr(
+            npc_tools, "_llm_summarize_concerns",
+            lambda texts: "1. 盈利可持续性\n2. 退出路径\n3. 竞争壁垒",
+        )
+        result = npc_tools.execute_tool(
+            "aggregate_institution_concerns", {}, tenant_id="t1")
+        assert "盈利可持续性" in result
+        assert "退出路径" in result
+
+    def test_aggregate_concerns_empty(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        class FakeInst:
+            name = "红杉"
+            concerns = ""
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.institution_store.list_institutions",
+            lambda *, tenant_id, limit: [FakeInst()],
+        )
+        result = npc_tools.execute_tool(
+            "aggregate_institution_concerns", {}, tenant_id="t1")
+        assert "还没有记录关注点" in result
+
+    def test_reception_checklist_llm(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            npc_tools, "_llm_reception_checklist",
+            lambda ctx: "【接待前】预约会议室\n【接待中】参观讲解\n【接待后】更新档案",
+        )
+        result = npc_tools.execute_tool(
+            "generate_reception_checklist",
+            {"context": "明天红杉3人来参观"}, tenant_id="t1")
+        assert "接待前" in result
+        assert "参观讲解" in result
+
+    def test_reception_checklist_empty_context(self):
+        from cangjie_fos.services import npc_tools
+
+        result = npc_tools.execute_tool(
+            "generate_reception_checklist", {"context": "  "}, tenant_id="t1")
+        assert "来访背景" in result
+
+    def test_reception_checklist_llm_fail_degrades(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        def _boom(ctx):
+            raise RuntimeError("down")
+
+        monkeypatch.setattr(npc_tools, "_llm_reception_checklist", _boom)
+        result = npc_tools.execute_tool(
+            "generate_reception_checklist",
+            {"context": "明天有客户来"}, tenant_id="t1")
+        assert "接待前" in result  # 降级模板
+
+    def test_check_consistency_tool(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.consistency_service.run_consistency_check",
+            lambda tenant_id, institution_filter="": {
+                "checked_sources": ["张总·红杉", "李总·高瓴"],
+                "inconsistencies": [{
+                    "topic": "毛利率", "verdict": "inconsistent", "note": "60% vs 40%",
+                    "entries": [{"source": "张总·红杉", "statement": "毛利率60%"},
+                                {"source": "李总·高瓴", "statement": "毛利率40%"}],
+                }],
+                "note": "对比了 2 场",
+            },
+        )
+        result = npc_tools.execute_tool("check_consistency", {}, tenant_id="t1")
+        assert "毛利率" in result
+        assert "冲突" in result
+
+    def test_check_consistency_none(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.services.consistency_service.run_consistency_check",
+            lambda tenant_id, institution_filter="": {
+                "checked_sources": ["张总·红杉", "张总·高瓴"], "inconsistencies": [], "note": "",
+            },
+        )
+        result = npc_tools.execute_tool("check_consistency", {}, tenant_id="t1")
+        assert "未发现明显不一致" in result
+
+    def test_interview_prep_with_memories(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.engine.coach.agent_tenant.resolve_memory_company_id",
+            lambda tenant_id: "company-1",
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.services.memory_db.db_exec_memory_list",
+            lambda cid, tag=None, limit=100: [
+                {"raw_text": "技术路线说成X", "correction": "标准口径是Y"},
+            ],
+        )
+        monkeypatch.setattr(
+            npc_tools, "_llm_interview_prep",
+            lambda name, mems: "□ 重申技术路线为Y，勿说X",
+        )
+        result = npc_tools.execute_tool(
+            "generate_interview_prep", {"executive_name": "CTO"}, tenant_id="t1")
+        assert "技术路线" in result
+
+    def test_interview_prep_no_memories(self, monkeypatch):
+        from cangjie_fos.services import npc_tools
+
+        monkeypatch.setattr(
+            "cangjie_fos.engine.coach.agent_tenant.resolve_memory_company_id",
+            lambda tenant_id: "company-1",
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.services.memory_db.db_exec_memory_list",
+            lambda cid, tag=None, limit=100: [],
+        )
+        result = npc_tools.execute_tool(
+            "generate_interview_prep", {"executive_name": "新高管"}, tenant_id="t1")
+        assert "错题本为空" in result or "暂无" in result
+
+    def test_new_tools_registered(self):
+        from cangjie_fos.services import npc_tools
+
+        names = {t["function"]["name"] for t in npc_tools.ALL_TOOLS}
+        assert "summarize_common_weaknesses" in names
+        assert "aggregate_institution_concerns" in names
+        assert "generate_reception_checklist" in names
+        assert "check_consistency" in names
+        assert "generate_interview_prep" in names

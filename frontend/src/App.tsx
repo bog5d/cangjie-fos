@@ -10,6 +10,7 @@ import { InstitutionList } from "./components/InstitutionList";
 import { FollowUpWidget } from "./components/FollowUpWidget";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { RoadshowWizard } from "./components/RoadshowWizard";
+import { MeetingMinutesWizard } from "./components/MeetingMinutesWizard";
 import DueDiligenceWizard from "./components/DueDiligenceWizard";
 import CoachingWizard from "./components/CoachingWizard";
 import PackageGapWizard from "./components/PackageGapWizard";
@@ -146,6 +147,7 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
   const [commanderName, setCommanderName] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [roadshowOpen, setRoadshowOpen] = useState(false);
+  const [minutesOpen, setMinutesOpen] = useState(false);
   const [ddOpen, setDdOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
@@ -425,6 +427,13 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
           </button>
           <button
             type="button"
+            onClick={() => setMinutesOpen(true)}
+            className="rounded-xl border border-teal-500/40 bg-teal-500/10 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-teal-300 hover:bg-teal-500/20"
+          >
+            📝 会议纪要
+          </button>
+          <button
+            type="button"
             onClick={() => setDdOpen(true)}
             className="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
           >
@@ -534,6 +543,11 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
       />
       <CoachingWizard open={coachOpen} onClose={() => setCoachOpen(false)} tenantId={tenant} />
       <PackageGapWizard open={packageOpen} onClose={() => setPackageOpen(false)} tenantId={tenant} />
+      <MeetingMinutesWizard
+        open={minutesOpen}
+        onClose={() => setMinutesOpen(false)}
+        tenantId={tenant}
+      />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />
       <DueDiligenceWizard
         open={ddOpen}

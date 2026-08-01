@@ -11,12 +11,16 @@ from collections.abc import Callable
 from typing import Any
 
 from cangjie_fos.engine.coach.agent_runner import run_pitch_evaluation_via_langgraph_with_state
-from cangjie_fos.engine.coach.llm_judge import run_roadshow_intel_analysis
+from cangjie_fos.engine.coach.llm_judge import (
+    run_meeting_minutes_analysis,
+    run_roadshow_intel_analysis,
+)
 
 logger = logging.getLogger(__name__)
 
 _RETRY_DELAYS = [2, 4, 8]  # seconds between attempt 1→2, 2→3, 3→4
 _ROADSHOW_CATEGORY = "01_机构路演"
+_MEETING_MINUTES_CATEGORY = "06_通用会议纪要"
 
 
 class PitchGraphService:
@@ -53,6 +57,33 @@ class PitchGraphService:
                     time.sleep(delay)
                 try:
                     report = run_roadshow_intel_analysis(
+                        words,
+                        model_choice=model_choice,
+                        explicit_context=explicit_context,
+                        on_notice=on_notice,
+                    )
+                    return report, {}
+                except (ConnectionError, TimeoutError) as e:
+                    last_exc = e
+            assert last_exc is not None
+            raise last_exc
+
+        if category == _MEETING_MINUTES_CATEGORY:
+            # ── 通用会议纪要分支（非路演，不打分、不做情报分析）──────────────────
+            logger.info(
+                "meeting_minutes_branch: trace_id=%s category=%s", trace_id, category
+            )
+            last_exc = None
+            for attempt in range(len(_RETRY_DELAYS) + 1):
+                if attempt > 0:
+                    delay = _RETRY_DELAYS[attempt - 1]
+                    logger.warning(
+                        "meeting_minutes_retry attempt=%d/%d sleep=%ds reason=%s",
+                        attempt + 1, len(_RETRY_DELAYS) + 1, delay, last_exc,
+                    )
+                    time.sleep(delay)
+                try:
+                    report = run_meeting_minutes_analysis(
                         words,
                         model_choice=model_choice,
                         explicit_context=explicit_context,

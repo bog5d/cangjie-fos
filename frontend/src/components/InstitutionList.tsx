@@ -67,6 +67,8 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
     agreement_signed: item.agreement_signed ?? false,
     deal_closed: item.deal_closed ?? false,
     referral_source: item.referral_source ?? "",
+    blocker_note: item.blocker_note ?? "",
+    review_locked: item.review_locked ?? false,
   });
   const [saving, setSaving] = useState(false);
 
@@ -221,6 +223,26 @@ function EditModal({ item, tenantId, onClose, onSaved }: EditModalProps) {
               onChange={(e) => setDraft((d) => ({ ...d, referral_source: e.target.value }))}
               placeholder="如：张 FA、李中介"
             />
+          </div>
+          <div className="col-span-2">
+            <label className={label}>🚧 当前卡点（为什么卡在这步）</label>
+            <input
+              className={input}
+              value={draft.blocker_note}
+              onChange={(e) => setDraft((d) => ({ ...d, blocker_note: e.target.value }))}
+              placeholder="如：尽调卡在法务，对方律师休假；等对方投委会"
+            />
+          </div>
+          <div className="col-span-2 flex items-center gap-2">
+            <input
+              id="review_locked"
+              type="checkbox"
+              checked={draft.review_locked}
+              onChange={(e) => setDraft((d) => ({ ...d, review_locked: e.target.checked }))}
+            />
+            <label htmlFor="review_locked" className="text-xs text-slate-300 cursor-pointer">
+              🔒 锁定本档案（我主笔）：勾选后 AI 路演分析不再自动覆盖这家的画像/阶段
+            </label>
           </div>
           <div>
             <label className={label}>线下会面次数</label>
@@ -489,6 +511,15 @@ export function InstitutionList({ tenantId, items, onUpdate, onMilestonesChanged
                       <span className="font-bold text-cyan/80">偏好 </span>
                       {it.preferences}
                     </p>
+                  ) : null}
+                  {it.blocker_note ? (
+                    <p className="mt-2 rounded border border-rose-500/25 bg-rose-500/10 px-2 py-1 text-[11px] leading-snug text-rose-200">
+                      <span className="font-bold">🚧 卡点 </span>
+                      {it.blocker_note}
+                    </p>
+                  ) : null}
+                  {it.review_locked ? (
+                    <p className="mt-1 text-[10px] text-slate-500">🔒 已锁定（AI 不自动覆盖）</p>
                   ) : null}
                   {isEmpty && (
                     <p className="mt-2 text-[11px] text-slate-600 italic">

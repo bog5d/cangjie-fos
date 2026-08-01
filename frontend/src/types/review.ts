@@ -54,11 +54,14 @@ export interface PitchReviewResponse {
 
 // ── 路演情报报告类型 ────────────────────────────────────────────────────────
 
+export type IntelTheme = "技术" | "市场" | "财务" | "竞争" | "合规" | "团队" | "其他";
+
 export interface IntelQuestion {
   speaker_id?: string;
   verbatim: string;
   underlying_concern: string;
   priority: "high" | "medium" | "low";
+  theme?: IntelTheme;
 }
 
 export interface IntelSignal {
