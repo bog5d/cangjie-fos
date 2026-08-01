@@ -331,6 +331,117 @@ def get_file_usage_history(file_path: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def diagnose_session(session_id: str) -> dict:
+    """诊断模式：逐条标定尽调匹配"卡在哪一环"，帮定位"不准"的真实根因。
+
+    对每条未确认的需求给出所处环节：
+      - prefilter_miss : 库里有关键词相关文件却没被选中 → 疑似粗筛漏召回
+      - not_in_library : 库里没有明显相关文件 → 材料可能确实缺失/没扫到
+      - no_content     : 命中文件但正文读不出（图片/加密）→ 只能靠文件名，准确性低
+      - judge_reject   : 读了正文判为不满足 → 真需要人工复核/换候选
+      - low_conf       : 黄区待核对
+      - matched_green  : 高可信（已匹配）
+      - ok_confirmed   : 人工已确认
+    返回 {session_id, total, stage_counts, overall_hint, items:[...]}。
+    """
+    with _connect() as conn:
+        srow = conn.execute(
+            "SELECT folder_root FROM dd_match_sessions WHERE session_id = ?",
+            (session_id,),
+        ).fetchone()
+        if not srow:
+            return {"session_id": session_id, "total": 0, "stage_counts": {},
+                    "overall_hint": "session 不存在", "items": []}
+        folder_root = srow["folder_root"]
+        items = [dict(r) for r in conn.execute(
+            """SELECT id, item_no, requirement, matched_file_path, matched_filename,
+                      confidence, verdict, user_confirmed, user_skipped
+               FROM dd_match_items WHERE session_id = ? ORDER BY item_no""",
+            (session_id,),
+        ).fetchall()]
+        content_map = {
+            r["file_path"]: bool((r["content_text"] or "").strip())
+            for r in conn.execute(
+                "SELECT file_path, content_text FROM dd_asset_index WHERE folder_root = ?",
+                (folder_root,),
+            ).fetchall()
+        }
+
+    index_rows = _get_index_for_folder(folder_root)
+
+    diagnoses: list[dict] = []
+    stage_counts: dict[str, int] = {}
+    for it in items:
+        stage, reason, hint, cands = _diagnose_item(it, index_rows, content_map)
+        stage_counts[stage] = stage_counts.get(stage, 0) + 1
+        diagnoses.append({
+            "item_no": it.get("item_no"),
+            "requirement": it.get("requirement"),
+            "stage": stage,
+            "reason": reason,
+            "hint": hint,
+            "candidates": cands,
+            "matched_filename": it.get("matched_filename") or "",
+            "confidence": it.get("confidence") or 0.0,
+        })
+
+    # 整体建议：哪一环拖后腿最多，就先修哪一环
+    overall = "各环节分布见 stage_counts。"
+    if stage_counts.get("no_content", 0) >= max(1, len(items) // 3):
+        overall = "大量文件正文读不出（图片/加密件）——先解决抽取（登记密码/OCR），比调匹配更有效。"
+    elif stage_counts.get("prefilter_miss", 0) >= max(1, len(items) // 3):
+        overall = "较多疑似粗筛漏召回——库里有相关文件却没进候选，建议放宽 top_n 或补充清单措辞/项目背景。"
+    elif stage_counts.get("not_in_library", 0) >= max(1, len(items) // 2):
+        overall = "较多需求在库里找不到相关文件——材料可能确实缺失，或扫描的文件夹不对。"
+
+    return {
+        "session_id": session_id,
+        "total": len(items),
+        "stage_counts": stage_counts,
+        "overall_hint": overall,
+        "items": diagnoses,
+    }
+
+
+def _diagnose_item(
+    item: dict, index_rows: list[dict], content_map: dict[str, bool],
+) -> tuple[str, str, str, list[str]]:
+    """单条需求的环节诊断，返回 (stage, reason, hint, candidate_filenames)。"""
+    if item.get("user_confirmed"):
+        return ("ok_confirmed", "人工已确认", "", [])
+
+    path = item.get("matched_file_path")
+    if path:
+        has_content = content_map.get(path, False)
+        if not has_content:
+            return ("no_content", "命中文件正文读不出（图片型PDF/加密件）",
+                    "登记解密密码或走 OCR；否则只能靠文件名判断，准确性下降", [])
+        conf = item.get("confidence") or 0.0
+        verdict = item.get("verdict") or _confidence_to_verdict(conf)
+        if verdict == "red" or conf < _VERDICT_YELLOW:
+            return ("judge_reject", "读了正文，AI 判为不满足该需求",
+                    "人工复核；或展开候选换一份文件", [])
+        if verdict == "yellow" or conf < _VERDICT_GREEN:
+            return ("low_conf", "黄区：读了正文但把握不足", "人工核对文件名+证据即可", [])
+        return ("matched_green", "高可信已匹配", "", [])
+
+    # 未匹配到文件：区分"粗筛漏召回" vs "库里确实没有"
+    keywords = _requirement_bigrams(item.get("requirement", ""))
+    related = []
+    for row in index_rows:
+        text = _row_search_text(row)
+        score = sum(1 for kw in keywords if kw in text)
+        if score > 0:
+            related.append((score, row.get("filename", "")))
+    related.sort(key=lambda x: -x[0])
+    if related:
+        cands = [fn for _, fn in related[:3]]
+        return ("prefilter_miss", "材料库里有关键词相关文件，但没被选中（疑似粗筛漏召回）",
+                "放宽 top_n / 在项目背景里写清口径 / 换清单措辞；相关候选见 candidates", cands)
+    return ("not_in_library", "材料库里没有明显相关的文件",
+            "材料可能确实缺失，或扫描的文件夹路径不对", [])
+
+
 def _get_index_for_folder(folder_root: str) -> list[dict]:
     """返回文件夹下所有已索引文件。
     注意：不再过滤 readable=1，确保图片型PDF、加密文件等仍通过文件名参与匹配。
@@ -1202,25 +1313,77 @@ def record_session_decisions(session_id: str) -> int:
     return n
 
 
-def lookup_decision_memory(requirement: str, conn=None) -> dict | None:
-    """查归一化需求对应的历史人工确认文件（取确认次数最高的一条）。
+# 相似命中阈值：汉字 bigram Jaccard ≥ 此值即认定"措辞相近"，让飞轮在不同机构
+# 的不同措辞间也能命中（逐字命中太死，真实清单几乎不会一字不差）。
+_MEMORY_SIM_THRESHOLD = 0.5
 
+
+def _bigram_jaccard(a: str, b: str) -> float:
+    """两条需求文本的汉字二元组 Jaccard 相似度（0~1）。"""
+    ba, bb = _requirement_bigrams(a), _requirement_bigrams(b)
+    if not ba or not bb:
+        return 0.0
+    union = len(ba | bb)
+    return (len(ba & bb) / union) if union else 0.0
+
+
+def _years_in(s: str) -> set[str]:
+    """抽取文本中的 4 位年份（20xx），用于跨年份安全护栏。"""
+    return set(re.findall(r"20\d{2}", s or ""))
+
+
+def lookup_decision_memory(requirement: str, conn=None) -> dict | None:
+    """查历史人工确认文件：先逐字命中，再"措辞相近"命中。
+
+    1) 精确：归一化后逐字相等 → match_type='exact'，最高可信。
+    2) 相似：全表算 bigram Jaccard，取最高且 ≥ 阈值 → match_type='fuzzy'。
+       红队年份护栏：两条都含年份且完全不同 → 不跨年份套用（避免 2023↔2024 串号）。
+    返回 dict 含 match_type / similarity；无命中返回 None。
     可传入 conn 复用连接（批量场景避免每条 item 各开一个连接）。
     """
     norm = normalize_requirement(requirement)
     if not norm:
         return None
-    sql = """SELECT file_path, filename, confirm_count
-             FROM dd_decision_memory
-             WHERE requirement_norm = ?
-             ORDER BY confirm_count DESC, updated_at DESC
-             LIMIT 1"""
+
+    def _run(c) -> dict | None:
+        # 1) 精确命中
+        row = c.execute(
+            """SELECT file_path, filename, confirm_count, requirement
+               FROM dd_decision_memory WHERE requirement_norm = ?
+               ORDER BY confirm_count DESC, updated_at DESC LIMIT 1""",
+            (norm,),
+        ).fetchone()
+        if row:
+            d = dict(row)
+            d["match_type"] = "exact"
+            d["similarity"] = 1.0
+            return d
+        # 2) 相似命中（扫全表；决策记忆量级不大，可接受）
+        q_years = _years_in(requirement)
+        best = None
+        best_sim = 0.0
+        for r in c.execute(
+            "SELECT file_path, filename, confirm_count, requirement FROM dd_decision_memory"
+        ).fetchall():
+            cand_req = r["requirement"] or ""
+            c_years = _years_in(cand_req)
+            if q_years and c_years and not (q_years & c_years):
+                continue  # 年份都出现且完全不同 → 跳过，不跨年份套用
+            sim = _bigram_jaccard(requirement, cand_req)
+            if sim > best_sim:
+                best_sim = sim
+                best = r
+        if best and best_sim >= _MEMORY_SIM_THRESHOLD:
+            d = dict(best)
+            d["match_type"] = "fuzzy"
+            d["similarity"] = round(best_sim, 3)
+            return d
+        return None
+
     if conn is not None:
-        row = conn.execute(sql, (norm,)).fetchone()
-        return dict(row) if row else None
+        return _run(conn)
     with _connect() as c:
-        row = c.execute(sql, (norm,)).fetchone()
-    return dict(row) if row else None
+        return _run(c)
 
 
 def _apply_decision_memory(
@@ -1244,11 +1407,18 @@ def _apply_decision_memory(
         if not mem or mem["file_path"] not in available:
             continue  # 无记忆 / 记忆文件已不在当前材料库 → 不强行套用
         n = mem.get("confirm_count", 1)
-        # 防投毒：确认≥N次才可信(green)；仅1次=建议(yellow·待复核)，bulk-confirm 不自动放行
-        trusted = n >= _MEMORY_TRUST_MIN_CONFIRMS
+        fuzzy = mem.get("match_type") == "fuzzy"
+        # 防投毒：确认≥N次才可信(green)；仅1次=建议(yellow·待复核)，bulk-confirm 不自动放行。
+        # 相似命中（措辞不同）一律降为 yellow 待复核——即便历史确认多次，也让人看一眼，
+        # 避免"措辞相近但其实是另一份材料"被自动放绿。
+        trusted = (n >= _MEMORY_TRUST_MIN_CONFIRMS) and not fuzzy
         conf = _MEMORY_CONFIDENCE if trusted else _MEMORY_UNTRUSTED_CONFIDENCE
-        reason = (f"{MEMORY_REASON_PREFIX}（历史已确认{n}次）" if trusted
-                  else f"{MEMORY_REASON_PREFIX}（历史仅确认1次·待复核）")
+        if fuzzy:
+            reason = f"{MEMORY_REASON_PREFIX}（措辞相近·相似度{mem.get('similarity')}·待复核）"
+        elif trusted:
+            reason = f"{MEMORY_REASON_PREFIX}（历史已确认{n}次）"
+        else:
+            reason = f"{MEMORY_REASON_PREFIX}（历史仅确认1次·待复核）"
         candidates_json = json.dumps([{
             "file_path": mem["file_path"],
             "filename": mem.get("filename", ""),

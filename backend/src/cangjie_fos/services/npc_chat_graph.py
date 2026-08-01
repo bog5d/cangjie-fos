@@ -61,7 +61,28 @@ def _base_system() -> str:
         "只提建议，不要直接修改任何配置，引导用户自行操作。"
         "若快照显示「系统就绪状态: OK」且无近期失败任务，则如实告知用户系统当前正常。"
     )
-    return base + capability + diagnostic
+    verify = (
+        "\n\n[查证守则 · 重要]\n"
+        "你可以调用一批查询工具去读系统里的真实数据（机构档案、pipeline 全景、"
+        "最近路演、待办、成交概率、跨会话弱点、机构关注点、跨录音口径一致性、"
+        "访谈准备、接待清单等）。守则：\n"
+        "1. 涉及具体机构/数据/进度/统计的问题，先调工具拿真实数据再回答，不要凭记忆编。\n"
+        "2. 一个问题往往要查多样：先想清楚需要哪几项，再逐个调工具，拿到结果综合后再回答"
+        "（例如「我该先跟进谁」= 查 pipeline 全景 + 待办 + 成交概率，再给结论）。\n"
+        "3. 工具查不到就如实说「系统里暂无相关数据」并给出下一步建议，绝不编造数字或结论。\n"
+        "4. 回答用要点式、可执行，避免空话。"
+    )
+    return base + capability + diagnostic + verify
+
+
+# 工具调用循环上限：够深地做多步查证（先规划要查什么→逐个调→综合），
+# 又有硬上限防止无限递归。可用 CANGJIE_NPC_TOOL_LOOP_MAX 覆盖。
+def _tool_loop_max() -> int:
+    try:
+        v = int((os.getenv("CANGJIE_NPC_TOOL_LOOP_MAX") or "8").strip() or "8")
+    except ValueError:
+        v = 8
+    return max(3, min(12, v))
 
 
 def _last_user_text(state: NpcGraphState) -> str:
@@ -258,8 +279,8 @@ def _call_llm(state: NpcGraphState) -> dict[str, Sequence[BaseMessage]]:
         from cangjie_fos.services.npc_tools import PHASE1_TOOLS, execute_tool
         tid = (state.get("tenant_id") or "unknown")
 
-        # ── Tool-call 循环（最多 5 轮，防止无限递归）────────────────────────
-        for _loop in range(5):
+        # ── Tool-call 循环（多步查证；上限防无限递归）────────────────────────
+        for _loop in range(_tool_loop_max()):
             r = client.chat.completions.create(
                 model=model,
                 temperature=0.35,
