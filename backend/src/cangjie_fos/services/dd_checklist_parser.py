@@ -57,7 +57,20 @@ def _read_excel(path: Path) -> str:
 
 def _read_word(path: Path) -> str:
     from docx import Document
-    doc = Document(str(path))
+    # 旧版 .doc（二进制 OLE）python-docx 无法解析，会抛 themeManager/PackageNotFound 类错误。
+    # 给出可操作的清晰提示，而不是让用户看到一堆栈。
+    if path.suffix.lower() == ".doc":
+        raise ValueError(
+            "这是旧版 .doc（二进制）格式，系统无法直接解析。"
+            "请在 Word 里「另存为 .docx」后重新上传，或直接把清单文字粘贴进来。"
+        )
+    try:
+        doc = Document(str(path))
+    except Exception as e:  # noqa: BLE001 —— 损坏/伪装扩展名等
+        raise ValueError(
+            "该 Word 文件无法解析（可能是旧 .doc 格式伪装成 .docx，或文件损坏）。"
+            "请另存为标准 .docx 后重传，或直接粘贴清单文字。"
+        ) from e
     lines: list[str] = []
     for para in doc.paragraphs:
         if para.text.strip():
