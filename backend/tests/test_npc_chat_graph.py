@@ -732,3 +732,28 @@ class TestNpcAggregationTools:
         assert "generate_reception_checklist" in names
         assert "check_consistency" in names
         assert "generate_interview_prep" in names
+
+
+class TestNpcEnhancement:
+    """豆豆原地增强（G3）：多步查证守则 + 循环轮数。"""
+
+    def test_system_prompt_has_verify_rules(self):
+        from cangjie_fos.services.npc_chat_graph import _base_system
+        sp = _base_system()
+        assert "查证守则" in sp
+        assert "先调工具" in sp or "先想清楚" in sp
+        assert "绝不编造" in sp
+
+    def test_tool_loop_max_default(self, monkeypatch):
+        from cangjie_fos.services import npc_chat_graph
+        monkeypatch.delenv("CANGJIE_NPC_TOOL_LOOP_MAX", raising=False)
+        assert npc_chat_graph._tool_loop_max() == 8  # 从 5 提升到 8
+
+    def test_tool_loop_max_env_override_and_clamp(self, monkeypatch):
+        from cangjie_fos.services import npc_chat_graph
+        monkeypatch.setenv("CANGJIE_NPC_TOOL_LOOP_MAX", "10")
+        assert npc_chat_graph._tool_loop_max() == 10
+        monkeypatch.setenv("CANGJIE_NPC_TOOL_LOOP_MAX", "99")
+        assert npc_chat_graph._tool_loop_max() == 12  # 上限夹取
+        monkeypatch.setenv("CANGJIE_NPC_TOOL_LOOP_MAX", "1")
+        assert npc_chat_graph._tool_loop_max() == 3   # 下限夹取

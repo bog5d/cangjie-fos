@@ -622,6 +622,14 @@ def update_item(session_id: str, item_id: str, req: ItemUpdateRequest, backgroun
     return {"ok": True}
 
 
+@router.get("/sessions/{session_id}/diagnose")
+def diagnose_session_route(session_id: str):
+    """诊断模式：逐条标定匹配卡在哪一环（粗筛漏召回/正文读不出/精判拒/库里没有），
+    帮定位尽调"不准"的真实根因。"""
+    from cangjie_fos.services.dd_match_service import diagnose_session  # noqa: PLC0415
+    return diagnose_session(session_id)
+
+
 @router.post("/sessions/{session_id}/gaps-to-tasks")
 def gaps_to_tasks(session_id: str):
     """把本 session 的缺口项（标缺/未匹配）转成跟进任务，返回新建任务数。"""
