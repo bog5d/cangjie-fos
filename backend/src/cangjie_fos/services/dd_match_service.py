@@ -605,6 +605,39 @@ def _context_block(context: str) -> str:
     return f"\n【项目背景 / 注意事项（务必遵守）】\n{c}\n" if c else ""
 
 
+# 中文数字→阿拉伯（覆盖"最近N年"的常见写法）
+_CN_NUM = {"一": 1, "两": 2, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6}
+_RECENT_N_RE = re.compile(r"(?:最近|近|过去)\s*([1-9一二两三四五六])\s*(?:个)?\s*年")
+
+
+def _current_year() -> int:
+    from datetime import datetime  # noqa: PLC0415
+    return datetime.now().year
+
+
+def expected_years(requirement: str, current_year: int | None = None) -> list[int]:
+    """从需求推断"应覆盖的年份"清单（6.4 跨年份需求拆分）。
+
+    - 显式年份（"2023年"）→ [2023]
+    - "最近两年/近三年/过去2年" → 从今年往回数 N 个年份
+    - 都没有 → []
+    供预筛把「多年份需求」召回到每一年的文件（否则需求文本不含年份数字，年份命名的
+    文件按 bigram 根本召不回来——同事实测"最近两年增值税申报表"只匹配到单文件的根因）。
+    """
+    req = requirement or ""
+    cy = current_year or _current_year()
+    explicit = sorted({int(y) for y in _YEAR_RE.findall(req)})
+    if explicit:
+        return explicit
+    m = _RECENT_N_RE.search(req)
+    if m:
+        tok = m.group(1)
+        n = int(tok) if tok.isdigit() else _CN_NUM.get(tok, 0)
+        if n > 0:
+            return list(range(cy - n + 1, cy + 1))
+    return []
+
+
 # 归一化时剥离的「礼貌/引导」噪音词（不影响材料语义，去掉提升跨机构命中）
 _NORM_FILLER = ("请提供", "请贵公司", "贵公司", "提供", "请", "及说明", "的复印件",
                 "复印件", "扫描件", "盖章版", "最新", "相关", "文件", "资料")
@@ -670,31 +703,68 @@ def _row_search_text(row: dict) -> str:
     return f"{clean_filename(raw_name)} {raw_name} {row.get('summary') or ''}".lower()
 
 
+def _item_keywords(item: dict) -> set[str]:
+    """单条需求的召回关键词：汉字二元组 + 推断出的应覆盖年份（4位串）。
+
+    加年份是 6.4：需求文本"最近两年"本身不含年份数字，年份命名的文件按 bigram
+    召不回来；把推断年份并入关键词，年份文件才进候选池。
+    """
+    kws = _requirement_bigrams(item.get("requirement", ""))
+    kws |= {str(y) for y in expected_years(item.get("requirement", ""))}
+    return kws
+
+
 def _prefilter_files_for_batch(
     batch_items: list[dict],
     index_rows: list[dict],
     top_n: int = 50,
+    per_item_floor: int = 6,
 ) -> list[dict]:
     """
-    关键词预筛：从 index_rows 中找出与当前批次需求最相关的 top_n 个文件。
+    关键词预筛：从 index_rows 中找出与当前批次需求最相关的候选文件。
     文件数不超过 top_n 时直接返回全量。
-    使用汉字二元组（bigram）匹配，忽略停用字。
+
+    6.2 统一召回：除了「全局 top_n」，再给**每条需求**保底纳入它自己的 top-K 候选
+    （per_item_floor）。否则关键词少的需求（如"营业执照"）会被关键词多的需求挤出
+    全局榜——同事实测里 #1"营业执照"没匹配、#25"关联公司营业执照"却匹配到同名文件
+    正是这个问题。保底后同类表述都能命中相同候选池。
     """
     if len(index_rows) <= top_n:
         return index_rows
 
+    # 预计算每行可搜索文本（避免 O(items×rows) 重复拼接）
+    row_texts = [_row_search_text(r) for r in index_rows]
+    n_rows = len(index_rows)
+
+    def _score(idx: int, kws: set[str]) -> int:
+        text = row_texts[idx]
+        return sum(1 for kw in kws if kw in text)
+
+    selected: set[int] = set()
+
+    # ① 全局 top_n（批次整体关键词）
     all_keywords: set[str] = set()
     for item in batch_items:
-        all_keywords |= _requirement_bigrams(item.get("requirement", ""))
+        all_keywords |= _item_keywords(item)
+    global_ranked = sorted(range(n_rows), key=lambda i: -_score(i, all_keywords))
+    selected.update(global_ranked[:top_n])
 
-    scored: list[tuple[int, dict]] = []
-    for row in index_rows:
-        text = _row_search_text(row)
-        score = sum(1 for kw in all_keywords if kw in text)
-        scored.append((score, row))
+    # ② 每条需求的召回地板：自己的 top-K（score>0）一定进池
+    for item in batch_items:
+        kws = _item_keywords(item)
+        if not kws:
+            continue
+        ranked = sorted(range(n_rows), key=lambda i: -_score(i, kws))
+        added = 0
+        for i in ranked:
+            if _score(i, kws) <= 0:
+                break
+            selected.add(i)
+            added += 1
+            if added >= per_item_floor:
+                break
 
-    scored.sort(key=lambda x: -x[0])
-    return [row for _, row in scored[:top_n]]
+    return [index_rows[i] for i in sorted(selected)]
 
 
 def _keyword_fallback_match(

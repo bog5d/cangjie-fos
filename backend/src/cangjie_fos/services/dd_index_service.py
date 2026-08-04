@@ -15,12 +15,24 @@ from cangjie_fos.services.db_base import _connect
 
 logger = logging.getLogger(__name__)
 
-# 超过此数量的文件夹不做 LLM 摘要，只索引文件名+类型，避免几小时的 API 调用
-MAX_LLM_SUMMARIZE_FILES = 200
+# 超过此数量的文件夹不做 LLM 摘要（避免几小时/大量 token 的 API 调用）。可用环境变量覆盖。
+MAX_LLM_SUMMARIZE_FILES = int(os.getenv("CANGJIE_MAX_LLM_SUMMARIZE_FILES", "200") or "200")
+
+# 超 LLM 上限但在此上限内：仍抽轻量正文做「廉价摘要」（0 额外 token），恢复语义粗筛。
+# 只有超过这个上限的超大库才彻底退化为纯文件名（保扫描速度）。
+MAX_LIGHT_EXTRACT_FILES = int(os.getenv("CANGJIE_MAX_LIGHT_EXTRACT_FILES", "6000") or "6000")
 
 # 仓颉自己生成的派生缓存目录前缀（如预热产物 _cangjie_预处理_md/）。
 # 这些是原材料的派生物，绝不能再被当成材料二次入库，否则污染候选集/主体识别/文件数。
 _CANGJIE_INTERNAL_PREFIX = "_cangjie_"
+
+# 开发产物 / 系统目录黑名单：这些绝不是尽调材料，扫到只会污染索引（误召回、拖慢、
+# 稀释候选集）。同事实测 1850 文件里混进 226 个 node_modules/venv 文件即此问题。
+_EXCLUDED_DIR_NAMES = frozenset({
+    "node_modules", ".venv", "venv", "cangjie-venv", ".git", "__pycache__",
+    "dist", "build", ".idea", ".vscode", ".pytest_cache", ".mypy_cache",
+    "site-packages", ".tox", ".cache", "egg-info", ".egg-info",
+})
 
 
 def _is_cangjie_internal(file_path, root) -> bool:
@@ -30,6 +42,19 @@ def _is_cangjie_internal(file_path, root) -> bool:
     except ValueError:
         parts = file_path.parts
     return any(p.startswith(_CANGJIE_INTERNAL_PREFIX) for p in parts)
+
+
+def _is_excluded_dir(file_path, root) -> bool:
+    """文件路径是否经过开发产物/系统目录（node_modules/.venv/.git 等黑名单）。"""
+    try:
+        parts = file_path.relative_to(root).parts
+    except ValueError:
+        parts = file_path.parts
+    # 只看目录层（不含文件名本身）；命中黑名单或以 . 开头的隐藏依赖目录即排除
+    for p in parts[:-1]:
+        if p in _EXCLUDED_DIR_NAMES or p.endswith(".egg-info"):
+            return True
+    return False
 
 
 def clean_filename(name: str) -> str:
@@ -73,6 +98,7 @@ def scan_and_index_folder(
         f for f in root.rglob("*")
         if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
         and not _is_cangjie_internal(f, root)
+        and not _is_excluded_dir(f, root)  # 排除 node_modules/.venv/.git 等开发产物
     ]
 
     # per_institution 布局：同名文件跨机构子文件夹去重，只留 mtime 最新一份
@@ -80,11 +106,21 @@ def scan_and_index_folder(
         files = _dedup_keep_newest(files)
 
     total = len(files)
-    use_llm = total <= MAX_LLM_SUMMARIZE_FILES
-    if not use_llm:
+    # 三档摘要策略：
+    #   llm     —— 小库：抽轻量正文 → LLM 精摘要（最佳语义）
+    #   excerpt —— 中大库：抽轻量正文做「廉价摘要」（0 额外 token），恢复语义粗筛
+    #   none    —— 超大库：纯文件名（保扫描速度）
+    if total <= MAX_LLM_SUMMARIZE_FILES:
+        summary_mode = "llm"
+    elif total <= MAX_LIGHT_EXTRACT_FILES:
+        summary_mode = "excerpt"
+    else:
+        summary_mode = "none"
+    if summary_mode != "llm":
         logger.info(
-            "文件夹 %s 含 %d 个文件（>%d），跳过 LLM 摘要，仅索引文件名",
-            folder_path, total, MAX_LLM_SUMMARIZE_FILES,
+            "文件夹 %s 含 %d 个文件，摘要策略=%s（LLM上限%d/轻抽取上限%d）",
+            folder_path, total, summary_mode,
+            MAX_LLM_SUMMARIZE_FILES, MAX_LIGHT_EXTRACT_FILES,
         )
 
     # 机构数量（供前端布局徽章）：per_institution 下统计去重后文件来源的机构子文件夹数
@@ -104,7 +140,7 @@ def scan_and_index_folder(
             subfolder = _institution_subfolder(file_path, root)
             encrypted = is_file_encrypted(file_path)
             _index_single_file(
-                file_path, str(root), use_llm=use_llm,
+                file_path, str(root), summary_mode=summary_mode,
                 institution_subfolder=subfolder, is_encrypted=encrypted,
             )
             results["indexed"] += 1
@@ -149,7 +185,7 @@ def _dedup_keep_newest(files: list[Path]) -> list[Path]:
 def _index_single_file(
     file_path: Path,
     folder_root: str,
-    use_llm: bool = True,
+    summary_mode: str = "llm",
     institution_subfolder: str = "",
     is_encrypted: bool = False,
 ) -> None:
@@ -160,7 +196,7 @@ def _index_single_file(
     #   - 小文件夹（use_llm）：只抽「轻量前几页/800字」喂 LLM 摘要，比全文快得多；
     #   - 大文件夹：纯元数据（文件名 + 加密标记），秒级完成；
     #   - content_text 留空，待精判按需抽取并回填（dd_match_service._ensure_content_text）。
-    if use_llm:
+    if summary_mode == "llm":
         light_text, readable = extract_text(file_path, max_chars=800)
         # 摘要失败（如 Key 失效 401）不应让可读文件整份不入库：降级为 summary=None，
         # 文件名 + readable 仍落库，匹配靠文件名、正文待预热/精判按需抽取。
@@ -170,7 +206,12 @@ def _index_single_file(
                 summary = _llm_summarize(file_path.name, light_text)
             except Exception as e:  # noqa: BLE001
                 logger.warning("摘要失败，降级仅索引文件名 %s: %s", file_path.name, e)
-    else:
+    elif summary_mode == "excerpt":
+        # 中大库兜底：不调 LLM（0 额外 token），但抽轻量正文做「廉价摘要」，
+        # 让语义粗筛有正文可匹配，而不是退化成纯文件名（同事实测的匹配失效根因）。
+        light_text, readable = extract_text(file_path, max_chars=800)
+        summary = (light_text[:300].strip() or None) if (readable and light_text) else None
+    else:  # none —— 超大库：纯文件名
         light_text, readable, summary = "", True, None
     content_text = None  # 延迟到精判按需抽取
 

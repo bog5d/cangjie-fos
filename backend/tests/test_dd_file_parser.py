@@ -100,12 +100,14 @@ def test_large_folder_skips_llm_summarize(tmp_path):
     with patch("cangjie_fos.services.dd_index_service._llm_summarize", mock_llm):
         result = scan_and_index_folder(str(tmp_path), "test_large")
 
-    # LLM 摘要不应该被调用
+    # 超 LLM 上限：不调 LLM 摘要（省 token）
     mock_llm.assert_not_called()
     assert result["indexed"] == n
-    # summary 应全部为 None（未生成摘要）
+    # 但 H1 修复：中大库改用「正文摘录」做廉价摘要，恢复语义粗筛——summary 不再全为 None。
+    # （201 <= MAX_LIGHT_EXTRACT_FILES → excerpt 模式，每个可读文件都有正文摘要）
     rows = get_index_by_folder(str(tmp_path))
-    assert all(r["summary"] is None for r in rows)
+    assert any(r["summary"] for r in rows)
+    assert all((r["summary"] is None) or ("内容" in r["summary"]) for r in rows)
 
 
 def test_small_folder_calls_llm_summarize(tmp_path):
@@ -165,7 +167,7 @@ def test_get_index_for_folder_includes_unreadable_files(tmp_path):
             ]
             # 手动调用 _index_single_file 来构造两条索引
             from cangjie_fos.services.dd_index_service import _index_single_file
-            _index_single_file(tmp_path / "report.txt", str(tmp_path), use_llm=True)
+            _index_single_file(tmp_path / "report.txt", str(tmp_path), summary_mode="llm")
 
             # 插入一条 readable=0 的记录（模拟图片PDF）
             import time
