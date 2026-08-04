@@ -619,6 +619,7 @@ def _merge_institution_from_cloud(data: dict) -> None:
         update_institution(
             tenant_id=tenant_id,
             institution_id=institution_id,
+            # 里程碑
             nda_signed=data.get("nda_signed"),
             offline_meeting_count=data.get("offline_meeting_count"),
             project_approved=data.get("project_approved"),
@@ -628,6 +629,21 @@ def _merge_institution_from_cloud(data: dict) -> None:
             agreement_signed=data.get("agreement_signed"),
             deal_closed=data.get("deal_closed"),
             referral_source=data.get("referral_source"),
+            # 阶段/热度/画像/联系/卡点/锁（游梦秋 #01：这些 Push 有推、Pull 却没合，
+            # 导致同事 pull 不到你改的卡点/锁定/阶段——多人协作信息脱节）
+            stage=data.get("stage"),
+            thermal=data.get("thermal"),
+            preferences=data.get("preferences"),
+            concerns=data.get("concerns"),
+            ai_summary=data.get("ai_summary"),
+            contact_name=data.get("contact_name"),
+            contact_title=data.get("contact_title"),
+            valuation=data.get("valuation"),
+            deal_size=data.get("deal_size"),
+            probability=data.get("probability"),
+            legal_status=data.get("legal_status"),
+            blocker_note=data.get("blocker_note"),
+            review_locked=data.get("review_locked"),
         )
     except Exception as e:  # noqa: BLE001
         logger.warning("_merge_institution_from_cloud failed: %s", e)

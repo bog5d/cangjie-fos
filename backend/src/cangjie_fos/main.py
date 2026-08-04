@@ -50,6 +50,12 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             err_codes = [i.code for i in r.issues if i.severity == "error"]
             raise RuntimeError(f"strict startup: readiness failed codes={err_codes!r}")
     run_preflight(strict=True)
+    # 数据安全（游梦秋 #02）：启动时 checkpoint WAL + 打印绝对 DB 路径，便于定位"过夜数据消失"
+    try:
+        from cangjie_fos.services.db_base import startup_db_safety  # noqa: PLC0415
+        startup_db_safety()
+    except Exception:  # noqa: BLE001
+        pass
     # 预加载 Coach .env 使 NPC 从启动即可访问 LLM，无需等到 pipeline 首次运行
     try:
         from cangjie_fos.core.paths import hydrate_pitch_coach_env  # noqa: PLC0415
