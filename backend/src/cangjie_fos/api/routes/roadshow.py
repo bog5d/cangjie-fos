@@ -130,6 +130,7 @@ async def roadshow_start(
     institution_name: str = Query(default="", description="目标机构名称（可选，ASR完成后再确认）"),
     referrer: str = Query(default="", description="引荐方机构名称（可选）"),
     confirmed_by: str = Query(default="", description="指挥官名称"),
+    biz_type: str = Query(default="01_机构路演", description="业务类型：01_机构路演/03_客户访谈/04_供应商访谈/05_高管访谈"),
     file: UploadFile | None = None,
     transcript_text: str | None = None,
 ) -> RoadshowStartResponse:
@@ -142,13 +143,17 @@ async def roadshow_start(
     job_id = str(uuid.uuid4())
     label = f"路演_{roadshow_date}" + (f"_{institution_name}" if institution_name else "")
 
+    # J2（游梦秋 #08）：业务类型不再统一写死为机构路演，非法值回落机构路演
+    _INTEL = {"01_机构路演", "03_客户访谈", "04_供应商访谈", "05_高管访谈"}
+    category = biz_type if biz_type in _INTEL else "01_机构路演"
+
     # 创建内存 job 记录（job_create 内部已同步写 SQLite，不需要再调 db_job_create）
     job_create(job_id, tenant_id=tenant_id)
     # 补写路演专属字段（job_create 内部的 db_job_create 不知道这些字段）
     db_job_update(
         job_id,
         interviewee=label,
-        category="01_机构路演",
+        category=category,
         institution_id=institution_name or f"待确认_{roadshow_date}",
         is_roadshow=1,
         referrer=referrer,

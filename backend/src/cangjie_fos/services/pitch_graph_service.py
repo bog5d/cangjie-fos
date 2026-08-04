@@ -21,6 +21,12 @@ logger = logging.getLogger(__name__)
 _RETRY_DELAYS = [2, 4, 8]  # seconds between attempt 1→2, 2→3, 3→4
 _ROADSHOW_CATEGORY = "01_机构路演"
 _MEETING_MINUTES_CATEGORY = "06_通用会议纪要"
+# 走"情报提取"分支的业务类型（都是"从一场会里提取对方说了什么/情报"，不打分）。
+# 游梦秋 #08：以前只认 01_机构路演，别的类型会误落到评分分支——现在客户访谈/供应商
+# 访谈/高管访谈也走情报分析，且各自 biz_type 会带进 prompt 让分析知道场景。
+_INTEL_CATEGORIES = {
+    "01_机构路演", "03_客户访谈", "04_供应商访谈", "05_高管访谈",
+}
 
 
 class PitchGraphService:
@@ -38,7 +44,7 @@ class PitchGraphService:
         trace_id: str | None = None,
     ) -> tuple[Any, dict[str, Any]]:
         category = (explicit_context or {}).get("biz_type", "")
-        if category == _ROADSHOW_CATEGORY:
+        if category in _INTEL_CATEGORIES:
             # ── 路演情报分析分支（不打分、不评判话术）────────────────────────────
             logger.info(
                 "roadshow_intel_branch: trace_id=%s category=%s", trace_id, category
