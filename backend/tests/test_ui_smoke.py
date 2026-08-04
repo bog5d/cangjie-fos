@@ -666,3 +666,56 @@ class TestMeetingMinutesSmoke:
             ui_reporter.fail(page, "关闭会议纪要向导后仍有叠层",
                              note=f"残留 {len(blocking)} 个遮罩")
         assert blocking == [], f"关闭会议纪要向导后仍有叠层：{blocking}"
+
+
+# ── TestTranscriptDeskSmoke ────────────────────────────────────────────────────
+
+class TestTranscriptDeskSmoke:
+    """文字稿脱敏工作台浏览器冒烟。服务未启动自动 skip。"""
+
+    def test_transcript_desk_button_visible(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        _login(page, fos_server_url, fos_login_credentials)
+        btn = page.locator("button:has-text('文字稿脱敏')")
+        try:
+            expect(btn).to_be_visible(timeout=8_000)
+            ui_reporter.capture(page, "主页 — 「文字稿脱敏」入口可见", status="ok")
+        except AssertionError:
+            ui_reporter.fail(page, "主页 — 找不到「文字稿脱敏」入口")
+            raise
+
+    def test_transcript_desk_opens(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('文字稿脱敏')").click()
+        page.wait_for_timeout(800)
+        try:
+            expect(page.locator("button:has-text('一键脱敏')")).to_be_visible(timeout=6_000)
+            ui_reporter.capture(page, "文字稿工作台 — 一键脱敏按钮可见", status="ok")
+        except AssertionError:
+            ui_reporter.fail(page, "文字稿工作台打开失败")
+            raise
+
+    def test_transcript_desk_close_no_overlay(
+        self, page: Page, fos_server_url: str, fos_login_credentials: tuple[str, str],
+        ui_reporter,
+    ) -> None:
+        _login(page, fos_server_url, fos_login_credentials)
+        page.locator("button:has-text('文字稿脱敏')").click()
+        page.wait_for_timeout(800)
+        close = page.locator("button:has-text('✕'), button:has-text('×')").first
+        if close.is_visible():
+            close.click()
+        else:
+            page.keyboard.press("Escape")
+        page.wait_for_timeout(600)
+        blocking = page.evaluate(_OVERLAY_JS)
+        if blocking == []:
+            ui_reporter.capture(page, "关闭文字稿工作台 — 无残留叠层", status="ok")
+        else:
+            ui_reporter.fail(page, "关闭文字稿工作台仍有叠层", note=f"{len(blocking)} 个")
+        assert blocking == [], f"残留叠层：{blocking}"
