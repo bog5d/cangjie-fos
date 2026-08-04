@@ -592,6 +592,31 @@ def _db_path() -> str:
     return str(p)
 
 
+def startup_db_safety() -> str:
+    """启动时的数据安全动作，缓解"过夜数据像被清空"（游梦秋 #02）：
+
+    1. 打印**解析后的绝对 DB 路径**——若每天变化，说明后端指向了随工作目录漂移的空库
+       （WorkBuddy 日期命名目录），这是"数据不见了"的最可能原因，据此可定位。
+    2. 做一次 WAL checkpoint(TRUNCATE)，把 -wal 落盘进主库，避免异常退出后 WAL 悬空。
+    返回解析到的绝对路径（供日志/诊断）。
+    """
+    import os as _os  # noqa: PLC0415
+    import logging as _logging  # noqa: PLC0415
+    _log = _logging.getLogger(__name__)
+    abs_path = _os.path.abspath(_db_path())
+    try:
+        conn = _connect()
+        try:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:  # noqa: BLE001
+        _log.warning("startup WAL checkpoint 失败: %s", e)
+    _log.info("DB 就绪 · 绝对路径=%s（若每天变化=后端指向了漂移的空库，需固定工作目录）", abs_path)
+    return abs_path
+
+
 def _run_migrations(conn: sqlite3.Connection) -> None:
     """版本化迁移：建表追踪已应用版本，每次只运行未应用的 migration。"""
     conn.execute("""

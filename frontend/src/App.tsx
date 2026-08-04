@@ -11,6 +11,8 @@ import { FollowUpWidget } from "./components/FollowUpWidget";
 import { PitchUploadWizard } from "./components/PitchUploadWizard";
 import { RoadshowWizard } from "./components/RoadshowWizard";
 import { MeetingMinutesWizard } from "./components/MeetingMinutesWizard";
+import { TranscriptDeskWizard } from "./components/TranscriptDeskWizard";
+import { BpConsistencyWizard } from "./components/BpConsistencyWizard";
 import DueDiligenceWizard from "./components/DueDiligenceWizard";
 import CoachingWizard from "./components/CoachingWizard";
 import PackageGapWizard from "./components/PackageGapWizard";
@@ -148,6 +150,8 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
   const [wizardOpen, setWizardOpen] = useState(false);
   const [roadshowOpen, setRoadshowOpen] = useState(false);
   const [minutesOpen, setMinutesOpen] = useState(false);
+  const [transcriptDeskOpen, setTranscriptDeskOpen] = useState(false);
+  const [bpCheckOpen, setBpCheckOpen] = useState(false);
   const [ddOpen, setDdOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
   const [packageOpen, setPackageOpen] = useState(false);
@@ -434,6 +438,20 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
           </button>
           <button
             type="button"
+            onClick={() => setTranscriptDeskOpen(true)}
+            className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-sky-300 hover:bg-sky-500/20"
+          >
+            🛡️ 文字稿脱敏
+          </button>
+          <button
+            type="button"
+            onClick={() => setBpCheckOpen(true)}
+            className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 font-display text-xs font-bold uppercase tracking-widest text-rose-300 hover:bg-rose-500/20"
+          >
+            🔍 BP口径比对
+          </button>
+          <button
+            type="button"
             onClick={() => setDdOpen(true)}
             className="px-3 py-1.5 text-sm bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors"
           >
@@ -546,6 +564,16 @@ function MainApp({ session, onLogout, syncNotice }: { session: FosSession | null
       <MeetingMinutesWizard
         open={minutesOpen}
         onClose={() => setMinutesOpen(false)}
+        tenantId={tenant}
+      />
+      <TranscriptDeskWizard
+        open={transcriptDeskOpen}
+        onClose={() => setTranscriptDeskOpen(false)}
+        tenantId={tenant}
+      />
+      <BpConsistencyWizard
+        open={bpCheckOpen}
+        onClose={() => setBpCheckOpen(false)}
         tenantId={tenant}
       />
       <DoctorPanel open={doctorOpen} onClose={() => setDoctorOpen(false)} />

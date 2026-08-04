@@ -757,3 +757,39 @@ class TestNpcEnhancement:
         assert npc_chat_graph._tool_loop_max() == 12  # 上限夹取
         monkeypatch.setenv("CANGJIE_NPC_TOOL_LOOP_MAX", "1")
         assert npc_chat_graph._tool_loop_max() == 3   # 下限夹取
+
+    def test_all_tool_fields_are_strings(self):
+        """守卫（游梦秋 #14）：每个工具的 description/name 必须是 str，不能是 tuple。
+
+        一个尾逗号就能把 description 变成元组，DeepSeek 拒收整个 tools 数组→豆豆全废。
+        此测试杜绝这类 bug 再次发生。"""
+        from cangjie_fos.services.npc_tools import ALL_TOOLS
+        for t in ALL_TOOLS:
+            fn = t["function"]
+            assert isinstance(fn["name"], str), f"{fn} name 不是字符串"
+            assert isinstance(fn["description"], str), (
+                f"工具 {fn.get('name')} 的 description 是 {type(fn['description']).__name__}，"
+                "不是 str（多半是尾逗号导致的元组 bug）"
+            )
+            assert isinstance(fn.get("parameters", {}), dict)
+
+    def test_system_prompt_forbids_fabrication(self):
+        """游梦秋 #04：系统提示必须硬性禁止工具失败时编造数值。"""
+        from cangjie_fos.services.npc_chat_graph import _base_system
+        sp = _base_system()
+        assert "禁止编造" in sp or "严禁编造" in sp
+        assert "无法获取" in sp
+
+    def test_reception_checklist_prompt_is_admin(self, monkeypatch):
+        """接待清单必须走行政后勤方向，且明确排斥路演/估值/退出路径内容。"""
+        from cangjie_fos.services import npc_tools
+        captured = {}
+        monkeypatch.setattr(npc_tools, "_llm_reception_checklist",
+                            lambda ctx: captured.setdefault("ctx", ctx) or "【接待前】预约会议室")
+        npc_tools.execute_tool("generate_reception_checklist",
+                               {"context": "明天红杉来访"}, tenant_id="t1")
+        # 工具 description 明确是行政后勤、非路演话术
+        desc = next(t["function"]["description"] for t in npc_tools.ALL_TOOLS
+                    if t["function"]["name"] == "generate_reception_checklist")
+        assert "行政" in desc or "后勤" in desc
+        assert "不是路演" in desc or "事务性" in desc

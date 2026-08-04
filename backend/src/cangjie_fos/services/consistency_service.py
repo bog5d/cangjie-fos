@@ -139,6 +139,141 @@ def run_consistency_check(
     }
 
 
+def run_bp_consistency_check(
+    tenant_id: str,
+    bp_text: str,
+    *,
+    limit: int = 8,
+) -> dict:
+    """BP 文档 vs 高管访谈 口径一致性比对（吴素实测评为"最有价值"）。
+
+    抽 BP 的关键声明 + 抽最近若干场访谈/路演的声明，按主题交叉比，判三级：
+      consistent 一致 / deviation 偏差(方向一致数值有差) / conflict 矛盾(直接冲突)。
+    实测能揪出"BP写800万 vs 访谈说8万"这种 100 倍硬矛盾，投资人一追问就崩。
+
+    返回 {bp_topics, checked_interviews, comparisons:[{topic,bp_statement,
+          interview_statements,level,note}], hard_conflicts:[...], counts}。
+    """
+    from cangjie_fos.services.pitch_job_db import db_job_list_for_tenant
+
+    if not (bp_text or "").strip():
+        return {"bp_topics": 0, "checked_interviews": [], "comparisons": [],
+                "hard_conflicts": [], "counts": {}, "note": "BP 文本为空。"}
+
+    # BP 声明
+    try:
+        bp_claims = _llm_extract_claims(bp_text)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("BP 口径抽取失败: %s", e)
+        bp_claims = []
+    bp_by_topic: dict[str, dict] = {}
+    for c in bp_claims:
+        topic = (c.get("topic") or "").strip()
+        stmt = (c.get("statement") or "").strip()
+        if topic and stmt:
+            bp_by_topic.setdefault(_norm_topic(topic), {"topic": topic, "statement": stmt})
+    if not bp_by_topic:
+        return {"bp_topics": 0, "checked_interviews": [], "comparisons": [],
+                "hard_conflicts": [], "counts": {},
+                "note": "没能从 BP 抽出可比对的关键口径。"}
+
+    # 访谈/路演声明
+    jobs = [j for _, j in db_job_list_for_tenant(tenant_id, limit=max(1, min(int(limit), 30)))]
+    iv_by_topic: dict[str, list[dict]] = {}
+    interviews: list[str] = []
+    for job in jobs:
+        transcript = _job_transcript(job)
+        if not transcript.strip():
+            continue
+        label = _source_label(job)
+        interviews.append(label)
+        try:
+            claims = _llm_extract_claims(transcript)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("访谈口径抽取失败 source=%s: %s", label, e)
+            continue
+        for c in claims:
+            topic = (c.get("topic") or "").strip()
+            stmt = (c.get("statement") or "").strip()
+            if topic and stmt:
+                iv_by_topic.setdefault(_norm_topic(topic), []).append(
+                    {"source": label, "statement": stmt})
+
+    comparisons: list[dict] = []
+    counts = {"consistent": 0, "deviation": 0, "conflict": 0, "review": 0}
+    for norm, bp in bp_by_topic.items():
+        iv_entries = iv_by_topic.get(norm)
+        if not iv_entries:
+            continue  # 访谈没提到这个口径 → 无从比对
+        iv_stmts = [e["statement"] for e in iv_entries]
+        try:
+            judged = _llm_judge_bp_vs_interview(bp["topic"], bp["statement"], iv_stmts)
+            level = judged.get("level", "review")
+            note = str(judged.get("note", ""))
+        except Exception as e:  # noqa: BLE001
+            logger.warning("BP 口径判定失败 topic=%s: %s", bp["topic"], e)
+            level, note = "review", "AI 判定不可用，请人工比对"
+        if level not in counts:
+            level = "review"
+        counts[level] += 1
+        comparisons.append({
+            "topic": bp["topic"],
+            "bp_statement": bp["statement"],
+            "interview_statements": iv_entries,
+            "level": level,
+            "note": note,
+        })
+
+    hard = [c for c in comparisons if c["level"] == "conflict"]
+    return {
+        "bp_topics": len(bp_by_topic),
+        "checked_interviews": interviews,
+        "comparisons": comparisons,
+        "hard_conflicts": hard,
+        "counts": counts,
+        "note": f"BP {len(bp_by_topic)} 个口径 × 最近 {len(interviews)} 场访谈交叉比对。",
+    }
+
+
+def _llm_judge_bp_vs_interview(topic: str, bp_statement: str, interview_statements: list[str]) -> dict:
+    """判 BP 口径与访谈口径的关系（monkeypatch 点）。
+
+    返回 {"level": consistent|deviation|conflict, "note": "一句话点明差异(30字内)"}。
+    """
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    ivs = "\n".join(f"- {s}" for s in interview_statements)
+    prompt = (
+        f"就「{topic}」这个口径，对比 BP 与高管访谈：\n"
+        f"BP 的说法：{bp_statement}\n"
+        f"访谈里的说法：\n{ivs}\n\n"
+        "判断二者关系，只返回 JSON："
+        '{"level": "consistent 或 deviation 或 conflict", "note": "如不一致，一句话点明差异(30字内)"}。\n'
+        "consistent=完全一致；deviation=方向一致但数值/程度有差；conflict=直接冲突(数字/结论对不上)。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150,
+            temperature=0,
+        )
+        return (resp.choices[0].message.content or "{}").strip()
+
+    raw = call_with_retry(_call, max_retries=2)
+    if raw.startswith("```"):
+        parts = raw.split("```")
+        raw = parts[1] if len(parts) > 1 else raw
+        if raw.lower().startswith("json"):
+            raw = raw[4:]
+    try:
+        return json.loads(raw.strip())
+    except json.JSONDecodeError:
+        return {"level": "review", "note": ""}
+
+
 def _llm_extract_claims(transcript: str) -> list[dict]:
     """从单场转写抽取关于关键指标的声明（monkeypatch 点）。
 

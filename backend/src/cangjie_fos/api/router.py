@@ -10,6 +10,7 @@ from cangjie_fos.api.routes import (
     coaching,
     consistency,
     dashboard,
+    desensitize,
     dd_response,
     feedback,
     follow_ups,
@@ -59,4 +60,5 @@ api_router.include_router(meeting_minutes.router)
 api_router.include_router(dd_response.router)
 api_router.include_router(coaching.router)
 api_router.include_router(consistency.router)
+api_router.include_router(desensitize.router)
 api_router.include_router(package_response.router)
