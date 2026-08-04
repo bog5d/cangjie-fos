@@ -107,27 +107,34 @@ def _put_file(path: str, content_dict: dict[str, Any], message: str) -> bool:
     content_bytes = json.dumps(content_dict, ensure_ascii=False, indent=2).encode("utf-8")
     content_b64 = base64.b64encode(content_bytes).decode("ascii")
 
+    # #06：重试 + 冲突处理。两人并发推同一文件时 SHA 会过期，GitHub 返回 409/422；
+    # 此时重新取最新 SHA 再推（后写覆盖，但不再静默丢弃），并对网络抖动指数退避重试。
+    import time as _time  # noqa: PLC0415
     sha = _get_file_sha(path)
-    payload: dict[str, Any] = {
-        "message": message,
-        "content": content_b64,
-    }
-    if sha:
-        payload["sha"] = sha
-
-    body = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=body, headers=_headers(), method="PUT")
-    req.add_header("Content-Type", "application/json")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            status = resp.getcode()
-            return status in (200, 201)
-    except urllib.error.HTTPError as e:
-        logger.warning("GitHub PUT 失败 %s: %s %s", path, e.code, e.reason)
-        return False
-    except (urllib.error.URLError, OSError, ValueError) as e:
-        logger.warning("GitHub PUT 异常 %s: %s", path, e)
-        return False
+    max_attempts = 4
+    for attempt in range(max_attempts):
+        payload: dict[str, Any] = {"message": message, "content": content_b64}
+        if sha:
+            payload["sha"] = sha
+        body = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=body, headers=_headers(), method="PUT")
+        req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.getcode() in (200, 201)
+        except urllib.error.HTTPError as e:
+            if e.code in (409, 422):  # SHA 冲突/过期 → 取最新 SHA 重试
+                logger.warning("GitHub PUT 冲突 %s: %s，重取 SHA 重试(%d/%d)",
+                               path, e.code, attempt + 1, max_attempts)
+                sha = _get_file_sha(path)
+                continue
+            logger.warning("GitHub PUT 失败 %s: %s %s（第%d次）", path, e.code, e.reason, attempt + 1)
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            logger.warning("GitHub PUT 异常 %s: %s（第%d次）", path, e, attempt + 1)
+        if attempt < max_attempts - 1:
+            _time.sleep(2 ** attempt)  # 1,2,4s 退避
+    logger.error("GitHub PUT 最终失败（重试%d次）%s——数据未同步，请检查网络/Token", max_attempts, path)
+    return False
 
 
 def _list_folder(folder: str) -> list[dict]:
