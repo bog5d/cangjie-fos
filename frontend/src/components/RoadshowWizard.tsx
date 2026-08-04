@@ -151,6 +151,7 @@ export function RoadshowWizard({
   const [transcriptText, setTranscriptText] = useState("");
   const [roadshowDate, setRoadshowDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [institutionName, setInstitutionName] = useState("");
+  const [bizType, setBizType] = useState("01_机构路演");
   const [referrer, setReferrer] = useState("");
   const [instSuggestions, setInstSuggestions] = useState<string[]>([]);
 
@@ -221,6 +222,7 @@ export function RoadshowWizard({
         institution_name: institutionName,
         referrer,
         confirmed_by: userName,
+        biz_type: bizType,
       });
 
       let data: { job_id: string; status: string; message: string };
@@ -475,6 +477,21 @@ export function RoadshowWizard({
                   onChange={(e) => setRoadshowDate(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                 />
+              </div>
+
+              {/* 业务类型（J2）*/}
+              <div>
+                <label className="mb-1 block text-xs text-slate-400">业务类型</label>
+                <select
+                  value={bizType}
+                  onChange={(e) => setBizType(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                >
+                  <option value="01_机构路演">机构路演</option>
+                  <option value="03_客户访谈">客户访谈</option>
+                  <option value="04_供应商访谈">供应商访谈</option>
+                  <option value="05_高管访谈">高管访谈</option>
+                </select>
               </div>
 
               {/* 目标机构 */}

@@ -26,6 +26,33 @@ def _mb(n: int) -> str:
     return f"{n / _MB:.0f}MB"
 
 
+def _institution_background(tenant_id: str, institution_name: str) -> str:
+    """从机构 CRM 档案拼出一段背景，注入分析（J3 / 游梦秋 #08）。
+
+    机构名是占位符/空/查不到 → 返回空串（等价于旧行为，安全）。
+    """
+    name = (institution_name or "").strip()
+    if not name or name.startswith("待确认_"):
+        return ""
+    try:
+        from cangjie_fos.services.institution_store import get_by_name  # noqa: PLC0415
+        inst = get_by_name(tenant_id=tenant_id, name=name)
+    except Exception:  # noqa: BLE001
+        return ""
+    if not inst:
+        return ""
+    bits = []
+    if inst.ai_summary:
+        bits.append(f"机构画像：{inst.ai_summary}")
+    if inst.concerns:
+        bits.append(f"已知关注/疑虑：{inst.concerns}")
+    if inst.preferences:
+        bits.append(f"投资偏好：{inst.preferences}")
+    if getattr(inst, "stage", None):
+        bits.append(f"当前阶段：{inst.stage.value}")
+    return f"【对方机构背景：{name}】\n" + "\n".join(bits) if bits else ""
+
+
 def run_pitch_upload_job(
     *,
     job_id: str,
@@ -385,10 +412,17 @@ def resume_roadshow_analysis(
 
         speaker_context = "本场路演说话人身份：\n" + "\n".join(speaker_context_lines)
 
+        # J2（游梦秋 #08）：业务类型不再硬编码。用 job 存的 category，非法/缺省回落机构路演，
+        # 保证仍走情报分析分支（客户/供应商/高管访谈现也都走情报分支）。
+        _INTEL = {"01_机构路演", "03_客户访谈", "04_供应商访谈", "05_高管访谈"}
+        biz_type = (job_row.get("category") or "").strip()
+        if biz_type not in _INTEL:
+            biz_type = "01_机构路演"
+
         upload_context: dict = {
             "source": "roadshow_analysis",
             "filename": job_row.get("interviewee", job_id),
-            "biz_type": "01_机构路演",          # 触发路演情报分析分支（不是评分分支）
+            "biz_type": biz_type,
             "confirmed_speakers_context": speaker_context,
         }
         upload_context.update(build_investor_context(tenant_id))
@@ -402,7 +436,8 @@ def resume_roadshow_analysis(
             model_choice="deepseek",
             explicit_context=upload_context,
             qa_text="",
-            company_background="",
+            # J3（游梦秋 #08）：从机构 CRM 档案自动带入背景，不再空字符串
+            company_background=_institution_background(tenant_id, job_row.get("institution_id") or ""),
             trace_id=job_id,
         )
 
