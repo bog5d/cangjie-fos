@@ -91,6 +91,18 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     except (ValueError, TypeError):
         _sync_interval = 10
     _scheduler.add_job(_bg_pull, "interval", minutes=_sync_interval)
+
+    # 离线暂存自动补传：把断网期间积压的改动，网一恢复就补传上去（每 3 分钟扫一次）。
+    def _bg_flush_outbox():
+        import threading as _t
+        def _run():
+            try:
+                from cangjie_fos.services.sync_outbox import flush  # noqa: PLC0415
+                flush()
+            except Exception:  # noqa: BLE001
+                pass
+        _t.Thread(target=_run, daemon=True, name="sync-outbox-flush").start()
+    _scheduler.add_job(_bg_flush_outbox, "interval", minutes=3)
     try:
         import logging as _logging  # noqa: PLC0415
         from cangjie_fos.services.wiki_consolidator import consolidate_wiki  # noqa: PLC0415

@@ -36,6 +36,20 @@ function SyncButton() {
   const [state, setState] = useState<"idle" | "syncing" | "done" | "err">("idle");
   const [msg, setMsg] = useState("");
   const [fullMsg, setFullMsg] = useState("");
+  const [pending, setPending] = useState(0);
+
+  // 轮询本地待同步（离线暂存）条数，让用户知道"改动已存好、就等网好补传"
+  useEffect(() => {
+    let alive = true;
+    const poll = () => {
+      void api.get<{ pending: number }>("/api/sync/pending")
+        .then((r) => { if (alive) setPending(r.data.pending || 0); })
+        .catch(() => {});
+    };
+    poll();
+    const t = setInterval(poll, 30000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
 
   const handleSync = async () => {
     setState("syncing");
@@ -85,6 +99,14 @@ function SyncButton() {
       <span className={state === "done" ? "text-emerald-400" : state === "err" ? "text-red-400" : "text-slate-400"}>
         {state === "syncing" ? "同步中…" : state === "done" || state === "err" ? msg : "同步数据"}
       </span>
+      {pending > 0 && state === "idle" && (
+        <span
+          title={`${pending} 条改动已本地暂存，网络恢复后自动补传（也可点此立即同步）`}
+          className="ml-1 rounded-full bg-amber-500/20 px-1.5 text-[10px] font-bold text-amber-300"
+        >
+          {pending} 待传
+        </span>
+      )}
     </button>
   );
 }
