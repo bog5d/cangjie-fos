@@ -31,6 +31,41 @@ _TOKEN_TTL = 72 * 3600  # 72小时
 _BUILTIN_ACCOUNTS = "zt001:123456:zt,gk001:123456:gk"
 
 
+def hash_password(plain: str, *, iterations: int = 200_000) -> str:
+    """生成 pbkdf2 密码哈希（stdlib，无新依赖）。
+
+    把结果整段填进 FOS_ACCOUNTS 的密码位即可启用哈希登录，例如：
+      zt001:pbkdf2_sha256$200000$<saltB64>$<hashB64>:zt
+    不改的话继续用明文（向后兼容）。用法：
+      python -c "from cangjie_fos.api.routes.auth import hash_password; print(hash_password('你的密码'))"
+    """
+    import hashlib, os, base64  # noqa: PLC0415
+    salt = os.urandom(16)
+    dk = hashlib.pbkdf2_hmac("sha256", plain.encode("utf-8"), salt, iterations)
+    b64 = lambda b: base64.b64encode(b).decode("ascii")  # noqa: E731
+    return f"pbkdf2_sha256${iterations}${b64(salt)}${b64(dk)}"
+
+
+def _password_matches(stored: str, given: str) -> bool:
+    """比对密码。stored 是 pbkdf2 哈希则验哈希，否则按明文比（向后兼容）。
+
+    两条路径都用 hmac.compare_digest，避免计时侧信道。
+    """
+    import hmac  # noqa: PLC0415
+    stored = stored or ""
+    if stored.startswith("pbkdf2_sha256$"):
+        import hashlib, base64  # noqa: PLC0415
+        try:
+            _, iter_s, salt_b64, hash_b64 = stored.split("$", 3)
+            salt = base64.b64decode(salt_b64)
+            expected = base64.b64decode(hash_b64)
+            dk = hashlib.pbkdf2_hmac("sha256", (given or "").encode("utf-8"), salt, int(iter_s))
+            return hmac.compare_digest(dk, expected)
+        except Exception:  # noqa: BLE001
+            return False
+    return hmac.compare_digest(stored, given or "")
+
+
 def _parse_accounts(raw: str) -> dict[str, dict[str, str]]:
     """解析「账号:密码:tenant_id，逗号分隔」格式，跳过格式不全的项。"""
     accounts: dict[str, dict[str, str]] = {}
@@ -159,7 +194,7 @@ def login_route(body: LoginRequest, background_tasks: BackgroundTasks) -> LoginR
     """登录。成功后后台拉取 GitHub 最新数据。"""
     accounts = _load_accounts()
     account = accounts.get(body.username)
-    if not account or account["password"] != body.password:
+    if not account or not _password_matches(account["password"], body.password):
         raise HTTPException(status_code=401, detail="账号或密码错误")
 
     token = str(uuid.uuid4())
