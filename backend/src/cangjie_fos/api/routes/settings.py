@@ -100,7 +100,12 @@ def test_deepseek() -> dict[str, object]:
 
 @router.post("/api-keys/test-github")
 def test_github() -> dict[str, object]:
-    """测试 COACH_DATA_GITHUB_TOKEN 是否有效（访问 coach_data 仓库元数据）。"""
+    """测试 COACH_DATA_GITHUB_TOKEN 是否有效，并校验是否具备**写权限**。
+
+    关键：同步靠的是「写」。只给 Contents: Read 的令牌能读到仓库、看似正常，
+    但一同步就失败。所以除了连通性，这里还要看 repo 返回的 permissions.push，
+    只读令牌明确报错、指出怎么改，避免同事白配一场。
+    """
     token = (os.getenv("COACH_DATA_GITHUB_TOKEN") or "").strip()
     repo  = (os.getenv("COACH_DATA_GITHUB_REPO") or "bog5d/coach_data").strip()
     if not token:
@@ -111,13 +116,30 @@ def test_github() -> dict[str, object]:
             headers={"Authorization": f"token {token}", "Accept": "application/vnd.github+json"},
             timeout=10.0,
         )
-        if resp.status_code == 200:
-            return {"ok": True, "message": f"GitHub 连接正常，仓库 {repo} 可访问 ✅"}
         if resp.status_code == 401:
             return {"ok": False, "message": "Token 无效（401），请重新生成 PAT"}
         if resp.status_code == 404:
-            return {"ok": False, "message": f"仓库 {repo} 不存在或 Token 无权限访问（404）"}
-        return {"ok": False, "message": f"HTTP {resp.status_code}：{resp.text[:200]}"}
+            return {
+                "ok": False,
+                "message": f"仓库 {repo} 不存在，或令牌没勾上这个仓库（404）。"
+                           "细粒度令牌需在 Repository access 选『Only select repositories』并勾 coach_data",
+            }
+        if resp.status_code != 200:
+            return {"ok": False, "message": f"HTTP {resp.status_code}：{resp.text[:200]}"}
+
+        # 200：能读到仓库。再看能不能写——permissions.push 才是同步需要的权限。
+        try:
+            perms = resp.json().get("permissions") or {}
+        except Exception:  # noqa: BLE001
+            perms = {}
+        can_push = bool(perms.get("push") or perms.get("admin") or perms.get("maintain"))
+        if not can_push:
+            return {
+                "ok": False,
+                "message": f"仓库 {repo} 能读到，但**没有写权限**——同步会失败。"
+                           "请到令牌的 Permissions → Repository permissions → Contents 改为『Read and write』",
+            }
+        return {"ok": True, "message": f"GitHub 连接正常，{repo} 读写权限齐全，同步可用 ✅"}
     except httpx.TimeoutException:
         return {"ok": False, "message": "连接超时（10s），请检查网络"}
     except Exception as e:  # noqa: BLE001
