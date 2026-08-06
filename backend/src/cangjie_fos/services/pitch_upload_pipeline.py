@@ -276,6 +276,13 @@ def sync_roadshow_institution(
         source_trace_id=job_id,
     )
     upsert_institution(profile)
+    # 游梦秋 #2/#3：路演更新了机构 CRM，也要推到 GitHub，否则同事 pull 不到阶段/热度变化
+    # （以前只推了"路演报告"，没推"机构更新"）。走离线暂存队列，断网也不丢。
+    try:
+        from cangjie_fos.services.sync_outbox import enqueue_and_try  # noqa: PLC0415
+        enqueue_and_try("institution", profile.institution_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("路演后机构同步入队失败（非致命）: %s", e)
     logger.info(
         "roadshow institution_crm_synced job_id=%s inst=%s stage=%s",
         job_id, institution_name, new_stage,

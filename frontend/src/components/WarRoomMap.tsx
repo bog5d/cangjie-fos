@@ -20,6 +20,13 @@ interface PipelineCount {
   count: number;
 }
 
+interface StageInst {
+  name: string;
+  stage: string;
+  thermal: string;
+  blocker_note?: string;
+}
+
 interface RecentRoadshow {
   institution: string;
   status: string;
@@ -66,6 +73,23 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
   const [liveLoading, setLiveLoading] = useState(false);
   const [milestoneStats, setMilestoneStats] = useState<MilestoneStats | null>(null);
   const [briefingMode, setBriefingMode] = useState(false);
+  // #5：点击阶段展开该阶段机构列表
+  const [expandedStage, setExpandedStage] = useState<string | null>(null);
+  const [stageInsts, setStageInsts] = useState<StageInst[]>([]);
+  const [stageInstsLoaded, setStageInstsLoaded] = useState(false);
+
+  const toggleStage = useCallback(async (stage: string) => {
+    if (expandedStage === stage) { setExpandedStage(null); return; }
+    setExpandedStage(stage);
+    if (!stageInstsLoaded && tenantId) {
+      try {
+        const { data } = await api.get<StageInst[]>(
+          `/api/v1/pipeline/institutions?tenant_id=${encodeURIComponent(tenantId)}`);
+        setStageInsts(data);
+        setStageInstsLoaded(true);
+      } catch { /* 忽略，下次再取 */ }
+    }
+  }, [expandedStage, stageInstsLoaded, tenantId]);
 
   const fetchLiveIntel = useCallback(async () => {
     if (!tenantId) return;
@@ -355,15 +379,47 @@ export function WarRoomMap({ dashboard, loading, error, tenantId, onRequestRefre
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {liveIntel.pipeline_counts.map((c) => (
-                  <div
+                  <button
                     key={c.stage}
-                    className="rounded-xl border border-white/10 bg-white/5 p-3 text-center"
+                    type="button"
+                    onClick={() => void toggleStage(c.stage)}
+                    title="点击查看该阶段机构"
+                    className={`rounded-xl border p-3 text-center transition ${
+                      expandedStage === c.stage
+                        ? "border-cyan/50 bg-cyan/10"
+                        : "border-white/10 bg-white/5 hover:border-cyan/30 hover:bg-white/10"
+                    }`}
                   >
                     <p className="font-display text-2xl font-bold text-white">{c.count}</p>
-                    <p className="mt-1 text-[10px] text-slate-400">{c.label}</p>
-                  </div>
+                    <p className="mt-1 text-[10px] text-slate-400">{c.label} ▾</p>
+                  </button>
                 ))}
               </div>
+              {expandedStage && (
+                <div className="mt-3 rounded-xl border border-cyan/20 bg-black/30 p-3">
+                  {(() => {
+                    const list = stageInsts.filter((i) => i.stage === expandedStage);
+                    if (!list.length) {
+                      return <p className="text-xs text-slate-500">该阶段暂无机构</p>;
+                    }
+                    return (
+                      <ul className="space-y-1.5">
+                        {list.map((i) => (
+                          <li key={i.name} className="flex flex-wrap items-center gap-2 text-sm">
+                            <span className="text-slate-200">{i.name}</span>
+                            <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-slate-400">
+                              {i.thermal === "hot" ? "🔥 热" : i.thermal === "cold" ? "❄️ 冷" : "🌡 温"}
+                            </span>
+                            {i.blocker_note ? (
+                              <span className="text-[11px] text-rose-300">🚧 {i.blocker_note}</span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  })()}
+                </div>
+              )}
             </section>
           )}
 
