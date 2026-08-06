@@ -20,8 +20,8 @@ router = APIRouter(prefix="/api/v1/pipeline", tags=["pipeline"])
 
 def _push_institution_bg(institution_id: str) -> None:
     try:
-        from cangjie_fos.services.github_sync import push_institution  # noqa: PLC0415
-        push_institution(institution_id)
+        from cangjie_fos.services.sync_outbox import enqueue_and_try  # noqa: PLC0415
+        enqueue_and_try("institution", institution_id)  # 入队+即时补传，离线不丢
     except Exception:  # noqa: BLE001
         pass
 

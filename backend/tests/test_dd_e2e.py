@@ -255,17 +255,16 @@ class TestDDGitHubSync:
     """导出后触发 GitHub 同步。"""
 
     def test_export_triggers_github_push(self, client, tmp_path, monkeypatch):
-        """export 成功后应调用 push_dd_session。"""
+        """export 成功后应把 DD session 走离线暂存队列并（在线时）补传。"""
         push_calls: list[str] = []
 
         def mock_push(session_id: str) -> bool:
             push_calls.append(session_id)
             return True
 
-        monkeypatch.setattr(
-            "cangjie_fos.api.routes.dd_response.push_dd_session",
-            mock_push,
-        )
+        # 新流程：export → sync_outbox.enqueue_and_try → flush → github_sync.push_dd_session
+        monkeypatch.setattr("cangjie_fos.services.github_sync.is_configured", lambda: True)
+        monkeypatch.setattr("cangjie_fos.services.github_sync.push_dd_session", mock_push)
 
         with patch("cangjie_fos.services.dd_checklist_parser._llm_extract_items",
                    return_value=_MOCK_ITEMS_GH):

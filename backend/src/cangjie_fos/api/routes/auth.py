@@ -245,9 +245,22 @@ def sync_status_route() -> dict[str, Any]:
     return get_sync_status()
 
 
+@router.get("/api/sync/pending", tags=["auth"])
+def sync_pending_route() -> dict[str, Any]:
+    """返回本地待同步（离线暂存）条数，供 UI 提示"还有 N 条没传上去"。"""
+    try:
+        from cangjie_fos.services.sync_outbox import pending_count  # noqa: PLC0415
+        return {"pending": pending_count()}
+    except Exception:  # noqa: BLE001
+        return {"pending": 0}
+
+
 @router.post("/api/sync/pull", tags=["auth"])
 async def sync_pull_route(request: Request, background_tasks: BackgroundTasks) -> dict[str, Any]:
-    """手动触发 GitHub 数据同步（异步后台执行，立即返回，避免超时）。"""
+    """手动触发 GitHub 数据同步（异步后台执行，立即返回，避免超时）。
+
+    同时补传本地离线暂存的改动（网好了一起推上去）。
+    """
     token = request.headers.get("X-FOS-Token") or request.query_params.get("token", "")
     sess = require_session(token or None)
     tenant_id = sess["tenant_id"]
@@ -256,8 +269,16 @@ async def sync_pull_route(request: Request, background_tasks: BackgroundTasks) -
     if not is_configured():
         return {"ok": False, "message": "GitHub 同步未配置（COACH_DATA_GITHUB_TOKEN 未设置）", "pitch_imported": 0, "match_imported": 0}
 
-    background_tasks.add_task(_pull_for_tenant, tenant_id)
-    return {"ok": True, "message": "同步已在后台启动，30秒后刷新页面查看新数据", "pitch_imported": 0, "match_imported": 0}
+    def _pull_and_flush(tid: str) -> None:
+        try:
+            from cangjie_fos.services.sync_outbox import flush  # noqa: PLC0415
+            flush()  # 先把本地暂存的改动补传上去
+        except Exception:  # noqa: BLE001
+            pass
+        _pull_for_tenant(tid)  # 再拉最新
+
+    background_tasks.add_task(_pull_and_flush, tenant_id)
+    return {"ok": True, "message": "同步已在后台启动（含离线暂存补传），30秒后刷新查看", "pitch_imported": 0, "match_imported": 0}
 
 
 # ─── 内部辅助 ─────────────────────────────────────────────────────────────────

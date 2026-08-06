@@ -24,7 +24,16 @@ from cangjie_fos.services.dd_match_service import (
     run_matching,
 )
 from cangjie_fos.services.db_base import _connect
-from cangjie_fos.services.github_sync import push_dd_session
+from cangjie_fos.services.github_sync import push_dd_session  # noqa: F401 (保留兼容)
+
+
+def _enqueue_dd_sync(session_id: str) -> None:
+    """入队+即时补传 DD session（离线不丢，网好自动补传）。"""
+    try:
+        from cangjie_fos.services.sync_outbox import enqueue_and_try  # noqa: PLC0415
+        enqueue_and_try("dd_session", session_id)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _write_dd_outcomes(session_id: str) -> None:
@@ -642,7 +651,7 @@ def gaps_to_tasks(session_id: str):
 def export_session(session_id: str, req: ExportRequest, background_tasks: BackgroundTasks):
     """将已确认的匹配文件导出到本地文件夹，生成缺失清单，并异步同步到 GitHub 和学习飞轮。"""
     result = export_to_folder(session_id, req.output_dir)
-    background_tasks.add_task(push_dd_session, session_id)
+    background_tasks.add_task(_enqueue_dd_sync, session_id)
     background_tasks.add_task(_write_dd_outcomes, session_id)
     return result
 
@@ -670,7 +679,7 @@ def export_session_by_question(
         session_id, req.output_dir,
         folder_name_overrides=req.folder_name_overrides,
     )
-    background_tasks.add_task(push_dd_session, session_id)
+    background_tasks.add_task(_enqueue_dd_sync, session_id)
     background_tasks.add_task(_write_dd_outcomes, session_id)
     return result
 

@@ -485,8 +485,8 @@ def resume_roadshow_analysis(
 
         # GitHub 同步（非阻塞）
         try:
-            from cangjie_fos.services.github_sync import push_roadshow_report  # noqa: PLC0415
-            push_roadshow_report(job_id)
+            from cangjie_fos.services.sync_outbox import enqueue_and_try  # noqa: PLC0415
+            enqueue_and_try("roadshow", job_id)  # 入队+即时补传，离线不丢
         except Exception as sync_exc:  # noqa: BLE001
             logger.warning("roadshow github_sync 失败（非致命）job_id=%s exc=%s", job_id, sync_exc)
 
