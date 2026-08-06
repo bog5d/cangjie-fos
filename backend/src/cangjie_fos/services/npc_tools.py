@@ -359,6 +359,22 @@ def _exec_get_institution_detail(args: dict, *, tenant_id: str) -> str:
         lines.append(f"关注点：{inst.concerns}")
     if inst.preferences:
         lines.append(f"偏好：{inst.preferences}")
+    # 游梦秋 #1：这些字段以前读了 DB 却没喂给 LLM，导致豆豆读不到你手动改的卡点/估值等
+    if getattr(inst, "blocker_note", ""):
+        lines.append(f"当前卡点：{inst.blocker_note}")
+    if getattr(inst, "review_locked", False):
+        lines.append("档案状态：已锁定（AI 不自动覆盖）")
+    if getattr(inst, "contact_name", ""):
+        title = getattr(inst, "contact_title", "") or ""
+        lines.append(f"联系人：{inst.contact_name}" + (f"（{title}）" if title else ""))
+    if getattr(inst, "valuation", ""):
+        lines.append(f"估值：{inst.valuation}")
+    if getattr(inst, "deal_size", ""):
+        lines.append(f"目标融资：{inst.deal_size}")
+    if getattr(inst, "probability", 0):
+        lines.append(f"成交概率：{inst.probability}%")
+    if getattr(inst, "legal_status", ""):
+        lines.append(f"法务进度：{inst.legal_status}")
 
     if len(hits) > 1:
         others = "、".join(h.name for h in hits[1:4])

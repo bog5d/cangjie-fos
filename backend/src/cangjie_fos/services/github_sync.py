@@ -570,11 +570,24 @@ def _import_remote_pitch(data: dict) -> None:
     }
     conn = _connect()
     try:
+        # 游梦秋 #3-B：原来 INSERT OR IGNORE——本地一旦存在同 job_id（哪怕是上次失败留下的
+        # 远端空壳），后续重试永远导不进来。改为 ON CONFLICT DO UPDATE，但**加守卫**：
+        # 只在既有行本身是"远端同步记录"或正文为空时才覆盖，绝不动用户自己编辑过的本地任务
+        # （job_id 是 UUID，本地原创任务与远端任务不会撞号；此守卫是双保险）。
         conn.execute(
-            """INSERT OR IGNORE INTO pitch_jobs
+            """INSERT INTO pitch_jobs
                (job_id, tenant_id, status, created_at, original_report, interviewee,
                 substatus, institution_id)
-               VALUES (?, ?, 'locked', ?, ?, ?, 'synced_from_remote', ?)""",
+               VALUES (?, ?, 'locked', ?, ?, ?, 'synced_from_remote', ?)
+               ON CONFLICT(job_id) DO UPDATE SET
+                   original_report=excluded.original_report,
+                   interviewee=excluded.interviewee,
+                   institution_id=excluded.institution_id,
+                   status='locked',
+                   substatus='synced_from_remote'
+               WHERE pitch_jobs.substatus='synced_from_remote'
+                  OR pitch_jobs.original_report IS NULL
+                  OR pitch_jobs.original_report=''""",
             (
                 job_id, tenant_id, ts,
                 json.dumps(report, ensure_ascii=False),
