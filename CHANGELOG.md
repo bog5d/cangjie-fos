@@ -4,6 +4,23 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+- **尽调匹配·语义召回沉淀词库**（`dd_semantic_cache`）：解决 prefilter_miss（换了说法
+  就召不回）。三段兜底——网好用 LLM 扩需求近义词（opt-in `CANGJIE_SEMANTIC_ONLINE=1`
+  + 调用条数/时间硬上限，绝不拖垮匹配主路径）；用的过程中把「需求词→文件独特词」
+  持续沉淀进 `dd_semantic_links`（**确认即学**，无人工维护）；网烂用沉淀词库离线
+  兜底扩展召回。离线沉淀与扩展始终生效、不依赖联网开关。迁移 54/55 建表。
+- **团队同步·内置默认配置生成器**（`tools/make_embedded.py`）：把共享 coach_data 同步
+  令牌烤进外发 zip，同事解压即用；生成物 `_embedded.py` gitignored、绝不进公开 GitHub。
+
+### Changed
+- **GitHub 同步令牌测试校验写权限**：`test-github` 不再"能读就算过"，追加 `permissions.push`
+  校验，只读令牌明确报错并指引改 Contents=Read and write；404 提示勾选 coach_data。
+
+---
+
 ## [1.25.0] — 2026-06-19  Key 有效性主动验证（行动计划 Step 4·现场收尾）
 
 > 解决科sir 现场实测 P1-b：ready 报 `api_keys_ok:true` 但 Key 已失效,误判环境健康。

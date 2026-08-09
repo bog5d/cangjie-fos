@@ -134,6 +134,29 @@ def run_matching(
         if not items:
             return
 
+        # 语义召回联网预热（默认关，opt-in）：为冷需求联网扩展近义词并沉淀进词库。
+        # 为什么默认关 + 硬上限：给每条需求都发一次 LLM 是在匹配主路径上串行打网络，
+        # 烂网下会把匹配整体拖死（正是要避免的场景）。所以：
+        #   · 仅当 CANGJIE_SEMANTIC_ONLINE=1 时才联网（网好的同事自行打开）；
+        #   · 无论如何都设「调用条数上限 + 总时间预算」，绝不让预热拖垮匹配。
+        # 离线沉淀词库（确认即学 + _item_keywords 离线扩展）始终生效、不依赖此开关。
+        if os.getenv("CANGJIE_SEMANTIC_ONLINE", "").strip() == "1":
+            try:
+                from cangjie_fos.services import dd_semantic_cache as _sem  # noqa: PLC0415
+                _warm_deadline = time.time() + 20.0   # 总预算 20s
+                _warmed = 0
+                for _it in items:
+                    if _warmed >= 8 or time.time() >= _warm_deadline:
+                        break  # 硬上限：最多预热 8 条，超时即停
+                    _sem.get_expansions(
+                        _it.get("requirement", ""),
+                        _requirement_bigrams(_it.get("requirement", "")),
+                        allow_online=True,
+                    )
+                    _warmed += 1
+            except Exception as _e:  # noqa: BLE001
+                logger.debug("语义召回预热跳过：%s", _e)
+
         total = len(items)
         # L4 地基：开跑即把反思轮次归零（本轮的可恢复计数从 0 起）
         persist_session_progress(session_id, stage="matching", reflection_iter=0)
@@ -711,6 +734,13 @@ def _item_keywords(item: dict) -> set[str]:
     """
     kws = _requirement_bigrams(item.get("requirement", ""))
     kws |= {str(y) for y in expected_years(item.get("requirement", ""))}
+    # 语义召回（离线）：并入沉淀词库里该需求词的相关词，召回「换了说法」的文件。
+    # 纯读本地词库、不联网；词库为空时返回空集，退化为原行为。best-effort。
+    try:
+        from cangjie_fos.services.dd_semantic_cache import expand_from_cache  # noqa: PLC0415
+        kws |= expand_from_cache(kws)
+    except Exception:  # noqa: BLE001
+        pass
     return kws
 
 
@@ -1372,6 +1402,13 @@ def record_session_decisions(session_id: str) -> int:
                     (mem_id, norm, req, path, row["matched_filename"] or "",
                      row["institution_name"] or "", now),
                 )
+            # 语义召回沉淀：这条已确认的「需求↔文件」是一次被人验证的语义关联，
+            # 把文件名里的独特词学成该需求词的相关词，喂厚离线词库（确认即学）。
+            try:
+                from cangjie_fos.services.dd_semantic_cache import learn_from_confirmation  # noqa: PLC0415
+                learn_from_confirmation(req, row["matched_filename"] or "", conn=conn)
+            except Exception:  # noqa: BLE001
+                pass
             recorded_ids.append(row["id"])
             n += 1
         # 幂等键落位：本次沉淀过的项标记为已记录，重入不再重复计数

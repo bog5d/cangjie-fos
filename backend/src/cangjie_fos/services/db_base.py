@@ -303,6 +303,16 @@ CREATE TABLE IF NOT EXISTS dd_decision_memory (
 );
 CREATE INDEX IF NOT EXISTS idx_dd_decision_memory_norm ON dd_decision_memory(requirement_norm);
 
+CREATE TABLE IF NOT EXISTS dd_semantic_links (
+    term       TEXT NOT NULL,
+    related    TEXT NOT NULL,
+    weight     INTEGER NOT NULL DEFAULT 1,
+    source     TEXT NOT NULL DEFAULT 'match',
+    updated_at REAL NOT NULL,
+    PRIMARY KEY (term, related)
+);
+CREATE INDEX IF NOT EXISTS idx_dd_semantic_links_term ON dd_semantic_links(term);
+
 CREATE TABLE IF NOT EXISTS dd_qa_pairs (
     id                    TEXT PRIMARY KEY,
     tenant_id             TEXT NOT NULL DEFAULT '',
@@ -583,6 +593,16 @@ _MIGRATIONS: list[tuple[int, str]] = [
         created_at  REAL NOT NULL,
         PRIMARY KEY (session_id, stage)
     )"""),
+    # ── 语义召回：需求词→相关词 的沉淀词库（网好用API长词库、网烂用词库兜底）──
+    (54, """CREATE TABLE IF NOT EXISTS dd_semantic_links (
+        term       TEXT NOT NULL,
+        related    TEXT NOT NULL,
+        weight     INTEGER NOT NULL DEFAULT 1,
+        source     TEXT NOT NULL DEFAULT 'match',
+        updated_at REAL NOT NULL,
+        PRIMARY KEY (term, related)
+    )"""),
+    (55, "CREATE INDEX IF NOT EXISTS idx_dd_semantic_links_term ON dd_semantic_links(term)"),
 ]
 
 
