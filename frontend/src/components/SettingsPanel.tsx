@@ -238,7 +238,7 @@ export function SettingsPanel({ onKeySaved }: Props = {}) {
                   type="password"
                   value={githubToken}
                   onChange={(e) => setGithubToken(e.target.value)}
-                  placeholder="ghp_xxxx（GitHub Fine-grained PAT）"
+                  placeholder="github_pat_xxxx（细粒度 PAT，需 Contents 读写）"
                   className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-gray-800 placeholder:text-gray-400"
                 />
                 <button

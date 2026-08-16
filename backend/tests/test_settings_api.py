@@ -174,3 +174,80 @@ def test_test_dashscope_valid_key_non_401(client, monkeypatch):
     data = r.json()
     assert data["ok"] is True
     assert "正常" in data["message"]
+
+
+# ─── POST /api/v1/settings/api-keys/test-github ──────────────────────────────
+
+def _gh_resp(status_code, permissions=None):
+    """构造一个假的 GitHub repo 响应。"""
+    mock_resp = MagicMock()
+    mock_resp.status_code = status_code
+    mock_resp.json.return_value = {"permissions": permissions} if permissions is not None else {}
+    return mock_resp
+
+
+def test_test_github_no_token(client, monkeypatch):
+    """未配置 Token 时，返回 ok=False。"""
+    monkeypatch.delenv("COACH_DATA_GITHUB_TOKEN", raising=False)
+    r = client.post("/api/v1/settings/api-keys/test-github")
+    assert r.status_code == 200
+    assert r.json()["ok"] is False
+    assert "尚未填写" in r.json()["message"]
+
+
+def test_test_github_read_write_ok(client, monkeypatch):
+    """令牌能读且有写权限（push=True）→ ok=True。"""
+    monkeypatch.setenv("COACH_DATA_GITHUB_TOKEN", "github_pat_rw")
+    resp = _gh_resp(200, {"pull": True, "push": True, "admin": False})
+    with patch("cangjie_fos.api.routes.settings.httpx.get", return_value=resp):
+        r = client.post("/api/v1/settings/api-keys/test-github")
+    data = r.json()
+    assert data["ok"] is True
+    assert "读写权限齐全" in data["message"]
+
+
+def test_test_github_read_only_rejected(client, monkeypatch):
+    """令牌只读（push=False）→ ok=False，明确提示改成 Read and write。
+
+    这是本次修复的核心：只读令牌以前会被误报为「✅ 正常」，一同步就失败。
+    """
+    monkeypatch.setenv("COACH_DATA_GITHUB_TOKEN", "github_pat_readonly")
+    resp = _gh_resp(200, {"pull": True, "push": False, "admin": False})
+    with patch("cangjie_fos.api.routes.settings.httpx.get", return_value=resp):
+        r = client.post("/api/v1/settings/api-keys/test-github")
+    data = r.json()
+    assert data["ok"] is False
+    assert "没有写权限" in data["message"]
+    assert "Read and write" in data["message"]
+
+
+def test_test_github_admin_counts_as_writable(client, monkeypatch):
+    """admin 权限也视为可写（经典令牌 repo scope 常返回 admin=True）。"""
+    monkeypatch.setenv("COACH_DATA_GITHUB_TOKEN", "ghp_classic")
+    resp = _gh_resp(200, {"pull": True, "push": True, "admin": True})
+    with patch("cangjie_fos.api.routes.settings.httpx.get", return_value=resp):
+        r = client.post("/api/v1/settings/api-keys/test-github")
+    assert r.json()["ok"] is True
+
+
+def test_test_github_401(client, monkeypatch):
+    """令牌无效 → 401。"""
+    monkeypatch.setenv("COACH_DATA_GITHUB_TOKEN", "github_pat_bad")
+    resp = _gh_resp(401)
+    with patch("cangjie_fos.api.routes.settings.httpx.get", return_value=resp):
+        r = client.post("/api/v1/settings/api-keys/test-github")
+    data = r.json()
+    assert data["ok"] is False
+    assert "401" in data["message"]
+
+
+def test_test_github_404_repo_not_selected(client, monkeypatch):
+    """令牌没勾这个仓库 → 404，提示 Only select repositories。"""
+    monkeypatch.setenv("COACH_DATA_GITHUB_TOKEN", "github_pat_norepo")
+    resp = _gh_resp(404)
+    with patch("cangjie_fos.api.routes.settings.httpx.get", return_value=resp):
+        r = client.post("/api/v1/settings/api-keys/test-github")
+    data = r.json()
+    assert data["ok"] is False
+    assert "404" in data["message"]
+    assert "coach_data" in data["message"]
