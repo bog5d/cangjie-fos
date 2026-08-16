@@ -105,6 +105,34 @@ class TestRoadshowStart:
         assert "job_id" in data
         assert "message" in data
 
+    def test_start_with_form_transcript_returns_awaiting(self, monkeypatch):
+        """文字稿可通过 multipart form 提交，避免长文字塞进 query。"""
+        updates: list[dict[str, Any]] = []
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_create", lambda *a, **kw: None
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.db_job_update",
+            lambda *a, **kw: updates.append(kw),
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.job_create", lambda *a, **kw: None
+        )
+        monkeypatch.setattr(
+            "cangjie_fos.api.routes.roadshow.job_update", lambda *a, **kw: None
+        )
+
+        transcript = "说话人A：你们的IRR预期是多少？\n说话人B：我们预期30%以上"
+        resp = client.post(
+            f"/api/v1/roadshow/start?tenant_id={_TENANT}&roadshow_date=2026-05-11",
+            data={"transcript_text": transcript, "transcript_filename": "meeting.txt"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "awaiting_speakers"
+        assert "meeting.txt" in data["message"]
+        assert any("words_json" in u and len(u["words_json"]) > 0 for u in updates)
+
     def test_start_without_file_or_transcript_returns_400(self, monkeypatch):
         """既无文件又无文字稿时返回400。"""
         monkeypatch.setattr(

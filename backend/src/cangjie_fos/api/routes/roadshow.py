@@ -17,7 +17,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
@@ -132,7 +132,9 @@ async def roadshow_start(
     confirmed_by: str = Query(default="", description="指挥官名称"),
     biz_type: str = Query(default="01_机构路演", description="业务类型：01_机构路演/03_客户访谈/04_供应商访谈/05_高管访谈"),
     file: UploadFile | None = None,
-    transcript_text: str | None = None,
+    transcript_text_query: str | None = Query(default=None, alias="transcript_text"),
+    transcript_text: str | None = Form(default=None),
+    transcript_filename: str | None = Form(default=None),
 ) -> RoadshowStartResponse:
     """上传路演录音或文字稿，启动ASR，返回 job_id。
 
@@ -182,17 +184,20 @@ async def roadshow_start(
             message="音频已上传，ASR转写中，请稍候…",
         )
 
-    elif transcript_text and transcript_text.strip():
+    transcript_payload = transcript_text if transcript_text is not None else transcript_text_query
+
+    if transcript_payload and transcript_payload.strip():
         # 文字稿路径：直接跳过ASR，转换为 TranscriptionWord 格式
         from cangjie_fos.services.transcript_parser import parse_transcript_to_words  # noqa: PLC0415
 
-        words = parse_transcript_to_words(transcript_text)
+        words = parse_transcript_to_words(transcript_payload)
         word_count = len(words)
+        source_label = f"（{transcript_filename}）" if transcript_filename else ""
 
         db_job_update(
             job_id,
             status=str(PitchJobStatus.AWAITING_SPEAKERS),
-            substatus=f"文字稿解析完成（{word_count} 词），请确认说话人身份",
+            substatus=f"文字稿{source_label}解析完成（{word_count} 词），请确认说话人身份",
             words_json=[w.model_dump() for w in words],
             is_roadshow=1,
             referrer=referrer,
@@ -201,7 +206,7 @@ async def roadshow_start(
         return RoadshowStartResponse(
             job_id=job_id,
             status="awaiting_speakers",
-            message=f"文字稿解析完成（{word_count} 词），请确认说话人身份",
+            message=f"文字稿{source_label}解析完成（{word_count} 词），请确认说话人身份",
         )
 
     else:

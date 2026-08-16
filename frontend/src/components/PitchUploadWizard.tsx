@@ -8,6 +8,7 @@ import {
   shouldAutofillIv,
   stemFromAudioFilename,
 } from "../lib/audioFilenameHints";
+import { analyzeTranscript, transcriptFileLooksReadable } from "../lib/transcriptPreview";
 
 type Sniper = { quote: string; reason: string };
 
@@ -110,8 +111,9 @@ export function PitchUploadWizard({
   const [tracks, setTracks] = useState<LocalTrack[]>(() => [newTrack()]);
   // ── 机构路演快速模式 ──────────────────────────────────────────────────────────
   const [roadshowDate, setRoadshowDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [transcriptTab, setTranscriptTab] = useState<"audio" | "text">("audio");
+  const [transcriptTab, setTranscriptTab] = useState<"audio" | "text" | "file">("audio");
   const [transcriptText, setTranscriptText] = useState("");
+  const [transcriptFileName, setTranscriptFileName] = useState("");
   /** BUG-C：与旧版一致，用 ref 避免连续选文件时闭包读到过期的「上次自动填充」 */
   const lastAutofilledIvRef = useRef<Record<string, string | null>>({});
   const [filenameMagic, setFilenameMagic] = useState<
@@ -141,6 +143,7 @@ export function PitchUploadWizard({
     setRoadshowDate(new Date().toISOString().slice(0, 10));
     setTranscriptTab("audio");
     setTranscriptText("");
+    setTranscriptFileName("");
   }, []);
 
   const close = () => {
@@ -184,7 +187,7 @@ export function PitchUploadWizard({
 
   const validateStep1 = useCallback((): FieldErr | null => {
     // 机构路演文字稿模式：只校验文字稿非空
-    if (isRoadshow && transcriptTab === "text") {
+    if (isRoadshow && transcriptTab !== "audio") {
       return transcriptText.trim() ? null : { tracks: { 0: { audio: true } } };
     }
     const te: Record<number, { audio?: boolean; interviewee?: boolean }> = {};
@@ -314,9 +317,10 @@ export function PitchUploadWizard({
       const autoInstitution = isRoadshow ? `待确认_${roadshowDate}` : institutionName.trim();
       const autoInterviewee = isRoadshow ? `路演_${roadshowDate}` : "";
       // 文字稿模式：把粘贴内容打包成 .txt 文件
-      const isTextMode = isRoadshow && transcriptTab === "text";
+      const isTextMode = isRoadshow && transcriptTab !== "audio";
+      const transcriptName = transcriptFileName || `transcript_${roadshowDate}.txt`;
       const textTracks = isTextMode
-        ? [{ ...tracks[0], audio: new File([transcriptText], `transcript_${roadshowDate}.txt`, { type: "text/plain" }), interviewee: autoInterviewee }]
+        ? [{ ...tracks[0], audio: new File([transcriptText], transcriptName, { type: "text/plain" }), interviewee: autoInterviewee }]
         : tracks;
 
       const body = {
@@ -385,6 +389,7 @@ export function PitchUploadWizard({
   const stepLabels = ["全局与背景", "逐条录音", "确认提交"];
   const qaWarn = qaTotals >= QA_WARN_CHARS;
   const qaHard = qaTotals >= QA_HARD_CHARS;
+  const transcriptPreview = analyzeTranscript(transcriptText);
 
   return (
     <div className="fixed inset-0 z-50 flex pointer-events-none">
@@ -505,7 +510,7 @@ export function PitchUploadWizard({
                     />
                   </label>
                   <p className="rounded-lg border border-cyan/20 bg-cyan/5 px-3 py-2 text-xs text-cyan-100/80">
-                    🚀 机构路演快速模式：机构名称和参与人将在分析完成后确认，现在只需上传录音或粘贴文字稿。
+                    机构路演快速模式：机构名称和参与人将在分析完成后确认，现在可上传录音、粘贴文字稿或上传文字稿文件。
                   </p>
                 </>
               ) : (
@@ -645,11 +650,50 @@ export function PitchUploadWizard({
                           : "text-slate-500 hover:text-slate-200"
                       }`}
                     >
-                      📝 文字稿
+                      📝 粘贴文字稿
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTranscriptTab("file")}
+                      className={`flex-1 rounded-lg py-2 text-xs font-bold uppercase tracking-wider transition ${
+                        transcriptTab === "file"
+                          ? "bg-gradient-to-r from-cyan/30 to-plasma/25 text-white"
+                          : "text-slate-500 hover:text-slate-200"
+                      }`}
+                    >
+                      📄 上传文字稿
                     </button>
                   </div>
 
-                  {transcriptTab === "text" ? (
+                  {transcriptTab === "file" ? (
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/15 py-6 transition hover:border-cyan/40">
+                      <span className="text-2xl">📄</span>
+                      <span className="text-sm text-slate-400">
+                        {transcriptFileName || "选择文字稿文件（txt / md / srt / vtt）"}
+                      </span>
+                      <span className="text-xs text-slate-600">系统直接读取文字，后台跳过 ASR</span>
+                      <input
+                        type="file"
+                        accept=".txt,.md,.srt,.vtt,text/plain,text/markdown"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0] ?? null;
+                          if (!f) return;
+                          if (!transcriptFileLooksReadable(f)) {
+                            setErr("暂只支持 txt / md / srt / vtt 文字稿文件");
+                            return;
+                          }
+                          const text = await f.text();
+                          setTranscriptFileName(f.name);
+                          setTranscriptText(text);
+                          setErr(null);
+                          setFieldErr((fe) => ({ ...fe, tracks: undefined }));
+                        }}
+                      />
+                    </label>
+                  ) : null}
+
+                  {transcriptTab !== "audio" ? (
                     <div className="flex flex-col gap-3">
                       <p className="text-xs text-slate-400">
                         支持手机 ASR 说话人格式：<code className="text-cyan/80">说话人A: xxx</code>、<code className="text-cyan/80">Speaker 1: xxx</code>，或直接粘贴无说话人标记的文字。
@@ -667,7 +711,24 @@ export function PitchUploadWizard({
                           fieldErr.tracks?.[0]?.audio ? "border-rose-500 ring-1 ring-rose-500/50" : "border-white/10"
                         }`}
                       />
-                      <p className="text-xs text-slate-500">字符数：{transcriptText.length}</p>
+                      {transcriptText ? (
+                        <div className={`rounded-lg border px-3 py-2 text-xs ${
+                          transcriptPreview.quality === "good"
+                            ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+                            : transcriptPreview.quality === "warning"
+                              ? "border-amber-500/25 bg-amber-500/10 text-amber-100"
+                              : "border-rose-500/25 bg-rose-500/10 text-rose-100"
+                        }`}>
+                          <p>
+                            {transcriptPreview.message} 共 {transcriptPreview.charCount} 字符 / {transcriptPreview.lineCount} 行。
+                          </p>
+                          {transcriptPreview.speakers.length > 0 ? (
+                            <p className="mt-1 text-slate-300">说话人：{transcriptPreview.speakers.join("、")}</p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500">字符数：0</p>
+                      )}
                     </div>
                   ) : null}
                 </>
@@ -870,7 +931,7 @@ export function PitchUploadWizard({
                 <>
                   <p>
                     路演日期：<strong className="text-white">{roadshowDate}</strong>
-                    {transcriptTab === "text"
+                    {transcriptTab !== "audio"
                       ? <>　文字稿 <strong className="text-cyan">{transcriptText.length}</strong> 字</>
                       : <>　录音文件 <strong className="text-white">{tracks.filter((t) => t.audio).length}</strong> 条</>}
                   </p>

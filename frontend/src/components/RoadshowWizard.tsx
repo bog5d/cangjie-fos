@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
+import { analyzeTranscript, transcriptFileLooksReadable } from "../lib/transcriptPreview";
 
 // ── 类型定义 ──────────────────────────────────────────────────────────────────
 
@@ -146,9 +147,10 @@ export function RoadshowWizard({
   const [step, setStep] = useState(1);
 
   // Step 1 字段
-  const [mode, setMode] = useState<"audio" | "text">("audio");
+  const [mode, setMode] = useState<"audio" | "text" | "file">("audio");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [transcriptText, setTranscriptText] = useState("");
+  const [transcriptFileName, setTranscriptFileName] = useState("");
   const [roadshowDate, setRoadshowDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [institutionName, setInstitutionName] = useState("");
   const [bizType, setBizType] = useState("01_机构路演");
@@ -177,6 +179,7 @@ export function RoadshowWizard({
     setMode("audio");
     setAudioFile(null);
     setTranscriptText("");
+    setTranscriptFileName("");
     setRoadshowDate(new Date().toISOString().slice(0, 10));
     setInstitutionName("");
     setReferrer("");
@@ -211,7 +214,7 @@ export function RoadshowWizard({
   const handleStart = async () => {
     if (!roadshowDate) { setErr("请填写路演日期"); return; }
     if (mode === "audio" && !audioFile) { setErr("请选择音频文件"); return; }
-    if (mode === "text" && !transcriptText.trim()) { setErr("请粘贴文字稿内容"); return; }
+    if ((mode === "text" || mode === "file") && !transcriptText.trim()) { setErr("请提供文字稿内容"); return; }
 
     setErr("");
     setSubmitting(true);
@@ -237,8 +240,14 @@ export function RoadshowWizard({
         );
         data = r.data;
       } else {
-        params.set("transcript_text", transcriptText.trim());
-        const r = await api.post<typeof data>(`/api/v1/roadshow/start?${params.toString()}`);
+        const fd = new FormData();
+        fd.append("transcript_text", transcriptText.trim());
+        if (transcriptFileName) fd.append("transcript_filename", transcriptFileName);
+        const r = await api.post<typeof data>(
+          `/api/v1/roadshow/start?${params.toString()}`,
+          fd,
+          { headers: { "Content-Type": "multipart/form-data" } },
+        );
         data = r.data;
       }
 
@@ -360,6 +369,7 @@ export function RoadshowWizard({
   };
 
   if (!open) return null;
+  const transcriptPreview = analyzeTranscript(transcriptText);
 
   // ── 渲染 ──────────────────────────────────────────────────────────────────
   return (
@@ -424,6 +434,17 @@ export function RoadshowWizard({
                 >
                   📝 粘贴文字稿
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("file")}
+                  className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition ${
+                    mode === "file"
+                      ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-300"
+                      : "border-white/10 text-slate-400 hover:border-white/20"
+                  }`}
+                >
+                  📄 上传文字稿
+                </button>
               </div>
 
               {/* 音频上传 */}
@@ -448,7 +469,34 @@ export function RoadshowWizard({
               )}
 
               {/* 文字稿 */}
-              {mode === "text" && (
+              {mode === "file" && (
+                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/15 py-7 transition hover:border-cyan-500/40">
+                  <span className="text-3xl">📄</span>
+                  <span className="text-sm text-slate-400">
+                    {transcriptFileName || "选择文字稿文件（txt / md / srt / vtt）"}
+                  </span>
+                  <span className="text-xs text-slate-600">系统会直接读取文字，跳过 ASR 转写</span>
+                  <input
+                    type="file"
+                    accept=".txt,.md,.srt,.vtt,text/plain,text/markdown"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      if (!f) return;
+                      if (!transcriptFileLooksReadable(f)) {
+                        setErr("暂只支持 txt / md / srt / vtt 文字稿文件");
+                        return;
+                      }
+                      const text = await f.text();
+                      setTranscriptFileName(f.name);
+                      setTranscriptText(text);
+                      setErr("");
+                    }}
+                  />
+                </label>
+              )}
+
+              {(mode === "text" || mode === "file") && (
                 <div>
                   <p className="mb-1.5 text-xs text-slate-500">
                     支持格式：「说话人A：内容」「Speaker 1: 内容」「[A] 内容」等，也可直接粘贴无标记文本
@@ -461,9 +509,22 @@ export function RoadshowWizard({
                     className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                   />
                   {transcriptText && (
-                    <p className="mt-1 text-right text-xs text-slate-600">
-                      已输入 {transcriptText.length} 字符
-                    </p>
+                    <div className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                      transcriptPreview.quality === "good"
+                        ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+                        : transcriptPreview.quality === "warning"
+                          ? "border-amber-500/25 bg-amber-500/10 text-amber-100"
+                          : "border-rose-500/25 bg-rose-500/10 text-rose-100"
+                    }`}>
+                      <p>
+                        {transcriptPreview.message} 共 {transcriptPreview.charCount} 字符 / {transcriptPreview.lineCount} 行。
+                      </p>
+                      {transcriptPreview.speakers.length > 0 && (
+                        <p className="mt-1 text-slate-300">
+                          说话人：{transcriptPreview.speakers.join("、")}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
