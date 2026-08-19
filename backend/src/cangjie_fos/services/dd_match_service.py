@@ -1309,6 +1309,8 @@ def _refine_session_matches(session_id: str, context: str = "") -> None:
         persist_session_progress(session_id, reflection_iter=reflections)
 
     _apply_period_guard(session_id)
+    # 年份护栏之后再聚合：把「最近两年」这类多年度需求从"单份被拒"升级为"多份齐→绿"
+    _apply_multifile_aggregation(session_id)
 
 
 def _apply_period_guard(session_id: str) -> None:
@@ -1339,6 +1341,92 @@ def _apply_period_guard(session_id: str) -> None:
         if upd:
             conn.executemany(
                 "UPDATE dd_match_items SET confidence=?, verdict=?, evidence=? WHERE id=?",
+                upd,
+            )
+
+
+def _apply_multifile_aggregation(session_id: str) -> None:
+    """多文件需求聚合（确定性终判）——judge_reject 26% 的真解法之一。
+
+    针对「最近两年 / 多年度」这类**一个需求要多份文件**的场景：以前匹配只能挑一份，
+    单份被判「不满足两年」（judge_reject）。这里从该项**自己的候选池**里，为每个应
+    覆盖年份各挑一份，落进 extra_files_json，并按**覆盖度**重判：
+      - 覆盖齐所有年份 → green（不再因"只有一份"被拒）
+      - 覆盖 ≥2 但不全 → yellow，标注缺哪年，走人工补齐
+      - 只能凑出 ≤1 份 → 不动（库里确实没有，交回原判定 / 年份护栏）
+
+    安全边界：只画自己候选池里的文件（AI 已粗筛为相关），不凭空造；不碰单文件需求；
+    不覆盖用户已确认 / 已手动多选的项。确定性、可复现，不调 LLM。
+    """
+    with _connect() as conn:
+        rows = conn.execute(
+            """SELECT id, requirement, matched_file_path, matched_filename,
+                      candidates_json, confidence, evidence, user_confirmed, extra_files_json
+               FROM dd_match_items
+               WHERE session_id = ? AND matched_file_path IS NOT NULL
+                 AND matched_file_path != ''""",
+            (session_id,),
+        ).fetchall()
+        # (matched_path, matched_name, extra_json, conf, verdict, evidence, id)
+        upd: list[tuple] = []
+        for r in rows:
+            if r["user_confirmed"] or (r["extra_files_json"] or "").strip():
+                continue  # 用户已定的不碰
+            years = expected_years(r["requirement"] or "")
+            if len(years) < 2:
+                continue  # 单文件需求，原样
+            # 候选池：candidates_json + 已匹配文件（都是 AI 粗筛过的相关件）
+            try:
+                pool = json.loads(r["candidates_json"] or "[]")
+            except (ValueError, TypeError):
+                pool = []
+            if not isinstance(pool, list):
+                pool = []
+            if r["matched_file_path"] and not any(
+                (c.get("file_path") if isinstance(c, dict) else None) == r["matched_file_path"]
+                for c in pool
+            ):
+                pool.insert(0, {"file_path": r["matched_file_path"],
+                                "filename": r["matched_filename"] or ""})
+            # 为每个应覆盖年份挑一份（文件名含该年份 4 位串）
+            year_file: dict[int, dict] = {}
+            for y in years:
+                ys = str(y)
+                for c in pool:
+                    if not isinstance(c, dict):
+                        continue
+                    if ys in (c.get("filename") or "") and y not in year_file:
+                        year_file[y] = c
+                        break
+            covered = sorted(year_file.keys())
+            if len(covered) < 2:
+                continue  # 凑不出多份，交回原判定
+            primary = year_file[covered[0]]  # 主文件=最早覆盖年（稳定可复现）
+            extras = [
+                {"file_path": year_file[y].get("file_path"),
+                 "filename": year_file[y].get("filename") or "",
+                 "year": y, "reason": f"多年度聚合 · {y} 年度"}
+                for y in covered[1:]
+            ]
+            missing = [y for y in years if y not in year_file]
+            if not missing:
+                conf, verdict = 0.9, "green"
+                note = f"✔ 已聚合 {len(covered)} 个年度（{'/'.join(map(str, covered))}）"
+            else:
+                conf, verdict = _VERDICT_GREEN - 0.05, "yellow"
+                note = f"已聚合 {len(covered)} 个年度，缺 {'/'.join(map(str, missing))}，请补齐"
+            ev = r["evidence"] or ""
+            if note not in ev:
+                ev = (ev + " " + note).strip()
+            upd.append((
+                primary.get("file_path"), primary.get("filename") or "",
+                json.dumps(extras, ensure_ascii=False),
+                conf, verdict, ev, r["id"],
+            ))
+        if upd:
+            conn.executemany(
+                "UPDATE dd_match_items SET matched_file_path=?, matched_filename=?, "
+                "extra_files_json=?, confidence=?, verdict=?, evidence=? WHERE id=?",
                 upd,
             )
 
