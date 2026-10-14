@@ -1,5 +1,13 @@
 # AGENTS.md — 仓颉 FOS AI 接手手册
 
+## 集团工程规范｜SCP v3.8（强制，2026-10-14）
+
+唯一上位规范：https://github.com/bog5d/grill-to-spec/blob/main/SCP-v3.8.md 。L1/L2 新工程先读中央 README.md、START_HERE.md、SCP-v3.8.md、HARNESS.md，按 GCCSEG 固定用户可见北极星、当前基线、工作项与目标能力映射、硬门槛及真实 Evidence。本仓 AGENTS 的领域流程仍有效，不另造第二套规范/Harness。
+
+**业务效果 Gate**：尽调材料推荐/组包要有真实用户可复核的完整性、来源与权限证据；投后报告草稿要验证数字/来源/人工复核。Issue、代码、测试及 PR 的完成数量不等于投资业务真正交付。工程进度和最终业务效果分开汇报，UNKNOWN不得冒充 PASS。
+
+反面案例：https://github.com/bog5d/grill-to-spec/blob/main/docs/INCIDENT-20261014-GM-GOAL-DRIFT.md 。不得因规范升级访问客户真实机密或改变现有生产配置。
+
 > **所有 AI Agent（Claude、Cursor、Codex、Hermes 等）进入本仓库前必读。**
 > 权威操作规范，优先级高于任何其他文档。
 > 工作流：`git clone` → 读本文件 → 读 CLAUDE.md → 开始工作
