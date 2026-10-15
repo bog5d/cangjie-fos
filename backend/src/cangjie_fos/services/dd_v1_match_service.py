@@ -120,6 +120,11 @@ _DOC_TYPE_PURPOSE_MAP = {
 
 def _ensure_schema(conn) -> None:
     conn.executescript(_DDL)
+    # 异常检测结果（STALE/CONFLICT）需要持久化，供审核包与组包读取。
+    # 用 ALTER 而非改 CREATE，保证既有库平滑升级。
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(dd_v1_obligation_status)")}
+    if "anomalies_json" not in cols:
+        conn.execute("ALTER TABLE dd_v1_obligation_status ADD COLUMN anomalies_json TEXT NOT NULL DEFAULT '{}'")
     conn.commit()
 
 
@@ -260,6 +265,73 @@ def match_obligation(
     return status
 
 
+def detect_anomalies(
+    obl: dict, pool: list[dict], need_entities: list[dict]
+) -> dict:
+    """检测 STALE（过期）与 CONFLICT（冲突）。
+
+    WP3 交付时这两态尚未有实质实现，本函数补上：
+
+    - **STALE**：某主体名下只有**区间外**年份的材料覆盖了它，而区间内没有。
+      即「拿旧版本顶当期要求」——`mtime` 不代表业务有效，必须靠期间判定。
+    - **CONFLICT**：同一义务下，**同一主体 + 同一期间**出现内容哈希不同的多份材料，
+      无法判定哪份为准，不得自动二选一。
+    """
+    stale_entities: list[str] = []
+    conflict_pairs: list[dict] = []
+    y_from, y_to = obl.get("period_from", 0), obl.get("period_to", 0)
+
+    # 按 (主体, 期间) 分桶
+    buckets: dict[tuple[str, str], set[str]] = {}
+    for r in pool:
+        card = r.get("card") or {}
+        ent = card.get("entity") or (r["manifest"]["rel_path"].split("/")[0]
+                                     if r.get("manifest") and "/" in r["manifest"]["rel_path"] else "")
+        pv = str(card.get("fiscal_period") or "")
+        buckets.setdefault((ent, pv), set()).add(r["file_id"])
+
+    for (ent, pv), fids in buckets.items():
+        if len(fids) > 1:
+            hashes = {
+                (r.get("manifest") or {}).get("content_hash")
+                for r in pool if r["file_id"] in fids
+            }
+            hashes.discard(None)
+            if len(hashes) > 1:
+                conflict_pairs.append({
+                    "entity": ent, "period": pv,
+                    "files": sorted(fids), "distinct_hashes": len(hashes),
+                })
+
+    # STALE：有主体只在区间外被覆盖
+    if y_from and y_to:
+        covered_by_entity: dict[str, set[int]] = {}
+        for r in pool:
+            card = r.get("card") or {}
+            ent = card.get("entity") or (r["manifest"]["rel_path"].split("/")[0]
+                                         if r.get("manifest") and "/" in r["manifest"]["rel_path"] else "")
+            pv = str(card.get("fiscal_period") or "")
+            if pv.isdigit():
+                covered_by_entity.setdefault(ent, set()).add(int(pv))
+        targets = ([e["display_name"] for e in need_entities] if need_entities
+                   else list(covered_by_entity.keys()))
+        for ent in targets:
+            years = covered_by_entity.get(ent)
+            if not years:
+                continue
+            inside = {y for y in years if y_from <= y <= y_to}
+            outside = years - inside
+            if not inside and outside:
+                stale_entities.append(f"{ent}: 仅有 {sorted(outside)}，要求 {y_from}-{y_to}")
+
+    return {
+        "stale_entities": stale_entities,
+        "conflicts": conflict_pairs,
+        "has_stale": bool(stale_entities),
+        "has_conflict": bool(conflict_pairs),
+    }
+
+
 def judge(
     obl: dict, results: list[dict], need_entities: list[dict], capped: bool
 ) -> dict:
@@ -336,6 +408,16 @@ def judge(
         verdict = V_RESTRICTED
         missing.append("材料已找到但全部受限/不可读/敏感等级未知，不得自动纳入对外交付")
 
+    # STALE / CONFLICT 优先于 MATCHED/PARTIAL：拿旧版本顶当期、或同主体同期多版本冲突，
+    # 都必须让人看见，不能被「覆盖率够了」盖过去。
+    anom = detect_anomalies(obl, results, need_entities)
+    if anom["has_conflict"]:
+        verdict = V_CONFLICT
+        missing.append(f"同一主体/期间存在 {len(anom['conflicts'])} 组内容冲突，需人工裁定")
+    elif anom["has_stale"] and verdict in (V_MATCHED, V_PARTIAL):
+        verdict = V_STALE
+        missing.append("；".join(anom["stale_entities"]))
+
     return {
         "obligation_id": obl["obligation_id"],
         "verdict": verdict,
@@ -349,6 +431,7 @@ def judge(
         "candidate_count": len(results),
         "capped": 1 if capped else 0,
         "deliverable_count": len(matched),
+        **anom,
     }
 
 
@@ -385,6 +468,12 @@ def _persist(conn, library_id, obligation_id, obl, results, status) -> None:
          status["need_entities"], status["need_periods"], status["missing_detail"],
          status["candidate_count"], status["capped"], now),
     )
+    conn.execute(
+        "UPDATE dd_v1_obligation_status SET anomalies_json=? WHERE obligation_id=?",
+        (json.dumps({k: status.get(k) for k in
+                     ("stale_entities", "conflicts", "has_stale", "has_conflict")},
+                    ensure_ascii=False), obligation_id),
+    )
     conn.commit()
 
 
@@ -415,7 +504,14 @@ def get_status(obligation_id: str, db_path: Path | None = None) -> dict | None:
     row = conn.execute(
         "SELECT * FROM dd_v1_obligation_status WHERE obligation_id=?", (obligation_id,)
     ).fetchone()
-    return dict(row) if row else None
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d.update(json.loads(d.pop("anomalies_json") or "{}"))
+    except (ValueError, TypeError):
+        d["anomalies_json"] = "{}"
+    return d
 
 
 def list_matches(obligation_id: str, db_path: Path | None = None) -> list[dict]:

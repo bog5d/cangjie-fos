@@ -7,6 +7,23 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · WP4 人工审核、组包与安全 Gate**（`dd_v1_package_service`）：
+  审核单状态机 `draft → reviewed → approved → packaged`；
+  `build_review_pack()` 只读材料生成核对表/缺口清单/证据说明/Manifest+hash，
+  **零复制原件**；`package_approved()` 是唯一复制入口，
+  **必须先过 `assert_approval()`，否则抛 `ApprovalRequired` 且在复制任何文件之前中止**
+  ——硬门槛 HG1「未经人工最终批准不得对外交付」的机器侧强制实现。
+  人工修改后状态自动回落 `reviewed`，**「批完再改」必须重新批准**；
+  一次修改带修改人与原因留痕，`promoted_to_global_rule` 恒为 `false`。
+  路径清洗与越界防护**复用** `dd_export_service._within / _safe_filename / _safe_dirname`，
+  不另立第二套文件名安全标准。复制件逐份核对 sha256，不一致即记为交付事故。
+- **DD-V1 · STALE / CONFLICT 两态判定落地**（`detect_anomalies`）：
+  某主体**仅有区间外年份**材料顶当期要求 → `STALE`；
+  同一主体+同一期间出现**内容哈希不同**的多份材料 → `CONFLICT`，
+  两者优先级高于 MATCHED/PARTIAL，不得被「覆盖率够了」盖过去。
+  异常明细落 `dd_v1_obligation_status.anomalies_json`，供审核包读取。
+- **DD-V1 · WP4 CLI**：`review` / `approve` / `package` / `edits`；
+  未批准时 `package` 返回 `APPROVAL_REQUIRED` 且退出码 1。
 - **DD-V1 · WP3 尽调需求理解与原子义务拆解**（`dd_v1_requirement_service`）：
   机构清单原始条目与原子义务分表保存，**原编号与原文零丢失**并提供 roundtrip 硬校验；
   并列要求拆成多条原子义务；每个维度（主体范围/期间/文件类型/合并口径/签章/附件）

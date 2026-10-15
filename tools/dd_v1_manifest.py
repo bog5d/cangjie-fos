@@ -283,6 +283,32 @@ def cmd_entity(a) -> int:
     return 0
 
 
+# ── WP4 子命令：人工审核、组包与安全 Gate ──────────────────────────────────
+def cmd_review(a) -> int:
+    from cangjie_fos.services import dd_v1_package_service as pkg
+    _out(pkg.build_review_pack(a.library, institution=a.institution))
+    return 0
+
+
+def cmd_approve(a) -> int:
+    from cangjie_fos.services import dd_v1_package_service as pkg
+    _out(pkg.approve(a.review, approved_by=a.by, note=a.note))
+    return 0
+
+
+def cmd_package(a) -> int:
+    from cangjie_fos.services import dd_v1_package_service as pkg
+    _out(pkg.package_approved(a.review, output_dir=a.out))
+    return 0
+
+
+def cmd_edits(a) -> int:
+    from cangjie_fos.services import dd_v1_package_service as pkg
+    _out({"review_id": a.review, "edits": pkg.list_edits(a.review),
+          "promoted_to_global_rule": False})
+    return 0
+
+
 # ── 解析 ────────────────────────────────────────────────────────────────────
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -387,10 +413,32 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--valid-to", type=int, default=0)
     sp.add_argument("--source", required=True, help="权威依据出处（必填）")
     sp.set_defaults(func=cmd_entity)
+
+    # ── WP4：人工审核、组包与安全 Gate ──────────────────────────────────
+    sp = sub.add_parser("review", help="生成审核包（只读材料、零复制原件）")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--institution", default="")
+    sp.set_defaults(func=cmd_review)
+
+    sp = sub.add_parser("approve", help="人工最终批准（组包前置条件）")
+    sp.add_argument("--review", required=True)
+    sp.add_argument("--by", required=True, help="批准人（可追责，必填）")
+    sp.add_argument("--note", default="")
+    sp.set_defaults(func=cmd_approve)
+
+    sp = sub.add_parser("package", help="按机构编号组包并复制原件（须已批准）")
+    sp.add_argument("--review", required=True)
+    sp.add_argument("--out", default=None)
+    sp.set_defaults(func=cmd_package)
+
+    sp = sub.add_parser("edits", help="查看人工修改留痕")
+    sp.add_argument("--review", required=True)
+    sp.set_defaults(func=cmd_edits)
     return p
 
 
 def main() -> int:
+    from cangjie_fos.services.dd_v1_package_service import ApprovalRequired
     p = build_parser()
     try:
         a = p.parse_args()
@@ -398,6 +446,11 @@ def main() -> int:
         return 2 if e.code else 0
     try:
         return a.func(a)
+    except ApprovalRequired as e:
+        print(json.dumps({"error": "APPROVAL_REQUIRED", "detail": str(e),
+                          "gate": "HG1 未经人工最终批准不得组包"},
+                         ensure_ascii=False, indent=2), file=sys.stderr)
+        return 1
     except PermissionError as e:
         print(json.dumps({"error": "PERMISSION_DENIED", "detail": str(e)},
                          ensure_ascii=False, indent=2), file=sys.stderr)
