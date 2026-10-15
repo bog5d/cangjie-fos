@@ -131,6 +131,64 @@ _PURPOSE_KEYWORDS = {
     "商业计划书": "融资材料", "尽职调查问卷": "尽调应答",
 }
 
+# ── 附件关系识别（WP6 前补齐：必备附件覆盖是硬门槛要求的第四维）──────────
+# 三条**确定性**规则，只认文件名与目录结构里能直接观察到的关系：
+#   1. 附件自述：文件名含「附件 / 附表 / 明细 / 签字页 / 盖章页」等
+#   2. 同根不同扩展名：同目录下主文件名相同、扩展名不同 → 互为附件
+#   3. 同前缀编号：同目录同前缀 → 一组材料
+# **判定为 INFERRED 而非 FACT**：这是从文件名结构推出的关系，
+# 必须能被人一眼核对；不能因为「文件挨在一起」就断言它们是同一份材料的附件。
+_ATTACHMENT_WORDS = re.compile(
+    r"(附件|附表|附页|明细|签字页|签章页|盖章页|附录|Schedule|Annex)")
+def _attach_key(name: str) -> str:
+    """去掉版本/年份/编号等噪音后的主文件名，用于「同根不同扩展名」判断。
+
+    **复用** ``dd_index_service.clean_filename``——它已经处理了年份、版本号
+    与「最终版/终稿/副本/扫描件/盖章版/签字版/修订」等噪音词，
+    不另立第二套文件名归一化标准（复用优先）。
+    """
+    from cangjie_fos.services.dd_index_service import clean_filename  # noqa: PLC0415
+    base = clean_filename(name or "")
+    # clean_filename 不处理「附表/明细/签字页」这类附件标记词，
+    # 不剥掉的话主文件名对不上，附件关系就永远识别不出来。
+    base = _ATTACHMENT_WORDS.sub("", base)
+    base = re.sub(r"[\s_\-()（）\[\]【】]+", "", base)
+    return base.strip().lower()
+
+
+def detect_related_files(rel_path: str, siblings: list[dict]) -> list[str]:
+    """识别附件关系，返回关联文件的相对路径。
+
+    ``siblings`` 为同目录下的材料条目（含 file_name / rel_path）。
+    **只返回观察到的关系，不臆造**；判不出来就返回空列表并留 UNKNOWN。
+    """
+    if not rel_path:
+        return []
+    cur = Path(rel_path)
+    cur_name = cur.name
+    cur_key = _attach_key(cur_name)
+    out: list[str] = []
+
+    for s in siblings:
+        other = s.get("rel_path") or s.get("file_name") or ""
+        if not other or other == rel_path:
+            continue
+        op = Path(other)
+        # 只看同目录，跨目录不猜
+        if op.parent != cur.parent:
+            continue
+        reason = None
+        if _ATTACHMENT_WORDS.search(cur_name) or _ATTACHMENT_WORDS.search(op.name):
+            # 任一方自称附件且共享主文件名 → 关联
+            if cur_key and cur_key == _attach_key(op.name):
+                reason = "同目录、主文件名相同且含附件标记词"
+        if reason is None and cur_key and cur_key == _attach_key(op.name) \
+                and op.suffix.lower() != cur.suffix.lower():
+            reason = "同目录、主文件名相同、扩展名不同"
+        if reason:
+            out.append(other)
+    return out
+
 
 _MATERIAL_PUNCT_RE = re.compile(r"[\s　]+")
 
@@ -201,10 +259,17 @@ class CardBuilder:
 
     def multi(self, name: str, values: list, provenance: str,
               evidence: list | None = None) -> None:
-        """多值字段（用途/关键事实/相关文件）。"""
+        """多值字段（用途/关键事实/相关文件）。
+
+        空列表保持为 ``[]`` 而不是降级成 ``""``——多值字段就是多值类型，
+        消费方应当能直接迭代，不必先判类型。这也是消费侧的判据：
+        ``[]`` 表示「观察后确实没有」，``""`` 会被误当成未赋值。
+        """
         clean = [v for v in (values or []) if v]
         if not clean:
-            self.set(name, "", UNKNOWN)
+            self.fields[name] = {
+                "value": [], "provenance": UNKNOWN, "evidence": evidence or [],
+            }
             return
         self.set(name, clean, provenance, evidence)
 
@@ -237,6 +302,23 @@ def _extract_labels(text: str) -> dict:
     if m:
         out["fiscal_period"] = (m.group(1), "正文中带「年度/财年」标签的取值")
     return out
+
+
+def _siblings_of(conn, manifest_row: dict) -> list[dict]:
+    """取同目录下、同材料库内的其他文件，供附件关系识别使用。"""
+    rel = manifest_row.get("rel_path") or ""
+    parent = str(Path(rel).parent)
+    if parent == ".":
+        parent = ""
+    rows = conn.execute(
+        """SELECT file_name, rel_path FROM dd_v1_manifest
+           WHERE library_id=? AND deleted_at IS NULL AND file_id<>?
+             AND (CASE WHEN instr(rel_path,'/')>0
+                       THEN substr(rel_path,1,instr(rel_path,'/')-1) ELSE '' END)=?
+           LIMIT 500""",
+        (manifest_row["library_id"], manifest_row["file_id"], parent),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def build_card(
@@ -336,10 +418,14 @@ def build_card(
     b.multi("key_facts", key_facts, FACT if key_facts else UNKNOWN,
             [{"kind": "content_heading", "loc": rel, "rule": "正文前若干短行标题"}] if key_facts else [])
 
-    # ── 相关文件：只记「同目录同前缀」这类**观察到的**关联 ─────────────────
-    b.multi("related_files", [], UNKNOWN,
-            [{"kind": "not_resolved",
-              "note": "附件关系需按机构模板解析，当前仅记录观察到的同目录文件"}])
+    # ── 相关文件：只记「同目录可观察」的附件关系 ────────────────────────
+    related = detect_related_files(rel, _siblings_of(conn, manifest_row))
+    b.multi("related_files", related, INFERRED if related else UNKNOWN,
+            [{"kind": "path_structure", "loc": rel,
+              "rule": "同目录 + 主文件名相同（含附件标记词或扩展名不同）；"
+                      "这是从文件名结构推出的关系，**非法律事实**，需人工确认"}]
+            if related else [{"kind": "not_resolved",
+                              "note": "未观察到可确定的附件关系，不臆造"}])
 
     # ── 可信来源：来源可观察 → INFERRED ────────────────────────────────
     b.set("source_trust", manifest_row.get("source_hint") or "内部材料库",

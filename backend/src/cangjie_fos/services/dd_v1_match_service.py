@@ -189,10 +189,15 @@ def evaluate_file(
             deliverable = 0
             reasons.append("敏感等级未知，按指令不得自动纳入对外交付")
 
-    # 必备附件维度：认知卡的 related_files 目前恒 UNKNOWN（WP2 未实现附件关系解析），
-    # 因此义务要求附件时这一维度必然不满足——**这是已知缺口，不得为了好看而放行**。
+    # 必备附件维度：读**已解析的** fields.related_files。
+    # 注意不能直接读卡片表的 related_files 列——那是 json.dumps 的字符串，
+    # `json.dumps([])` 得到 "[]"，是真值，会让本维度恒判定为满足（假阳性）。
     if obligation.get("needs_attachments"):
-        rel = (card or {}).get("related_files") if card else None
+        rel = []
+        if card:
+            fields = card.get("fields") or {}
+            raw = (fields.get("related_files") or {}).get("value") or []
+            rel = raw if isinstance(raw, list) else []
         attachment_ok = 1 if rel else 0
     else:
         attachment_ok = 1
@@ -265,6 +270,54 @@ def match_obligation(
     return status
 
 
+def _related_of(r: dict) -> list[str]:
+    """取卡片里已解析的 related_files（不是 JSON 字符串列）。"""
+    fields = (r.get("card") or {}).get("fields") or {}
+    raw = (fields.get("related_files") or {}).get("value") or []
+    return raw if isinstance(raw, list) else []
+
+
+def _is_attachment_of_other(pool: list[dict], fid: str, fids: set[str]) -> bool:
+    """该文件是否是同组里另一份文件的附件。"""
+    me = next((r for r in pool if r["file_id"] == fid), None)
+    if me is None:
+        return False
+    mine = set(_related_of(me))
+    for other in fids - {fid}:
+        orow = next((r for r in pool if r["file_id"] == other), None)
+        if orow is None:
+            continue
+        rel_other = ((orow.get("card") or {}).get("rel_path")
+                     or (orow.get("manifest") or {}).get("rel_path") or "")
+        rel_me = ((me.get("card") or {}).get("rel_path")
+                  or (me.get("manifest") or {}).get("rel_path") or "")
+        if rel_other in mine or rel_me in set(_related_of(orow)):
+            return True
+    return False
+
+
+def detect_entity_substitution(pool, need_entities) -> list[dict]:
+    """跨主体复用检测：同一份材料被用于满足**不同主体**的义务。
+
+    这是 HG2「主体冒充」的第二层——第一层只看「同一 file_id 是否挂了多个主体」，
+    但更常见的错法是：拿 A 公司的材料去顶 B 公司的要求。
+    """
+    names = {e["display_name"] for e in need_entities if e.get("display_name")}
+    by_file: dict[str, set[str]] = {}
+    for r in pool:
+        card = r.get("card") or {}
+        ent = card.get("entity") or ""
+        if not ent:
+            continue
+        by_file.setdefault(r["file_id"], set()).add(ent)
+    out = []
+    for fid, ents in by_file.items():
+        other = ents & names - {next(iter(ents))} if len(ents & names) > 1 else set()
+        if len(ents & names) > 1:
+            out.append({"file_id": fid, "entities": sorted(ents & names)})
+    return out
+
+
 def detect_anomalies(
     obl: dict, pool: list[dict], need_entities: list[dict]
 ) -> dict:
@@ -292,6 +345,11 @@ def detect_anomalies(
 
     for (ent, pv), fids in buckets.items():
         if len(fids) > 1:
+            # **主文档与它的附表不是「冲突版本」**，必须排除，
+            # 否则「审计报告 + 审计报告附表」这种正常组合会被误判为内容冲突。
+            fids = {f for f in fids if not _is_attachment_of_other(pool, f, fids)}
+            if len(fids) <= 1:
+                continue
             hashes = {
                 (r.get("manifest") or {}).get("content_hash")
                 for r in pool if r["file_id"] in fids
@@ -376,8 +434,13 @@ def judge(
 
     doctype_cov = (sum(1 for r in pool if r["ev"]["doctype_ok"]) / len(pool)
                    if pool else 0.0)
-    attach_cov = (sum(1 for r in pool if r["ev"]["attachment_ok"]) / len(pool)
-                  if pool else 0.0)
+    # 必备附件覆盖：义务要求附件时，看**可交付**的命中材料里有多少带可观察的关联件。
+    # 认知卡的 related_files 自 WP6 起可由确定性规则填充，故此维度不再是恒 0。
+    if obl.get("needs_attachments"):
+        attach_cov = (sum(1 for r in pool if r["ev"]["attachment_ok"]) / len(pool)
+                      if pool else 0.0)
+    else:
+        attach_cov = 1.0
 
     missing = []
     if n_ent and ent_cov < FULL_COVERAGE:
@@ -399,6 +462,9 @@ def judge(
         verdict = V_PARTIAL
     elif doctype_cov < FULL_COVERAGE:
         verdict = V_PARTIAL
+    elif attach_cov < FULL_COVERAGE:
+        verdict = V_PARTIAL
+        missing.append("必备附件缺失")
     else:
         verdict = V_MATCHED
 
