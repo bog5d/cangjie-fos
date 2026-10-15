@@ -7,6 +7,27 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · WP5 纠错经验四层分级与回归数据集**（`dd_v1_experience_service`）：
+  `feedback → candidate → approved → regression`，**一次人工修改的 tier 恒为 feedback，
+  绝不自动晋级**；晋级必须留 `promoted_by` 与 `gate_result` 痕迹且**不得跳级**。
+  `record_feedback()` 要求 `edited_by` / `reason` / `scope_entity` 三项必填——
+  没有适用主体的经验不入库。复用前 `validate_experience_scope()` 对
+  主体/期间/材料类型/机构/模板五项复验，任一不符即拒绝，对治旧
+  `dd_decision_memory`「写而不读导致跨主体自动锁定」。
+  回归用例 `dd_v1_regression_cases` **必须带 `source_ref`**——
+  来源不明的 gold set 不准入，防止把错误答案固化成「标准答案」。
+- **DD-V1 · WP5 自动化评分接口**（`score_library`）：按 Goal Contract 冻结的五项
+  metric 逐项打分，**以逐条义务的可核查判定为依据，不接受 LLM 自评**。
+  **无回归数据集 → 全项 0 分并标 UNKNOWN**，绝不因「跑通了」自评高分；
+  样本量不足时得分封顶在权重 50%（`LOW_CONFIDENCE`），与 GCCSEG 对
+  `ISOLATED_PASS` 的上限一致。硬门槛 HG1/2/3 独立于总分，任一 FAIL 即
+  `BLOCKED_BY_HARD_GATE`，**不允许被高总分稀释**；
+  HG4「不虚称自主」为常驻声明，照常上报但不参与阻断判定。
+- **DD-V1 · WP5 CLI**：`feedback` / `recall` / `gold` / `score`。
+- **DD-V1 · Goal Contract 补齐双账本分母出处**：新增 `denominators` 字段，
+  明确工程分母 7（交办件「七、开发阶段」WP0–WP6）、效果分母 100
+  （`outcome_metrics` 权重和），并把交办件 `N/8` 口径记为 `unreconciled/UNKNOWN`——
+  **两套分母禁止合并、折算或择一**。
 - **DD-V1 · WP4 人工审核、组包与安全 Gate**（`dd_v1_package_service`）：
   审核单状态机 `draft → reviewed → approved → packaged`；
   `build_review_pack()` 只读材料生成核对表/缺口清单/证据说明/Manifest+hash，

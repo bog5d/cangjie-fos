@@ -309,6 +309,47 @@ def cmd_edits(a) -> int:
     return 0
 
 
+# ── WP5 子命令：纠错经验、回归数据集与评分 ────────────────────────────────
+def cmd_feedback(a) -> int:
+    from cangjie_fos.services import dd_v1_experience_service as xs
+    _out(xs.record_feedback(a.library, a.requirement, reason=a.reason,
+                            edited_by=a.by, institution=a.institution,
+                            template=a.template, scope_entity=a.entity))
+    return 0
+
+
+def cmd_recall(a) -> int:
+    from cangjie_fos.services import dd_v1_experience_service as xs
+    _out(xs.recall_experience(a.library, a.requirement, current_entity=a.entity,
+                              institution=a.institution, template=a.template))
+    return 0
+
+
+def cmd_gold(a) -> int:
+    from cangjie_fos.services import dd_v1_experience_service as xs
+    _out(xs.add_regression_case(a.library, a.text, source_ref=a.source,
+                                item_no=a.item_no, expected_verdict=a.verdict))
+    return 0
+
+
+def cmd_score(a) -> int:
+    from cangjie_fos.services import dd_v1_experience_service as xs
+    s = xs.score_library(a.library)
+    _out({
+        "scored_on": s["scored_on"],
+        "regression_cases": s["regression_cases"],
+        "verified_points": s["verified_points"],
+        "total_points": s["total_points"],
+        "goal_state": s["goal_state"],
+        "metrics": [{"id": m["id"], "weight": m["weight"],
+                     "points": m["verified_points"], "status": m["status"]}
+                    for m in s["metrics"]],
+        "hard_gates": [{"id": g["id"], "status": g["status"]} for g in s["hard_gates"]],
+        "note": s["self_report_prohibited"],
+    })
+    return 0
+
+
 # ── 解析 ────────────────────────────────────────────────────────────────────
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -434,6 +475,37 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("edits", help="查看人工修改留痕")
     sp.add_argument("--review", required=True)
     sp.set_defaults(func=cmd_edits)
+
+    # ── WP5：纠错经验、回归数据集与评分 ─────────────────────────────────
+    sp = sub.add_parser("feedback", help="记录一次人工纠错（tier 恒为 feedback）")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--requirement", required=True)
+    sp.add_argument("--reason", required=True)
+    sp.add_argument("--by", required=True)
+    sp.add_argument("--entity", required=True, help="适用主体（必填）")
+    sp.add_argument("--institution", default="")
+    sp.add_argument("--template", default="")
+    sp.set_defaults(func=cmd_feedback)
+
+    sp = sub.add_parser("recall", help="召回同类已批准经验（逐条复验适用范围）")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--requirement", required=True)
+    sp.add_argument("--entity", default="")
+    sp.add_argument("--institution", default="")
+    sp.add_argument("--template", default="")
+    sp.set_defaults(func=cmd_recall)
+
+    sp = sub.add_parser("gold", help="录入回归用例（必须带出处）")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--text", required=True)
+    sp.add_argument("--source", required=True, help="来源：历史人工交付包/机构原件")
+    sp.add_argument("--item-no", default="")
+    sp.add_argument("--verdict", default="", help="期望判定")
+    sp.set_defaults(func=cmd_gold)
+
+    sp = sub.add_parser("score", help="自动化评分（无回归数据集则全 0，不自评高分）")
+    sp.add_argument("--library", required=True)
+    sp.set_defaults(func=cmd_score)
     return p
 
 
