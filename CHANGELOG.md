@@ -7,6 +7,23 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · WP2 结构化材料认知卡**（`dd_v1_card_service`）：为每份可解析材料建立认知卡，
+  17 个字段**逐个标注 FACT / INFERRED / UNKNOWN 并附证据位置**，取不到证据一律 UNKNOWN
+  绝不编造。签章状态、敏感等级、所属集团在无视觉核验/制度依据/权威名单时**强制留
+  UNKNOWN** 并写明原因。`card_coverage()` 输出「我们到底知道多少」的诚实分布。
+- **DD-V1 · WP2 正文抽取适配层**（`dd_v1_parser_service`）：Docling（可选 extra，未装则跳过）
+  → 复用 `dd_content_extractor` 三层降级 → 复用 `dd_file_parser` 纯文本 → 显式不可读。
+  每次抽取返回 `method`/`truncated`/`original_chars`/`error` 并写回 Manifest 四列，
+  **超长正文显式标记 truncated 而非静默砍断**（对治旧预热把截断与扫描件混为一谈）。
+- **DD-V1 · WP2 中文全文检索（FTS5）**：`dd_v1_material_fts` 真 FTS5 虚表 +
+  `search_materials()`，**无需 LLM 与 API key** 即可召回。
+  **中文 bigram 索引侧 + 查询侧短语**：实测 `unicode61` 会把整段汉字当单个 token
+  （`MATCH '专利'` 命中 0），`trigram` 又要求查询词 ≥3 字符，2 字中文词两条路都搜不到；
+  而尽调检索词恰恰以 2 字为主，故索引与查询两侧都展开 bigram。
+- **DD-V1 · WP2 正文缓存**：`dd_v1_text_cache` 存受控 Data Plane（不回写材料源目录），
+  是认知卡语义字段与 FTS 全文召回的数据来源。
+- **DD-V1 · CLI 扩展 WP2 子命令**：`parse` / `cards` / `coverage` / `search` / `card`，
+  供监工与业务方脱离前端、脱离 LLM key 独立复核。
 - **DD-V1 · 材料库 Manifest CLI**（`tools/dd_v1_manifest.py`）：供监工与业务方脱离前端、
   脱离 LLM key 独立复核授权接管、增量扫描、断点恢复与同名跨主体保留。
   子命令 `register` / `build` / `summary` / `resume` / `same-name` / `selftest`；

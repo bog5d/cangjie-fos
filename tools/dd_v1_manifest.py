@@ -171,6 +171,45 @@ def cmd_selftest(a) -> int:
     return 0 if ok else 1
 
 
+# ── WP2 子命令：正文抽取与认知卡 ────────────────────────────────────────────
+def cmd_parse(a) -> int:
+    from cangjie_fos.services import dd_v1_parser_service as ps
+    r = ps.parse_pending_batch(a.library, limit=a.limit,
+                               allow_docling=not a.no_docling)
+    _out(r)
+    return 0
+
+
+def cmd_cards(a) -> int:
+    from cangjie_fos.services import dd_v1_card_service as cs
+    _out(cs.build_cards_for_library(a.library, limit=a.limit))
+    return 0
+
+
+def cmd_coverage(a) -> int:
+    from cangjie_fos.services import dd_v1_card_service as cs
+    _out(cs.card_coverage(a.library))
+    return 0
+
+
+def cmd_search(a) -> int:
+    from cangjie_fos.services import dd_v1_card_service as cs
+    hits = cs.search_materials(a.library, a.query, limit=a.limit)
+    _out({"library": a.library, "query": a.query, "count": len(hits), "hits": hits})
+    return 0
+
+
+def cmd_card(a) -> int:
+    from cangjie_fos.services import dd_v1_card_service as cs
+    from cangjie_fos.services import dd_v1_manifest_service as mf
+    row = mf.get_manifest_entry(a.library, a.path)
+    if row is None:
+        print(json.dumps({"error": "NOT_FOUND", "path": a.path}, ensure_ascii=False))
+        return 1
+    _out(cs.get_card(row["file_id"]) or {"error": "CARD_NOT_BUILT"})
+    return 0
+
+
 # ── 解析 ────────────────────────────────────────────────────────────────────
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -211,6 +250,34 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("selftest", help="临时库自检，不碰真实材料")
     sp.set_defaults(func=cmd_selftest)
+
+    # ── WP2：抽取与认知卡 ────────────────────────────────────────────────
+    sp = sub.add_parser("parse", help="批量抽取正文并写回解析状态位")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--limit", type=int, default=200)
+    sp.add_argument("--no-docling", action="store_true",
+                    help="跳过可选的 Docling 层（默认装了才用）")
+    sp.set_defaults(func=cmd_parse)
+
+    sp = sub.add_parser("cards", help="批量构建结构化材料认知卡")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--limit", type=int, default=500)
+    sp.set_defaults(func=cmd_cards)
+
+    sp = sub.add_parser("coverage", help="认知卡出处分布（多少字段其实我们不知道）")
+    sp.add_argument("--library", required=True)
+    sp.set_defaults(func=cmd_coverage)
+
+    sp = sub.add_parser("search", help="中文全文检索（FTS5 + bigram，无需 LLM）")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--query", required=True)
+    sp.add_argument("--limit", type=int, default=20)
+    sp.set_defaults(func=cmd_search)
+
+    sp = sub.add_parser("card", help="查看单份材料的认知卡")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--path", required=True, help="相对路径")
+    sp.set_defaults(func=cmd_card)
     return p
 
 
