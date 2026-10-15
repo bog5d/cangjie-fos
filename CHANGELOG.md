@@ -7,6 +7,13 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · 材料库 Manifest CLI**（`tools/dd_v1_manifest.py`）：供监工与业务方脱离前端、
+  脱离 LLM key 独立复核授权接管、增量扫描、断点恢复与同名跨主体保留。
+  子命令 `register` / `build` / `summary` / `resume` / `same-name` / `selftest`；
+  `build` 会自动发现并续跑中断的运行。退出码 0/1/2。
+- **DD-V1 · 崩溃恢复与规模基线测试**（`test_dd_v1_recovery.py`）：真子进程 + 哨兵 +
+  SIGKILL 的确定性崩溃恢复验证（含租约围栏：未过期拒绝、过期接管并补齐全量），
+  以及可复跑的扫描吞吐与库体积基线。**该基线是工程性能数据，不是业务效果数据。**
 - **DD-V1 · WP1 材料库 Manifest**（`dd_v1_manifest_service`）：投资尽调自动组包 V1 第一
   工作包。授权目录接管、稳定文件身份（`(library_id, rel_path)` 唯一键 + 内容哈希）、
   全量/增量/重试三种模式、run 表租约与心跳驱动的断点恢复、软删除墓碑。
@@ -34,6 +41,14 @@
   校验，只读令牌明确报错并指引改 Contents=Read and write；404 提示勾选 coach_data。
 
 ### Fixed
+- **DD-V1 · 崩溃恢复丢失已完成的工作**：Manifest 扫描原每 200 份才提交一次，
+  进程被 SIGKILL 时已处理但未提交的工作全部丢失，且 run 记录的 `processed` 仍为 0，
+  恢复入口拿不到真实进度。改为「按份数或按时间先到先提交」
+  （默认 25 份 / 2 秒，`CANGJIE_DD_V1_COMMIT_EVERY` / `CANGJIE_DD_V1_COMMIT_SECONDS` 可覆盖），
+  并补记 `last_rel_path`，恢复时能知道停在哪一份。
+- **DD-V1 · 租约围栏不校验过期，崩溃后永远无人接管**：恢复判定原先只比对 owner 字符串，
+  **从未读 `lease_expires_at`**，导致持有者进程崩溃后该 run 永久卡在 `running`，
+  只能人工改库。现改为仅在租约**仍有效**时拒绝并发，过期即允许接管并告警。
 - **DD-V1 · 根治同名+mtime 去重误删不同主体材料**：旧 `_dedup_keep_newest` 以 `f.name`
   为 key、`mtime` 比大小，在 `per_institution` 布局下把不同机构下的同名文件（如各一份
   「营业执照.pdf」）判为重复，只留 mtime 最新一份，**被丢弃方完全不进索引、连机构信息

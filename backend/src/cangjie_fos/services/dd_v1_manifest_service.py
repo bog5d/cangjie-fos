@@ -55,6 +55,19 @@ SCHEMA_VERSION = 1
 # 内容哈希分块大小：材料库可能几十 GB，必须流式读，禁止整文件进内存。
 _HASH_CHUNK = 1024 * 1024
 
+# 提交节奏（断点恢复的关键参数）。
+#
+# 首轮实现每 200 份才 commit 一次，实测暴露为真实缺陷：进程被 SIGKILL 时，
+# 已处理但未提交的最多 200 份工作全部丢失，且 run 记录的 processed 仍为 0，
+# 恢复入口拿不到真实进度——「恢复了状态，没恢复工作」。
+#
+# 现在改为「按份数或按时间，先到先触发」，默认更密：
+#   - 库很小（<25 份）时在扫描结束时一次性提交；
+#   - 库很大时最多每 25 份 / 每 2 秒落一次盘，崩溃最多损失一个窗口的进度。
+# 两者均可由环境变量覆盖，便于按磁盘 IO 特性调优。
+COMMIT_EVERY_FILES = int(os.getenv("CANGJIE_DD_V1_COMMIT_EVERY", "25") or "25")
+COMMIT_EVERY_SECONDS = float(os.getenv("CANGJIE_DD_V1_COMMIT_SECONDS", "2") or "2")
+
 # 解析状态机（确定性，不由 LLM 判定）
 PARSE_PENDING = "pending"      # 已入 Manifest，尚未抽取正文
 PARSE_OK = "ok"                # 成功抽取
@@ -392,9 +405,17 @@ def build_manifest(
                 f"run {resume_run_id} 状态为 {run['status']}，非运行中，无需恢复"
             )
         if run["lease_owner"] and lease_owner and run["lease_owner"] != lease_owner:
-            raise RuntimeError(
-                f"run {resume_run_id} 已被 {run['lease_owner']} 持有，"
-                f"租约未过期（{run['lease_expires_at']:.0f}），拒绝并发恢复"
+            # 租约围栏：只在**租约仍然有效**时拒绝他人。
+            # 首轮实现漏判 lease_expires_at，导致进程崩溃后租约虽过期却永远无人能接管，
+            # run 永久卡在 running——与 GM 侧 G02/G08「围栏不跨重启」同类病症。
+            if run["lease_expires_at"] > now:
+                raise RuntimeError(
+                    f"run {resume_run_id} 已被 {run['lease_owner']} 持有，"
+                    f"租约有效至 {run['lease_expires_at']:.0f}，拒绝并发恢复"
+                )
+            logger.warning(
+                "run %s 原持有者 %s 的租约已于 %.0f 过期，由 %s 接管恢复",
+                resume_run_id, run["lease_owner"], run["lease_expires_at"], lease_owner,
             )
         run_id = resume_run_id
         logger.info("恢复扫描 run=%s library=%s（已处理 %d）",
@@ -413,6 +434,8 @@ def build_manifest(
 
     stats = ScanStats(run_id=run_id, library_id=library_id, mode=mode)
     seen_rel: set[str] = set()
+    last_rel = ""
+    last_commit_at = time.time()
 
     try:
         files = list(_iter_candidate_files(root, library_id))
@@ -434,10 +457,12 @@ def build_manifest(
                 "UPDATE dd_v1_scan_runs SET total_files=? WHERE run_id=?",
                 (stats.total, run_id),
             )
+            conn.commit()
 
         for f in files:
             rel = f.relative_to(root).as_posix()
             seen_rel.add(rel)
+            last_rel = rel
             try:
                 _upsert_file(conn, library_id, root, f, rel, mode, stats, now)
             except Exception as exc:  # noqa: BLE001 — 单文件失败不得中断整轮扫描
@@ -445,9 +470,14 @@ def build_manifest(
                 logger.warning("Manifest 读取失败 %s：%s", rel, exc)
             stats.processed += 1
 
-            if stats.processed % 200 == 0:
+            # 按份数或按时间先到先提交：保证崩溃时最多损失一个窗口的进度，
+            # 且 run 记录里的 processed 始终反映「真正落盘」的进度。
+            now_ts = time.time()
+            if (stats.processed % COMMIT_EVERY_FILES == 0
+                    or now_ts - last_commit_at >= COMMIT_EVERY_SECONDS):
                 _touch(conn, run_id, stats, lease_owner, lease_seconds)
                 conn.commit()
+                last_commit_at = now_ts
                 if progress_callback:
                     progress_callback(stats.processed, stats.total)
 
@@ -457,8 +487,8 @@ def build_manifest(
         _touch(conn, run_id, stats, lease_owner, lease_seconds)
         stats.status = RUN_COMPLETED
         conn.execute(
-            "UPDATE dd_v1_scan_runs SET status=?, last_error='' WHERE run_id=?",
-            (RUN_COMPLETED, run_id),
+            "UPDATE dd_v1_scan_runs SET status=?, last_error='', last_rel_path=? WHERE run_id=?",
+            (RUN_COMPLETED, last_rel, run_id),
         )
         conn.commit()
 
