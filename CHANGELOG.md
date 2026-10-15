@@ -7,6 +7,11 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · Docling 适配层契约测试**（`test_dd_v1_docling_adapter.py`）：用 `sys.modules`
+  桩验证 Docling 适配器的完整契约——优先采用、结果标记为 `docling`、截断显式标记、
+  异常降级到既有抽取器且不冒充成功、空产出标 `empty`、缺席时跳过——
+  **关闭 WP2 自陈的「Docling 层代码路径未经真实执行验证」缺口**，
+  且不为跑测试付出重依赖代价（Docling 仍为 `[docling]` 可选依赖）。
 - **DD-V1 · WP5 纠错经验四层分级与回归数据集**（`dd_v1_experience_service`）：
   `feedback → candidate → approved → regression`，**一次人工修改的 tier 恒为 feedback，
   绝不自动晋级**；晋级必须留 `promoted_by` 与 `gate_result` 痕迹且**不得跳级**。
