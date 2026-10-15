@@ -247,9 +247,13 @@ def _recall_candidates(
 
     hits: dict[str, float] = {}
     for rank, t in enumerate(terms):
-        for h in cs.search_materials(library_id, t, limit=cap * 2, db_path=db_path):
-            # BM25 分数越小越相关；doc_type 词（rank 小）优先占位
-            prior = 1.0 - (rank * 0.01)
+        # **召回阶段用宽松二元组检索，不用短语查询。**
+        # 短语查询要求二元组相邻，「财务报告」就匹配不到写「财务报表/财务数据」
+        # 的真实材料——系统性过严，把明明存在的材料判成不存在。
+        # 宁可多召回：精度由后续主体/期间/类型/附件四维判定收窄。
+        for h in cs.search_materials_loose(library_id, t, limit=cap * 2,
+                                           db_path=db_path):
+            prior = 1.0 - (rank * 0.01)   # doc_type 词优先占位
             cur = hits.get(h["file_id"])
             cand = h["score"] * prior
             if cur is None or cand < cur:

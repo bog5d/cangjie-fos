@@ -192,3 +192,68 @@ def test_tail_only_keyword_still_recall_end_to_end(tmp_path):
     st = ms.match_obligation(lib, obl["obligation_id"], db_path=None)
     assert st["candidate_count"] > 0, "句尾关键词也必须召回得到"
     assert st["verdict"] != ms.V_MISSING, "材料就在库里，不得判缺材料"
+
+
+# ── D-6：非循环夹具 + 召回不能「修一条坏一条」────────────────────────────────
+#
+# 本文件此前所有夹具都有一个隐蔽缺陷：材料正文**复述了义务措辞**
+# （如义务「被投企业近三年经审计的财务报告」→ 材料写「被投企业近三年经审计的财务数据」），
+# 于是召回成功是**必然**的，是自我循环的假象。
+# 监工用自己的夹具复跑得到 1/1/0 而非我自述的 1/1/1——**他们的才对**。
+# 下面改用真实尽调材料的措辞（不复述义务），这才是有效的验证。
+
+_REALISTIC = {
+    "2024年审计报告.md": "本所对泽天科技2024年度财务报表进行了审计，发表标准无保留意见。\n",
+    "股权结构说明.txt": "关于实际控制人与持股情况的说明\n长风资本为第一大股东，持股 42%。\n",
+}
+
+
+def test_non_circular_fixture_recalls(tmp_path):
+    """材料**不复述义务措辞**时，靠真实措辞也要能召回。
+
+    「财务报告」要求 财务+务报+报告 连续，而材料写「财务报表」——
+    短语查询系统性过严，把明明存在的材料判成不存在。
+    """
+    lib = _seed(tmp_path, _REALISTIC)
+    rq.ingest_checklist(lib, [{"item_no": "L1",
+                               "raw_text": "请提供被投企业近三年经审计的财务报告"}],
+                        db_path=None)
+    obl = rq.list_obligations(lib, db_path=None)[0]
+    st = ms.match_obligation(lib, obl["obligation_id"], db_path=None)
+    assert st["candidate_count"] > 0, (
+        f"材料写的是「财务报表」而非「财务报告」，短语查询召不回来：{st['recall_terms']}")
+
+
+def test_loose_search_is_superset_of_phrase_search(tmp_path):
+    """宽松二元组 OR 是短语查询的**超集**：短语要求全部二元组相邻，
+    OR 只要求任一。⇒ 换用宽松检索**在数学上不可能造成召回回退**。
+
+    这条用例把「不能修一条坏一条」变成可执行断言，而不是靠我自述。
+    """
+    lib = _seed(tmp_path, _REALISTIC)
+    conn = mf._connect(None)
+    for q in ("财务报告", "审计报告", "财务报表"):
+        strict = cs.search_materials(lib, q, limit=50, db_path=None)
+        loose = cs.search_materials_loose(lib, q, limit=50, db_path=None)
+        s_ids = {h["file_id"] for h in strict}
+        l_ids = {h["file_id"] for h in loose}
+        assert s_ids <= l_ids, (
+            f"宽松检索丢了短语检索的结果：{q} strict={len(s_ids)} loose={len(l_ids)}")
+    conn.close()
+
+
+def test_genuinely_unrelated_material_still_not_recalled(tmp_path):
+    """**不是每条都该召回到**：材料真的没提组织架构时，cand 必须为 0。
+
+    防止把上一条修成「什么都召回」——那会把真缺口也抹掉。
+    """
+    lib = _seed(tmp_path, {
+        "2024年审计报告.md": "本所对泽天科技2024年度财务报表进行了审计。\n",
+        "投决会纪要.md": "各层级部门设置情况详见附表。\n",
+    })
+    rq.ingest_checklist(lib, [{"item_no": "L3",
+                               "raw_text": "请提供集团及下属公司的完整组织架构"}],
+                        db_path=None)
+    obl = rq.list_obligations(lib, db_path=None)[0]
+    st = ms.match_obligation(lib, obl["obligation_id"], db_path=None)
+    assert st["candidate_count"] == 0, "材料确实没提组织架构，不应硬召回"
