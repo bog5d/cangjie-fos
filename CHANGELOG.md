@@ -7,6 +7,112 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · 必备附件关系识别**：认知卡 `related_files` 不再恒 UNKNOWN。
+  三条**确定性**规则——附件自述词（附件/附表/明细/签字页/盖章页等）、
+  同目录主文件名相同且扩展名不同、同目录同主名——主文件名归一化**复用**
+  `dd_index_service.clean_filename`（已处理年份/版本/「最终版」等噪音词），
+  不另立第二套标准。关系判为 **INFERRED 而非 FACT**：从文件名结构推出，
+  非法律事实，需人工确认。识别不出来的**留空不臆造**。
+  至此硬门槛要求的第四维「必备附件覆盖」首次可以真正被满足
+  （此前义务一旦要求附件，该维度**永远为 0**，M2 永远不可能达标）。
+- **DD-V1 · HG2 跨主体复用检测**（`detect_entity_substitution`）：
+  补上第一层漏掉的错法——第一层只查「同一 file_id 是否挂多个主体」，
+  但更常见的是**拿 A 公司的材料去顶 B 公司的要求**。
+- **DD-V1 · Docling 适配层契约测试**（`test_dd_v1_docling_adapter.py`）：用 `sys.modules`
+  桩验证 Docling 适配器的完整契约——优先采用、结果标记为 `docling`、截断显式标记、
+  异常降级到既有抽取器且不冒充成功、空产出标 `empty`、缺席时跳过——
+  **关闭 WP2 自陈的「Docling 层代码路径未经真实执行验证」缺口**，
+  且不为跑测试付出重依赖代价（Docling 仍为 `[docling]` 可选依赖）。
+- **DD-V1 · WP5 纠错经验四层分级与回归数据集**（`dd_v1_experience_service`）：
+  `feedback → candidate → approved → regression`，**一次人工修改的 tier 恒为 feedback，
+  绝不自动晋级**；晋级必须留 `promoted_by` 与 `gate_result` 痕迹且**不得跳级**。
+  `record_feedback()` 要求 `edited_by` / `reason` / `scope_entity` 三项必填——
+  没有适用主体的经验不入库。复用前 `validate_experience_scope()` 对
+  主体/期间/材料类型/机构/模板五项复验，任一不符即拒绝，对治旧
+  `dd_decision_memory`「写而不读导致跨主体自动锁定」。
+  回归用例 `dd_v1_regression_cases` **必须带 `source_ref`**——
+  来源不明的 gold set 不准入，防止把错误答案固化成「标准答案」。
+- **DD-V1 · WP5 自动化评分接口**（`score_library`）：按 Goal Contract 冻结的五项
+  metric 逐项打分，**以逐条义务的可核查判定为依据，不接受 LLM 自评**。
+  **无回归数据集 → 全项 0 分并标 UNKNOWN**，绝不因「跑通了」自评高分；
+  样本量不足时得分封顶在权重 50%（`LOW_CONFIDENCE`），与 GCCSEG 对
+  `ISOLATED_PASS` 的上限一致。硬门槛 HG1/2/3 独立于总分，任一 FAIL 即
+  `BLOCKED_BY_HARD_GATE`，**不允许被高总分稀释**；
+  HG4「不虚称自主」为常驻声明，照常上报但不参与阻断判定。
+- **DD-V1 · WP5 CLI**：`feedback` / `recall` / `gold` / `score`。
+- **DD-V1 · Goal Contract 补齐双账本分母出处**：新增 `denominators` 字段，
+  明确工程分母 7（交办件「七、开发阶段」WP0–WP6）、效果分母 100
+  （`outcome_metrics` 权重和），并把交办件 `N/8` 口径记为 `unreconciled/UNKNOWN`——
+  **两套分母禁止合并、折算或择一**。
+- **DD-V1 · WP4 人工审核、组包与安全 Gate**（`dd_v1_package_service`）：
+  审核单状态机 `draft → reviewed → approved → packaged`；
+  `build_review_pack()` 只读材料生成核对表/缺口清单/证据说明/Manifest+hash，
+  **零复制原件**；`package_approved()` 是唯一复制入口，
+  **必须先过 `assert_approval()`，否则抛 `ApprovalRequired` 且在复制任何文件之前中止**
+  ——硬门槛 HG1「未经人工最终批准不得对外交付」的机器侧强制实现。
+  人工修改后状态自动回落 `reviewed`，**「批完再改」必须重新批准**；
+  一次修改带修改人与原因留痕，`promoted_to_global_rule` 恒为 `false`。
+  路径清洗与越界防护**复用** `dd_export_service._within / _safe_filename / _safe_dirname`，
+  不另立第二套文件名安全标准。复制件逐份核对 sha256，不一致即记为交付事故。
+- **DD-V1 · STALE / CONFLICT 两态判定落地**（`detect_anomalies`）：
+  某主体**仅有区间外年份**材料顶当期要求 → `STALE`；
+  同一主体+同一期间出现**内容哈希不同**的多份材料 → `CONFLICT`，
+  两者优先级高于 MATCHED/PARTIAL，不得被「覆盖率够了」盖过去。
+  异常明细落 `dd_v1_obligation_status.anomalies_json`，供审核包读取。
+- **DD-V1 · WP4 CLI**：`review` / `approve` / `package` / `edits`；
+  未批准时 `package` 返回 `APPROVAL_REQUIRED` 且退出码 1。
+- **DD-V1 · WP3 尽调需求理解与原子义务拆解**（`dd_v1_requirement_service`）：
+  机构清单原始条目与原子义务分表保存，**原编号与原文零丢失**并提供 roundtrip 硬校验；
+  并列要求拆成多条原子义务；每个维度（主体范围/期间/文件类型/合并口径/签章/附件）
+  均带 `FACT`/`INFERRED`/`UNKNOWN` 出处，**拆不出一律 UNKNOWN 绝不编造**；
+  「近三年」等相对年份缺锚定年时**不擅自假定年份**。
+  新增权威主体登记 `dd_v1_entities`，`source_ref` 为空直接拒绝入册——
+  没有权威集团成员名单，多主体覆盖就判 UNCERTAIN，**绝不用目录名凑数**。
+- **DD-V1 · WP3 多文件匹配与四维完整性覆盖**（`dd_v1_match_service`）：
+  一条义务可匹配多份证据，一份材料可服务多条义务（`file_serves_count`）。
+  按**主体 × 期间 × 材料类型 × 必备附件**四维分别计算覆盖率，
+  **找到一份相关文件不再等于整项完成**；给出 MATCHED/PARTIAL/MISSING/STALE/
+  CONFLICT/UNCERTAIN/RESTRICTED 七态判定与缺口明细。
+  **候选上限 `candidate_cap` 是显式可配置项（默认 20）**，不是硬编码 2；
+  候选被截断时显式标记 `capped`，不静默丢弃。
+- **DD-V1 · 决策记忆五项复验**（`revalidate_memory_hit`）：主体、期间、版本、有效期、
+  适用范围任一不符即拒绝沿用。对治旧实现把 `last_institution` 写入
+  `dd_decision_memory` 却从不在 lookup 里读的「写而不读」问题。
+- **DD-V1 · CLI 扩展 WP3 子命令**：`checklist` / `obligations` / `match` / `status` /
+  `entity`，供监工与业务方脱离前端、脱离 LLM key 独立复核。
+- **DD-V1 · WP2 结构化材料认知卡**（`dd_v1_card_service`）：为每份可解析材料建立认知卡，
+  17 个字段**逐个标注 FACT / INFERRED / UNKNOWN 并附证据位置**，取不到证据一律 UNKNOWN
+  绝不编造。签章状态、敏感等级、所属集团在无视觉核验/制度依据/权威名单时**强制留
+  UNKNOWN** 并写明原因。`card_coverage()` 输出「我们到底知道多少」的诚实分布。
+- **DD-V1 · WP2 正文抽取适配层**（`dd_v1_parser_service`）：Docling（可选 extra，未装则跳过）
+  → 复用 `dd_content_extractor` 三层降级 → 复用 `dd_file_parser` 纯文本 → 显式不可读。
+  每次抽取返回 `method`/`truncated`/`original_chars`/`error` 并写回 Manifest 四列，
+  **超长正文显式标记 truncated 而非静默砍断**（对治旧预热把截断与扫描件混为一谈）。
+- **DD-V1 · WP2 中文全文检索（FTS5）**：`dd_v1_material_fts` 真 FTS5 虚表 +
+  `search_materials()`，**无需 LLM 与 API key** 即可召回。
+  **中文 bigram 索引侧 + 查询侧短语**：实测 `unicode61` 会把整段汉字当单个 token
+  （`MATCH '专利'` 命中 0），`trigram` 又要求查询词 ≥3 字符，2 字中文词两条路都搜不到；
+  而尽调检索词恰恰以 2 字为主，故索引与查询两侧都展开 bigram。
+- **DD-V1 · WP2 正文缓存**：`dd_v1_text_cache` 存受控 Data Plane（不回写材料源目录），
+  是认知卡语义字段与 FTS 全文召回的数据来源。
+- **DD-V1 · CLI 扩展 WP2 子命令**：`parse` / `cards` / `coverage` / `search` / `card`，
+  供监工与业务方脱离前端、脱离 LLM key 独立复核。
+- **DD-V1 · 材料库 Manifest CLI**（`tools/dd_v1_manifest.py`）：供监工与业务方脱离前端、
+  脱离 LLM key 独立复核授权接管、增量扫描、断点恢复与同名跨主体保留。
+  子命令 `register` / `build` / `summary` / `resume` / `same-name` / `selftest`；
+  `build` 会自动发现并续跑中断的运行。退出码 0/1/2。
+- **DD-V1 · 崩溃恢复与规模基线测试**（`test_dd_v1_recovery.py`）：真子进程 + 哨兵 +
+  SIGKILL 的确定性崩溃恢复验证（含租约围栏：未过期拒绝、过期接管并补齐全量），
+  以及可复跑的扫描吞吐与库体积基线。**该基线是工程性能数据，不是业务效果数据。**
+- **DD-V1 · WP1 材料库 Manifest**（`dd_v1_manifest_service`）：投资尽调自动组包 V1 第一
+  工作包。授权目录接管、稳定文件身份（`(library_id, rel_path)` 唯一键 + 内容哈希）、
+  全量/增量/重试三种模式、run 表租约与心跳驱动的断点恢复、软删除墓碑。
+  源目录只读，全部产物落受控 Data Plane `backend/data/dd_v1/`（已 gitignore），
+  并以 `assert_data_plane_outside()` 硬校验 Data Plane 不得落在材料库内部。
+  本层零 LLM 调用。排除规则复用 `dd_index_service` / `dd_file_parser` 既有定义。
+- **DD-V1 · 解析状态可观测字段**：`dd_v1_manifest` 预留 `parse_status` / `parse_method` /
+  `parse_error` / `truncated`，使「长度截断」「扫描件」「文件损坏」在 Schema 层即可区分，
+  供 WP2 结构化材料认知卡消费。
 - **尽调匹配·多文件需求聚合**（`_apply_multifile_aggregation`）：解决 judge_reject 里
   「最近两年 / 多年度」类需求被逼二选一→单份被判不满足的真缺口。确定性终判：从该项
   自己的候选池里为每个应覆盖年份各挑一份，落 `extra_files_json`，按覆盖度重判（齐→绿 /
@@ -23,6 +129,30 @@
 ### Changed
 - **GitHub 同步令牌测试校验写权限**：`test-github` 不再"能读就算过"，追加 `permissions.push`
   校验，只读令牌明确报错并指引改 Contents=Read and write；404 提示勾选 coach_data。
+
+### Fixed
+- **DD-V1 · 附件维度假阳性**：`evaluate_file` 原本读卡片表的 `related_files`
+  **JSON 字符串列**，`json.dumps([])` 得到 `"[]"`——这是**真值**，
+  导致「必备附件」维度恒判定为满足，空附件也放行。改为读已解析的
+  `fields.related_files`。
+- **DD-V1 · 主文档与其附表被误判为 CONFLICT**：冲突检测只看
+  「同主体+同期间+内容哈希不同」，把「审计报告 + 审计报告附表」这种
+  正常组合判成内容冲突。现排除互为附件的文件对——**附表不是竞争版本**。
+- **DD-V1 · 多值字段空值降级**：`CardBuilder.multi` 空列表降级成 `""`，
+  消费方无法直接迭代，且 `""` 会被误当成未赋值。改为保持 `[]`。
+- **DD-V1 · 崩溃恢复丢失已完成的工作**：Manifest 扫描原每 200 份才提交一次，
+  进程被 SIGKILL 时已处理但未提交的工作全部丢失，且 run 记录的 `processed` 仍为 0，
+  恢复入口拿不到真实进度。改为「按份数或按时间先到先提交」
+  （默认 25 份 / 2 秒，`CANGJIE_DD_V1_COMMIT_EVERY` / `CANGJIE_DD_V1_COMMIT_SECONDS` 可覆盖），
+  并补记 `last_rel_path`，恢复时能知道停在哪一份。
+- **DD-V1 · 租约围栏不校验过期，崩溃后永远无人接管**：恢复判定原先只比对 owner 字符串，
+  **从未读 `lease_expires_at`**，导致持有者进程崩溃后该 run 永久卡在 `running`，
+  只能人工改库。现改为仅在租约**仍有效**时拒绝并发，过期即允许接管并告警。
+- **DD-V1 · 根治同名+mtime 去重误删不同主体材料**：旧 `_dedup_keep_newest` 以 `f.name`
+  为 key、`mtime` 比大小，在 `per_institution` 布局下把不同机构下的同名文件（如各一份
+  「营业执照.pdf」）判为重复，只留 mtime 最新一份，**被丢弃方完全不进索引、连机构信息
+  都不留**。新 Manifest 以相对路径为身份，同名跨主体文件永远共存；内容相同但路径不同
+  也保留为独立记录。`mtime` 降级为增量扫描的快速跳过信号，**不再参与业务有效性判定**。
 
 ---
 

@@ -35,6 +35,14 @@ dev = [
     "pytest-asyncio>=0.24",
     "pytest-playwright>=0.7.2",
 ]
+# DD-V1 可选：Docling 多格式/版面/表格标准化解析。
+# 刻意**不**放进核心依赖：装它会拉入较大的依赖树，而 DD-V1 的抽取链
+# （Docling → dd_content_extractor 三层降级 → dd_file_parser 纯文本）
+# 在未安装 Docling 时自动降级、全链路照常工作。
+# 需要更强的版面/表格还原时再按需装：`pip install -e '.[docling]'`。
+docling = [
+    "docling>=2.0.0",
+]
 
 [build-system]
 requires = ["setuptools>=61"]
