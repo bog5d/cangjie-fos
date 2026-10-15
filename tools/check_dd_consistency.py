@@ -426,11 +426,26 @@ def main() -> int:
     a = ap.parse_args()
     root = Path(a.root)
     repo = Path(a.repo) if a.repo else (root.parent / "cangjie-fos")
+    repo_ok = (repo / ".git").exists()
+
+    # 显式传入的 --repo 不存在 → **硬失败，不静默降级**（D-10）。
+    # 原实现对显式参数与自动探测一视同仁：路径无效就传 repo=None，
+    # 于是 _check_git_reality / _check_code_wp_ids 整段不执行，
+    # 却照样打印「✅ 通过」并声称「git 分支/工作区/commit 与文档一致」。
+    # 监工 2026-10-16 05:05 实测：传错路径 → exit=0 + 假绿，
+    # 差点把一个健康的检查器误判成「2 项长期漏检」的坏检查器。
+    # **检查通过 ≠ 检查跑过**；没跑的层必须说没跑。
+    if a.repo and not repo_ok:
+        print(f"❌ --repo 指定的路径不是 git 仓库：{repo}")
+        print("   git 事实层与代码 WP 扫描**不会执行**；不静默降级，"
+              "否则拿到的是一个假通过。")
+        return 2
+    repo_arg = repo if repo_ok else None
 
     if a.self_test:
-        return self_test(root, repo if (repo / ".git").exists() else None)
+        return self_test(root, repo_arg)
 
-    problems = check(root, repo if (repo / ".git").exists() else None)
+    problems = check(root, repo_arg)
     if problems:
         print("❌ 状态一致性自检未通过：")
         for p in problems:
@@ -439,9 +454,13 @@ def main() -> int:
     print("✅ 状态一致性自检通过")
     print("   · A↔B 互校（必要不充分）")
     print("   · 外部锚点：工作包 id ∈ 冻结集合 WP0–WP7")
-    print("   · 外部锚点：代码里实际出现的 WP id ∈ 冻结集合")
     print("   · 外部锚点：NEXT_ACTION 外部事实带可核对坐标")
-    print("   · 外部锚点：git 分支/工作区/commit 与文档一致")
+    if repo_arg is not None:
+        print("   · 外部锚点：代码里实际出现的 WP id ∈ 冻结集合")
+        print("   · 外部锚点：git 分支/工作区/commit 与文档一致")
+    else:
+        print("   ⚠️ **未核对 git 事实**（未找到仓库）——"
+              "本次通过不含「代码 WP 扫描」与「git 分支/commit」两层")
     return 0
 
 
