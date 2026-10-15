@@ -140,12 +140,24 @@ def _check_external_wp_ids(contract: dict) -> list[str]:
     bad = [w for w in counted if w not in FROZEN_WP_IDS]
     if bad:
         p.append(f"[外部锚点] counted 含越界工作包 {bad}")
-    mapped = {w["work_item_id"] for w in contract["goal_alignment"]["work_to_goal_map"]}
+    wmap = contract["goal_alignment"]["work_to_goal_map"]
+    mapped = {w["work_item_id"] for w in wmap}
+    # **条目数 vs 去重 WP 数**（D-7）：原实现用 set 推导式，把重复项折叠了，
+    # 却把报错文案写成「实 N 项」——**声称数条目数，实际数去重 id 数**。
+    # 检查存在 ≠ 检查有效：必须同时校验两个数，不一致即报。
+    if len(wmap) != len(mapped):
+        from collections import Counter
+        dup = sorted({k for k, v in Counter(w["work_item_id"] for w in wmap).items() if v > 1})
+        p.append(f"[外部锚点] work_to_goal_map 有 {len(wmap)} 条但只覆盖 "
+                 f"{len(mapped)} 个工作包：{dup} 重复登记。"
+                 f"分母按「工作包个数」计，故**每个 WP 恰一条映射**")
+    if len(wmap) != FROZEN_WP_DENOMINATOR:
+        p.append(f"[外部锚点] work_to_goal_map 条目数 {len(wmap)} ≠ 冻结集合 {FROZEN_WP_DENOMINATOR}")
     bad2 = sorted(mapped - FROZEN_WP_IDS)
     if bad2:
         p.append(f"[外部锚点] work_to_goal_map 含越界工作包 {bad2}")
     if len(mapped) != FROZEN_WP_DENOMINATOR:
-        p.append(f"[外部锚点] work_to_goal_map 实 {len(mapped)} 项，"
+        p.append(f"[外部锚点] work_to_goal_map 覆盖 {len(mapped)} 个工作包，"
                  f"冻结集合定义 {FROZEN_WP_DENOMINATOR} 个")
     if contract["denominators"]["engineering"]["total"] != FROZEN_WP_DENOMINATOR:
         p.append(f"[外部锚点] 分母 {contract['denominators']['engineering']['total']}"
@@ -321,6 +333,14 @@ def self_test(root: Path, repo: Path | None) -> int:
         c = json.loads(json.dumps(contract))
         return c, st
 
+    def c_duplicate_mapping():
+        """往 work_to_goal_map 塞一条重复的 WP7 映射 → 必须抓到（D-7）。"""
+        c = json.loads(json.dumps(contract))
+        c["goal_alignment"]["work_to_goal_map"].append({
+            "work_item_id": "WP7", "goal_metric_id": "M1_需求理解",
+            "expected_change": "重复登记的第二条 WP7 映射"})
+        return c, state
+
     def c_denominator():
         c = json.loads(json.dumps(contract))
         c["denominators"]["engineering"]["total"] = 99
@@ -339,6 +359,7 @@ def self_test(root: Path, repo: Path | None) -> int:
         ("分母被改成 99（与冻结集合不符）", c_denominator, "冻结集合的 8"),
         ("STATE 声称不存在的分支", c_bad_branch, "实际在"),
         ("STATE 并存第二张过期 WP 台账（D-2 复发）", c_duplicate_ledger, "并存了两张 WP 表"),
+        ("work_to_goal_map 重复登记同一个 WP（D-7）", c_duplicate_mapping, "重复登记"),
     ]
 
     ok = True
