@@ -149,3 +149,26 @@ def ensure_pitch_coach_runtime() -> Path:
     root = ensure_pitch_coach_import_path()
     hydrate_pitch_coach_env()
     return root
+
+
+# ── DD-V1 受控 Data Plane（投资尽调自动组包）─────────────────────────────────
+# SCP v3.8 §6「模块契约」+ §8「AI 确定性与安全」：材料库是**只读源**，
+# 所有派生产物（Manifest / 解析结果 / Markdown / 索引）必须落在受控 Data Plane，
+# 既不污染原始材料目录，也不进 Git（backend/data/ 已在 .gitignore）。
+# 路径可由 CANGJIE_DD_V1_DATA_DIR 覆盖，但默认固定在 backend/data 下，禁止落在材料库内。
+
+def get_dd_v1_data_dir() -> Path:
+    """DD-V1 受控 Data Plane 根目录（默认 `backend/data/dd_v1/`）。"""
+    env = (os.getenv("CANGJIE_DD_V1_DATA_DIR") or "").strip()
+    p = Path(env).resolve() if env else (get_backend_root() / "data" / "dd_v1")
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def get_dd_v1_manifest_db_path() -> Path:
+    """DD-V1 Manifest 专用 SQLite。
+
+    刻意与 `pitch_jobs.sqlite` 分离：Manifest 在超大材料库下可能达到百万行级，
+    独立库既避免拖慢既有 DD 查询，也使 Data Plane 边界在文件系统上可核查。
+    """
+    return get_dd_v1_data_dir() / "manifest.sqlite"
