@@ -43,6 +43,7 @@ from pathlib import Path
 
 from cangjie_fos.services import dd_v1_card_service as cs
 from cangjie_fos.services import dd_v1_manifest_service as mf
+from cangjie_fos.services import dd_v1_policy_service as dpol
 from cangjie_fos.services import dd_v1_requirement_service as rq
 
 logger = logging.getLogger(__name__)
@@ -177,17 +178,31 @@ def evaluate_file(
     else:
         seal_ok = 1
 
-    # 可交付性：不可读/解析失败/敏感等级未知 → 不得自动纳入对外交付
+    # 可交付性：不可读/解析失败/披露不可外发 → 不得自动纳入对外交付
     deliverable = 1
     reasons = []
+    # 默认按最严：无卡片 / 无策略时一律不可外发，**不允许「没信息」等于「没问题」**
+    disclosure = dpol.PolicyDecision().to_dict()
     if manifest_row is not None:
         if manifest_row.get("parse_status") not in (mf.PARSE_OK, mf.PARSE_PARTIAL):
             deliverable = 0
             reasons.append(f"解析状态={manifest_row.get('parse_status')}")
     if card is not None:
-        if card.get("sensitivity") in ("", None):
+        # 披露判定走**版本化策略**（dd_v1_policy_service），不再二值判定。
+        # 原实现只要 sensitivity 非空就放行 —— 填「secret」也能过，
+        # 等于**填了等级比留空更危险**。现在由策略给出级别→可外发映射，
+        # 未知等级按「不可判定」处理，一律不可外发。
+        pol = dpol.load_policy()
+        dec = dpol.evaluate(pol, card.get("sensitivity") or "",
+                             doc_type=obligation.get("doc_type") or "",
+                             entity=card.get("entity") or "")
+        disclosure = dec.to_dict()
+        if not dec.externally_sendable:
             deliverable = 0
-            reasons.append("敏感等级未知，按指令不得自动纳入对外交付")
+            reasons.append(f"披露不可外发（等级={dec.level}）：{dec.reason}")
+    else:
+        deliverable = 0
+        reasons.append("无材料认知卡，按不可判定处理，不得自动纳入对外交付")
 
     # 必备附件维度：读**已解析的** fields.related_files。
     # 注意不能直接读卡片表的 related_files 列——那是 json.dumps 的字符串，
@@ -206,6 +221,7 @@ def evaluate_file(
         "entity_ok": ent_ok, "period_ok": per_ok, "doctype_ok": doc_ok,
         "seal_ok": seal_ok, "attachment_ok": attachment_ok,
         "deliverable": deliverable, "reasons": reasons,
+        "disclosure": disclosure,
     }
 
 

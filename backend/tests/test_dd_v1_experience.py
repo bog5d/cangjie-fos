@@ -22,9 +22,36 @@ from cangjie_fos.services import dd_v1_parser_service as ps
 from cangjie_fos.services import dd_v1_requirement_service as rq
 
 
+# ── 披露策略夹具（WP7）─────────────────────────────────────────────────────
+# WP3–WP6 时期的用例用 `sensitivity="PUBLIC"` 绕过 Gate，那正是二值判定的漏洞：
+# 任意非空值都放行。WP7 改为版本化策略后，未知等级一律不可外发，
+# 因此本文件统一在**已知策略**下运行。
+import json as _json
+from pathlib import Path as _Path
+
+_TEST_POLICY = {
+    "policy_version": "test-v1",
+    "default_level": "RESTRICTED",
+    "levels": {
+        "PUBLIC": {"externally_sendable": True, "requires_review": True},
+        "INTERNAL": {"externally_sendable": False, "requires_review": True},
+        "CONFIDENTIAL": {"externally_sendable": False, "requires_review": True},
+        "RESTRICTED": {"externally_sendable": False, "requires_review": True},
+    },
+    "rules": [],
+}
+
+
+def _enable_test_policy(monkeypatch, tmp_path) -> None:
+    p = _Path(tmp_path) / "_policy.json"
+    p.write_text(_json.dumps(_TEST_POLICY, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setenv("CANGJIE_DD_V1_POLICY", str(p))
+
+
 @pytest.fixture(autouse=True)
 def _isolate(tmp_path, monkeypatch):
     monkeypatch.setenv("CANGJIE_DD_V1_DATA_DIR", str(tmp_path / "_plane"))
+    _enable_test_policy(monkeypatch, tmp_path)
     mf.close_all()
     yield
     mf.close_all()
@@ -53,7 +80,7 @@ def _seed(tmp_path, files):
     return lib
 
 
-def _unlock(lib, db, rel, sensitivity="public"):
+def _unlock(lib, db, rel, sensitivity="PUBLIC"):
     fid = mf.get_manifest_entry(lib, rel, db_path=db)["file_id"]
     conn = mf._connect(db)
     conn.execute("UPDATE dd_v1_material_cards SET sensitivity=? WHERE file_id=?",

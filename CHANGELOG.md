@@ -7,6 +7,26 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · WP7 团队调用入口**（`tools/dd_team_channel.py`）：让 Team Channel 团队成员
+  能真正把一份尽调清单丢进来、跑出匹配结果与缺口清单。**一条命令 + 结构化输出**，
+  不依赖前端、不依赖 LLM key。六个步骤全程中文说明，输出人看的 Markdown 报告
+  与机读 JSON（含 `sent_to_institution: false` / `human_approval_required: true`）。
+  明确对使用者讲清它**不**做什么：不外发、默认不复制原件、不猜、缺权威名单判 UNCERTAIN。
+- **DD-V1 · 披露策略与「哪一级可外发」映射**（`dd_v1_policy_service`）：版本化策略文件，
+  级别→可外发映射由**数据**提供而非硬编码；无策略/策略损坏/级别不认识 → 一律最严、
+  全部不可外发。规则**只能收紧不能放宽**。策略未审核通过前仓库不放策略文件，
+  保持「一律不可外发」的安全默认。
+
+### Fixed
+- **DD-V1 · 披露 Gate 二值判定漏洞（WP7 起草时发现）**：
+  `dd_v1_match_service.evaluate_file` 原先只要 `sensitivity` **非空就放行**，
+  没有「哪一级可外发」的映射——填 `secret`、`top_secret`、`内部绝密` 甚至
+  `乱写的字` 都能通过 Gate 进入对外交付包，**填了等级反而比留空更危险**。
+  现改为版本化策略判定：未知等级按**不可判定**处理，一律不可外发。
+  另修策略加载的一处逻辑反转：`default_level` 可外发（本应拒绝的最危险配置）
+  反而被接受——由 `test_dangerous_default_level_is_rejected` 当场抓出。
+
+### Added
 - **DD-V1 · 必备附件关系识别**：认知卡 `related_files` 不再恒 UNKNOWN。
   三条**确定性**规则——附件自述词（附件/附表/明细/签字页/盖章页等）、
   同目录主文件名相同且扩展名不同、同目录同主名——主文件名归一化**复用**
