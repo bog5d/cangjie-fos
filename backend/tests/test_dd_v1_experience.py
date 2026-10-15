@@ -195,7 +195,10 @@ def test_no_gold_set_means_zero_and_unknown(tmp_path):
     assert s["regression_cases"] == 0
     assert s["verified_points"] == 0
     assert all(m["status"] == "UNKNOWN" for m in s["metrics"])
-    assert s["goal_state"] == "NOT_MET"
+    # 关键：不可评分 ≠ 质量不达标
+    assert s["goal_state"] == "NOT_SCORABLE"
+    assert s["scorable"] is False
+    assert all(m["points_are_meaningful"] is False for m in s["metrics"])
 
 
 def test_score_never_exceeds_weights(tmp_path):
@@ -281,3 +284,68 @@ def test_score_output_declares_no_self_reporting(tmp_path):
     lib = _seed(tmp_path, {"子公司甲/a.txt": "x"})
     s = xs.score_library(lib, db_path=_db(tmp_path))
     assert "不接受 LLM 自评" in s["self_report_prohibited"]
+
+
+# ── 7. 「不可评分」与「评分为 0」必须可区分（监工指出）──────────────────
+def test_not_scorable_is_distinct_from_measured_zero(tmp_path):
+    """缺 gold set 时是**不可评分**，不是「测过了得 0 分」。
+
+    SCP v3.8 防误判回归第 9 条：缺证据应为 UNKNOWN，不能降级成 0/FAIL。
+    """
+    lib = _seed(tmp_path, {"子公司甲/审计报告2023.txt": _audit(2023)})
+    _unlock(lib, _db(tmp_path), "子公司甲/审计报告2023.txt")
+    rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供2023年度审计报告"}],
+                        db_path=_db(tmp_path))
+    ms.match_library(lib, db_path=_db(tmp_path))
+
+    s = xs.score_library(lib, db_path=_db(tmp_path))
+    assert s["measurement_state"] == "NOT_SCORABLE"
+    assert s["scorable"] is False
+    assert s["goal_state"] == "NOT_SCORABLE"
+    for m in s["metrics"]:
+        assert m["verified_points"] == 0
+        assert m["points_are_meaningful"] is False
+        assert m["measurement_state"] == "NOT_SCORABLE"
+        assert "不可评分" in m["not_scorable_reason"]
+    assert "不得" in s["reading_guide"] and "NOT_SCORABLE" in s["reading_guide"]
+
+
+def test_measured_score_marks_points_meaningful(tmp_path):
+    """有 gold set 且有对应义务时，分数才是有意义的实测值。"""
+    lib = _seed(tmp_path, {"子公司甲/审计报告2023.txt": _audit(2023)})
+    _unlock(lib, _db(tmp_path), "子公司甲/审计报告2023.txt")
+    rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供2023年度审计报告"}],
+                        db_path=_db(tmp_path))
+    ms.match_library(lib, db_path=_db(tmp_path))
+    xs.add_regression_case(lib, "请提供2023年度审计报告", source_ref="2023年人工交付包",
+                           item_no="1", expected_verdict=ms.V_MATCHED,
+                           db_path=_db(tmp_path))
+
+    s = xs.score_library(lib, db_path=_db(tmp_path))
+    assert s["measurement_state"] == "MEASURED"
+    assert s["scorable"] is True
+    for m in s["metrics"]:
+        assert m["points_are_meaningful"] is True
+        assert m["measurement_state"] in ("MEASURED", "LOW_CONFIDENCE")
+
+
+def test_gold_set_without_matching_obligation_is_not_scorable(tmp_path):
+    """gold set 的 item_no 对不上任何义务 → 同样不可评分，不是 0 分。"""
+    lib = _seed(tmp_path, {"子公司甲/审计报告2023.txt": _audit(2023)})
+    _unlock(lib, _db(tmp_path), "子公司甲/审计报告2023.txt")
+    rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供2023年度审计报告"}],
+                        db_path=_db(tmp_path))
+    ms.match_library(lib, db_path=_db(tmp_path))
+    xs.add_regression_case(lib, "无关要求", source_ref="某历史包",
+                           item_no="99", expected_verdict=ms.V_MATCHED,
+                           db_path=_db(tmp_path))
+
+    s = xs.score_library(lib, db_path=_db(tmp_path))
+    assert s["measurement_state"] == "NOT_SCORABLE"
+    assert s["goal_state"] == "NOT_SCORABLE"
+    assert "无法逐条比对" in s["metrics"][0]["not_scorable_reason"]
+
+
+def test_four_goal_states_are_distinguishable(tmp_path):
+    lib = _seed(tmp_path, {"子公司甲/a.txt": "x"})
+    assert xs.score_library(lib, db_path=_db(tmp_path))["goal_state"] == "NOT_SCORABLE"

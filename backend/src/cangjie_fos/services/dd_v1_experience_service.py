@@ -319,11 +319,30 @@ def list_regression_cases(library_id: str, db_path: Path | None = None) -> list[
 def score_library(library_id: str, db_path: Path | None = None) -> dict:
     """按冻结的五项权重打分。
 
-    **没有回归数据集 → 全项 UNKNOWN/0 分**，绝不因为「跑通了」自评高分。
+    ## 「不可评分」与「评分为 0」是两件事，绝不混同
+
+    SCP v3.8 防误判回归第 9 条：**任何重大结论缺足够证据应为 UNKNOWN，
+    不能自动降级成 FAIL/0。** 因此本接口显式区分三种测量状态：
+
+    ==============================  =====================  ==========================
+    measurement_state                verified_points       含义
+    ==============================  =====================  ==========================
+    ``NOT_SCORABLE``                 0（**不代表质量差**）    无 gold set 或无可测义务，
+                                                          **根本无法测量**
+    ``MEASURED`` / ``LOW_CONFIDENCE``  实测值                 有 gold set 且逐条比对完成，
+                                                          分数有意义
+    ==============================  =====================  ==========================
+
+    调用方**必须**读 ``measurement_state`` 判断分数是否有意义，
+    **不得**把 ``NOT_SCORABLE`` 的 0 读成「测过了、不达标」。
     """
     conn = _conn(db_path)
     cases = list_regression_cases(library_id, db_path=db_path)
     has_gold = bool(cases)
+
+    n_obligations = conn.execute(
+        "SELECT COUNT(*) c FROM dd_v1_obligations WHERE library_id=?",
+        (library_id,)).fetchone()["c"]
 
     gates = compute_hard_gates(library_id, db_path=db_path)
     # 只有**数据派生的硬门槛**能阻断终局判定。
@@ -334,33 +353,58 @@ def score_library(library_id: str, db_path: Path | None = None) -> dict:
     gate_fail = any(g["status"] == "FAIL" for g in blocking)
 
     metrics = _metric_definitions()
-    if not has_gold:
+    detail: list = []
+    total = 0.0
+    if has_gold:
+        detail, total = _score_against_gold(library_id, cases, metrics, db_path)
+        measurement_state = "MEASURED" if detail else "NOT_SCORABLE"
+    else:
+        measurement_state = "NOT_SCORABLE"
+
+    if measurement_state == "NOT_SCORABLE":
+        reason = ("无回归数据集（gold set），无法测量该项达成度。"
+                  "此处的 0 表示「不可评分」，**不是**「测过了不达标」。"
+                  if not has_gold else
+                  "有 gold set，但无与之对应的义务，无法逐条比对。"
+                  "此处的 0 表示「不可评分」，不是「测过了不达标」。")
         for m in metrics:
             m["verified_points"] = 0
             m["status"] = "UNKNOWN"
+            m["measurement_state"] = "NOT_SCORABLE"
+            m["points_are_meaningful"] = False
+            m["not_scorable_reason"] = reason
             m["evidence_refs"] = []
-        total = 0
-    else:
-        measured, total = _score_against_gold(library_id, cases, metrics, db_path)
+        total = 0.0
 
-    verdict = "NOT_MET"
     if gate_fail:
-        verdict = "BLOCKED_BY_HARD_GATE"
-    elif has_gold and total >= 100:
-        verdict = "MET"
+        goal_state = "BLOCKED_BY_HARD_GATE"
+    elif measurement_state == "NOT_SCORABLE":
+        goal_state = "NOT_SCORABLE"
+    elif total >= 100:
+        goal_state = "MET"
+    else:
+        goal_state = "NOT_MET"
 
     return {
         "library_id": library_id,
         "scored_on": "regression_gold_set" if has_gold else "NO_GOLD_SET",
+        "measurement_state": measurement_state,
+        "scorable": measurement_state != "NOT_SCORABLE",
         "regression_cases": len(cases),
+        "obligations": n_obligations,
         "metrics": metrics,
         "verified_points": total,
         "total_points": 100,
-        "goal_state": verdict,
+        "goal_state": goal_state,
         "hard_gates": gates,
+        "reading_guide": (
+            "goal_state=NOT_SCORABLE 表示当前无法评分，**不得**解读为质量不达标；"
+            "要有意义的分数，需先录入带 source_ref 的回归用例。"
+            "goal_state=BLOCKED_BY_HARD_GATE 表示硬门槛失败，**总分再高也不可判通过**。"
+        ),
         "self_report_prohibited": (
             "本分数由可核查的逐条义务判定算出，不接受 LLM 自评；"
-            "无回归数据集时一律 0 分并标 UNKNOWN。"
+            "无回归数据集时标 NOT_SCORABLE 而非计 0 分。"
         ),
     }
 
@@ -421,9 +465,13 @@ def _score_against_gold(library_id, cases, metrics, db_path):
         if capped:
             m["verified_points"] = round(m["weight"] * LOW_CONFIDENCE_CAP, 2)
             m["status"] = "LOW_CONFIDENCE"
+            m["measurement_state"] = "LOW_CONFIDENCE"
+            m["points_are_meaningful"] = True
         elif raw_pts > 0 and detail:
             m["verified_points"] = raw_pts
             m["status"] = "MEASURED"
+            m["measurement_state"] = "MEASURED"
+            m["points_are_meaningful"] = True
         else:
             m["verified_points"] = 0.0
             m["status"] = "UNKNOWN"
