@@ -210,6 +210,79 @@ def cmd_card(a) -> int:
     return 0
 
 
+# ── WP3 子命令：需求拆解与多文件匹配 ────────────────────────────────────────
+def cmd_checklist(a) -> int:
+    from cangjie_fos.services import dd_v1_requirement_service as rq
+    rows = []
+    for ln, line in enumerate(Path(a.file).read_text(encoding="utf-8").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split("\t", 1)
+        if len(parts) == 2:
+            rows.append({"item_no": parts[0].strip(), "raw_text": parts[1].strip()})
+        else:
+            rows.append({"item_no": f"L{ln}", "raw_text": parts[0].strip()})
+    _out(rq.ingest_checklist(a.library, rows, anchor_year=a.anchor_year,
+                             institution=a.institution))
+    return 0
+
+
+def cmd_obligations(a) -> int:
+    from cangjie_fos.services import dd_v1_requirement_service as rq
+    obl = rq.list_obligations(a.library)
+    _out({
+        "library": a.library,
+        "count": len(obl),
+        "quality": rq.obligation_quality(a.library),
+        "obligations": [
+            {k: o[k] for k in ("obligation_id", "obligation", "entity_scope",
+                               "entity_basis", "period_from", "period_to",
+                               "period_basis", "doc_type", "doc_type_basis",
+                               "caliber", "seal_required", "notes")}
+            for o in obl[:a.limit]
+        ],
+    })
+    return 0
+
+
+def cmd_match(a) -> int:
+    from cangjie_fos.services import dd_v1_match_service as ms
+    kw = {}
+    if a.cap is not None:
+        kw["candidate_cap"] = a.cap
+    _out(ms.match_library(a.library, **kw))
+    return 0
+
+
+def cmd_status(a) -> int:
+    from cangjie_fos.services import dd_v1_match_service as ms
+    st = ms.get_status(a.obligation)
+    if st is None:
+        print(json.dumps({"error": "NO_STATUS", "obligation": a.obligation}))
+        return 1
+    out = dict(st)
+    out["matches"] = [
+        {k: m.get(k) for k in ("rank", "score", "card_rel_path", "card_title",
+                               "entity_ok", "period_ok", "doctype_ok",
+                               "deliverable")}
+        for m in ms.list_matches(a.obligation)
+    ]
+    _out(out)
+    return 0
+
+
+def cmd_entity(a) -> int:
+    from cangjie_fos.services import dd_v1_requirement_service as rq
+    rq.register_entity(a.library, a.id, a.name, relation=a.relation,
+                       parent_id=a.parent, valid_from=a.valid_from,
+                       valid_to=a.valid_to, is_group_root=a.group_root,
+                       source_ref=a.source)
+    _out({"registered": a.id, "name": a.name, "relation": a.relation,
+          "total": rq.entities_registered(a.library)})
+    return 0
+
+
 # ── 解析 ────────────────────────────────────────────────────────────────────
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -278,6 +351,42 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--library", required=True)
     sp.add_argument("--path", required=True, help="相对路径")
     sp.set_defaults(func=cmd_card)
+
+    # ── WP3：需求拆解与多文件匹配 ────────────────────────────────────────
+    sp = sub.add_parser("checklist", help="录入机构清单并拆成原子义务")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--file", required=True, help="清单文件（每行：编号<TAB>原文）")
+    sp.add_argument("--anchor-year", type=int, default=None,
+                    help="相对年份（如「近三年」）的锚定年；不给则不擅自假定")
+    sp.add_argument("--institution", default="")
+    sp.set_defaults(func=cmd_checklist)
+
+    sp = sub.add_parser("obligations", help="查看拆解出的原子义务及其出处")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--limit", type=int, default=50)
+    sp.set_defaults(func=cmd_obligations)
+
+    sp = sub.add_parser("match", help="对全库义务做匹配并给出四维覆盖判定")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--cap", type=int, default=None, help="候选上限（默认 20，可配置）")
+    sp.set_defaults(func=cmd_match)
+
+    sp = sub.add_parser("status", help="查看某条义务的最终判定与缺口明细")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--obligation", required=True)
+    sp.set_defaults(func=cmd_status)
+
+    sp = sub.add_parser("entity", help="登记权威主体（集团成员名单）")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--id", required=True)
+    sp.add_argument("--name", required=True)
+    sp.add_argument("--relation", default="other")
+    sp.add_argument("--parent", default="")
+    sp.add_argument("--group-root", action="store_true")
+    sp.add_argument("--valid-from", type=int, default=0)
+    sp.add_argument("--valid-to", type=int, default=0)
+    sp.add_argument("--source", required=True, help="权威依据出处（必填）")
+    sp.set_defaults(func=cmd_entity)
     return p
 
 

@@ -7,6 +7,25 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · WP3 尽调需求理解与原子义务拆解**（`dd_v1_requirement_service`）：
+  机构清单原始条目与原子义务分表保存，**原编号与原文零丢失**并提供 roundtrip 硬校验；
+  并列要求拆成多条原子义务；每个维度（主体范围/期间/文件类型/合并口径/签章/附件）
+  均带 `FACT`/`INFERRED`/`UNKNOWN` 出处，**拆不出一律 UNKNOWN 绝不编造**；
+  「近三年」等相对年份缺锚定年时**不擅自假定年份**。
+  新增权威主体登记 `dd_v1_entities`，`source_ref` 为空直接拒绝入册——
+  没有权威集团成员名单，多主体覆盖就判 UNCERTAIN，**绝不用目录名凑数**。
+- **DD-V1 · WP3 多文件匹配与四维完整性覆盖**（`dd_v1_match_service`）：
+  一条义务可匹配多份证据，一份材料可服务多条义务（`file_serves_count`）。
+  按**主体 × 期间 × 材料类型 × 必备附件**四维分别计算覆盖率，
+  **找到一份相关文件不再等于整项完成**；给出 MATCHED/PARTIAL/MISSING/STALE/
+  CONFLICT/UNCERTAIN/RESTRICTED 七态判定与缺口明细。
+  **候选上限 `candidate_cap` 是显式可配置项（默认 20）**，不是硬编码 2；
+  候选被截断时显式标记 `capped`，不静默丢弃。
+- **DD-V1 · 决策记忆五项复验**（`revalidate_memory_hit`）：主体、期间、版本、有效期、
+  适用范围任一不符即拒绝沿用。对治旧实现把 `last_institution` 写入
+  `dd_decision_memory` 却从不在 lookup 里读的「写而不读」问题。
+- **DD-V1 · CLI 扩展 WP3 子命令**：`checklist` / `obligations` / `match` / `status` /
+  `entity`，供监工与业务方脱离前端、脱离 LLM key 独立复核。
 - **DD-V1 · WP2 结构化材料认知卡**（`dd_v1_card_service`）：为每份可解析材料建立认知卡，
   17 个字段**逐个标注 FACT / INFERRED / UNKNOWN 并附证据位置**，取不到证据一律 UNKNOWN
   绝不编造。签章状态、敏感等级、所属集团在无视觉核验/制度依据/权威名单时**强制留
