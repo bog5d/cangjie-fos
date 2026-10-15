@@ -189,6 +189,40 @@ def _check_code_wp_ids(repo: Path, frozen: set[str]) -> list[str]:
     return p
 
 
+def _check_wp_ledger(state: str, denominator: int) -> list[str]:
+    """外部锚点：**STATE.md 里只能有一张 WP 台账，且行数 == 分母**。
+
+    监工 2026-10-15 指出 D-2：同一文件里并存两张互相矛盾的 WP 台账
+    （一张 8 行是新的，一张 7 行是过期的），权威状态文件不能有两种说法。
+    本检查同时防两件事：
+      1. 出现**第二张**表 → 立即报（两张表必然有一张是过期的）
+      2. 表的**行数**与分母不符 → 报（漏登记工作包）
+
+    注：监工当时称「work_to_goal_map 条目数↔分母」与「outcome 权重和↔效果分母」
+    两项也不存在——实测那两项**代码里本来就有**（`_check_external_wp_ids` 内），
+    真正缺的只有本项。
+    """
+    import re as _re
+    p: list[str] = []
+    rows = _re.findall(r"^\|\s*(WP\d)\s*\|", state, _re.M)
+    uniq = sorted(set(rows))
+    if not uniq:
+        p.append("[外部锚点] STATE.md 里找不到任何 WP 台账行")
+        return p
+    if len(uniq) != denominator:
+        p.append(f"[外部锚点] WP 台账有 {len(uniq)} 行 {uniq}，"
+                 f"与分母 {denominator} 不符")
+    out_of_range = [r for r in uniq if r not in FROZEN_WP_IDS]
+    if out_of_range:
+        p.append(f"[外部锚点] WP 台账含越界工作包 {out_of_range}")
+    # 台账必须唯一：若同一 WP 出现两次，多半是并存了两张表（D-2 的形态）
+    dupes = sorted({r for r in rows if rows.count(r) > 1})
+    if dupes:
+        p.append(f"[外部锚点] WP 台账中 {dupes} 出现多次 —— "
+                 f"**同一文件并存了两张 WP 表**，权威状态不能有两种说法")
+    return p
+
+
 def _check_next_action_coordinates(state: str) -> list[str]:
     """外部锚点：「等外部方」必须给出可核对坐标，否则只是自我陈述。"""
     p: list[str] = []
@@ -240,6 +274,8 @@ def check(root: Path, repo: Path | None = None) -> list[str]:
     problems = _check_internal(contract, state)
     problems += _check_external_wp_ids(contract)
     problems += _check_next_action_coordinates(state)
+    problems += _check_wp_ledger(
+        state, contract["denominators"]["engineering"]["total"])
     if repo is not None:
         problems += _check_git_reality(contract, state, repo)
         problems += _check_code_wp_ids(repo, FROZEN_WP_IDS)
@@ -277,6 +313,14 @@ def self_test(root: Path, repo: Path | None) -> int:
                     state, count=1, flags=re.M)
         return c, st
 
+    def c_duplicate_ledger():
+        """在 STATE 里追加第二张过期 WP 表（D-2 的形态）→ 必须抓到。"""
+        stale = ("\n## 过期台账\n\n| WP | 内容 | 状态 |\n|---|---|---|\n"
+                 "| WP1 | Manifest | 待独立验收 |\n| WP2 | Docling | TODO |\n")
+        st = state + stale
+        c = json.loads(json.dumps(contract))
+        return c, st
+
     def c_denominator():
         c = json.loads(json.dumps(contract))
         c["denominators"]["engineering"]["total"] = 99
@@ -294,6 +338,7 @@ def self_test(root: Path, repo: Path | None) -> int:
         ("A↔B 一致但 NEXT_ACTION 无可核对坐标", c_no_coord, "无可核对坐标"),
         ("分母被改成 99（与冻结集合不符）", c_denominator, "冻结集合的 8"),
         ("STATE 声称不存在的分支", c_bad_branch, "实际在"),
+        ("STATE 并存第二张过期 WP 台账（D-2 复发）", c_duplicate_ledger, "并存了两张 WP 表"),
     ]
 
     ok = True

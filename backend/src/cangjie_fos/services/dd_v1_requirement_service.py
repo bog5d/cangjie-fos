@@ -186,12 +186,71 @@ def doc_type_search_terms(doc_type: str) -> list[str]:
     首轮实现直接把 ``"audit_report"`` 这样的英文 key 当检索词，
     而认知卡/正文全是中文 → 召回恒为空，四维覆盖全部算成 0。
     必须翻成真实会出现在材料里的中文词。
+
+    **未映射的类型返回空列表，不返回原样 key。**
+    把 ``"financial_report"`` 这种英文 key 拿去检索中文语料，结果必然是 0 命中，
+    只会让人误以为「材料不存在」——**判不出类型时应走「无法判定」，不是「查不到」**。
     """
+    if not doc_type:
+        return []
     for key, pat in _DOC_TYPE_RULES:
         if key == doc_type:
             terms = re.findall(r"[一-鿿]{2,}", pat)
             return terms or [pat]
-    return [doc_type] if doc_type else []
+    return []
+
+
+# 义务原文里的**低信息词**：几乎每条尽调要求里都有，不能用来召回
+_TEXT_STOPWORDS = {
+    "提供", "说明", "给出", "补充", "需要", "要求", "相关", "对应", "以及",
+    "及其", "包括", "包含", "以下", "上述", "情况", "材料", "文件", "资料",
+    "内容", "信息", "一份", "完整", "全部", "所有", "其他", "有关", "关于",
+    "本项", "该项", "该公司", "公司", "企业", "被投企业", "真实",
+}
+
+# 请求动词/客套前缀：出现在每条要求开头，**先剥掉**再抽词，
+# 否则抽出来全是「请提」「提供被」这类无意义碎片。
+_TEXT_PREFIX_RE = re.compile(
+    r"^(请(?:予以|予以)?(?:提供|出具|说明|给出|补充|提交|列明|描述|解释|"
+    r"提供一下|附上|发来)|烦请|需(?:要)?提供|请|烦)+")
+
+
+def text_search_terms(text: str, max_terms: int = 6) -> list[str]:
+    """从义务原文里抽**可用于召回**的词（优先 3–4 字，去低信息词与请求前缀）。
+
+    **义务原文是信息密度最高的信号，必须参与召回。**
+    WP7 验收发现：召回只从 ``doc_type`` 取词，而大量尽调要求
+    （如「请说明实际控制人及股权结构」）根本识别不出 ``doc_type``，
+    于是 ``terms=[]`` → 一次 FTS 查询都不发 → 恒 0 召回 → 恒判 MISSING。
+    失败方向虽是 fail-closed（不会误交付），但输出的是**自信的错误答案**：
+    材料就在库里、索引也建好了，只是没去查，用户会照着去追不存在的缺口。
+
+    与 :func:`doc_type_search_terms` 的产物合并使用：doc_type 词优先，原文词兜底。
+    """
+    if not text:
+        return []
+    s = _TEXT_PREFIX_RE.sub("", str(text).strip())
+    s = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]+", " ", s)
+    out: list[str] = []
+    for seg in s.split():
+        n = len(seg)
+        if 3 <= n <= 4:
+            cands = [seg]
+        elif n > 4:
+            # 长句：按 4 字滑窗取词（"实际控制人""控制人及""人及股权"…），
+            # 命中与否交给 FTS 排序，不在这里猜哪个才是主题词
+            cands = [seg[i:i + 4] for i in range(n - 3)]
+        elif n == 2:
+            cands = [seg]
+        else:
+            continue
+        for c in cands:
+            if c in _TEXT_STOPWORDS or c in out:
+                continue
+            out.append(c)
+            if len(out) >= max_terms:
+                return out
+    return out
 
 
 def parse_entity_scope(raw: str) -> tuple[str, str]:

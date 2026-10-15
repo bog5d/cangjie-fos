@@ -228,21 +228,35 @@ def evaluate_file(
 # ── 高召回 + 确定性精排 ────────────────────────────────────────────────────
 def _recall_candidates(
     obligation: dict, library_id: str, cap: int, db_path: Path | None
-) -> tuple[list[dict], bool]:
-    """高召回：用**材料里真实会出现的中文词**做 FTS 召回，取前 ``cap`` 份。
+) -> tuple[list[dict], bool, list[str]]:
+    """高召回：**doc_type 词优先，义务原文词兜底**。
 
-    注意：首轮实现把 ``doc_type`` 的英文 key（如 ``audit_report``）当检索词，
-    而认知卡与正文全是中文 → 召回恒为空、四维覆盖全算 0。
-    必须经 :func:`rq.doc_type_search_terms` 翻译成中文材料词。
+    WP7 验收发现的缺陷（原实现只取 doc_type）：大量尽调要求识别不出
+    ``doc_type``（如「请说明实际控制人及股权结构」），于是 ``terms=[]``，
+    **一次 FTS 查询都不发** → 恒 0 召回 → 恒判 MISSING。
+    索引层是好的（材料在库里、FTS 也在），只是没去查——
+    输出的是**自信的错误答案**，用户会照着去追不存在的缺口。
+
+    返回 ``(候选, 是否被截断, 实际使用的检索词)``，第三项便于复核。
     """
-    terms = rq.doc_type_search_terms(obligation.get("doc_type") or "")
+    dt = rq.doc_type_search_terms(obligation.get("doc_type") or "")
+    tx = rq.text_search_terms(obligation.get("obligation") or "")
+    # doc_type 词更具体，优先；原文词兜底。两者都没有时不去瞎猜——
+    # 宁可少召回交给 UNCERTAIN，也不要发一个注定 0 命中的查询。
+    terms = dt + [t for t in tx if t not in dt]
+
     hits: dict[str, float] = {}
-    for t in terms:
+    for rank, t in enumerate(terms):
         for h in cs.search_materials(library_id, t, limit=cap * 2, db_path=db_path):
-            hits[h["file_id"]] = min(hits.get(h["file_id"], 0.0), h["score"])
+            # BM25 分数越小越相关；doc_type 词（rank 小）优先占位
+            prior = 1.0 - (rank * 0.01)
+            cur = hits.get(h["file_id"])
+            cand = h["score"] * prior
+            if cur is None or cand < cur:
+                hits[h["file_id"]] = cand
     ordered = sorted(hits.items(), key=lambda kv: kv[1])[:cap]
     return ([{"file_id": fid, "score": sc} for fid, sc in ordered],
-            len(hits) > cap)
+            len(hits) > cap, terms)
 
 
 def match_obligation(
@@ -263,8 +277,9 @@ def match_obligation(
     need_entities = rq.resolve_entities(
         library_id, obl.get("entity_scope") or "", obl.get("period_to") or None, db_path)
 
-    # 召回：先用权威名单内的主体文件，再退回全文召回
-    candidates, capped = _recall_candidates(obl, library_id, candidate_cap, db_path)
+    # 召回：doc_type 词优先 + 义务原文词兜底；两者皆空说明**没真正查过**
+    candidates, capped, used_terms = _recall_candidates(
+        obl, library_id, candidate_cap, db_path)
 
     results = []
     for c in candidates:
@@ -281,7 +296,7 @@ def match_obligation(
     for i, r in enumerate(results, 1):
         r["rank"] = i
 
-    status = judge(obl, results, need_entities, capped)
+    status = judge(obl, results, need_entities, capped, used_terms)
     _persist(conn, library_id, obligation_id, obl, results, status)
     return status
 
@@ -407,7 +422,8 @@ def detect_anomalies(
 
 
 def judge(
-    obl: dict, results: list[dict], need_entities: list[dict], capped: bool
+    obl: dict, results: list[dict], need_entities: list[dict], capped: bool,
+    used_terms: list[str] | None = None,
 ) -> dict:
     """四维覆盖 → 最终判定。**核心：不是「有没有找到相关文件」。**"""
     n_ent = len(need_entities)
@@ -465,7 +481,23 @@ def judge(
         missing.append(f"期间缺 {need_periods - round(period_cov * need_periods)}/{need_periods} 年")
 
     # 判定
-    if not results:
+    #
+    # **「没查」与「查了没有」必须分开**（WP7 验收 D-1/D-4）：
+    # 原实现把 `not results` 直接短路成 MISSING，排在「要求主体范围却无权威名单
+    # → UNCERTAIN」之前，于是该规则永远执行不到；更糟的是**根本没发出过任何
+    # 检索词**时也会判 MISSING——材料可能就在库里，只是没去查。
+    # 那会输出一份**自信的错误缺口清单**，用户照着去追不存在的缺口。
+    searched = bool(used_terms) if used_terms is not None else True
+    if not results and not searched:
+        verdict = V_UNCERTAIN
+        missing.append("未能提取任何检索词，**没有真正检索过**；"
+                       "不能据此断言材料缺失")
+    elif not results and obl.get("entity_scope") and not need_entities:
+        # 要求了主体范围却没有权威名单 → 判 UNCERTAIN，不得拿目录名凑数
+        verdict = V_UNCERTAIN
+        missing.append(f"要求主体范围「{obl['entity_scope']}」但无权威主体名单，"
+                       f"无法判定（候选 0 份）；不得用目录名凑数")
+    elif not results:
         verdict = V_MISSING
     elif need_periods and period_cov < 1.0 and period_cov > 0:
         verdict = V_PARTIAL
@@ -474,6 +506,8 @@ def judge(
     elif not n_ent and obl.get("entity_scope"):
         # 要求了主体范围却没有权威名单 → 不得用目录名凑数，判 UNCERTAIN
         verdict = V_UNCERTAIN
+        missing.append(f"要求主体范围「{obl['entity_scope']}」但无权威主体名单，"
+                       f"无法判定（候选 {len(results)} 份）；不得用目录名凑数")
     elif ent_cov < FULL_COVERAGE:
         verdict = V_PARTIAL
     elif doctype_cov < FULL_COVERAGE:
@@ -513,6 +547,8 @@ def judge(
         "candidate_count": len(results),
         "capped": 1 if capped else 0,
         "deliverable_count": len(matched),
+        "recall_terms": list(used_terms or []),
+        "actually_searched": searched,
         **anom,
     }
 
