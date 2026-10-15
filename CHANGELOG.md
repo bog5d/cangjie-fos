@@ -7,6 +7,15 @@
 ## [Unreleased]
 
 ### Added
+- **DD-V1 · WP1 材料库 Manifest**（`dd_v1_manifest_service`）：投资尽调自动组包 V1 第一
+  工作包。授权目录接管、稳定文件身份（`(library_id, rel_path)` 唯一键 + 内容哈希）、
+  全量/增量/重试三种模式、run 表租约与心跳驱动的断点恢复、软删除墓碑。
+  源目录只读，全部产物落受控 Data Plane `backend/data/dd_v1/`（已 gitignore），
+  并以 `assert_data_plane_outside()` 硬校验 Data Plane 不得落在材料库内部。
+  本层零 LLM 调用。排除规则复用 `dd_index_service` / `dd_file_parser` 既有定义。
+- **DD-V1 · 解析状态可观测字段**：`dd_v1_manifest` 预留 `parse_status` / `parse_method` /
+  `parse_error` / `truncated`，使「长度截断」「扫描件」「文件损坏」在 Schema 层即可区分，
+  供 WP2 结构化材料认知卡消费。
 - **尽调匹配·多文件需求聚合**（`_apply_multifile_aggregation`）：解决 judge_reject 里
   「最近两年 / 多年度」类需求被逼二选一→单份被判不满足的真缺口。确定性终判：从该项
   自己的候选池里为每个应覆盖年份各挑一份，落 `extra_files_json`，按覆盖度重判（齐→绿 /
@@ -23,6 +32,13 @@
 ### Changed
 - **GitHub 同步令牌测试校验写权限**：`test-github` 不再"能读就算过"，追加 `permissions.push`
   校验，只读令牌明确报错并指引改 Contents=Read and write；404 提示勾选 coach_data。
+
+### Fixed
+- **DD-V1 · 根治同名+mtime 去重误删不同主体材料**：旧 `_dedup_keep_newest` 以 `f.name`
+  为 key、`mtime` 比大小，在 `per_institution` 布局下把不同机构下的同名文件（如各一份
+  「营业执照.pdf」）判为重复，只留 mtime 最新一份，**被丢弃方完全不进索引、连机构信息
+  都不留**。新 Manifest 以相对路径为身份，同名跨主体文件永远共存；内容相同但路径不同
+  也保留为独立记录。`mtime` 降级为增量扫描的快速跳过信号，**不再参与业务有效性判定**。
 
 ---
 
