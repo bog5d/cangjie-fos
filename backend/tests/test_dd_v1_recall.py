@@ -137,3 +137,58 @@ def test_genuinely_searched_and_absent_is_missing(tmp_path):
     st = ms.match_obligation(lib, obl["obligation_id"], db_path=None)
     assert st["actually_searched"] is True
     assert st["verdict"] == ms.V_MISSING
+
+
+# ── D-5：取词不得系统性偏向句首 ───────────────────────────────────────────
+def test_tail_keyword_is_kept_in_recall_terms():
+    """**D-5 核心回归**：关键名词只在句尾时，取词必须够得到。
+
+    原实现「4 字滑窗 + 只留前 6 个」从位置 0 顺序生成，
+    截断后**只覆盖句首约 9 个字**，句尾信息永远取不到：
+
+        「请说明实际控制人及股权结构」
+          → ['实际控制','际控制人','控制人及','制人及股','人及股权','及股权结']
+          没有「股权结构」
+
+    这是「碰巧对」不是「设计上对」：只要关键词不在句首那 6 个窗口内就 0 召回，
+    而判定仍是 MISSING —— **自信的错误答案**，用户会去追不存在的缺口。
+    """
+    terms = rq.text_search_terms("请说明实际控制人及股权结构")
+    assert "股权结构" in terms, f"句尾关键词被丢弃：{terms}"
+
+
+def test_recall_covers_all_units_across_the_sentence():
+    """按功能词切出的**每个**语义单元都要露脸，不被前面的挤掉。"""
+    for text, want in [
+        ("请提供被投企业最近三年经审计的财务报告及审计意见", "审计意见"),
+        ("请提供前十大股东名单及其持股比例", "持股比例"),
+    ]:
+        terms = rq.text_search_terms(text)
+        assert want in terms, f"{text} 丢了句尾单元 {want}：{terms}"
+
+
+def test_no_cross_boundary_fragments():
+    """切分后不应再产生跨词边界的碎片。
+
+    「制人及股」这类词在二元组 FTS 索引下几乎必然 0 命中，
+    只会白发查询、拖慢召回。
+    """
+    terms = rq.text_search_terms("请说明实际控制人及股权结构")
+    for t in terms:
+        for boundary in ("及", "和", "与", "其", "的"):
+            assert not (t.startswith(boundary) or t.endswith(boundary)), \
+                f"跨词边界碎片：{t}"
+
+
+def test_tail_only_keyword_still_recall_end_to_end(tmp_path):
+    """端到端：关键信息只在句尾、材料标题就是该词 → 召回不得为 0。"""
+    lib = _seed(tmp_path, {
+        "股权结构说明.txt": "实际控制人及股权结构说明\n"
+                          "泽天科技第一大股东为长风资本，持股 42%。\n",
+    })
+    rq.ingest_checklist(lib, [{"item_no": "L2", "raw_text": "请说明实际控制人及股权结构"}],
+                        db_path=None)
+    obl = rq.list_obligations(lib, db_path=None)[0]
+    st = ms.match_obligation(lib, obl["obligation_id"], db_path=None)
+    assert st["candidate_count"] > 0, "句尾关键词也必须召回得到"
+    assert st["verdict"] != ms.V_MISSING, "材料就在库里，不得判缺材料"
