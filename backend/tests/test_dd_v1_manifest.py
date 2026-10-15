@@ -18,6 +18,32 @@ import pytest
 from cangjie_fos.services import dd_v1_manifest_service as mf
 
 
+# ── 披露策略夹具（WP7）─────────────────────────────────────────────────────
+# WP3–WP6 时期的用例用 `sensitivity="PUBLIC"` 绕过 Gate，那正是二值判定的漏洞：
+# 任意非空值都放行。WP7 改为版本化策略后，未知等级一律不可外发，
+# 因此本文件统一在**已知策略**下运行。
+import json as _json
+from pathlib import Path as _Path
+
+_TEST_POLICY = {
+    "policy_version": "test-v1",
+    "default_level": "RESTRICTED",
+    "levels": {
+        "PUBLIC": {"externally_sendable": True, "requires_review": True},
+        "INTERNAL": {"externally_sendable": False, "requires_review": True},
+        "CONFIDENTIAL": {"externally_sendable": False, "requires_review": True},
+        "RESTRICTED": {"externally_sendable": False, "requires_review": True},
+    },
+    "rules": [],
+}
+
+
+def _enable_test_policy(monkeypatch, tmp_path) -> None:
+    p = _Path(tmp_path) / "_policy.json"
+    p.write_text(_json.dumps(_TEST_POLICY, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setenv("CANGJIE_DD_V1_POLICY", str(p))
+
+
 @pytest.fixture(autouse=True)
 def _isolate(tmp_path, monkeypatch):
     """每个测试独立的 Manifest 库 + 独立 Data Plane，绝不碰真实 backend/data。"""

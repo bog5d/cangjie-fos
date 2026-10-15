@@ -186,12 +186,95 @@ def doc_type_search_terms(doc_type: str) -> list[str]:
     首轮实现直接把 ``"audit_report"`` 这样的英文 key 当检索词，
     而认知卡/正文全是中文 → 召回恒为空，四维覆盖全部算成 0。
     必须翻成真实会出现在材料里的中文词。
+
+    **未映射的类型返回空列表，不返回原样 key。**
+    把 ``"financial_report"`` 这种英文 key 拿去检索中文语料，结果必然是 0 命中，
+    只会让人误以为「材料不存在」——**判不出类型时应走「无法判定」，不是「查不到」**。
     """
+    if not doc_type:
+        return []
     for key, pat in _DOC_TYPE_RULES:
         if key == doc_type:
             terms = re.findall(r"[一-鿿]{2,}", pat)
             return terms or [pat]
-    return [doc_type] if doc_type else []
+    return []
+
+
+# 中文**功能词/连词**：用作语义单元的切分点。
+# 切分后取词就不会产生「制人及股」「及股权结」这类跨词边界的碎片——
+# 在二元组 FTS 索引下，跨边界碎片几乎必然 0 命中，只白发查询、拖慢召回。
+_UNIT_SPLIT_RE = re.compile(r"(?:以及|并且|或|及其|及|和|与|其|的|等|含|同|为)")
+
+# 请求动词/客套前缀：出现在每条要求开头，**先剥掉**再取词，
+# 否则抽出来全是「请提」「提供被」这类无意义碎片。
+_TEXT_PREFIX_RE = re.compile(
+    r"^(请(?:予以)?(?:提供|出具|说明|给出|补充|提交|列明|描述|解释|附上|发来)"
+    r"|烦请|需(?:要)?提供|请|烦)+")
+
+# 低信息词：本身不携带业务信息
+_TEXT_STOPWORDS = {
+    "提供", "说明", "给出", "补充", "需要", "要求", "相关", "对应",
+    "包括", "包含", "以下", "上述", "情况", "材料", "文件", "资料",
+    "内容", "信息", "一份", "完整", "全部", "所有", "其他", "有关",
+    "本项", "该项", "该公司", "公司", "企业", "被投企业", "真实",
+    "情况说明", "有关情况",
+}
+
+
+def _unit_terms(unit: str, limit: int = 3) -> list[str]:
+    """从一个语义单元里取词。整段可用就整段取（≤6 字），过长才滑窗。"""
+    n = len(unit)
+    if n < 2:
+        return []
+    if 2 <= n <= 6:
+        # 整段保留：FTS 是二元组索引，长词更具体、误召回更少
+        return [unit]
+    return [unit[i:i + 4] for i in range(n - 3)][:limit]
+
+
+def text_search_terms(text: str, max_terms: int = 8) -> list[str]:
+    """从义务原文里抽**可用于召回**的词。
+
+    ## 为什么不按位置取（WP7 独立验收 D-5）
+
+    原实现是「剥前缀 → 4 字滑窗 → **只保留前 6 个**」。滑窗从位置 0 顺序生成，
+    ``max_terms`` 的截断于是**系统性地只覆盖句首约 9 个字**：
+
+        「请说明实际控制人及股权结构」
+          → ['实际控制','际控制人','控制人及','制人及股','人及股权','及股权结']
+          **没有「股权结构」**
+
+    「请提供…财务报告及审计意见」「请提供…股东名单及其持股比例」同样丢失句尾。
+    只要关键名词恰好不在句首那 6 个窗口里就 0 召回——**这是「碰巧对」不是「设计上对」**。
+    而判出的仍是 MISSING，输出**自信的错误答案**，用户会去追不存在的缺口。
+
+    ## 现在的做法
+
+    1. 剥掉「请提供 / 请说明 / 请出具」等请求前缀；
+    2. 按**功能词**（及/和/与/其/的/等/或/并且）切成**语义单元**——
+       这样取词不会跨词边界，不再产生「制人及股」这类必然 0 命中的碎片；
+    3. 从**每个**单元取词，**跨单元交错合并**（单元A第1个、单元B第1个、单元A第2个…），
+       保证句尾单元不会被前面的单元挤掉。
+
+    与 :func:`doc_type_search_terms` 的产物合并使用：doc_type 词优先，原文词兜底。
+    """
+    if not text:
+        return []
+    s = _TEXT_PREFIX_RE.sub("", str(text).strip())
+    units = [u for u in _UNIT_SPLIT_RE.split(s) if u and len(u) >= 2]
+    if not units:
+        return []
+
+    # 跨单元交错，保证每个语义单元都露脸
+    per_unit = [_unit_terms(u) for u in units]
+    out: list[str] = []
+    for i in range(max(len(x) for x in per_unit)):
+        for terms in per_unit:
+            if i < len(terms) and terms[i] not in out:
+                out.append(terms[i])
+                if len(out) >= max_terms:
+                    return out
+    return out
 
 
 def parse_entity_scope(raw: str) -> tuple[str, str]:

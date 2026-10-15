@@ -26,6 +26,9 @@ from cangjie_fos.services import dd_v1_requirement_service as rq
 @pytest.fixture(autouse=True)
 def _isolate(tmp_path, monkeypatch):
     monkeypatch.setenv("CANGJIE_DD_V1_DATA_DIR", str(tmp_path / "_plane"))
+    # WP7 起披露走版本化策略；本文件统一在**已知策略**下运行，
+    # 避免「无策略一律不可外发」的安全默认把所有用例都判成 RESTRICTED。
+    _enable_test_policy(monkeypatch, tmp_path)
     mf.close_all()
     yield
     mf.close_all()
@@ -33,6 +36,34 @@ def _isolate(tmp_path, monkeypatch):
 
 def _db(tmp_path: Path):
     return tmp_path / "_dp" / "manifest.sqlite"
+
+
+# ── 披露策略夹具（WP7）─────────────────────────────────────────────────────
+# WP3/WP4 时期的测试用 `sensitivity="public"` 绕过 Gate，那正是二值判定的漏洞：
+# 任意非空值都放行。WP7 改为版本化策略后，未知等级一律不可外发，
+# 因此这些用例必须加载真实策略并使用**策略认识的级别名**。
+import json as _json
+from pathlib import Path as _Path
+
+_TEST_POLICY = {
+    "policy_version": "test-v1",
+    "default_level": "RESTRICTED",
+    "levels": {
+        "PUBLIC": {"externally_sendable": True, "requires_review": True},
+        "INTERNAL": {"externally_sendable": False, "requires_review": True},
+        "CONFIDENTIAL": {"externally_sendable": False, "requires_review": True},
+        "RESTRICTED": {"externally_sendable": False, "requires_review": True},
+    },
+    "rules": [],
+}
+
+
+def _enable_test_policy(monkeypatch, tmp_path) -> None:
+    """在测试里加载一份可发 PUBLIC 的策略，其余级别仍不可外发。"""
+    p = _Path(tmp_path) / "_policy.json"
+    p.write_text(_json.dumps(_TEST_POLICY, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setenv("CANGJIE_DD_V1_POLICY", str(p))
+
 
 
 def _setup(tmp_path, files: dict[str, str], rels: int = 1):
@@ -54,7 +85,8 @@ def _audit(year, entity="子公司甲"):
     return f"审计报告\n本报告为{year}年度财务审计结论，由{entity}出具。\n"
 
 
-def _unlock(lib, db, rel, sensitivity="public"):
+def _unlock(lib, db, rel, sensitivity="PUBLIC"):
+    """把材料标为策略认识的级别。**默认 PUBLIC**（可外发），其余级别仍被拒。"""
     fid = mf.get_manifest_entry(lib, rel, db_path=db)["file_id"]
     conn = mf._connect(db)
     conn.execute("UPDATE dd_v1_material_cards SET sensitivity=? WHERE file_id=?",

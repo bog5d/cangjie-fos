@@ -556,6 +556,58 @@ def cache_text(
     conn.commit()
 
 
+def search_materials_loose(
+    library_id: str,
+    query: str,
+    limit: int = 50,
+    min_bigrams: int = 2,
+    db_path: Path | None = None,
+) -> list[dict]:
+    """**高召回**检索：把查询词拆成二元组做 OR，而不是要求相邻短语。
+
+    ## 为什么召回阶段不能用短语查询
+
+    FTS 索引是二元组建的，而 ``to_fts_query`` 打的是**短语查询**，
+    要求各二元组**相邻出现**。于是：
+
+        查询「财务报告」→ 要求 财务+务报+报告 连续
+        材料写「2024年度财务报表审计」→ 财务✓ 务报✗ 报告✓ → **0 命中**
+
+    而尽调材料里「财务报表」「财务数据」「审计报告」远比字面的「财务报告」常见。
+    短语查询在这里**系统性过严**，会把明明存在的材料判成不存在——
+    输出自信的错误缺口清单。
+
+    召回阶段的正确姿态是**宁可多召回**：二元组 OR 命中即进候选池，
+    精度交给后续的维度判定（主体/期间/材料类型/附件）去收窄。
+
+    ``min_bigrams``：至少要求命中这么多个二元组，挡住「只靠一个字蒙进来」的噪声。
+    """
+    conn = _card_conn(db_path)
+    _ensure_schema(conn)
+    q = (query or "").strip()
+    if not q:
+        return []
+    grams = [q[i:i + 2] for i in range(len(q) - 1)]
+    if not grams:
+        return []
+    match_expr = " OR ".join(f'"{g}"' for g in grams)
+    # 召回阶段只要 OR 命中即进候选池；精度交给四维判定收窄。
+    # （曾试图在 SQL 里数「命中了几个二元组」来降噪，表达式写坏后
+    #   反而把本来能召回的材料挡掉——宁可多召回，不要漏召回。）
+    sql = """
+        SELECT f.file_id, c.rel_path, c.title, c.entity,
+               bm25(dd_v1_material_fts) AS score
+        FROM dd_v1_material_fts f
+        LEFT JOIN dd_v1_material_cards c ON c.file_id = f.file_id
+        WHERE dd_v1_material_fts MATCH ? AND f.library_id = ?
+        ORDER BY score LIMIT ?
+    """
+    rows = conn.execute(sql, (match_expr, library_id, limit)).fetchall()
+    return [{"file_id": r["file_id"], "rel_path": r["rel_path"] or "",
+             "title": r["title"] or "", "entity": r["entity"] or "",
+             "score": round(r["score"], 6)} for r in rows]
+
+
 def get_cached_text(file_id: str, db_path: Path | None = None) -> str:
     conn = _card_conn(db_path)
     _ensure_schema(conn)
