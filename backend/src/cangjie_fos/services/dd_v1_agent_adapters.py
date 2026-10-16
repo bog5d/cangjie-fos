@@ -240,14 +240,87 @@ class ManualExchangeAdapter:
         return res
 
 
+SECRET_NAME_RE = ("KEY", "TOKEN", "SECRET", "PASSWORD")
+
+
+def redact_secrets(text: str, env: dict[str, str] | None = None) -> str:
+    """把环境变量里看起来是密钥的值从日志文本中抹掉（用户自己的 key 永不落盘）。"""
+    env = os.environ if env is None else env
+    for k, v in env.items():
+        if v and len(v) >= 8 and any(t in k.upper() for t in SECRET_NAME_RE):
+            text = text.replace(v, f"<REDACTED:{k}>")
+    return text
+
+
+def load_dsh_config(path: Path | None) -> dict[str, Any]:
+    """dsh 本地配置（JSON）：binary / profile / extra_args / inline。不允许在配置里写密钥。"""
+    cfg: dict[str, Any] = {"binary": "dsh", "profile": "headless", "extra_args": [], "inline": True}
+    if path:
+        user = json.loads(Path(path).read_text("utf-8-sig"))
+        bad = [k for k in user if any(t in k.upper() for t in SECRET_NAME_RE)]
+        if bad:
+            raise ValueError(f"DSH_CONFIG_MUST_NOT_CONTAIN_SECRETS:{bad}（密钥放在你自己的环境变量里）")
+        unknown = set(user) - set(cfg)
+        if unknown:
+            raise ValueError(f"DSH_CONFIG_UNKNOWN_FIELDS:{sorted(unknown)}")
+        cfg.update(user)
+    return cfg
+
+
+def extract_json_text(text: str) -> str | None:
+    """从 CLI 的最终回答里取出 JSON 对象（容忍 ```json 围栏和前后说明文字）。取不到返回 None。"""
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else ""
+        t = t.rsplit("```", 1)[0]
+    lo, hi = t.find("{"), t.rfind("}")
+    return t[lo:hi + 1] if lo != -1 and hi > lo else None
+
+
 class DeepSeekHarnessAdapter:
-    """考生3 桩：UNAVAILABLE / BLOCKED_ON_CHAIRMAN（OQ-1）。不调用任何进程或网络。"""
-    adapter_id, vendor, role = "deepseek-harness", "deepseek-harness", "EXAMINEE_3"
+    """DeepSeek Harness（dsh）。
+
+    默认（enabled=False）：桩，UNAVAILABLE，不起任何进程、不联网——仓库默认行为不变。
+    本地 opt-in（enabled=True，只能由操作员在自己的机器上用 `--allow-local-dsh` 显式打开）：
+    在隔离 workdir 里跑 ``dsh --profile <profile> headless <prompt>``（stdin=/dev/null，硬超时），
+    最终回答取 stdout。本代码不上传、不外发任何东西；dsh 自己如何调用模型由操作员的 dsh 配置决定。
+    """
+    adapter_id, vendor = "deepseek-harness", "deepseek-harness"
+
+    def __init__(self, enabled: bool = False, binary: str | list[str] = "dsh", profile: str = "headless",
+                 inline: bool = True, role: str = "EXAMINEE_3", extra_args: list[str] | None = None):
+        self.enabled, self.profile, self.inline, self.role = enabled, profile, inline, role
+        self.binary = [binary] if isinstance(binary, str) else list(binary)
+        self.extra_args = list(extra_args or [])
+
+    @classmethod
+    def from_config(cls, cfg: dict[str, Any], *, enabled: bool, role: str = "PRIMARY_LOCAL_DSH") -> "DeepSeekHarnessAdapter":
+        return cls(enabled=enabled, binary=cfg["binary"], profile=cfg["profile"], inline=cfg["inline"],
+                   role=role, extra_args=cfg["extra_args"])
 
     def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
-        return AdapterResult(self.adapter_id, self.vendor, self.role, status=UNAVAILABLE,
-                             workdir=str(workdir),
-                             reason="BLOCKED:dsh retired 2026-10-11; OQ-1 pending chairman; no purchase, no API fallback")
+        res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK, workdir=str(workdir))
+        if not self.enabled:
+            res.status = UNAVAILABLE
+            res.reason = ("BLOCKED:dsh not enabled in this environment (repo default). "
+                          "Operator may opt in locally with --allow-local-dsh; no purchase, no API fallback")
+            return res
+        for stale in ("answer.txt", "stderr.log"):
+            (workdir / stale).unlink(missing_ok=True)
+        argv = [*self.binary, "--profile", self.profile, *self.extra_args,
+                _prompt_for(packet, self.adapter_id, self.vendor, inline=self.inline)]
+        res.argv_summary = argv[:-1] + ["<prompt>"]
+        code, out, err, el, to = run_cli(argv, workdir, budget.timeout_s)
+        res.elapsed_s = el
+        out, err = redact_secrets(out), redact_secrets(err)
+        (workdir / "answer.txt").write_text(out, "utf-8")
+        (workdir / "stderr.log").write_text(err, "utf-8")
+        if to or code != 0:
+            return _fail(res, code, err, to)
+        res.exit_code = 0
+        res.raw_text = extract_json_text(out)
+        res.cost_usd_or_UNKNOWN = "UNKNOWN(operator dsh account)"
+        return res
 
 
 ADAPTERS: dict[str, Callable[[], Any]] = {

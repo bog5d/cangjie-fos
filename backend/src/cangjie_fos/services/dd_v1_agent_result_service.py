@@ -37,8 +37,24 @@ EVIDENCE_VERDICTS = ("MATCH", "PARTIAL", "OUTDATED")
 CANDIDATE_FIELDS = ("file_id", "relative_path", "sha256", "locator", "entity", "period", "match_reason")
 
 
+_SHA_CACHE: dict[tuple[str, int, int], str] = {}
+
+
 def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """流式计算；按 (路径, 大小, mtime) 缓存，本地几十 GB 材料不会被反复整读。"""
+    st = Path(path).stat()
+    key = (str(Path(path).resolve()), st.st_size, st.st_mtime_ns)
+    if key not in _SHA_CACHE:
+        _SHA_CACHE[key] = _sha256_stream(path)
+    return _SHA_CACHE[key]
+
+
+def _sha256_stream(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 @dataclass(frozen=True)
