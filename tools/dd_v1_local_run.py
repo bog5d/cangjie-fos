@@ -179,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--allow-real-material", action="store_true",
                    help="材料目录不是仓库内合成 fixture 时必须给（=真实材料，仅限本机）")
     r.add_argument("--allow-local-dsh", action="store_true")
-    r.add_argument("--dsh-config", default=None, help="dsh 配置 JSON（binary/profile/extra_args/inline），不得含密钥")
+    r.add_argument("--dsh-config", default=None, help="dsh 配置 JSON（binary/profile/extra_args/mode），不得含密钥")
     r.add_argument("--dsh-bin", default=None, help="覆盖配置里的 dsh 路径")
     r.add_argument("--max-total-calls", type=int, default=None,
                    help="整次运行最多调用模型多少次（含重试），到了就停；这是唯一能真正执行的花费上限")
