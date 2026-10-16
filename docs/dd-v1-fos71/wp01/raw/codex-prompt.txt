@@ -1,0 +1,1 @@
+读取当前目录的 packet.json，按其中 instructions 完成任务。只输出符合输出 Schema 的 JSON。agent_id 填 "codex-cli"，provider 填 "openai-codex"，model_id_or_unknown 填你确知的模型标识否则 "UNKNOWN"，prompt_version 与 source_snapshot_id 原样照抄 packet.json，elapsed 与 token_usage_or_UNKNOWN 填 "UNKNOWN"。不要修改任何文件。
