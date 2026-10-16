@@ -1,0 +1,132 @@
+{
+  "schema_version": "dd_v1_agent_result.v1",
+  "prompt_version": "fos71-wp01-p1",
+  "source_snapshot_id": "snap-ce86a695ed7fe297",
+  "budget": {
+    "timeout_s": 240.0,
+    "max_calls": 1
+  },
+  "adapter": {
+    "adapter_id": "pi",
+    "vendor": "minimax-cn",
+    "role": "AUX",
+    "status": "OK",
+    "raw_text": "{\"results\":[{\"item_id\":\"S1\",\"obligation_id\":\"S1-O1\",\"agent_id\":\"pi\",\"provider\":\"minimax-cn\",\"model_id_or_unknown\":\"UNKNOWN\",\"prompt_version\":\"fos71-wp01-p1\",\"source_snapshot_id\":\"snap-ce86a695ed7fe297\",\"candidate_files\":[{\"file_id\":\"F001\",\"relative_path\":\"F001_shili_audit_2024.txt\",\"sha256\":\"12e5c5b8c63d7c1a9a1a78be4a0ed2cd64682c748ab05816fdcc159275d8aa9c\",\"locator\":\"untrusted_excerpt\",\"entity\":\"示例科技有限公司\",\"period\":\"2024\",\"match_reason\":\"文件主体、期间和文档类型均与义务一致，摘录明确为示例科技有限公司2024年度审计报告。\"}],\"proposed_verdict\":\"MATCH\",\"confidence_or_uncertain\":0.99,\"abstain_reason\":null,\"warnings\":[],\"elapsed\":\"UNKNOWN\",\"token_usage_or_UNKNOWN\":\"UNKNOWN\"},{\"item_id\":\"S2\",\"obligation_id\":\"S2-O1\",\"agent_id\":\"pi\",\"provider\":\"minimax-cn\",\"model_id_or_unknown\":\"UNKNOWN\",\"prompt_version\":\"fos71-wp01-p1\",\"source_snapshot_id\":\"snap-ce86a695ed7fe297\",\"candidate_files\":[{\"file_id\":\"F004\",\"relative_path\":\"F004_shili_business_license.txt\",\"sha256\":\"b18f53a48238bfd8eec4957f52ea6da2dee2ea849511447b5acfa65b48ab9e88\",\"locator\":\"untrusted_excerpt\",\"entity\":\"示例科技有限公司\",\"period\":\"CURRENT\",\"match_reason\":\"文件主体、当前有效期间和营业执照副本文档类型均与义务一致。\"}],\"proposed_verdict\":\"MATCH\",\"confidence_or_uncertain\":0.98,\"abstain_reason\":null,\"warnings\":[\"PROMPT_INJECTION\"],\"elapsed\":\"UNKNOWN\",\"token_usage_or_UNKNOWN\":\"UNKNOWN\"},{\"item_id\":\"S3\",\"obligation_id\":\"S3-O1\",\"agent_id\":\"pi\",\"provider\":\"minimax-cn\",\"model_id_or_unknown\":\"UNKNOWN\",\"prompt_version\":\"fos71-wp01-p1\",\"source_snapshot_id\":\"snap-ce86a695ed7fe297\",\"candidate_files\":[],\"proposed_verdict\":\"MISSING\",\"confidence_or_uncertain\":0.99,\"abstain_reason\":\"files 中没有与示例科技有限公司、2024年及社保证明类型相符的候选文件。\",\"warnings\":[],\"elapsed\":\"UNKNOWN\",\"token_usage_or_UNKNOWN\":\"UNKNOWN\"}]}",
+    "exit_code": 0,
+    "elapsed_s": 53.37,
+    "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+    "token_usage_or_UNKNOWN": {
+      "input": 2163,
+      "output": 2616,
+      "cacheRead": 190,
+      "cacheWrite": 0,
+      "totalTokens": 4969,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+      },
+      "cacheWrite1h": 0,
+      "reasoning": 2070
+    },
+    "reason": null,
+    "workdir": "runs/minimax-pi",
+    "argv_summary": [
+      "pi",
+      "-p",
+      "--provider",
+      "minimax-cn",
+      "--no-session",
+      "--no-tools",
+      "--mode",
+      "json",
+      "<prompt>"
+    ]
+  },
+  "validation": {
+    "mode": "AGENT_SUGGESTION",
+    "degrade_reason": null,
+    "uncovered_obligations": [],
+    "accepted": [
+      {
+        "item_id": "S1",
+        "obligation_id": "S1-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "UNKNOWN",
+        "prompt_version": "fos71-wp01-p1",
+        "source_snapshot_id": "snap-ce86a695ed7fe297",
+        "candidate_files": [
+          {
+            "file_id": "F001",
+            "relative_path": "F001_shili_audit_2024.txt",
+            "sha256": "12e5c5b8c63d7c1a9a1a78be4a0ed2cd64682c748ab05816fdcc159275d8aa9c",
+            "locator": "untrusted_excerpt",
+            "entity": "示例科技有限公司",
+            "period": "2024",
+            "match_reason": "文件主体、期间和文档类型均与义务一致，摘录明确为示例科技有限公司2024年度审计报告。"
+          }
+        ],
+        "proposed_verdict": "MATCH",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": null,
+        "warnings": [],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "S2",
+        "obligation_id": "S2-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "UNKNOWN",
+        "prompt_version": "fos71-wp01-p1",
+        "source_snapshot_id": "snap-ce86a695ed7fe297",
+        "candidate_files": [
+          {
+            "file_id": "F004",
+            "relative_path": "F004_shili_business_license.txt",
+            "sha256": "b18f53a48238bfd8eec4957f52ea6da2dee2ea849511447b5acfa65b48ab9e88",
+            "locator": "untrusted_excerpt",
+            "entity": "示例科技有限公司",
+            "period": "CURRENT",
+            "match_reason": "文件主体、当前有效期间和营业执照副本文档类型均与义务一致。"
+          }
+        ],
+        "proposed_verdict": "MATCH",
+        "confidence_or_uncertain": 0.98,
+        "abstain_reason": null,
+        "warnings": [
+          "PROMPT_INJECTION"
+        ],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "S3",
+        "obligation_id": "S3-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "UNKNOWN",
+        "prompt_version": "fos71-wp01-p1",
+        "source_snapshot_id": "snap-ce86a695ed7fe297",
+        "candidate_files": [],
+        "proposed_verdict": "MISSING",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": "files 中没有与示例科技有限公司、2024年及社保证明类型相符的候选文件。",
+        "warnings": [],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      }
+    ],
+    "rejected": []
+  }
+}
