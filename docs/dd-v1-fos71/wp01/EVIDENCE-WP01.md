@@ -55,3 +55,23 @@ Fixture：3 条义务（S1 审计报告 2024 / S2 营业执照 / S3 社保证明
 
 ## 工件 sha256
 见 `docs/dd-v1-fos71/wp01/SHA256SUMS`（在仓库根目录执行 `sha256sum -c docs/dd-v1-fos71/wp01/SHA256SUMS`）。
+
+## 独立复核修正（REVIEW-WP01 PASS_WITH_NOTES，2026-10-16 14:12–14:25 CST）
+运行前单 writer 核查：14:13 Mac `ps` 无 pi / codex exec / hermes chat / run-wp 进程；远端 `feat/71-wp01` head = `37ccdd2`（司仓提交），无他人提交。
+
+| Note | 修正 | 测试 |
+|---|---|---|
+| N1 additionalProperties | 结果对象、候选文件、顶层出现未知字段时分别报 `UNKNOWN_FIELDS:*`、`CANDIDATE_i_UNKNOWN_FIELDS`，顶层未知字段直接降级 RULE_ONLY | 3 |
+| N2 逻辑一致性 | `MISSING_WITH_CANDIDATES` / `UNCERTAIN_WITH_CANDIDATES`；同一义务重复出现时全部拒绝（`DUPLICATE_OBLIGATION`）；`ITEM_ID_MISMATCH`；义务未覆盖全 → 报告 `uncovered_obligations`，`degrade_reason=INCOMPLETE_COVERAGE:*` | 6 |
+| N3 PARTIAL/OUTDATED | 带证据的判定（MATCH/PARTIAL/OUTDATED）都要求主体一致；MATCH/PARTIAL 还要求期间一致；OUTDATED 的期间必须**不同**（`OUTDATED_BUT_PERIOD_MATCHES`） | 4 |
+| N4 原始日志 | 用同一份合成 packet 重跑三条路径，见 `raw/n4-rerun/`：`run.sh`（完整命令）、`*.timing.json`（起止时间 CST、exit_code、elapsed_s）、`codex.events`（`--json` 事件流，含 `turn.completed.usage`）、`pi.events.compact.jsonl`（去掉 message_update 流式增量后的事件流，含 session/turn/message_end、model、usage、stopReason；全量 2.3MB 事件流是二进制 gz，GitHub MCP 无法提交，留在 Mac `/tmp/fos71-wp01-probe/rerun-n4/pi.events`，gz sha256 `d8abb1d2…1cc3`）、`hermes.events`（stdout）、`*.stderr`（pi.stderr 为 0 字节，未提交）、`inputs.sha256` | — |
+
+N4 重跑结果（Mac `/tmp/fos71-wp01-probe/rerun-n4`，14:13–14:17 CST）：
+| 路径 | exit | elapsed_s | token（日志） | 模型（日志） | 新校验器 |
+|---|---|---|---|---|---|
+| Codex | 0 | 124.7 | in 34125（cached 16256）/ out 759 / reasoning 125 | UNKNOWN（事件流里没有模型字段） | AGENT_SUGGESTION 3/0，覆盖完整 |
+| pi / minimax-cn | 0 | 31.8 | total 4404 | MiniMax-M3.1-Flash-Preview | 3/0 |
+| hermes / minimax-cn | 0 | 48.6 | UNKNOWN（-Q 不输出用量） | 自报 MiniMax-M3 | 3/0 |
+Codex 这次同样有 5 条 WebSocket 超时/回落 HTTPS 的 error 事件。首轮的 127s/13s/28s 是作者自报，以本次日志为准。原始输出 `raw/*-report.json` 也已用新校验器重新生成，结果仍是 3/0。
+
+回归：`pytest tests/test_dd_v1_agent_result.py` 35 passed；`pytest tests/test_dd_v1_*.py -o addopts=""` **196 passed**，exit 0。
