@@ -1,0 +1,12 @@
+b259c39a319ae7c10ce5f7430abb96c5d631a583ceec698f41c1fdb958891f7e  docs/dd-v1-fos71/wp03/EVIDENCE-WP03.md
+da5231446af4df8ad9118a31ce17f1c5f5eb74298872f0fa975d90102b7915c9  docs/dd-v1-fos71/wp03/runs/codex-attempt1-relpath-bug.run_record.json
+d2cbaf8487975d7014ed516c05a71225192152e28ec311c046c3d35e8c2c38f3  docs/dd-v1-fos71/wp03/runs/codex-attempt1.stderr.log
+1d88a444567b5bffab86f768627203420ab202c274f5c35bfa0bd18ef02bbb5c  docs/dd-v1-fos71/wp03/runs/codex.events.jsonl
+4b732bbbc2afd588a554f35b8ad0070797e9b181cd2c71b1ed1f1bfa55dccded  docs/dd-v1-fos71/wp03/runs/codex.run_record.json
+b4a01687df1f22f9bfd443fa58824a953f6630de0946e361004f8face4bb07b8  docs/dd-v1-fos71/wp03/runs/deepseek-harness.run_record.json
+fdefaf42abccc9403eca92cc40791e332a19efa92e7f25d36da1e034bb7a34ab  docs/dd-v1-fos71/wp03/runs/manual.run_record.json
+893af454195ca60ddba165ddd82c3494b6d29aab0e8dc02a7e0927077172f689  docs/dd-v1-fos71/wp03/runs/minimax-pi.events.compact.jsonl
+b6e76bcb21ffc5c9117b3d75ae0af88f050ad3777c09f51fa4e9c150680907f2  docs/dd-v1-fos71/wp03/runs/minimax-pi.run_record.json
+81e28b878991d65598c0bad8ae6cf2f7ff5da12af6071a863ab811468fe60c14  backend/src/cangjie_fos/services/dd_v1_agent_adapters.py
+e8d17bf92ffc9b0cd968504a4a564d8b9a5dde7804236ff0f299ac7148ede110  tools/dd_v1_agent_probe.py
+43b49f3b8797bb6dec1f85ebd3c5408ed3aa6012e54ca81cf348362b216c6b7f  backend/tests/test_dd_v1_agent_adapters.py
