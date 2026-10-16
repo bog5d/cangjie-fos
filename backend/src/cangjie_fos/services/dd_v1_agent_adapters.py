@@ -257,13 +257,16 @@ ADAPTERS: dict[str, Callable[[], Any]] = {
 
 def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
               obligations: list[dict[str, str]], budget: Budget = Budget(),
-              workdir: Path | None = None) -> dict[str, Any]:
-    """一次完整的 Agent 调用：建包 → 隔离目录 → Adapter → 校验/降级。返回可留证的 run record。"""
+              workdir: Path | None = None, packet: dict[str, Any] | None = None) -> dict[str, Any]:
+    """一次完整的 Agent 调用：建包 → 隔离目录 → Adapter → 校验/降级。返回可留证的 run record。
+
+    packet：调用方已建好的任务包（WP04 语义包：最小证据而不是整份文件摘录）；不传则用 WP01 的默认包。
+    """
     if budget.max_calls < 1:
         raise ValueError("budget.max_calls must be >= 1")
     if budget.max_cost_usd < 0:
         raise ValueError("budget.max_cost_usd must be >= 0")
-    packet = ar.build_task_packet(snapshot_dir, meta, obligations)
+    packet = packet or ar.build_task_packet(snapshot_dir, meta, obligations)
     # 必须是绝对路径：CLI 以 cwd=wd 启动，相对路径的 -C 会被二次拼接（WP03 Mac 实测 codex exit 1）
     wd = (workdir or prepare_workdir(packet)).resolve()
     if workdir:
@@ -287,7 +290,7 @@ def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
     call_error = None if res.status == OK else f"{res.status}:{res.reason}"
     rep = ar.validate_agent_output(res.raw_text, snapshot_dir, meta, obligations, call_error=call_error)
     record = {
-        "schema_version": ar.SCHEMA_VERSION, "prompt_version": ar.PROMPT_VERSION,
+        "schema_version": ar.SCHEMA_VERSION, "prompt_version": packet.get("prompt_version", ar.PROMPT_VERSION),
         "source_snapshot_id": packet["source_snapshot_id"],
         "budget": asdict(budget), "calls_used": len(attempts), "attempts": attempts,
         "adapter": res.to_dict(), "validation": rep.to_dict(),

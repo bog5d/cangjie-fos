@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "backend" / "src"))
 
 from cangjie_fos.services import dd_v1_agent_adapters as ad  # noqa: E402
 from cangjie_fos.services import dd_v1_agent_result_service as ar  # noqa: E402
+from cangjie_fos.services import dd_v1_semantic_retrieval_service as sem  # noqa: E402
 
 ADAPTERS = ad.ADAPTERS
 
@@ -40,7 +41,20 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("run"); r.add_argument("--fixture", type=Path, required=True)
     r.add_argument("--adapter", choices=sorted(ADAPTERS), required=True)
     r.add_argument("--timeout", type=float, default=180.0); r.add_argument("--workdir", type=Path, default=None)
+    m = sub.add_parser("semantic", help="WP04：拆条目+最小证据包 → Adapter → R4+语义校验")
+    m.add_argument("--fixture", type=Path, required=True)
+    m.add_argument("--adapter", choices=sorted(ADAPTERS), required=True)
+    m.add_argument("--timeout", type=float, default=180.0); m.add_argument("--workdir", type=Path, default=None)
     a = p.parse_args(argv)
+    if a.cmd == "semantic":
+        meta = json.loads((a.fixture / "meta.json").read_text("utf-8"))
+        items = json.loads((a.fixture / "raw_items.json").read_text("utf-8"))
+        if a.workdir:
+            a.workdir.mkdir(parents=True, exist_ok=True)
+        rec = sem.run_semantic(ADAPTERS[a.adapter](), a.fixture / "snapshot", meta, items,
+                               ad.Budget(timeout_s=a.timeout), workdir=a.workdir)
+        print(json.dumps(rec, ensure_ascii=False, indent=2))
+        return 0 if rec["semantic_validation"]["mode"] == "AGENT_SUGGESTION" else 2
     meta, obs = _load(a.fixture)
     if a.cmd == "run":
         if a.workdir:
