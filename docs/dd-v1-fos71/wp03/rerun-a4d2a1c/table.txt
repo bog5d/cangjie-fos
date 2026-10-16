@@ -1,0 +1,5 @@
+codex.stdout.json OK 0 127.6 UNKNOWN UNKNOWN(ChatGPT subscription) 1 AGENT_SUGGESTION 3 0 None {}
+deepseek-harness.stdout.json UNAVAILABLE None None UNKNOWN UNKNOWN 1 RULE_ONLY 0 0 AGENT_CALL_FAILED:UNAVAILABLE:BLOCKED:dsh retired 2026-10-11; OQ-1 pending chairman; no purchase, no API fallback {}
+manual.stdout.json PENDING_MANUAL None None UNKNOWN UNKNOWN 1 RULE_ONLY 0 0 AGENT_CALL_FAILED:PENDING_MANUAL:PASTE_MODEL_REPLY_TO:/private/tmp/fos71-wp03-rerun-logs/manual/reply.json {'independent_examinee_answer': False}
+manual2.stdout.json OK None None MiniMax-M3.1-Flash-Preview UNKNOWN 1 AGENT_SUGGESTION 3 0 None {'reply_sha256': '34547243e72549741b7c3b707eb06aef7622b60e66a2c107c75bffc41aedbbe5', 'reply_source': 'copied_from_AUX_minimax-pi_run(same-commit rerun)', 'declared_by': 'siCang-operator', 'independent_examinee_answer': False}
+minimax-pi.stdout.json OK 0 10.42 MiniMax-M3.1-Flash-Preview 0 1 AGENT_SUGGESTION 3 0 None {}

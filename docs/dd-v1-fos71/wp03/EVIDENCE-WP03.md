@@ -49,6 +49,28 @@ WP03 的交付物（Adapter、隔离目录、超时/降级、留证）**不依�
 人工交换的 reply.json 是操作者把 AUX 的输出贴回来演示流程用的，**不是独立的模型调用**。
 修复后的 adapters.py 在 Mac 上的 sha256 `81e28b87…0c14` = 本分支文件（见 SHA256SUMS）。
 
+## 复核修正（REVIEW-WP03 PASS_WITH_NOTES，N1–N5；代码 commit `2be4403`，合同 commit `a4d2a1c`）
+| # | 修正 | 测试 |
+|---|---|---|
+| N1 | ManualExchangeAdapter 读 `reply.json` 时把 `reply_sha256`、`reply_source`（来自可选 `reply.provenance.json`，没写就是 `UNDECLARED_OPERATOR_PASTE`）、`declared_by`、`independent_examinee_answer=false` 写进 run_record 的 `adapter.provenance`。回贴文件已入库并进入 SHA256SUMS | `test_manual_exchange_pending_then_complete_with_provenance`、`test_manual_reply_without_provenance_is_marked_undeclared` |
+| N2 | 传入的 workdir 必须为空（人工交换只允许 packet/schema/PROMPT/reply/reply.provenance/run_record），否则 `ValueError(WORKDIR_NOT_EMPTY)`；Codex/pi 每次调用前还会删掉 out.json/events/stderr，双保险 | `test_nonempty_workdir_rejected_for_cli_adapters`、`test_codex_never_reads_stale_out_json_even_in_reused_dir`、`test_manual_workdir_rejects_unexpected_files` |
+| N3 | `max_calls` 生效：只有 TIMEOUT/CALL_FAILED 会重试，最多 max_calls 次，run_record 记录 `calls_used` 和 `attempts[]`。新增 `Budget.max_cost_usd`（默认 0 = 不允许付费）；Adapter 上报 `cost_usd_or_UNKNOWN`（pi 取 usage.cost.total，Codex 记 `UNKNOWN(ChatGPT subscription)`），已知费用超上限 → `BUDGET_EXCEEDED`，丢弃输出并降级 RULE_ONLY | `test_max_calls_retries_until_success`、`test_max_calls_stops_and_degrades`、`test_non_retryable_status_not_retried`、`test_cost_budget_exceeded_discards_output`、`test_cost_within_budget_ok`、`test_budget_validation` |
+| N4 | 合同 `scoring_rules.gold_must_not_be_on_executor_host=true`、`manual_reply_counts_as_examinee=false`，`gate.acceptance_criteria` 加一条 WP05 HG-ISOL；SPEC HG-ISOL 同步。检索最小证据由 WP04 承接（见 WP04 PR） | `test_wp03_n4_gold_not_on_executor_host_and_manual_not_examinee` |
+| N5 | 假 CLI 改成 Python 脚本，以 `[sys.executable, fake.py]` 调用，**不再整体 skip win32**；杀进程：POSIX 用 `start_new_session`+`killpg`，Windows 用 `CREATE_NEW_PROCESS_GROUP`+`taskkill /T /F`。**Windows 尚未实际执行**（Bog 机器不在线，OQ-4），这一项是 UNKNOWN，不是 PASS | box 24 passed；Mac 同 commit 24 passed |
+
+### 同一 commit 在 Mac 上重跑全部 Adapter（复核 N5）
+`git clone --branch feat/71-wp03`，HEAD = `a4d2a1c`，路径 `/tmp/fos71-wp03-rerun`，`uv sync` exit 0；脚本 `/tmp/fos71-wp03-rerun.sh`，所有调用 `</dev/null`、timeout 180s；开始 2026-10-16 14:52:31 CST。日志在 `rerun-a4d2a1c/`。
+
+| Adapter | probe exit | 墙钟 | adapter 状态 | 模型 | 费用 | calls_used | 校验 | 接受/拒绝 |
+|---|---|---|---|---|---|---|---|---|
+| codex | 0 | 129s（CLI 127.6s） | OK | UNKNOWN | UNKNOWN(订阅) | 1 | AGENT_SUGGESTION | 3/0 |
+| minimax-pi（AUX） | 0 | 10s（10.42s） | OK | MiniMax-M3.1-Flash-Preview | 0 | 1 | AGENT_SUGGESTION | 3/0 |
+| deepseek-harness（EXAMINEE_3） | 2 | 1s | UNAVAILABLE（BLOCKED，未起进程） | — | — | 1 | RULE_ONLY | 0/0 |
+| manual（贴前） | 2 | 0s | PENDING_MANUAL | — | — | 1 | RULE_ONLY | 0/0 |
+| manual（贴入 minimax 回答后） | 0 | 1s | OK，provenance=`copied_from_AUX_minimax-pi_run(same-commit rerun)`，reply_sha256=`34547243e725…bbe5`，independent_examinee_answer=false | MiniMax-M3.1-Flash-Preview | UNKNOWN | 1 | AGENT_SUGGESTION | 3/0 |
+
+Mac 上 `pytest tests/test_dd_v1_agent_adapters.py`：24 passed in 11.67s。
+
 ## 没做的事
 没有用真实材料，没有 Gold，没有 DeepSeek 调用或购买，没有新 key，没有动 master、生产控制器或 work_items.json，没有改规则模式。
 
