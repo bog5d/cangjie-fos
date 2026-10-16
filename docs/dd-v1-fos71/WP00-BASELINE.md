@@ -21,16 +21,26 @@
 | 阶段 | 模块 / 关键函数 | 是否用 LLM | 证据 |
 |---|---|---|---|
 | WP1 材料 Manifest | `dd_v1_manifest_service.register_library / iter_version_hints`；CLI `tools/dd_v1_manifest.py` | 零 LLM | 文件头第 21 行「本层零 LLM 调用」 |
-| WP2 解析 | `dd_v1_parser_service.extract_content / parse_pending_batch`（可选 Docling） | 零 LLM | 文件头「复用优先…可降级」 |
+| WP2 解析 | `dd_v1_parser_service.extract_content / parse_pending_batch`（可选 Docling） | 零 LLM | `rg -n "openai|dd_llm_client|deepseek|anthropic|chat\.completions|httpx|requests|LLM|llm" backend/src/cangjie_fos/services/dd_v1_parser_service.py` → exit 1（0 命中） |
 | WP2 认知卡 + FTS | `dd_v1_card_service.build_card / search_materials`（FTS5 + bigram） | 零 LLM | 第 332、505–506 行 |
 | WP3 需求拆解 | `dd_v1_requirement_service.parse_entity_scope / parse_period / parse_doc_type` | 零 LLM | 第 24 行「纯确定性，零 LLM」 |
 | WP3 匹配 | `dd_v1_match_service.evaluate_file / match_obligation / judge / match_library` | 零 LLM | 第 145 行「确定性，不含 LLM」 |
-| WP7 披露策略 | `dd_v1_policy_service.load_policy / evaluate` | 零 LLM | 文件头 |
-| WP4 审核与组包 | `dd_v1_package_service.build_review_pack / approve / assert_approval / package_approved`（HG1：没有人工批准就不复制） | 零 LLM | 文件头 |
+| WP7 披露策略 | `dd_v1_policy_service.load_policy / evaluate` | 零 LLM | `rg -n "openai|dd_llm_client|deepseek|anthropic|chat\.completions|httpx|requests|LLM|llm" backend/src/cangjie_fos/services/dd_v1_policy_service.py` → exit 1（0 命中） |
+| WP4 审核与组包 | `dd_v1_package_service.build_review_pack / approve / assert_approval / package_approved`（HG1：没有人工批准就不复制） | 零 LLM | `rg -n "openai|dd_llm_client|deepseek|anthropic|chat\.completions|httpx|requests|LLM|llm" backend/src/cangjie_fos/services/dd_v1_package_service.py` → exit 1（0 命中） |
 | WP5 经验与评分 | `dd_v1_experience_service.record_feedback / promote / recall_experience / add_regression_case` | 零 LLM（「不接受 LLM 自评」第 406 行） | 文件头 |
 | 团队入口 | `tools/dd_team_channel.py` | 不依赖 LLM key（第 10 行） | — |
 
 **结论（CURRENT）**：新版 DD-V1 整条链都是确定性的，**没有任何模型语义参与**。#71 要加的是模型语义层，不是替换掉这些确定性模块。
+
+## C · 补充核对（独立复核 N1，2026-10-16 CST）
+| # | 核对项 | 结果 | 标记 | 来源 |
+|---|---|---|---|---|
+| 7 | cangjie-gm main HEAD | `529e99a` | CURRENT | `git fetch && git log -1 origin/main`（box clone） |
+| 8 | ADR-0009（GM Loop V1）D1：唯一状态源 `data/work_items.json`；D3/D4：inbox `data/inbox/<task_id>/task.json / question / decision / result.json` 契约 | #71 **未**写入 work_items.json、**未**建 inbox task（生产控制器 557/8395 会派发 READY 包 → 双主风险）；登记以文档形式落在 GM PR #214（dispatch_marker=MANUAL_ONLY / NOT_IN_LIVE_WORK_ITEMS）。与 ADR-0009「不另建第二真相源」一致：本登记不是状态源，只是交接证据 | CURRENT | `git show origin/main:adr/ADR-0009-gm-loop-v1.md`；GM #214 |
+| 9 | ADR-0010（运行态所有权）D1/D2：运行态字段只能由代码派生、AI 不得手写 | 本 PR 没有手写任何 GM 运行态字段（current_state / current_wp / evidence）；#71 状态只在 FOS PR 与 GM 文档里叙述 | CURRENT | `git show origin/main:adr/ADR-0010-runtime-state-ownership.md` |
+| 10 | Lease / ACK | GM 没有 #71 的 live lease（未进 work_items），因此**没有机器 lease**；替代的互斥证据：① GM #214 登记 v2 + 替补记录（commit `a1aaf2f`）；② #71 comment 6208928483 登记 Grok（司仓）为唯一 writer；③ 每次执行器运行前 `ps` 核查同分支无其他 writer（cangjie-gm#215 教训）；④ runtime-state.sqlite 只读核查 mvs_575c idle、locks=0。ACK = 上述 comment，**不是**机器 ACK。机器 lease = UNKNOWN/NOT_APPLICABLE，作为 G07 已知缺口 | CURRENT（机器 lease：UNKNOWN） | EVIDENCE-WP00.md；GM #214 |
+| 11 | FOS CI（PR #72 head `ffb7870`） | GitHub Actions：push + pull_request 两次运行均 `completed/success`（Backend Tests 440+、Backend Tests 228、Frontend Build Check 全绿）；master `a6bf515` 同为 success | CURRENT | `curl api.github.com/repos/bog5d/cangjie-fos/commits/ffb7870/check-runs`、`/actions/runs?branch=feat/71-wp00` |
+| 12 | docling 非封闭测试 | 已开 cangjie-fos#73 跟踪（只改测试夹具，不在 #71 范围） | CURRENT | — |
 
 ## S · State
 - 工程账：WP00 文档已交付（本 PR）；WP01–WP07 = 0/7。
