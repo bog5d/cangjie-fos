@@ -51,6 +51,19 @@ Mac 到 github.com:443 超时（75s），改为 box `git archive 0d67b55` → Co
 - 观察：Codex 在 3 条结果里写了 `PROMPT_INJECTION` warning，但注入文件 G008 并没有进入它的证据（检索层已排除），属于误报；只是 warning，不影响校验。
 - Mac `pytest tests/test_dd_v1_semantic_retrieval.py tests/test_dd_v1_agent_adapters.py`：**55 passed**。
 
+## 复核修正（#77 review 5544375509 PASS_WITH_NOTES）
+| 备注 | 修正 | 测试 |
+|---|---|---|
+| 中-1 两层结论打架 | `run_agent(non_effective_files=)`，`run_semantic` 给两层传同一份（来自可信 meta）；run_record 加 `authoritative_validation="semantic_validation"`，下游只读语义层 | `test_run_semantic_layers_agree_and_authoritative_marked` |
+| 中-2 OUTDATED 接受更新年度 | R4 层：非草稿的 OUTDATED，两边都是年份时必须 `引用年度 < 要求年度`，否则 `OUTDATED_NOT_OLDER`；CURRENT 等非年份期间维持原规则 | `test_outdated_citing_newer_year_rejected`、`test_outdated_citing_older_year_allowed` |
+| 低 回归锁 | 不传 `non_effective_files` 时同年草稿 OUTDATED 必须被拒 | `test_relaxation_off_by_default_same_year_draft_outdated_rejected` |
+| 低 locator 行数 | locator 只声明截断后实际给出的行 | `test_locator_matches_returned_lines` |
+| 低 `packet or` | 改为 `is None` | — |
+| 低 MISSING 带候选 | R4 层本来就拒（`MISSING_WITH_CANDIDATES`），补了语义路径测试 | `test_missing_with_candidates_rejected_in_semantic_path` |
+| #76 低 cost UNKNOWN / 默认参数 | `Budget.require_known_cost`（付费 Adapter 置 True → UNKNOWN 视为超预算）；`budget: Budget | None = None` | `test_require_known_cost_fails_closed` |
+
+DD-V1 全部测试：**269 passed**（exit 0）。
+
 ## 没做的事
 - 没有 Gold、没有评分、没有真实材料；没有新 key、没有花钱；没有动生产控制器 / work_items.json / main。
 - Windows 仍未实跑（Bog 机器离线，OQ-4）。
