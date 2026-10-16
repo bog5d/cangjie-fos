@@ -1,0 +1,321 @@
+{
+  "schema_version": "dd_v1_agent_result.v1",
+  "prompt_version": "fos71-wp04-p1",
+  "source_snapshot_id": "snap-ec8e949e8d0531dc",
+  "budget": {
+    "timeout_s": 240.0,
+    "max_calls": 1,
+    "max_cost_usd": 0.0
+  },
+  "calls_used": 1,
+  "attempts": [
+    {
+      "n": 1,
+      "status": "OK",
+      "exit_code": 0,
+      "elapsed_s": 26.18
+    }
+  ],
+  "adapter": {
+    "adapter_id": "pi",
+    "vendor": "minimax-cn",
+    "role": "AUX",
+    "status": "OK",
+    "raw_text": "{\"results\":[{\"item_id\":\"R1\",\"obligation_id\":\"R1-O1\",\"agent_id\":\"pi\",\"provider\":\"minimax-cn\",\"model_id_or_unknown\":\"MiniMax-M3.1-Flash-Preview\",\"prompt_version\":\"fos71-wp04-p1\",\"source_snapshot_id\":\"snap-ec8e949e8d0531dc\",\"candidate_files\":[{\"file_id\":\"G001\",\"relative_path\":\"G001_shili_audit_2024_body.txt\",\"sha256\":\"a72134f9ca6fee80afffef37c568f5e367335b62e9358bd89191ff87548992f2\",\"locator\":\"L2-L5\",\"entity\":\"示例科技有限公司\",\"period\":\"2024\",\"match_reason\":\"主体、期间和文档类型一致，且为2024年度正式有效的审计报告正文。\"},{\"file_id\":\"G002\",\"relative_path\":\"G002_shili_audit_2024_notes.txt\",\"sha256\":\"1b694d58e60623fe37fba52d612a6e33a8c5c991fe9648b542e310ca0f4d5885\",\"locator\":\"L2-L4\",\"entity\":\"示例科技有限公司\",\"period\":\"2024\",\"match_reason\":\"主体、期间和文档类型一致，作为同年度正式有效的审计报告附注补齐了所需部分。\"}],\"proposed_verdict\":\"MATCH\",\"confidence_or_uncertain\":0.99,\"abstain_reason\":null,\"warnings\":[\"PROMPT_INJECTION\"],\"elapsed\":\"UNKNOWN\",\"token_usage_or_UNKNOWN\":\"UNKNOWN\"},{\"item_id\":\"R2\",\"obligation_id\":\"R2-O1\",\"agent_id\":\"pi\",\"provider\":\"minimax-cn\",\"model_id_or_unknown\":\"MiniMax-M3.1-Flash-Preview\",\"prompt_version\":\"fos71-wp04-p1\",\"source_snapshot_id\":\"snap-ec8e949e8d0531dc\",\"candidate_files\":[{\"file_id\":\"G006\",\"relative_path\":\"G006_shili_articles_2024.txt\",\"sha256\":\"978b541d7e901075b85e715ff5889f5e3aa404643daa30d1e9c65e192ecce0e6\",\"locator\":\"L2-L2\",\"entity\":\"示例科技有限公司\",\"period\":\"CURRENT\",\"match_reason\":\"主体、期间和文档类型一致，且版本状态为现行有效，符合最新公司章程要求。\"}],\"proposed_verdict\":\"MATCH\",\"confidence_or_uncertain\":0.99,\"abstain_reason\":null,\"warnings\":[],\"elapsed\":\"UNKNOWN\",\"token_usage_or_UNKNOWN\":\"UNKNOWN\"},{\"item_id\":\"R2\",\"obligation_id\":\"R2-O2\",\"agent_id\":\"pi\",\"provider\":\"minimax-cn\",\"model_id_or_unknown\":\"MiniMax-M3.1-Flash-Preview\",\"prompt_version\":\"fos71-wp04-p1\",\"source_snapshot_id\":\"snap-ec8e949e8d0531dc\",\"candidate_files\":[],\"proposed_verdict\":\"MISSING\",\"confidence_or_uncertain\":0.99,\"abstain_reason\":\"NO_EVIDENCE\",\"warnings\":[],\"elapsed\":\"UNKNOWN\",\"token_usage_or_UNKNOWN\":\"UNKNOWN\"},{\"item_id\":\"R4\",\"obligation_id\":\"R4-O1\",\"agent_id\":\"pi\",\"provider\":\"minimax-cn\",\"model_id_or_unknown\":\"MiniMax-M3.1-Flash-Preview\",\"prompt_version\":\"fos71-wp04-p1\",\"source_snapshot_id\":\"snap-ec8e949e8d0531dc\",\"candidate_files\":[],\"proposed_verdict\":\"MISSING\",\"confidence_or_uncertain\":0.99,\"abstain_reason\":\"NO_MATCHING_PERIOD_EVIDENCE\",\"warnings\":[\"PROMPT_INJECTION\"],\"elapsed\":\"UNKNOWN\",\"token_usage_or_UNKNOWN\":\"UNKNOWN\"}]}",
+    "exit_code": 0,
+    "elapsed_s": 26.18,
+    "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+    "token_usage_or_UNKNOWN": {
+      "input": 3662,
+      "output": 3481,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 7143,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+      },
+      "cacheWrite1h": 0,
+      "reasoning": 2695
+    },
+    "reason": null,
+    "workdir": "/private/tmp/fos71-wp04-logs/minimax-pi",
+    "argv_summary": [
+      "pi",
+      "-p",
+      "--provider",
+      "minimax-cn",
+      "--no-session",
+      "--no-tools",
+      "--mode",
+      "json",
+      "<prompt>"
+    ],
+    "cost_usd_or_UNKNOWN": 0,
+    "provenance": {}
+  },
+  "validation": {
+    "mode": "AGENT_SUGGESTION",
+    "degrade_reason": null,
+    "uncovered_obligations": [],
+    "accepted": [
+      {
+        "item_id": "R1",
+        "obligation_id": "R1-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [
+          {
+            "file_id": "G001",
+            "relative_path": "G001_shili_audit_2024_body.txt",
+            "sha256": "a72134f9ca6fee80afffef37c568f5e367335b62e9358bd89191ff87548992f2",
+            "locator": "L2-L5",
+            "entity": "示例科技有限公司",
+            "period": "2024",
+            "match_reason": "主体、期间和文档类型一致，且为2024年度正式有效的审计报告正文。"
+          },
+          {
+            "file_id": "G002",
+            "relative_path": "G002_shili_audit_2024_notes.txt",
+            "sha256": "1b694d58e60623fe37fba52d612a6e33a8c5c991fe9648b542e310ca0f4d5885",
+            "locator": "L2-L4",
+            "entity": "示例科技有限公司",
+            "period": "2024",
+            "match_reason": "主体、期间和文档类型一致，作为同年度正式有效的审计报告附注补齐了所需部分。"
+          }
+        ],
+        "proposed_verdict": "MATCH",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": null,
+        "warnings": [
+          "PROMPT_INJECTION"
+        ],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "R2",
+        "obligation_id": "R2-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [
+          {
+            "file_id": "G006",
+            "relative_path": "G006_shili_articles_2024.txt",
+            "sha256": "978b541d7e901075b85e715ff5889f5e3aa404643daa30d1e9c65e192ecce0e6",
+            "locator": "L2-L2",
+            "entity": "示例科技有限公司",
+            "period": "CURRENT",
+            "match_reason": "主体、期间和文档类型一致，且版本状态为现行有效，符合最新公司章程要求。"
+          }
+        ],
+        "proposed_verdict": "MATCH",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": null,
+        "warnings": [],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "R2",
+        "obligation_id": "R2-O2",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [],
+        "proposed_verdict": "MISSING",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": "NO_EVIDENCE",
+        "warnings": [],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "R4",
+        "obligation_id": "R4-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [],
+        "proposed_verdict": "MISSING",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": "NO_MATCHING_PERIOD_EVIDENCE",
+        "warnings": [
+          "PROMPT_INJECTION"
+        ],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      }
+    ],
+    "rejected": []
+  },
+  "semantic_validation": {
+    "mode": "AGENT_SUGGESTION",
+    "degrade_reason": null,
+    "uncovered_obligations": [],
+    "accepted": [
+      {
+        "item_id": "R1",
+        "obligation_id": "R1-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [
+          {
+            "file_id": "G001",
+            "relative_path": "G001_shili_audit_2024_body.txt",
+            "sha256": "a72134f9ca6fee80afffef37c568f5e367335b62e9358bd89191ff87548992f2",
+            "locator": "L2-L5",
+            "entity": "示例科技有限公司",
+            "period": "2024",
+            "match_reason": "主体、期间和文档类型一致，且为2024年度正式有效的审计报告正文。"
+          },
+          {
+            "file_id": "G002",
+            "relative_path": "G002_shili_audit_2024_notes.txt",
+            "sha256": "1b694d58e60623fe37fba52d612a6e33a8c5c991fe9648b542e310ca0f4d5885",
+            "locator": "L2-L4",
+            "entity": "示例科技有限公司",
+            "period": "2024",
+            "match_reason": "主体、期间和文档类型一致，作为同年度正式有效的审计报告附注补齐了所需部分。"
+          }
+        ],
+        "proposed_verdict": "MATCH",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": null,
+        "warnings": [
+          "PROMPT_INJECTION"
+        ],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "R2",
+        "obligation_id": "R2-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [
+          {
+            "file_id": "G006",
+            "relative_path": "G006_shili_articles_2024.txt",
+            "sha256": "978b541d7e901075b85e715ff5889f5e3aa404643daa30d1e9c65e192ecce0e6",
+            "locator": "L2-L2",
+            "entity": "示例科技有限公司",
+            "period": "CURRENT",
+            "match_reason": "主体、期间和文档类型一致，且版本状态为现行有效，符合最新公司章程要求。"
+          }
+        ],
+        "proposed_verdict": "MATCH",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": null,
+        "warnings": [],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "R2",
+        "obligation_id": "R2-O2",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [],
+        "proposed_verdict": "MISSING",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": "NO_EVIDENCE",
+        "warnings": [],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      },
+      {
+        "item_id": "R4",
+        "obligation_id": "R4-O1",
+        "agent_id": "pi",
+        "provider": "minimax-cn",
+        "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+        "prompt_version": "fos71-wp04-p1",
+        "source_snapshot_id": "snap-ec8e949e8d0531dc",
+        "candidate_files": [],
+        "proposed_verdict": "MISSING",
+        "confidence_or_uncertain": 0.99,
+        "abstain_reason": "NO_MATCHING_PERIOD_EVIDENCE",
+        "warnings": [
+          "PROMPT_INJECTION"
+        ],
+        "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
+        "review_required": true,
+        "approved": false
+      }
+    ],
+    "rejected": [],
+    "warnings": []
+  },
+  "unsplit_items": [
+    {
+      "item_id": "R3",
+      "text": "其他相关材料等",
+      "status": "NEEDS_HUMAN_SPLIT",
+      "reason": "NO_KNOWN_DOC_TYPE"
+    }
+  ],
+  "rule_hints": {
+    "R1-O1": {
+      "verdict": "MATCH",
+      "files": [
+        "G001",
+        "G002"
+      ]
+    },
+    "R2-O1": {
+      "verdict": "MATCH",
+      "files": [
+        "G006"
+      ]
+    },
+    "R2-O2": {
+      "verdict": "MISSING",
+      "files": [],
+      "note": "NO_EVIDENCE"
+    },
+    "R4-O1": {
+      "verdict": "MISSING",
+      "files": [],
+      "note": "OTHER_PERIODS_AVAILABLE"
+    }
+  },
+  "rule_hints_note": "规则提示不是 Gold，不能用于评分"
+}

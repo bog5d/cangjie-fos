@@ -122,7 +122,8 @@ def _rule_only(reason: str) -> ValidationReport:
 
 
 def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
-                  obligations: dict[str, dict[str, str]]) -> list[str]:
+                  obligations: dict[str, dict[str, str]],
+                  non_effective: frozenset[str] = frozenset()) -> list[str]:
     if not isinstance(r, dict):
         return ["RESULT_NOT_OBJECT"]
     errs: list[str] = []
@@ -168,14 +169,19 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
         if cf["sha256"] != sf.sha256:
             errs.append(f"CANDIDATE_{i}_SHA_MISMATCH")
         # 复核 N3：引用证据的判定（MATCH/PARTIAL/OUTDATED）都要过主体一致；
-        # MATCH/PARTIAL 还要过期间一致（OUTDATED 本身就是「期间不对」，只要求主体一致）。
+        # MATCH/PARTIAL 还要过期间一致（OUTDATED 本身就是「期间不对」，只要求主体一致；
+        # WP04：同期间但是草稿/被取代版本（non_effective）也允许 OUTDATED）。
         if verdict in EVIDENCE_VERDICTS and ob is not None:
             if sf.entity != ob["entity"]:
                 errs.append(f"CANDIDATE_{i}_ENTITY_MISMATCH")
             if verdict != "OUTDATED" and sf.period != ob["period"]:
                 errs.append(f"CANDIDATE_{i}_PERIOD_MISMATCH")
-            if verdict == "OUTDATED" and sf.period == ob["period"]:
+            if verdict == "OUTDATED" and sf.period == ob["period"] and sf.file_id not in non_effective:
                 errs.append(f"CANDIDATE_{i}_OUTDATED_BUT_PERIOD_MATCHES")
+            # #77 复核中：非草稿的 OUTDATED 必须引用「更早」的年度；比要求更新的年度不叫过期
+            if (verdict == "OUTDATED" and sf.file_id not in non_effective and sf.period != ob["period"]
+                    and not (sf.period.isdigit() and ob["period"].isdigit() and sf.period < ob["period"])):
+                errs.append(f"CANDIDATE_{i}_OUTDATED_NOT_OLDER")
     if verdict == "MATCH" and not cands:
         errs.append("MATCH_WITHOUT_EVIDENCE")
     if verdict in ("MISSING", "UNCERTAIN") and not r["abstain_reason"]:
@@ -190,6 +196,7 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
 def validate_agent_output(
     raw: str | None, snapshot_dir: Path, meta: list[dict[str, str]],
     obligations: list[dict[str, str]], *, call_error: str | None = None,
+    non_effective_files: frozenset[str] = frozenset(),
 ) -> ValidationReport:
     """校验 Agent 原始输出。任何失败都显式降级/拒绝，从不抛给调用方当作成功。"""
     if call_error:
@@ -217,7 +224,7 @@ def validate_agent_output(
     # 复核 N2：义务覆盖必须完整，缺失的义务显式列出（不静默当作通过）
     rep.uncovered = sorted(set(obs) - set(seen))
     for r in results:
-        errs = _check_result(r, snap, sid, obs)
+        errs = _check_result(r, snap, sid, obs, non_effective_files)
         if isinstance(r, dict) and r.get("obligation_id") in dup:
             errs.append("DUPLICATE_OBLIGATION")
         if errs:
