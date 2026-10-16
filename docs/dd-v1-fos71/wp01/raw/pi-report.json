@@ -1,6 +1,7 @@
 {
   "mode": "AGENT_SUGGESTION",
   "degrade_reason": null,
+  "uncovered_obligations": [],
   "accepted": [
     {
       "item_id": "S1",
