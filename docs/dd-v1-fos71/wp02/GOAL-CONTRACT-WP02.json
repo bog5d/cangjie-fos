@@ -80,31 +80,52 @@
         "id": "EXAMINEE_1",
         "definition": "Codex 无 DD-V1，独立组包",
         "runner": "codex exec -s read-only（ChatGPT 订阅）",
-        "status": "CLI_READY+TASK_EXECUTED(synthetic, adjacent task)"
+        "status": "CLI_READY+TASK_EXECUTED(synthetic, adjacent task)",
+        "scored": true,
+        "ranked": true,
+        "uses_dd_v1": false,
+        "vendor": "codex"
       },
       {
         "id": "EXAMINEE_2",
         "definition": "Codex 语义驱动 DD-V1（任务包→dd_v1_agent_result.v1→FOS 校验）",
         "runner": "codex exec --output-schema",
-        "status": "TASK_EXECUTED(synthetic)"
+        "status": "TASK_EXECUTED(synthetic)",
+        "scored": true,
+        "ranked": true,
+        "uses_dd_v1": true,
+        "vendor": "codex"
       },
       {
         "id": "EXAMINEE_3",
         "definition": "DeepSeek Harness 语义驱动 DD-V1",
         "runner": "dsh",
-        "status": "UNAVAILABLE / BLOCKED_ON_CHAIRMAN"
+        "status": "UNAVAILABLE / BLOCKED_ON_CHAIRMAN",
+        "scored": true,
+        "ranked": true,
+        "uses_dd_v1": true,
+        "vendor": "deepseek-harness",
+        "score_status": "BLOCKED"
       },
       {
         "id": "AUX_MINIMAX",
         "definition": "MiniMax 语义驱动 DD-V1：辅助路径，也是考生3 的候选替补；董事长批准前不计入考生3、不出分",
         "runner": "pi -p --no-tools --mode json / hermes chat -Q",
-        "status": "TASK_EXECUTED(synthetic)"
+        "status": "TASK_EXECUTED(synthetic)",
+        "scored": false,
+        "ranked": false,
+        "uses_dd_v1": true,
+        "vendor": "minimax"
       },
       {
         "id": "CONTROL_RULE_ONLY",
         "definition": "现有确定性 DD-V1，作为对照组",
         "runner": "tools/dd_team_channel.py",
-        "status": "CURRENT"
+        "status": "CURRENT",
+        "scored": true,
+        "ranked": false,
+        "uses_dd_v1": true,
+        "vendor": "none"
       }
     ]
   },
@@ -136,7 +157,8 @@
     "level": "TASK_EXECUTED",
     "acceptance_criteria": [
       "WP02：本合同通过 check_gccseg.py --require-v3-8；独立 Reviewer 确认 SPEC/ACCEPTANCE 与 Issue #71 一致、未偷换考生定义",
-      "WP03–WP06 每个 WP 都有 target_goal_ids、命令/退出码、正反用例、工件 sha、独立 Gate"
+      "WP03–WP06 每个 WP 都有 target_goal_ids、命令/退出码、正反用例、工件 sha、独立 Gate",
+      "评分硬规则以 scoring_rules（fos71-scoring-v1）为唯一机读来源；WP05 评分器必须引用同一组值并有测试"
     ]
   },
   "goal_alignment": {
@@ -144,7 +166,7 @@
     "user_visible_acceptance": [
       "业务核验人在 Windows 上运行一条命令，对同一份冻结清单得到 RULE_ONLY / 考生2 / 考生3（或获批替补）三份逐条答卷（Excel/JSON/Markdown）",
       "每条建议都显示候选文件、出处定位、理由、模型标识或 UNKNOWN，且全部标为待人工审核；没有一条被模型直接置为 approved",
-      "评分报告按主体/期间/版本/附件/真缺失拆分 TP/FP/FN，并单列错主体、错年度、自信错配；无 Gold Set 时报告显示 NOT_SCORABLE，不显示分数",
+      "评分报告按主体/期间/有效版本/附件/证明原件/真正缺失/无法核实七个维度拆分 TP/FP/FN，单列错主体、错年度、自信错配（confidence≥0.8 且错误）；每个错误归类为规则缺陷/模型推理缺陷/召回缺陷/资料缺失；无 Gold Set 时显示 NOT_SCORABLE，n<30 条义务显示 LOW_CONFIDENCE",
       "模型不可用时报告明确写 RULE_ONLY 及原因"
     ],
     "baseline": {
@@ -206,7 +228,65 @@
       "engineering_percent": 25,
       "outcome_verified_points": 0,
       "outcome_total_points": 100,
-      "note": "工程：WP00–WP02 共 2/8 完成并复核（WP02 待复核，不计）=25%；效果：G01–G08 已真实验证 0 项（WP01 只是合成 fixture，不计业务分）"
+      "note": "工程：WP00、WP01 已完成并经独立复核 = 2/8 = 25%（WP02 本身待复核，不计）；效果：G01–G08 已真实验证 0 项（WP01 只是合成 fixture，不计业务分）",
+      "completed_reviewed_wps": [
+        "WP00",
+        "WP01"
+      ],
+      "total_wps": 8
     }
-  }
+  },
+  "scoring_rules": {
+    "version": "fos71-scoring-v1",
+    "gold_required": true,
+    "no_gold_status": "NOT_SCORABLE",
+    "low_confidence_min_obligations": 30,
+    "low_confidence_status": "LOW_CONFIDENCE",
+    "min_reruns": 3,
+    "high_confidence_threshold": 0.8,
+    "rerun_agreement_threshold": null,
+    "rerun_agreement_threshold_note": "N5：Gold 出现前只报告一致率、不设阈值；WP05 开工前必须定好（OPEN_ITEM WP05-PRE-1）",
+    "dimensions": [
+      "entity",
+      "period",
+      "effective_version",
+      "attachment",
+      "proof_original",
+      "truly_missing",
+      "unverifiable"
+    ],
+    "separate_counts": [
+      "wrong_entity",
+      "wrong_period",
+      "confident_mismatch"
+    ],
+    "coverage_vs_correct_separate": true,
+    "error_categories": [
+      "RULE_DEFECT",
+      "MODEL_REASONING_DEFECT",
+      "RECALL_DEFECT",
+      "MATERIAL_MISSING"
+    ],
+    "metrics": [
+      "TP",
+      "FP",
+      "FN",
+      "precision_if_applicable",
+      "recall_if_applicable",
+      "review_minutes",
+      "tokens_or_UNKNOWN",
+      "cost_or_UNKNOWN",
+      "elapsed_s",
+      "rerun_agreement"
+    ]
+  },
+  "open_items": [
+    {
+      "id": "WP05-PRE-1",
+      "source": "REVIEW-WP02 N5",
+      "item": "确定重跑一致率阈值（HG-STAB）",
+      "due": "WP05 开工前",
+      "status": "OPEN"
+    }
+  ]
 }

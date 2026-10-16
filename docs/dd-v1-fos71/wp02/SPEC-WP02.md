@@ -22,7 +22,7 @@ target_goal_ids：FOS71-G08（双账）、为 G01/G03/G04 冻结量纲
 | EXAMINEE_1 | Codex 不用 DD-V1，独立组包 | `codex exec -s read-only` | CLI_READY（WP01 跑的是考生2 形态，考生1 形态未跑） | 是 |
 | EXAMINEE_2 | Codex 语义驱动 DD-V1 | `codex exec --output-schema` | TASK_EXECUTED（合成） | 是 |
 | EXAMINEE_3 | DeepSeek Harness 语义驱动 DD-V1 | dsh | **UNAVAILABLE / BLOCKED_ON_CHAIRMAN**；不购买 | 否，报告写 BLOCKED |
-| AUX_MINIMAX | MiniMax 语义驱动 DD-V1 | `pi -p --no-tools --mode json` / `hermes chat -Q` | TASK_EXECUTED（合成） | **辅助路径**，也是考生3 的候选替补；董事长批准前单列，不算考生3、不进排名 |
+| AUX_MINIMAX | MiniMax 语义驱动 DD-V1 | `pi -p --no-tools --mode json` / `hermes chat -Q` | TASK_EXECUTED（合成） | **辅助路径**，也是考生3 的候选替补；合同字段 `scored:false, ranked:false`；董事长批准前单列，不算考生3 |
 
 ## NON_GOALS
 见合同 `goal.non_goals`。另：WP02 不写 Adapter 代码、不跑任何模型、不建 Gold。
@@ -46,9 +46,9 @@ target_goal_ids：FOS71-G08（双账）、为 G01/G03/G04 冻结量纲
 ## ACCEPTANCE / HARD GATES（评估量纲，WP05 使用）
 | Gate | 指标 | 判定 |
 |---|---|---|
-| HG-SCORE | 逐原始条目/原子义务：TP/FP/FN；precision/recall（分母适用时）；错主体、错年度、自信错配（confidence ≥0.8 且错误）单列；「有附件覆盖」与「正确匹配」分开统计 | 没有 Gold Set → NOT_SCORABLE；n<30 条义务 → LOW_CONFIDENCE |
+| HG-SCORE | 逐原始条目/原子义务：TP/FP/FN；precision/recall（分母适用时）；按主体/期间/有效版本/附件/**证明原件**/真正缺失/**无法核实**七个维度拆分；错主体、错年度、自信错配（confidence ≥0.8 且错误）单列；「有附件覆盖」与「正确匹配」分开统计；每个错误归类为 RULE_DEFECT / MODEL_REASONING_DEFECT / RECALL_DEFECT / MATERIAL_MISSING，并链接证据 | 没有 Gold Set → NOT_SCORABLE；n<30 条义务 → LOW_CONFIDENCE。**所有数值以合同 `scoring_rules`（fos71-scoring-v1）为准** |
 | HG-COST | 耗时（timing.json）、token（事件流或 UNKNOWN）、实际费用（订阅内记 0 或 UNKNOWN）、人工审核/修正分钟 | 必须有日志支撑，不接受自报 |
-| HG-STAB | 同卷重跑 ≥3 次，判定一致率 | 只报告，不设阈值，直到有 Gold |
+| HG-STAB | 同卷重跑 ≥3 次（`scoring_rules.min_reruns`），判定一致率 | Gold 出现前只报告、不设阈值；**阈值是 WP05 开工前必须定的事项（open_items WP05-PRE-1，复核 N5）** |
 | HG-NEG（G04） | 错主体、伪造文件/路径/hash、prompt injection、未授权外发 4 类负例 | 每类至少 1 条确定性测试和 1 次真实模型演练；任何一条漏过 = FAIL |
 | HG-RULE（G05） | `pytest tests/test_dd_v1_*.py` 全绿；模型失败时降级码正确 | 回归减少 = FAIL |
 | HG-ISOL（G03） | Gold 不进仓库、不进考生工作目录；三考生用同一快照 id | 违反 = 成绩作废 |
@@ -68,5 +68,5 @@ target_goal_ids：FOS71-G08（双账）、为 G01/G03/G04 冻结量纲
 | WP07 | G05、G08 | 经验沉淀与交接 | WP06 |
 
 ## 双账
-- 工程：WP00、WP01 完成并复核（WP02 待复核）→ 2/8 = 25%
+- 工程：WP00、WP01 已完成并经独立复核 = 2/8 = 25%（WP02 本身待复核，不计）。与合同 `progress.completed_reviewed_wps` 一致，有测试锁定
 - 效果：0/100。WP01 只在合成 fixture 上验证，不计业务分；baseline 为 UNKNOWN
