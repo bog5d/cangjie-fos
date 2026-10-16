@@ -158,7 +158,8 @@
     "acceptance_criteria": [
       "WP02：本合同通过 check_gccseg.py --require-v3-8；独立 Reviewer 确认 SPEC/ACCEPTANCE 与 Issue #71 一致、未偷换考生定义",
       "WP03–WP06 每个 WP 都有 target_goal_ids、命令/退出码、正反用例、工件 sha、独立 Gate",
-      "评分硬规则以 scoring_rules（fos71-scoring-v1）为唯一机读来源；WP05 评分器必须引用同一组值并有测试"
+      "评分硬规则以 scoring_rules（fos71-scoring-v1）为唯一机读来源；WP05 评分器必须引用同一组值并有测试",
+      "WP05 HG-ISOL：Gold 不得存在于执行器主机任何可读位置（不只是工作目录）；人工交换回贴（independent_examinee_answer=false）不得计为考生答卷"
     ]
   },
   "goal_alignment": {
@@ -278,7 +279,10 @@
       "cost_or_UNKNOWN",
       "elapsed_s",
       "rerun_agreement"
-    ]
+    ],
+    "gold_must_not_be_on_executor_host": true,
+    "gold_isolation_note": "复核 WP03 N4：codex -s read-only 只限制写，模型仍能读整台主机；工作目录约定挡不住读取。WP05 Gold 必须放在执行器主机（运行 Codex/MiniMax 的机器）不可读的位置，评分在另一台主机或考试结束后进行",
+    "manual_reply_counts_as_examinee": false
   },
   "open_items": [
     {

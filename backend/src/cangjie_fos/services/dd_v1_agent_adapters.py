@@ -1,0 +1,296 @@
+"""DD-V1 Agent Adapter（cangjie-fos#71 WP03，R2）。
+
+任务包 → 外部 Agent CLI（隔离临时目录、stdin=/dev/null、硬超时、杀掉整个进程组）→ 原始文本
+→ ``dd_v1_agent_result_service.validate_agent_output``（确定性硬校验）。
+
+- 供应商名和 CLI 参数**只出现在本模块**；Kernel（agent_result_service）不认识任何供应商。
+- Adapter 不写结果、不改规则：输出永远只是 suggestion，必须经过校验器。
+- 失败状态显式化：OK / TIMEOUT / CALL_FAILED / UNAVAILABLE / PENDING_MANUAL；
+  非 OK 一律以 ``call_error`` 交给校验器降级 RULE_ONLY（R5）。
+- DeepSeek Harness：#71 考生3，目前 UNAVAILABLE（dsh 已停用，董事长未裁决 OQ-1）。
+  本 Adapter 是**桩**：不发起任何调用，直接返回 UNAVAILABLE/BLOCKED，绝不改走直连 API。
+- MiniMax：辅助路径（AUX，scored=false），不是考生。
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import shutil
+import signal
+import subprocess
+import tempfile
+import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Callable
+
+from cangjie_fos.services import dd_v1_agent_result_service as ar
+
+SCHEMA_PATH = Path(ar.__file__).with_name("dd_v1_agent_result.v1.schema.json")
+
+OK, TIMEOUT, CALL_FAILED, UNAVAILABLE, PENDING_MANUAL, BUDGET_EXCEEDED = (
+    "OK", "TIMEOUT", "CALL_FAILED", "UNAVAILABLE", "PENDING_MANUAL", "BUDGET_EXCEEDED")
+RETRYABLE = (TIMEOUT, CALL_FAILED)
+# 人工交换允许在 workdir 里预先存在的文件（复核 N2）；其余 Adapter 要求 workdir 为空
+MANUAL_ALLOWED = {"packet.json", "schema.json", "PROMPT.txt", "reply.json", "reply.provenance.json", "run_record.json"}
+
+
+@dataclass
+class AdapterResult:
+    adapter_id: str
+    vendor: str
+    role: str  # EXAMINEE_2 / AUX / MANUAL / EXAMINEE_3
+    status: str
+    raw_text: str | None = None
+    exit_code: int | None = None
+    elapsed_s: float | None = None
+    model_id_or_unknown: str = "UNKNOWN"
+    token_usage_or_UNKNOWN: Any = "UNKNOWN"
+    reason: str | None = None
+    workdir: str | None = None
+    argv_summary: list[str] = field(default_factory=list)
+    cost_usd_or_UNKNOWN: Any = "UNKNOWN"
+    provenance: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class Budget:
+    """预算（复核 N3）。
+
+    - timeout_s：单次调用硬超时，超时杀进程组。
+    - max_calls：最多调用次数（含重试）；只有 TIMEOUT / CALL_FAILED 会重试。
+    - max_cost_usd：允许的实际费用上限。默认 0 = 不允许任何付费调用（订阅内 cost=0 或 UNKNOWN 放行，
+      但 UNKNOWN 会在 run record 标出）。已知 cost > 上限 → BUDGET_EXCEEDED，丢弃输出并降级。
+    """
+    timeout_s: float = 180.0
+    max_calls: int = 1
+    max_cost_usd: float = 0.0
+
+
+def prepare_workdir(packet: dict[str, Any], base: Path | None = None) -> Path:
+    """隔离工作目录：只放 packet.json + schema.json，不含仓库、不含原始材料、不含 Gold。"""
+    d = Path(tempfile.mkdtemp(prefix="fos71-agent-", dir=str(base) if base else None))
+    (d / "packet.json").write_text(json.dumps(packet, ensure_ascii=False, indent=2), "utf-8")
+    shutil.copy(SCHEMA_PATH, d / "schema.json")
+    return d
+
+
+def _kill_tree(p: subprocess.Popen) -> None:
+    if os.name == "nt":  # Windows：taskkill /T 杀整棵进程树
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True, check=False)
+        return
+    try:
+        os.killpg(p.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
+def run_cli(argv: list[str], cwd: Path, timeout_s: float) -> tuple[int | None, str, str, float, bool]:
+    """跑一个 CLI：stdin=/dev/null（防止等待输入挂起），新进程组，超时杀整组。
+
+    返回 (exit_code|None, stdout, stderr, elapsed_s, timed_out)。
+    """
+    t0 = time.monotonic()
+    try:
+        p = subprocess.Popen(
+            argv, cwd=str(cwd), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
+            **({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}),
+        )
+    except OSError as e:  # CLI 不存在 / 不可执行 → CALL_FAILED，而不是让调用方崩溃
+        return 127, "", f"SPAWN_FAILED:{type(e).__name__}:{e}", 0.0, False
+    try:
+        out, err = p.communicate(timeout=timeout_s)
+        return p.returncode, out, err, round(time.monotonic() - t0, 2), False
+    except subprocess.TimeoutExpired:
+        _kill_tree(p)
+        out, err = p.communicate()
+        return None, out or "", err or "", round(time.monotonic() - t0, 2), True
+
+
+def _prompt_for(packet: dict[str, Any], agent_id: str, provider: str, inline: bool) -> str:
+    head = (f"按 packet 的 instructions 完成任务，只输出符合输出 Schema 的 JSON。agent_id 填 \"{agent_id}\"，"
+            f"provider 填 \"{provider}\"，model_id_or_unknown 填你确知的模型标识否则 \"UNKNOWN\"，"
+            "prompt_version 与 source_snapshot_id 原样照抄 packet，elapsed 与 token_usage_or_UNKNOWN 填 \"UNKNOWN\"。"
+            "不要修改任何文件。")
+    if not inline:
+        return "读取当前目录的 packet.json。" + head
+    return (head + "不要调用工具。不要输出 markdown。\n\n=== PACKET ===\n"
+            + json.dumps(packet, ensure_ascii=False, indent=2)
+            + "\n=== SCHEMA ===\n" + SCHEMA_PATH.read_text("utf-8"))
+
+
+def _fail(res: AdapterResult, code: int | None, err: str, timed_out: bool) -> AdapterResult:
+    res.exit_code = code
+    if timed_out:
+        res.status, res.reason = TIMEOUT, "TIMEOUT"
+    else:
+        res.status, res.reason = CALL_FAILED, f"EXIT_{code}:{err.strip()[-200:]}"
+    return res
+
+
+class CodexAdapter:
+    adapter_id, vendor, role = "codex-cli", "openai-codex", "EXAMINEE_2"
+
+    def __init__(self, binary: str | list[str] = "codex"):
+        self.binary = [binary] if isinstance(binary, str) else list(binary)
+
+    def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
+        res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK, workdir=str(workdir))
+        for stale in ("out.json", "events.jsonl", "stderr.log"):  # 复核 N2：绝不读残留答卷
+            (workdir / stale).unlink(missing_ok=True)
+        argv = [*self.binary, "exec", "--ephemeral", "--skip-git-repo-check", "-C", str(workdir),
+                "-s", "read-only", "--output-schema", "schema.json", "-o", "out.json", "--json",
+                _prompt_for(packet, self.adapter_id, self.vendor, inline=False)]
+        res.argv_summary = argv[:-1] + ["<prompt>"]
+        code, out, err, el, to = run_cli(argv, workdir, budget.timeout_s)
+        res.elapsed_s = el
+        res.cost_usd_or_UNKNOWN = "UNKNOWN(ChatGPT subscription)"
+        (workdir / "events.jsonl").write_text(out, "utf-8")
+        (workdir / "stderr.log").write_text(err, "utf-8")
+        if to or code != 0:
+            return _fail(res, code, err, to)
+        res.exit_code = 0
+        for line in out.splitlines():
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if ev.get("type") == "turn.completed" and isinstance(ev.get("usage"), dict):
+                res.token_usage_or_UNKNOWN = ev["usage"]
+        o = workdir / "out.json"
+        res.raw_text = o.read_text("utf-8") if o.exists() else None
+        return res
+
+
+class MiniMaxPiAdapter:
+    """AUX（scored=false, ranked=false）。董事长批准替补前不计入考生3。"""
+    adapter_id, vendor, role = "pi", "minimax-cn", "AUX"
+
+    def __init__(self, binary: str | list[str] = "pi", model: str | None = None):
+        self.binary = [binary] if isinstance(binary, str) else list(binary)
+        self.model = model
+
+    def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
+        res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK, workdir=str(workdir))
+        for stale in ("events.compact.jsonl", "stderr.log"):
+            (workdir / stale).unlink(missing_ok=True)
+        argv = [*self.binary, "-p", "--provider", "minimax-cn", "--no-session", "--no-tools", "--mode", "json"]
+        if self.model:
+            argv += ["--model", self.model]
+        argv.append(_prompt_for(packet, self.adapter_id, self.vendor, inline=True))
+        res.argv_summary = argv[:-1] + ["<prompt>"]
+        code, out, err, el, to = run_cli(argv, workdir, budget.timeout_s)
+        res.elapsed_s = el
+        (workdir / "stderr.log").write_text(err, "utf-8")
+        compact = []
+        last = None
+        for line in out.splitlines():
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if ev.get("type") != "message_update":
+                compact.append(line)
+            if ev.get("type") == "message_end" and ev.get("message", {}).get("role") == "assistant":
+                last = ev["message"]
+        (workdir / "events.compact.jsonl").write_text("\n".join(compact), "utf-8")
+        if to or code != 0:
+            return _fail(res, code, err, to)
+        res.exit_code = 0
+        if last:
+            res.raw_text = "".join(c.get("text", "") for c in last.get("content", []) if c.get("type") == "text")
+            res.model_id_or_unknown = last.get("model") or "UNKNOWN"
+            res.token_usage_or_UNKNOWN = last.get("usage", "UNKNOWN")
+            cost = (last.get("usage") or {}).get("cost", {}) if isinstance(last.get("usage"), dict) else {}
+            if isinstance(cost, dict) and isinstance(cost.get("total"), (int, float)):
+                res.cost_usd_or_UNKNOWN = cost["total"]
+        return res
+
+
+class ManualExchangeAdapter:
+    """人工交换（#71 R2 第一 PoC）：导出 packet+schema，操作者把模型回复贴成 reply.json。"""
+    adapter_id, vendor, role = "manual-exchange", "operator", "MANUAL"
+
+    def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
+        res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK, workdir=str(workdir))
+        (workdir / "PROMPT.txt").write_text(_prompt_for(packet, "manual", "operator", inline=True), "utf-8")
+        reply = workdir / "reply.json"
+        if not reply.exists():
+            res.status, res.reason = PENDING_MANUAL, f"PASTE_MODEL_REPLY_TO:{reply}"
+            res.provenance = {"independent_examinee_answer": False}
+            return res
+        data = reply.read_bytes()
+        res.raw_text = data.decode("utf-8")
+        # 复核 N1：回贴必须自带来源；没写来源就记 UNDECLARED。人工回贴永远不算独立考生答卷。
+        prov_file = workdir / "reply.provenance.json"
+        declared = json.loads(prov_file.read_text("utf-8")) if prov_file.exists() else {}
+        res.provenance = {
+            "reply_sha256": hashlib.sha256(data).hexdigest(),
+            "reply_source": declared.get("reply_source", "UNDECLARED_OPERATOR_PASTE"),
+            "declared_by": declared.get("declared_by", "UNKNOWN"),
+            "independent_examinee_answer": False,
+        }
+        res.model_id_or_unknown = declared.get("model_id_or_unknown", "UNKNOWN")
+        return res
+
+
+class DeepSeekHarnessAdapter:
+    """考生3 桩：UNAVAILABLE / BLOCKED_ON_CHAIRMAN（OQ-1）。不调用任何进程或网络。"""
+    adapter_id, vendor, role = "deepseek-harness", "deepseek-harness", "EXAMINEE_3"
+
+    def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
+        return AdapterResult(self.adapter_id, self.vendor, self.role, status=UNAVAILABLE,
+                             workdir=str(workdir),
+                             reason="BLOCKED:dsh retired 2026-10-11; OQ-1 pending chairman; no purchase, no API fallback")
+
+
+ADAPTERS: dict[str, Callable[[], Any]] = {
+    "codex": CodexAdapter, "minimax-pi": MiniMaxPiAdapter,
+    "manual": ManualExchangeAdapter, "deepseek-harness": DeepSeekHarnessAdapter,
+}
+
+
+def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
+              obligations: list[dict[str, str]], budget: Budget = Budget(),
+              workdir: Path | None = None) -> dict[str, Any]:
+    """一次完整的 Agent 调用：建包 → 隔离目录 → Adapter → 校验/降级。返回可留证的 run record。"""
+    if budget.max_calls < 1:
+        raise ValueError("budget.max_calls must be >= 1")
+    if budget.max_cost_usd < 0:
+        raise ValueError("budget.max_cost_usd must be >= 0")
+    packet = ar.build_task_packet(snapshot_dir, meta, obligations)
+    # 必须是绝对路径：CLI 以 cwd=wd 启动，相对路径的 -C 会被二次拼接（WP03 Mac 实测 codex exit 1）
+    wd = (workdir or prepare_workdir(packet)).resolve()
+    if workdir:
+        wd.mkdir(parents=True, exist_ok=True)
+        present = {p.name for p in wd.iterdir()}
+        allowed = MANUAL_ALLOWED if isinstance(adapter, ManualExchangeAdapter) else set()
+        if present - allowed:  # 复核 N2：非空目录直接拒绝，防止读到残留 out.json 或混入其他资料
+            raise ValueError(f"WORKDIR_NOT_EMPTY:{sorted(present - allowed)}")
+        (wd / "packet.json").write_text(json.dumps(packet, ensure_ascii=False, indent=2), "utf-8")
+        shutil.copy(SCHEMA_PATH, wd / "schema.json")
+    attempts: list[dict[str, Any]] = []
+    res: AdapterResult = adapter.run(packet, wd, budget)
+    attempts.append({"n": 1, "status": res.status, "exit_code": res.exit_code, "elapsed_s": res.elapsed_s})
+    while res.status in RETRYABLE and len(attempts) < budget.max_calls:  # 复核 N3：max_calls 真正生效
+        res = adapter.run(packet, wd, budget)
+        attempts.append({"n": len(attempts) + 1, "status": res.status, "exit_code": res.exit_code,
+                         "elapsed_s": res.elapsed_s})
+    cost = res.cost_usd_or_UNKNOWN
+    if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost > budget.max_cost_usd:
+        res.status, res.reason, res.raw_text = BUDGET_EXCEEDED, f"COST_{cost}>{budget.max_cost_usd}", None
+    call_error = None if res.status == OK else f"{res.status}:{res.reason}"
+    rep = ar.validate_agent_output(res.raw_text, snapshot_dir, meta, obligations, call_error=call_error)
+    record = {
+        "schema_version": ar.SCHEMA_VERSION, "prompt_version": ar.PROMPT_VERSION,
+        "source_snapshot_id": packet["source_snapshot_id"],
+        "budget": asdict(budget), "calls_used": len(attempts), "attempts": attempts,
+        "adapter": res.to_dict(), "validation": rep.to_dict(),
+    }
+    (wd / "run_record.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), "utf-8")
+    return record

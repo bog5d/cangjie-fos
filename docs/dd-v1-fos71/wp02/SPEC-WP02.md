@@ -51,7 +51,7 @@ target_goal_ids：FOS71-G08（双账）、为 G01/G03/G04 冻结量纲
 | HG-STAB | 同卷重跑 ≥3 次（`scoring_rules.min_reruns`），判定一致率 | Gold 出现前只报告、不设阈值；**阈值是 WP05 开工前必须定的事项（open_items WP05-PRE-1，复核 N5）** |
 | HG-NEG（G04） | 错主体、伪造文件/路径/hash、prompt injection、未授权外发 4 类负例 | 每类至少 1 条确定性测试和 1 次真实模型演练；任何一条漏过 = FAIL |
 | HG-RULE（G05） | `pytest tests/test_dd_v1_*.py` 全绿；模型失败时降级码正确 | 回归减少 = FAIL |
-| HG-ISOL（G03） | Gold 不进仓库、不进考生工作目录；三考生用同一快照 id | 违反 = 成绩作废 |
+| HG-ISOL（G03） | Gold 不进仓库、不进考生工作目录，**也不得放在执行器主机任何可读位置**（`-s read-only` 只限制写，模型仍能读整台主机；复核 WP03 N4）；三考生用同一快照 id；人工交换回贴不计为考生答卷 | 违反 = 成绩作废 |
 | HG-WRITER（G07） | 每个 WP 开工前做 ps/分支核查 | 有双写 = PAUSE |
 | HG-DUAL（G08） | 每个报告都列工程%和效果分 | 混报 = FAIL |
 
