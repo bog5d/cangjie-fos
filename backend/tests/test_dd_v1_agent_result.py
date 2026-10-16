@@ -149,3 +149,74 @@ def test_module_has_no_model_client_imports():
     src = Path(ar.__file__).read_text("utf-8")
     for bad in ("openai", "dd_llm_client", "httpx", "requests", "anthropic"):
         assert f"import {bad}" not in src and f"from {bad}" not in src
+
+
+# ---- 独立复核 N1–N3 回归 ----
+
+def _full():
+    return [
+        _result(),
+        _result(oid="S2-O1", item="S2", fid="F004"),
+        _result(oid="S3-O1", item="S3", verdict="MISSING", fid=None, abstain_reason="无"),
+    ]
+
+
+def test_full_coverage_has_no_degrade_reason():
+    rep = _run(_full())
+    assert rep.mode == "AGENT_SUGGESTION" and len(rep.accepted) == 3
+    assert rep.uncovered == [] and rep.degrade_reason is None
+
+
+def test_n1_unknown_result_field_rejected():
+    errs = _run([_result(extra="x")]).rejected[0]["errors"]
+    assert "UNKNOWN_FIELDS:extra" in errs
+
+
+def test_n1_unknown_candidate_field_rejected():
+    r = _result()
+    r["candidate_files"][0]["approved"] = True
+    assert "CANDIDATE_0_UNKNOWN_FIELDS" in _run([r]).rejected[0]["errors"]
+
+
+def test_n1_unknown_top_level_field_degrades():
+    raw = json.dumps({"results": _full(), "approved": True})
+    rep = ar.validate_agent_output(raw, SNAP, META, OBS)
+    assert rep.mode == "RULE_ONLY" and rep.degrade_reason.startswith("UNKNOWN_TOP_LEVEL_FIELDS")
+
+
+@pytest.mark.parametrize("verdict,code", [("MISSING", "MISSING_WITH_CANDIDATES"), ("UNCERTAIN", "UNCERTAIN_WITH_CANDIDATES")])
+def test_n2_abstain_with_candidates_rejected(verdict, code):
+    r = _result(oid="S3-O1", item="S3", verdict=verdict, fid="F001", abstain_reason="x")
+    assert code in _run([r]).rejected[0]["errors"]
+
+
+def test_n2_duplicate_obligation_rejected():
+    rep = _run(_full() + [_result()])
+    dup = [x for x in rep.rejected if "DUPLICATE_OBLIGATION" in x["errors"]]
+    assert len(dup) == 2  # 两条 S1-O1 都拒，不挑一条当真
+
+
+def test_n2_incomplete_coverage_reported():
+    rep = _run([_result()])
+    assert rep.uncovered == ["S2-O1", "S3-O1"]
+    assert rep.degrade_reason == "INCOMPLETE_COVERAGE:S2-O1,S3-O1"
+    assert rep.to_dict()["uncovered_obligations"] == ["S2-O1", "S3-O1"]
+
+
+def test_n2_item_id_mismatch_rejected():
+    assert "ITEM_ID_MISMATCH" in _run([_result(item="S2")]).rejected[0]["errors"]
+
+
+@pytest.mark.parametrize("verdict", ["PARTIAL", "OUTDATED"])
+def test_n3_wrong_entity_rejected_for_partial_and_outdated(verdict):
+    errs = _run([_result(fid="F003", verdict=verdict)]).rejected[0]["errors"]
+    assert "CANDIDATE_0_ENTITY_MISMATCH" in errs
+
+
+def test_n3_partial_wrong_period_rejected():
+    assert "CANDIDATE_0_PERIOD_MISMATCH" in _run([_result(fid="F002", verdict="PARTIAL")]).rejected[0]["errors"]
+
+
+def test_n3_outdated_with_current_period_rejected():
+    errs = _run([_result(fid="F001", verdict="OUTDATED")]).rejected[0]["errors"]
+    assert "CANDIDATE_0_OUTDATED_BUT_PERIOD_MATCHES" in errs

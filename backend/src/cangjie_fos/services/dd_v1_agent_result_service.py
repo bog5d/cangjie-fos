@@ -33,6 +33,7 @@ RESULT_FIELDS = (
     "confidence_or_uncertain", "abstain_reason", "warnings", "elapsed",
     "token_usage_or_UNKNOWN",
 )
+EVIDENCE_VERDICTS = ("MATCH", "PARTIAL", "OUTDATED")
 CANDIDATE_FIELDS = ("file_id", "relative_path", "sha256", "locator", "entity", "period", "match_reason")
 
 
@@ -106,10 +107,12 @@ class ValidationReport:
     accepted: list[dict[str, Any]] = field(default_factory=list)
     rejected: list[dict[str, Any]] = field(default_factory=list)
     degrade_reason: str | None = None
+    uncovered: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "mode": self.mode, "degrade_reason": self.degrade_reason,
+            "uncovered_obligations": self.uncovered,
             "accepted": self.accepted, "rejected": self.rejected,
         }
 
@@ -127,9 +130,14 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
     if missing:
         errs.append("MISSING_FIELDS:" + ",".join(missing))
         return errs
+    extra = sorted(set(r) - set(RESULT_FIELDS))
+    if extra:  # schema additionalProperties:false（复核 N1）
+        errs.append("UNKNOWN_FIELDS:" + ",".join(extra))
     ob = obligations.get(r["obligation_id"])
     if ob is None:
         errs.append("UNKNOWN_OBLIGATION")
+    elif r["item_id"] != ob["item_id"]:
+        errs.append("ITEM_ID_MISMATCH")
     if r["source_snapshot_id"] != snap_id:
         errs.append("SNAPSHOT_MISMATCH")
     verdict = str(r["proposed_verdict"]).upper()
@@ -149,6 +157,8 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
         if not isinstance(cf, dict) or any(k not in cf for k in CANDIDATE_FIELDS):
             errs.append(f"CANDIDATE_{i}_MISSING_FIELDS")
             continue
+        if set(cf) - set(CANDIDATE_FIELDS):
+            errs.append(f"CANDIDATE_{i}_UNKNOWN_FIELDS")
         sf = snap.get(cf["file_id"])
         if sf is None:
             errs.append(f"CANDIDATE_{i}_NOT_IN_SNAPSHOT")  # 伪造文件
@@ -157,15 +167,23 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
             errs.append(f"CANDIDATE_{i}_PATH_MISMATCH")  # 伪造/篡改路径
         if cf["sha256"] != sf.sha256:
             errs.append(f"CANDIDATE_{i}_SHA_MISMATCH")
-        if verdict == "MATCH" and ob is not None:
+        # 复核 N3：引用证据的判定（MATCH/PARTIAL/OUTDATED）都要过主体一致；
+        # MATCH/PARTIAL 还要过期间一致（OUTDATED 本身就是「期间不对」，只要求主体一致）。
+        if verdict in EVIDENCE_VERDICTS and ob is not None:
             if sf.entity != ob["entity"]:
                 errs.append(f"CANDIDATE_{i}_ENTITY_MISMATCH")
-            if sf.period != ob["period"]:
+            if verdict != "OUTDATED" and sf.period != ob["period"]:
                 errs.append(f"CANDIDATE_{i}_PERIOD_MISMATCH")
+            if verdict == "OUTDATED" and sf.period == ob["period"]:
+                errs.append(f"CANDIDATE_{i}_OUTDATED_BUT_PERIOD_MATCHES")
     if verdict == "MATCH" and not cands:
         errs.append("MATCH_WITHOUT_EVIDENCE")
     if verdict in ("MISSING", "UNCERTAIN") and not r["abstain_reason"]:
         errs.append("ABSTAIN_WITHOUT_REASON")
+    if verdict == "MISSING" and cands:  # 复核 N2：判缺件却给候选，自相矛盾
+        errs.append("MISSING_WITH_CANDIDATES")
+    if verdict == "UNCERTAIN" and cands:
+        errs.append("UNCERTAIN_WITH_CANDIDATES")
     return errs
 
 
@@ -188,9 +206,20 @@ def validate_agent_output(
     snap = load_snapshot(snapshot_dir, meta)
     sid = snapshot_id(snap)
     obs = {o["obligation_id"]: o for o in obligations}
+    if set(data) - {"results"}:
+        return _rule_only("UNKNOWN_TOP_LEVEL_FIELDS:" + ",".join(sorted(set(data) - {"results"})))
     rep = ValidationReport(mode="AGENT_SUGGESTION")
+    seen: dict[str, int] = {}
+    for r in results:
+        if isinstance(r, dict) and isinstance(r.get("obligation_id"), str):
+            seen[r["obligation_id"]] = seen.get(r["obligation_id"], 0) + 1
+    dup = {k for k, n in seen.items() if n > 1}
+    # 复核 N2：义务覆盖必须完整，缺失的义务显式列出（不静默当作通过）
+    rep.uncovered = sorted(set(obs) - set(seen))
     for r in results:
         errs = _check_result(r, snap, sid, obs)
+        if isinstance(r, dict) and r.get("obligation_id") in dup:
+            errs.append("DUPLICATE_OBLIGATION")
         if errs:
             rep.rejected.append({"result": r, "errors": errs})
         else:
@@ -198,4 +227,6 @@ def validate_agent_output(
     if not rep.accepted:
         rep.mode = "RULE_ONLY"
         rep.degrade_reason = "ALL_RESULTS_REJECTED"
+    elif rep.uncovered:
+        rep.degrade_reason = "INCOMPLETE_COVERAGE:" + ",".join(rep.uncovered)
     return rep
