@@ -69,6 +69,7 @@ class Budget:
     timeout_s: float = 180.0
     max_calls: int = 1
     max_cost_usd: float = 0.0
+    require_known_cost: bool = False  # 付费 Adapter 置 True：费用 UNKNOWN 视为超预算
 
 
 def prepare_workdir(packet: dict[str, Any], base: Path | None = None) -> Path:
@@ -256,17 +257,19 @@ ADAPTERS: dict[str, Callable[[], Any]] = {
 
 
 def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
-              obligations: list[dict[str, str]], budget: Budget = Budget(),
-              workdir: Path | None = None, packet: dict[str, Any] | None = None) -> dict[str, Any]:
+              obligations: list[dict[str, str]], budget: Budget | None = None,
+              workdir: Path | None = None, packet: dict[str, Any] | None = None,
+              non_effective_files: frozenset[str] = frozenset()) -> dict[str, Any]:
     """一次完整的 Agent 调用：建包 → 隔离目录 → Adapter → 校验/降级。返回可留证的 run record。
 
     packet：调用方已建好的任务包（WP04 语义包：最小证据而不是整份文件摘录）；不传则用 WP01 的默认包。
     """
+    budget = budget if budget is not None else Budget()
     if budget.max_calls < 1:
         raise ValueError("budget.max_calls must be >= 1")
     if budget.max_cost_usd < 0:
         raise ValueError("budget.max_cost_usd must be >= 0")
-    packet = packet or ar.build_task_packet(snapshot_dir, meta, obligations)
+    packet = packet if packet is not None else ar.build_task_packet(snapshot_dir, meta, obligations)
     # 必须是绝对路径：CLI 以 cwd=wd 启动，相对路径的 -C 会被二次拼接（WP03 Mac 实测 codex exit 1）
     wd = (workdir or prepare_workdir(packet)).resolve()
     if workdir:
@@ -285,10 +288,14 @@ def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
         attempts.append({"n": len(attempts) + 1, "status": res.status, "exit_code": res.exit_code,
                          "elapsed_s": res.elapsed_s})
     cost = res.cost_usd_or_UNKNOWN
-    if isinstance(cost, (int, float)) and not isinstance(cost, bool) and cost > budget.max_cost_usd:
+    known = isinstance(cost, (int, float)) and not isinstance(cost, bool)
+    if known and cost > budget.max_cost_usd:
         res.status, res.reason, res.raw_text = BUDGET_EXCEEDED, f"COST_{cost}>{budget.max_cost_usd}", None
+    elif not known and budget.require_known_cost and res.status == OK:  # #76 复核低：付费 Adapter 时 UNKNOWN 直接拒（fail closed）
+        res.status, res.reason, res.raw_text = BUDGET_EXCEEDED, "COST_UNKNOWN_BUT_REQUIRED", None
     call_error = None if res.status == OK else f"{res.status}:{res.reason}"
-    rep = ar.validate_agent_output(res.raw_text, snapshot_dir, meta, obligations, call_error=call_error)
+    rep = ar.validate_agent_output(res.raw_text, snapshot_dir, meta, obligations, call_error=call_error,
+                                   non_effective_files=non_effective_files)
     record = {
         "schema_version": ar.SCHEMA_VERSION, "prompt_version": packet.get("prompt_version", ar.PROMPT_VERSION),
         "source_snapshot_id": packet["source_snapshot_id"],

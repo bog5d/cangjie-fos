@@ -108,6 +108,7 @@ def _excerpt(text: str, ob: dict[str, Any], meta: dict[str, str]) -> tuple[str, 
         hit = list(range(min(3, len(lines))))
     lo, hi = min(hit), max(hit)
     body = "\n".join(lines[lo:hi + 1])[:MAX_EXCERPT_CHARS]
+    hi = lo + body.count("\n")  # #77 复核低：locator 只声明实际给出的行
     return f"L{lo + 1}-L{hi + 1}", body
 
 
@@ -253,12 +254,16 @@ def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], r
     from cangjie_fos.services import dd_v1_agent_adapters as ad
 
     packet = build_semantic_packet(snapshot_dir, meta, raw_items)
-    rec = ad.run_agent(adapter, snapshot_dir, meta, packet["obligations"], budget or ad.Budget(),
-                       workdir=workdir, packet=packet)
+    non_eff = frozenset(m["file_id"] for m in meta if m.get("version_status", EFFECTIVE) != EFFECTIVE)
+    # #77 复核中：两层用同一份 non_effective，结论不会互相矛盾；下游只认 authoritative_validation
+    rec = ad.run_agent(adapter, snapshot_dir, meta, packet["obligations"], budget,
+                       workdir=workdir, packet=packet, non_effective_files=non_eff)
     a = rec["adapter"]
     err = None if a["status"] == ad.OK else f"{a['status']}:{a['reason']}"
     sem = validate_semantic(a.get("raw_text"), snapshot_dir, meta, packet, call_error=err)
     rec["semantic_validation"] = sem.to_dict()
+    rec["authoritative_validation"] = "semantic_validation"
+    rec["validation_note"] = "validation=R4 结构层（中间结果）；下游只读 semantic_validation"
     rec["unsplit_items"] = packet["unsplit_items"]
     rec["rule_hints"] = {o["obligation_id"]: rule_hint(o, packet["evidence"][o["obligation_id"]])
                          for o in packet["obligations"]}

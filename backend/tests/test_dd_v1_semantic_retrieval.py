@@ -286,3 +286,81 @@ def test_module_is_zero_llm():
     src = Path(s.__file__).read_text("utf-8")
     for bad in ("subprocess", "import openai", "httpx", "requests", "dd_llm_client", "anthropic"):
         assert bad not in src
+
+
+# ---------- #77 复核修正
+
+def test_relaxation_off_by_default_same_year_draft_outdated_rejected(pkt):
+    """锁定：不传 non_effective_files 时，同年草稿判 OUTDATED 必须被拒。"""
+    from cangjie_fos.services import dd_v1_agent_result_service as ar
+    d = _good(pkt)
+    d["results"][0] = _res(pkt, "R1-O1", "OUTDATED", ["G003"], conf=0.7)
+    rep = ar.validate_agent_output(json.dumps(d, ensure_ascii=False), SNAP, META, pkt["obligations"])
+    errs = [e for r in rep.rejected if r["result"]["obligation_id"] == "R1-O1" for e in r["errors"]]
+    assert "CANDIDATE_0_OUTDATED_BUT_PERIOD_MATCHES" in errs
+
+
+def test_semantic_accepts_same_year_draft_outdated(pkt):
+    d = _good(pkt)
+    d["results"][0] = _res(pkt, "R1-O1", "OUTDATED", ["G003"], conf=0.7)
+    assert not _errs(_validate(pkt, d), "R1-O1")
+
+
+def test_outdated_citing_newer_year_rejected(pkt):
+    d = _good(pkt)
+    d["results"][3] = _res(pkt, "R4-O1", "OUTDATED", ["G004"], conf=0.6)  # 要 2022，引用 2023
+    assert "CANDIDATE_0_OUTDATED_NOT_OLDER" in _errs(_validate(pkt, d), "R4-O1")
+
+
+def test_outdated_citing_older_year_allowed():
+    items = [{"item_id": "R9", "entity": "示例科技有限公司", "text": "提供示例科技有限公司2024年度审计报告"}]
+    meta = [m for m in META if m["file_id"] == "G004"]
+    p = s.build_semantic_packet(SNAP, meta, items)
+    d = {"results": [_res(p, "R9-O1", "OUTDATED", ["G004"], conf=0.7)]}
+    rep = s.validate_semantic(json.dumps(d, ensure_ascii=False), SNAP, meta, p).to_dict()
+    assert rep["accepted"] and not rep["rejected"]
+
+
+def test_missing_with_candidates_rejected_in_semantic_path(pkt):
+    d = _good(pkt)
+    d["results"][2] = _res(pkt, "R2-O2", "MISSING", ["G001"], reason="x")
+    assert "MISSING_WITH_CANDIDATES" in _errs(_validate(pkt, d), "R2-O2")
+
+
+def test_run_semantic_layers_agree_and_authoritative_marked(tmp_path, pkt):
+    d = _good(pkt)
+    d["results"][1] = _res(pkt, "R2-O1", "OUTDATED", ["G007"], conf=0.7)  # 同期间被取代版本
+    good = tmp_path / "g.json"
+    good.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    fake = tmp_path / "codex.py"
+    fake.write_text(f"open('out.json','w',encoding='utf-8').write(open({str(good)!r},encoding='utf-8').read())\n",
+                    encoding="utf-8")
+    wd = tmp_path / "wd"
+    wd.mkdir()
+    rec = s.run_semantic(ad.CodexAdapter([sys.executable, str(fake)]), SNAP, META, ITEMS,
+                         ad.Budget(timeout_s=20), workdir=wd)
+    assert rec["authoritative_validation"] == "semantic_validation"
+    ids = lambda v: sorted(r["obligation_id"] for r in v["accepted"])
+    assert ids(rec["validation"]) == ids(rec["semantic_validation"]) == ["R1-O1", "R2-O1", "R2-O2", "R4-O1"]
+
+
+def test_locator_matches_returned_lines(pkt):
+    for ev in pkt["evidence"].values():
+        for e in ev:
+            lo, hi = (int(x[1:]) for x in e["locator"].split("-"))
+            assert hi - lo == e["untrusted_excerpt"].count("\n")
+
+
+def test_require_known_cost_fails_closed(tmp_path):
+    good = tmp_path / "g.json"
+    p = s.build_semantic_packet(SNAP, META, ITEMS)
+    good.write_text(json.dumps(_good(p), ensure_ascii=False), encoding="utf-8")
+    fake = tmp_path / "codex.py"
+    fake.write_text(f"open('out.json','w',encoding='utf-8').write(open({str(good)!r},encoding='utf-8').read())\n",
+                    encoding="utf-8")
+    wd = tmp_path / "wd"
+    wd.mkdir()
+    rec = s.run_semantic(ad.CodexAdapter([sys.executable, str(fake)]), SNAP, META, ITEMS,
+                         ad.Budget(timeout_s=20, require_known_cost=True), workdir=wd)
+    assert rec["adapter"]["status"] == "BUDGET_EXCEEDED"
+    assert rec["semantic_validation"]["mode"] == "RULE_ONLY"

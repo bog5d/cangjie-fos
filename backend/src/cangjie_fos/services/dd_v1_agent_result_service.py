@@ -178,6 +178,10 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
                 errs.append(f"CANDIDATE_{i}_PERIOD_MISMATCH")
             if verdict == "OUTDATED" and sf.period == ob["period"] and sf.file_id not in non_effective:
                 errs.append(f"CANDIDATE_{i}_OUTDATED_BUT_PERIOD_MATCHES")
+            # #77 复核中：非草稿的 OUTDATED 必须引用「更早」的年度；比要求更新的年度不叫过期
+            if (verdict == "OUTDATED" and sf.file_id not in non_effective and sf.period != ob["period"]
+                    and not (sf.period.isdigit() and ob["period"].isdigit() and sf.period < ob["period"])):
+                errs.append(f"CANDIDATE_{i}_OUTDATED_NOT_OLDER")
     if verdict == "MATCH" and not cands:
         errs.append("MATCH_WITHOUT_EVIDENCE")
     if verdict in ("MISSING", "UNCERTAIN") and not r["abstain_reason"]:
