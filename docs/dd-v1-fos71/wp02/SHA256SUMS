@@ -1,0 +1,4 @@
+afd953b6b6c32ff0492f49dcd52b951a6cc88582874f2169df69dbe1bf2fabbd  docs/dd-v1-fos71/wp02/GOAL-CONTRACT-WP02.json
+e01b2ee3b9377c65023bbd0f55455d42f76d6fcbf8cf2b7104ac286df0f8bd67  docs/dd-v1-fos71/wp02/SPEC-WP02.md
+cda0a7910df5c22474d1b89c1935dc103a7e8090bc615b4803df0952420d067b  docs/dd-v1-fos71/wp02/EVIDENCE-WP02.md
+c7f42d2f7c45639932346271eedf447bc4021225665f47cbc302b52386b71aef  backend/tests/test_dd_v1_fos71_contract.py
