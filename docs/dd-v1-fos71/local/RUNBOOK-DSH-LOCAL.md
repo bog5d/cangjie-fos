@@ -42,7 +42,7 @@ cd backend
 uv sync
 cd ..
 ```
-以 master 最新提交为准（提交号见第 7 节「版本记录」）。
+以 master 最新提交为准，至少要到 `a58d865`（见第 7 节「版本记录」）。
 
 ### 1.3 安装 DeepSeek Harness（dsh）
 ```bash
@@ -69,6 +69,34 @@ dsh headless --help       # 能看到 "Answer one task and exit" 就说明装好
 - `"file"` 模式会让 dsh 自己去读 PROMPT.txt，需要它有读文件的能力，**不推荐**。
 
 ---
+
+## 1.6 必做的第一步：先用合成样例试跑一次，回传结果后再碰真实材料
+
+这一步只用仓库自带的**虚构材料**（`backend/tests/fixtures/dd_v1_fos71_wp04`），可以放心回传。目的是确认你电脑上的 dsh 能被程序正确调用。程序用的写法是 `dsh --profile headless -`（任务从标准输入读入），**这个写法还没有在 dsh 0.1.7 上实测过**，所以必须先试。
+
+在 `cangjie-fos` 文件夹里运行下面这一行（PowerShell、cmd、Mac 终端都用这一行）：
+```
+uv run --project backend python tools/dd_v1_local_run.py run --material-root backend/tests/fixtures/dd_v1_fos71_wp04/snapshot --meta backend/tests/fixtures/dd_v1_fos71_wp04/meta.json --items backend/tests/fixtures/dd_v1_fos71_wp04/raw_items.json --out ../dd-first-run --allow-local-dsh --max-total-calls 10
+```
+（这是仓库内的合成样例，所以不需要 `--allow-real-material`。）
+
+**成功的样子**：屏幕上 R1、R2、R4 三行都显示 `"adapter_status": "OK"`；R3 显示 `NEEDS_HUMAN_SPLIT`，这是正常的。
+
+**把下面这些发回给开发**（全部是虚构数据，可以整体发）：
+- `../dd-first-run/run_summary.json`
+- `../dd-first-run/run-R1/run_record.json`、`answer.txt`、`stderr.log`（R2、R4 也一起发）
+- `dsh --version` 的输出和 `git log -1 --oneline` 的输出
+
+**如果失败**（状态是 CALL_FAILED、INVALID_JSON，或者 dsh 一直在等输入）：
+1. 先手动试一下 stdin 写法。PowerShell 运行 `"只回复 OK" | dsh --profile headless -`，Mac 运行 `echo 只回复 OK | dsh --profile headless -`。
+2. 如果第 1 步不回 OK，说明 stdin 写法不可用，改用文件模式：在 `cangjie-fos` 文件夹里新建 `dsh.json`，内容是
+   ```json
+   {"mode": "file"}
+   ```
+   然后在上面那条命令末尾加上 ` --dsh-config dsh.json`，再换一个 `--out`（例如 `../dd-first-run-file`）重跑。文件模式要求 dsh 能读当前目录里的文件。只在合成样例试跑时这样用没问题；跑真实材料前请和开发确认。
+3. 两种都失败的话，把 stderr.log 和屏幕输出发回，**先不要跑真实材料**。
+
+**收到开发确认之前，不要开始第 2 节以后的真实材料步骤。**
 
 ## 2. 准备材料（每个项目一次）
 
@@ -228,4 +256,4 @@ Codex 出现 **408 / 超时**是已知情况（服务端排队）：保持默认
 ## 7. 版本记录
 | 日期 | master 提交 | 说明 |
 |---|---|---|
-| 2026-10-16 | （合并 #78 后填写） | 首版：DeepSeek Harness 本地 opt-in、真实材料 opt-in、按条目拆分、本地 Gold 评分 |
+| 2026-10-16 | `a58d865`（`git checkout a58d865` 或更新的 master） | 首版：DeepSeek Harness 本地 opt-in、真实材料 opt-in、按条目拆分、本地 Gold 评分 |
