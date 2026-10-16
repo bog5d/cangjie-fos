@@ -55,8 +55,8 @@ def _fake_dsh(tmp_path, root, leak_env=None):
         import sys, json, os
         sys.path.insert(0, {str(REPO / 'backend' / 'src')!r}); sys.path.insert(0, {str(Path(__file__).parent)!r})
         from test_dd_v1_local_run import _good
-        assert sys.argv[1:3] == ["--profile", "headless"], sys.argv
-        prompt = sys.argv[-1]
+        assert sys.argv[1:3] == ["--profile", "headless"] and sys.argv[-1] == "-", sys.argv
+        prompt = sys.stdin.read()
         pkt = json.loads(prompt.split("=== PACKET ===")[1].split("=== SCHEMA ===")[0])
         {"sys.stderr.write('key=' + os.environ.get(%r, '') + chr(10))" % leak_env if leak_env else "pass"}
         print("好的，结果如下：\\n```json\\n" + json.dumps(_good(pkt), ensure_ascii=False) + "\\n```")
@@ -90,7 +90,7 @@ def test_dsh_requires_explicit_flag(material):
 
 def test_local_dsh_end_to_end_and_score(material, capsys):
     cfg = _fake_dsh(material, material)
-    assert _run(material, "--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg)) == 0
+    assert _run(material, "--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg), "--single-pack") == 0
     rec = json.loads((material / "out" / "run-all" / "run_record.json").read_text("utf-8"))
     assert rec["adapter"]["role"] == "PRIMARY_LOCAL_DSH" and rec["adapter"]["status"] == "OK"
     assert rec["semantic_validation"]["mode"] == "AGENT_SUGGESTION"
@@ -110,12 +110,13 @@ def test_local_dsh_end_to_end_and_score(material, capsys):
 
 def test_per_item_and_resume(material):
     cfg = _fake_dsh(material, material)
-    args = ("--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg), "--per-item")
+    args = ("--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg))  # per-item 是默认
     assert _run(material, *args) == 0
     dirs = sorted(p.name for p in (material / "out").iterdir() if p.is_dir())
-    assert dirs == ["run-R1", "run-R2", "run-R3", "run-R4"]
+    assert dirs == ["run-R1", "run-R2", "run-R4"]  # R3 拆不出义务，不调用模型
     summary = json.loads((material / "out" / "run_summary.json").read_text("utf-8"))
-    assert {x["group"] for x in summary} == {"R1", "R2", "R3", "R4"}
+    assert {x["group"] for x in summary["groups"]} == {"R1", "R2", "R3", "R4"}
+    assert summary["limits"]["max_total_calls"] == "不限" and "不限额" in summary["limits"]["cost_cap"]
     assert _run(material, *args) == 3  # 不加 --resume 拒绝覆盖
     assert _run(material, *args, "--resume") in (0, 2)
 
@@ -203,3 +204,71 @@ def test_sha_is_cached_by_stat(tmp_path, monkeypatch):
     monkeypatch.setattr(ar, "_sha256_stream", lambda p: calls.append(p) or real(p))
     ar.sha256_file(f); ar.sha256_file(f)
     assert len(calls) == 1
+
+
+# ---------- #78 复核 FAIL 修正
+
+class _Spy:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, argv, cwd, timeout_s, stdin_text=None):
+        self.calls.append((argv, stdin_text))
+        return 0, "{}", "", 0.1, False
+
+
+@pytest.mark.parametrize("binary", ["C:/npm/dsh.cmd", "C:/npm/DSH.BAT", "dsh"])
+def test_material_text_never_in_argv(tmp_path, monkeypatch, binary):
+    """High-1：命令行只有固定 ASCII 参数，材料文字（含 & | % " 等）只经 stdin 传入。"""
+    spy = _Spy()
+    monkeypatch.setattr(ad, "run_cli", spy)
+    evil = 'x" & calc.exe & echo %PATH% | del ^ <y>'
+    pkt = {"source_snapshot_id": "s", "obligations": [], "evidence": {"O": [{"untrusted_excerpt": evil}]}}
+    ad.DeepSeekHarnessAdapter(enabled=True, binary=binary).run(pkt, tmp_path, ad.Budget())
+    argv, stdin_text = spy.calls[0]
+    assert argv[-1] == "-" and all(a.isascii() and not set(a) & set('&|<>^%"') for a in argv)
+    assert json.dumps(evil, ensure_ascii=False)[1:-1] in stdin_text
+
+
+def test_file_mode_argv_is_fixed_ascii(tmp_path, monkeypatch):
+    spy = _Spy()
+    monkeypatch.setattr(ad, "run_cli", spy)
+    pkt = {"source_snapshot_id": "s", "obligations": [], "evidence": {"O": [{"untrusted_excerpt": "a&b"}]}}
+    ad.DeepSeekHarnessAdapter(enabled=True, binary="dsh.cmd", mode="file").run(pkt, tmp_path, ad.Budget())
+    argv, stdin_text = spy.calls[0]
+    assert stdin_text is None and all(a.isascii() and not set(a) & set('&|<>^%"') for a in argv)
+    assert "a&b" in (tmp_path / "PROMPT.txt").read_text("utf-8")
+
+
+def test_dsh_config_bad_mode_rejected(tmp_path):
+    p = tmp_path / "c.json"
+    p.write_text(json.dumps({"mode": "argv"}), "utf-8")
+    with pytest.raises(ValueError, match="BAD_MODE"):
+        ad.load_dsh_config(p)
+
+
+def test_cost_cap_refused(material, capsys):
+    cfg = _fake_dsh(material, material)
+    assert _run(material, "--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg), "--cost-cap", "50") == 3
+    assert "max-total-calls" in capsys.readouterr().err
+
+
+def test_max_total_calls_enforced(material):
+    cfg = _fake_dsh(material, material)
+    _run(material, "--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg),
+         "--max-total-calls", "3", "--max-calls", "2")
+    summ = json.loads((material / "out" / "run_summary.json").read_text("utf-8"))
+    assert summ["calls_total"] <= 3
+    st = {g["group"]: g.get("status", g.get("adapter_status")) for g in summ["groups"]}
+    assert st == {"R1": "OK", "R2": "OK", "R3": "NEEDS_HUMAN_SPLIT", "R4": "STOPPED_MAX_TOTAL_CALLS"}
+    assert summ["limits"]["max_total_calls"] == 3
+
+
+def test_gold_inside_text_root_refused(material):
+    t = material / "text"
+    t.mkdir()
+    (t / "g.json").write_text("[]", "utf-8")
+    (material / "out").mkdir()
+    with pytest.raises(PermissionError, match="GOLD_INSIDE"):
+        lr.main(["score", "--run-dir", str(material / "out"), "--gold", str(t / "g.json"),
+                 "--out", str(material / "s.json"), "--text-root", str(t)])

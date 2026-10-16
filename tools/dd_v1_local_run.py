@@ -10,7 +10,7 @@
 子命令：
   scaffold  扫描材料目录 → meta.json 草稿（文件名猜年度/文档类型，主体用 --entity；须人工核对）
   split     清单 → 原子义务 obligations.json（零模型；用于制作 Gold 和检查拆分）
-  run       建最小证据包 → 模型 CLI → 校验；--per-item 按清单条目拆成多个小包分别跑
+  run       建最小证据包 → 模型 CLI → 校验；默认按清单条目拆成小包逐条跑（--single-pack 才合成一个包）
   score     读 run 目录下全部 run_record.json + Gold → score.json / score.csv（只含 id 与判定，可回传）
 """
 from __future__ import annotations
@@ -75,7 +75,7 @@ def _adapter(a):
         if a.dsh_bin:
             cfg["binary"] = a.dsh_bin
         if a.dsh_file_mode:
-            cfg["inline"] = False
+            cfg["mode"] = "file"
         return ad.DeepSeekHarnessAdapter.from_config(cfg, enabled=True)
     if a.adapter == "codex":
         return ad.CodexAdapter(a.codex_bin)
@@ -98,16 +98,31 @@ def cmd_run(a) -> int:
     items = _load_items(Path(a.items))
     obligations = _json(Path(a.obligations)) if a.obligations else None
     text_root = Path(a.text_root).resolve() if a.text_root else None
-    budget = ad.Budget(timeout_s=a.timeout, max_calls=a.max_calls,
-                       max_cost_usd=a.cost_cap if a.cost_cap is not None else 1e18)  # 未设上限 = 不限（显式记录）
-    groups = [[it] for it in items] if a.per_item else [items]
+    budget = ad.Budget(timeout_s=a.timeout, max_calls=a.max_calls)
+    per_item = not a.single_pack
+    groups = [[it] for it in items] if per_item else [items]
+    limits = {"cost_cap": "不限额（本地 CLI 不报告费用，代码无法按金额限制；请在 DeepSeek 平台设置余额/预警）",
+              "max_total_calls": a.max_total_calls if a.max_total_calls else "不限",
+              "max_calls_per_item": a.max_calls}
+    print(json.dumps({"limits": limits}, ensure_ascii=False), flush=True)
+    calls_total = 0
     out.mkdir(parents=True, exist_ok=True)
     summary = []
     for g in groups:
-        tag = g[0]["item_id"] if a.per_item else "all"
+        tag = g[0]["item_id"] if per_item else "all"
         obs_g = [o for o in obligations if o["item_id"] in {i["item_id"] for i in g}] if obligations else None
         if obs_g == []:
             summary.append({"group": tag, "status": "NO_OBLIGATIONS"})
+            continue
+        if obs_g is None and not sem.split_items(g)[0]:  # 拆不出义务就不调用模型（不浪费付费调用）
+            summary.append({"group": tag, "status": "NEEDS_HUMAN_SPLIT"})
+            print(json.dumps(summary[-1], ensure_ascii=False), flush=True)
+            continue
+        done = a.resume and (out / f"run-{tag}" / "run_record.json").exists()
+        if a.max_total_calls and not done and calls_total + a.max_calls > a.max_total_calls:
+            # 剩余额度不够一条的最坏情况（含重试）就停，保证总调用数绝不超过上限
+            summary.append({"group": tag, "status": "STOPPED_MAX_TOTAL_CALLS", "calls_total": calls_total})
+            print(json.dumps(summary[-1], ensure_ascii=False), flush=True)
             continue
         wd = out / f"run-{tag}"
         if wd.exists() and any(wd.iterdir()):
@@ -119,19 +134,21 @@ def cmd_run(a) -> int:
         wd.mkdir(parents=True, exist_ok=True)
         rec = sem.run_semantic(_adapter(a), snap_dir, meta, g, budget, workdir=wd,
                                obligations=obs_g, text_root=text_root)
+        calls_total += rec.get("calls_used", 1)
         v = rec["semantic_validation"]
         summary.append({"group": tag, "adapter_status": rec["adapter"]["status"],
                         "elapsed_s": rec["adapter"]["elapsed_s"], "mode": v["mode"],
                         "accepted": len(v["accepted"]), "rejected": len(v["rejected"]),
                         "uncovered": v["uncovered_obligations"], "degrade_reason": v["degrade_reason"]})
         print(json.dumps(summary[-1], ensure_ascii=False), flush=True)
-    (out / "run_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), "utf-8")
+    (out / "run_summary.json").write_text(json.dumps({"limits": limits, "calls_total": calls_total,
+                                                      "groups": summary}, ensure_ascii=False, indent=1), "utf-8")
     return 0 if any(s.get("mode") == "AGENT_SUGGESTION" for s in summary) else 2
 
 
 def cmd_score(a) -> int:
     gold_p, run_dir = Path(a.gold), Path(a.run_dir)
-    sem.assert_gold_isolated(gold_p, run_dir, *( [Path(a.material_root)] if a.material_root else []))
+    sem.assert_gold_isolated(gold_p, run_dir, *[Path(x) for x in (a.material_root, a.text_root) if x])
     recs = [json.loads(p.read_text("utf-8")) for p in sorted(run_dir.rglob("run_record.json"))]
     res = sem.score_against_gold(recs, _json(gold_p))
     out = Path(a.out)
@@ -164,16 +181,25 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--allow-local-dsh", action="store_true")
     r.add_argument("--dsh-config", default=None, help="dsh 配置 JSON（binary/profile/extra_args/inline），不得含密钥")
     r.add_argument("--dsh-bin", default=None, help="覆盖配置里的 dsh 路径")
+    r.add_argument("--max-total-calls", type=int, default=None,
+                   help="整次运行最多调用模型多少次（含重试），到了就停；这是唯一能真正执行的花费上限")
     r.add_argument("--cost-cap", type=float, default=None,
                    help="操作员显式设置的费用上限（元/美元按你的账户口径）；不设则不限制但 run_record 记 cost=UNKNOWN")
-    r.add_argument("--dsh-file-mode", action="store_true", help="让 dsh 读 workdir/packet.json，而不是把包放进命令行")
+    r.add_argument("--dsh-file-mode", action="store_true",
+                   help="让 dsh 自己读 workdir/PROMPT.txt（需要 dsh 有读文件能力，不推荐；默认用标准输入）")
     r.add_argument("--codex-bin", default="codex")
     r.add_argument("--timeout", type=float, default=600.0); r.add_argument("--max-calls", type=int, default=2)
-    r.add_argument("--per-item", action="store_true", help="按清单条目拆成小包分别跑（大包/超时时用）")
+    r.add_argument("--per-item", action="store_true", help="（已是默认，保留兼容）")
+    r.add_argument("--single-pack", action="store_true", help="把所有条目合成一个包跑（小清单才用）")
     r.add_argument("--resume", action="store_true", help="跳过已有 run_record.json 的条目")
     c = sub.add_parser("score"); c.add_argument("--run-dir", required=True); c.add_argument("--gold", required=True)
     c.add_argument("--out", required=True); c.add_argument("--material-root", default=None)
+    c.add_argument("--text-root", default=None)
     a = p.parse_args(argv)
+    if a.cmd == "run" and a.cost_cap is not None:
+        print("拒绝：--cost-cap 无法执行——本地 CLI（dsh/codex）不报告每次费用。"
+              "请改用 --max-total-calls N 限制调用次数，并在 DeepSeek 平台设置余额预警", file=sys.stderr)
+        return 3
     return {"scaffold": cmd_scaffold, "split": cmd_split, "run": cmd_run, "score": cmd_score}[a.cmd](a)
 
 

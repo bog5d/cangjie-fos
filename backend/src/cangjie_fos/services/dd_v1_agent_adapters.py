@@ -90,22 +90,24 @@ def _kill_tree(p: subprocess.Popen) -> None:
         pass
 
 
-def run_cli(argv: list[str], cwd: Path, timeout_s: float) -> tuple[int | None, str, str, float, bool]:
-    """跑一个 CLI：stdin=/dev/null（防止等待输入挂起），新进程组，超时杀整组。
+def run_cli(argv: list[str], cwd: Path, timeout_s: float,
+            stdin_text: str | None = None) -> tuple[int | None, str, str, float, bool]:
+    """跑一个 CLI：stdin=/dev/null（防止等待输入挂起）或给定文本后立即 EOF，新进程组，超时杀整组。
 
     返回 (exit_code|None, stdout, stderr, elapsed_s, timed_out)。
     """
     t0 = time.monotonic()
     try:
         p = subprocess.Popen(
-            argv, cwd=str(cwd), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            argv, cwd=str(cwd), stdin=subprocess.DEVNULL if stdin_text is None else subprocess.PIPE,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
             **({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}),
         )
     except OSError as e:  # CLI 不存在 / 不可执行 → CALL_FAILED，而不是让调用方崩溃
         return 127, "", f"SPAWN_FAILED:{type(e).__name__}:{e}", 0.0, False
     try:
-        out, err = p.communicate(timeout=timeout_s)
+        out, err = p.communicate(input=stdin_text, timeout=timeout_s)
         return p.returncode, out, err, round(time.monotonic() - t0, 2), False
     except subprocess.TimeoutExpired:
         _kill_tree(p)
@@ -253,8 +255,13 @@ def redact_secrets(text: str, env: dict[str, str] | None = None) -> str:
 
 
 def load_dsh_config(path: Path | None) -> dict[str, Any]:
-    """dsh 本地配置（JSON）：binary / profile / extra_args / inline。不允许在配置里写密钥。"""
-    cfg: dict[str, Any] = {"binary": "dsh", "profile": "headless", "extra_args": [], "inline": True}
+    """dsh 本地配置（JSON）：binary / profile / extra_args / mode。不允许在配置里写密钥。
+
+    mode="stdin"（默认）：任务包经标准输入传给 `dsh ... -`，命令行里没有任何材料文字——
+    Windows 上 .cmd 经 cmd.exe 启动时不会被解释（无注入、无 8191 长度限制），dsh 也不需要读文件权限。
+    mode="file"：让 dsh 自己读 workdir/PROMPT.txt（需要 dsh 有读文件能力，不推荐）。
+    """
+    cfg: dict[str, Any] = {"binary": "dsh", "profile": "headless", "extra_args": [], "mode": "stdin"}
     if path:
         user = json.loads(Path(path).read_text("utf-8-sig"))
         bad = [k for k in user if any(t in k.upper() for t in SECRET_NAME_RE)]
@@ -264,6 +271,8 @@ def load_dsh_config(path: Path | None) -> dict[str, Any]:
         if unknown:
             raise ValueError(f"DSH_CONFIG_UNKNOWN_FIELDS:{sorted(unknown)}")
         cfg.update(user)
+    if cfg["mode"] not in ("stdin", "file"):
+        raise ValueError(f"DSH_CONFIG_BAD_MODE:{cfg['mode']}")
     return cfg
 
 
@@ -288,14 +297,16 @@ class DeepSeekHarnessAdapter:
     adapter_id, vendor = "deepseek-harness", "deepseek-harness"
 
     def __init__(self, enabled: bool = False, binary: str | list[str] = "dsh", profile: str = "headless",
-                 inline: bool = True, role: str = "EXAMINEE_3", extra_args: list[str] | None = None):
-        self.enabled, self.profile, self.inline, self.role = enabled, profile, inline, role
+                 mode: str = "stdin", role: str = "EXAMINEE_3", extra_args: list[str] | None = None):
+        if mode not in ("stdin", "file"):
+            raise ValueError(f"BAD_MODE:{mode}")
+        self.enabled, self.profile, self.mode, self.role = enabled, profile, mode, role
         self.binary = [binary] if isinstance(binary, str) else list(binary)
         self.extra_args = list(extra_args or [])
 
     @classmethod
     def from_config(cls, cfg: dict[str, Any], *, enabled: bool, role: str = "PRIMARY_LOCAL_DSH") -> "DeepSeekHarnessAdapter":
-        return cls(enabled=enabled, binary=cfg["binary"], profile=cfg["profile"], inline=cfg["inline"],
+        return cls(enabled=enabled, binary=cfg["binary"], profile=cfg["profile"], mode=cfg["mode"],
                    role=role, extra_args=cfg["extra_args"])
 
     def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
@@ -305,12 +316,19 @@ class DeepSeekHarnessAdapter:
             res.reason = ("BLOCKED:dsh not enabled in this environment (repo default). "
                           "Operator may opt in locally with --allow-local-dsh; no purchase, no API fallback")
             return res
-        for stale in ("answer.txt", "stderr.log"):
+        for stale in ("answer.txt", "stderr.log", "PROMPT.txt"):
             (workdir / stale).unlink(missing_ok=True)
-        argv = [*self.binary, "--profile", self.profile, *self.extra_args,
-                _prompt_for(packet, self.adapter_id, self.vendor, inline=self.inline)]
-        res.argv_summary = argv[:-1] + ["<prompt>"]
-        code, out, err, el, to = run_cli(argv, workdir, budget.timeout_s)
+        prompt = _prompt_for(packet, self.adapter_id, self.vendor, inline=True)
+        # 命令行里只放固定的 ASCII 参数；材料文字绝不进 argv（#78 复核 High-1：cmd.exe 注入 / 8191 限制）
+        if self.mode == "stdin":
+            argv, stdin_text = [*self.binary, "--profile", self.profile, *self.extra_args, "-"], prompt
+        else:
+            (workdir / "PROMPT.txt").write_text(prompt, "utf-8")
+            argv = [*self.binary, "--profile", self.profile, *self.extra_args,
+                    "Read PROMPT.txt in the current directory and follow it exactly. Output only JSON."]
+            stdin_text = None
+        res.argv_summary = list(argv)
+        code, out, err, el, to = run_cli(argv, workdir, budget.timeout_s, stdin_text=stdin_text)
         res.elapsed_s = el
         out, err = redact_secrets(out), redact_secrets(err)
         (workdir / "answer.txt").write_text(out, "utf-8")
