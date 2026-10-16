@@ -33,6 +33,8 @@ GENERIC_REASONS = {"", "相关", "可能相关", "匹配", "match", "relevant", 
 EFFECTIVE = "EFFECTIVE"
 MAX_FILES_PER_OBLIGATION = 6
 MAX_EXCERPT_CHARS = 300
+TEXT_SUFFIXES = {".txt", ".md", ".csv", ".json", ".tsv"}
+NO_TEXT = "[NO_TEXT_LAYER: 非文本文件且没有 text_path，只提供元数据]"
 
 
 class Blocked(RuntimeError):
@@ -112,17 +114,37 @@ def _excerpt(text: str, ob: dict[str, Any], meta: dict[str, str]) -> tuple[str, 
     return f"L{lo + 1}-L{hi + 1}", body
 
 
+def _text_for(snapshot_dir: Path, m: dict[str, str], text_root: Path | None) -> str | None:
+    """文本层：meta.text_path（相对 text_root，只读、不得越界）优先；否则只读取文本类文件；二进制不整读。"""
+    if m.get("text_path"):
+        if text_root is None:
+            raise PermissionError("TEXT_PATH_WITHOUT_TEXT_ROOT")
+        return _read_only(text_root, m["text_path"]).decode("utf-8", errors="replace")
+    if Path(m["relative_path"]).suffix.lower() in TEXT_SUFFIXES:
+        return _read_only(snapshot_dir, m["relative_path"]).decode("utf-8", errors="replace")
+    _read_only_check(snapshot_dir, m["relative_path"])
+    return None
+
+
+def _read_only_check(snapshot_dir: Path, rel: str) -> None:
+    root = snapshot_dir.resolve()
+    p = (root / rel).resolve()
+    if root not in p.parents:
+        raise PermissionError(f"PATH_OUTSIDE_SNAPSHOT:{rel}")
+
+
 def retrieve_minimal_evidence(snapshot_dir: Path, meta: list[dict[str, str]],
-                              ob: dict[str, Any]) -> list[dict[str, Any]]:
+                              ob: dict[str, Any], *, snap: dict[str, Any] | None = None,
+                              text_root: Path | None = None) -> list[dict[str, Any]]:
     """同主体 + 同文档类型才进入证据；别的主体、别的文档类型（包括注入文件）模型看不到。"""
-    snap = ar.load_snapshot(snapshot_dir, meta)
+    snap = snap if snap is not None else ar.load_snapshot(snapshot_dir, meta)
     pool = [m for m in meta if m["entity"] == ob["entity"] and m.get("doc_type") == ob["doc_type"]]
     # 排序：期间一致、有效版本优先；稳定排序保证可复现
     pool.sort(key=lambda m: (m["period"] != ob["period"], m.get("version_status") != EFFECTIVE, m["file_id"]))
     out = []
     for m in pool[:MAX_FILES_PER_OBLIGATION]:
-        text = _read_only(snapshot_dir, m["relative_path"]).decode("utf-8", errors="replace")
-        loc, body = _excerpt(text, ob, m)
+        text = _text_for(snapshot_dir, m, text_root)
+        loc, body = _excerpt(text, ob, m) if text is not None else ("UNKNOWN", NO_TEXT)
         out.append({
             "file_id": m["file_id"], "relative_path": m["relative_path"], "sha256": snap[m["file_id"]].sha256,
             "entity": m["entity"], "period": m["period"], "doc_type": m.get("doc_type"),
@@ -150,10 +172,17 @@ def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[str, A
 
 
 def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
-                          raw_items: list[dict[str, str]]) -> dict[str, Any]:
+                          raw_items: list[dict[str, str]], *,
+                          obligations: list[dict[str, Any]] | None = None,
+                          text_root: Path | None = None) -> dict[str, Any]:
+    """obligations：操作员预先拆好的义务（真实清单字典外条目多时用），给了就不再规则拆分。"""
     snap = ar.load_snapshot(snapshot_dir, meta)
-    obs, flags = split_items(raw_items)
-    evidence = {o["obligation_id"]: retrieve_minimal_evidence(snapshot_dir, meta, o) for o in obs}
+    if obligations is not None:
+        obs, flags = obligations, []
+    else:
+        obs, flags = split_items(raw_items)
+    evidence = {o["obligation_id"]: retrieve_minimal_evidence(snapshot_dir, meta, o, snap=snap, text_root=text_root)
+                for o in obs}
     return {
         "schema_version": ar.SCHEMA_VERSION,
         "prompt_version": SEMANTIC_PROMPT_VERSION,
@@ -249,11 +278,12 @@ def validate_semantic(raw: str | None, snapshot_dir: Path, meta: list[dict[str, 
 
 
 def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], raw_items: list[dict[str, str]],
-                 budget: Any = None, workdir: Path | None = None) -> dict[str, Any]:
+                 budget: Any = None, workdir: Path | None = None, *,
+                 obligations: list[dict[str, Any]] | None = None, text_root: Path | None = None) -> dict[str, Any]:
     """建语义包 → Adapter（WP03）→ R4 校验 → 语义校验。run_record 里两层结果都留着。"""
     from cangjie_fos.services import dd_v1_agent_adapters as ad
 
-    packet = build_semantic_packet(snapshot_dir, meta, raw_items)
+    packet = build_semantic_packet(snapshot_dir, meta, raw_items, obligations=obligations, text_root=text_root)
     non_eff = frozenset(m["file_id"] for m in meta if m.get("version_status", EFFECTIVE) != EFFECTIVE)
     # #77 复核中：两层用同一份 non_effective，结论不会互相矛盾；下游只认 authoritative_validation
     rec = ad.run_agent(adapter, snapshot_dir, meta, packet["obligations"], budget,
@@ -274,13 +304,96 @@ def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], r
     return rec
 
 
-# ---------------------------------------------------------------- BLOCKED 桩（不伪造）
+# ---------------------------------------------------------------- 本地真实材料（操作员 opt-in）
 
-def score_against_gold(*_: Any, **__: Any) -> dict[str, Any]:
-    """WP05 评分需要业务签认的 Gold Set（OQ-2 未裁定）。"""
-    return {"status": "NOT_SCORABLE", "blocked_by": ["OQ-2: Gold Set 未提供"], "scores": None}
+def local_material_snapshot(material_root: Path, meta: list[dict[str, str]], *, allow_real: bool = False) -> Path:
+    """真实材料只能在操作员自己的机器上、显式 allow_real=True 时使用（CLI `--allow-real-material`）。
+
+    只接受本地目录；校验 meta 里每个文件都在根目录内且存在。本函数只读，不复制、不上传、不外发。
+    """
+    if not allow_real:
+        raise Blocked("BLOCKED: 真实材料需要操作员在本机显式 --allow-real-material；默认只允许合成 fixture")
+    s = str(material_root)
+    if "://" in s or s.startswith("\\\\"):
+        raise Blocked(f"BLOCKED: 只接受本地目录，拒绝 URL/网络路径：{s}")
+    root = Path(material_root).resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"MATERIAL_ROOT_NOT_FOUND:{root}")
+    for m in meta:
+        _read_only_check(root, m["relative_path"])
+        if not (root / m["relative_path"]).is_file():
+            raise FileNotFoundError(f"META_FILE_MISSING:{m['relative_path']}")
+    return root
 
 
 def load_real_material(*_: Any, **__: Any) -> None:
-    """真实尽调材料送外部模型需要数据出境/外部模型授权（OQ-3 未裁定）。"""
-    raise Blocked("BLOCKED: OQ-3 未授权真实材料送外部模型；只允许合成 fixture")
+    """保留旧入口：不带 opt-in 一律拒绝。请用 local_material_snapshot(..., allow_real=True)。"""
+    raise Blocked("BLOCKED: OQ-3 默认不允许真实材料；本机操作员请用 --allow-real-material")
+
+
+# ---------------------------------------------------------------- Gold 评分（只在评分步骤读 Gold，模型永远看不到）
+
+def _inside(child: Path, parent: Path) -> bool:
+    c, p = child.resolve(), parent.resolve()
+    return c == p or p in c.parents
+
+
+def assert_gold_isolated(gold_path: Path, *forbidden_dirs: Path) -> None:
+    """Gold 不得位于材料目录 / 运行目录之内（否则模型的工作区可能碰到它）。"""
+    for d in forbidden_dirs:
+        if d is not None and _inside(gold_path, d):
+            raise PermissionError(f"GOLD_INSIDE_FORBIDDEN_DIR:{d}")
+
+
+def score_against_gold(run_records: list[dict[str, Any]] | None = None, gold: list[dict[str, Any]] | None = None,
+                       *, min_obligations: int = 30, high_conf: float = HIGH_CONFIDENCE) -> dict[str, Any]:
+    """按 Gold 评分。没有 Gold → NOT_SCORABLE（不伪造）。
+
+    Gold 每条：{obligation_id, expected_verdict, expected_files:[file_id...]}；只用 file_id，不含路径/正文。
+    结果只读 run_record 的 authoritative 层（semantic_validation.accepted），被拒/缺失算 NO_ANSWER。
+    同时给规则提示（RULE_ONLY 基线）打分，便于对照。
+    """
+    if not gold:
+        return {"status": "NOT_SCORABLE", "blocked_by": ["OQ-2: Gold Set 未提供"], "scores": None}
+    answers: dict[str, dict[str, Any]] = {}
+    hints: dict[str, dict[str, Any]] = {}
+    obmeta: dict[str, dict[str, Any]] = {}
+    for rec in run_records or []:
+        for r in rec.get(rec.get("authoritative_validation", "semantic_validation"), {}).get("accepted", []):
+            answers[r["obligation_id"]] = r
+        hints.update(rec.get("rule_hints", {}))
+    rows = []
+    for g in gold:
+        oid, exp_v, exp_f = g["obligation_id"], g["expected_verdict"], sorted(g.get("expected_files", []))
+        a = answers.get(oid)
+        h = hints.get(oid)
+        row = {"obligation_id": oid, "expected_verdict": exp_v, "expected_files": exp_f}
+        if a is None:
+            row.update(agent_verdict="NO_ANSWER", agent_files=[], agent_correct=False, confident_mismatch=False)
+        else:
+            files = sorted(c["file_id"] for c in a["candidate_files"])
+            ok = a["proposed_verdict"] == exp_v and (exp_v in ("MISSING", "UNCERTAIN") or files == exp_f)
+            conf = a["confidence_or_uncertain"]
+            row.update(agent_verdict=a["proposed_verdict"], agent_files=files, agent_correct=ok,
+                       agent_confidence=conf,
+                       confident_mismatch=(not ok) and isinstance(conf, (int, float)) and conf >= high_conf)
+        if h is not None:
+            row.update(rule_verdict=h["verdict"], rule_files=h.get("files", []),
+                       rule_correct=h["verdict"] == exp_v and (exp_v in ("MISSING", "UNCERTAIN")
+                                                              or sorted(h.get("files", [])) == exp_f))
+        row["error_category"] = "" if row["agent_correct"] else "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+        rows.append(row)
+    n = len(rows)
+    agent_ok = sum(r["agent_correct"] for r in rows)
+    rule_ok = sum(bool(r.get("rule_correct")) for r in rows)
+    return {
+        "status": "LOW_CONFIDENCE" if n < min_obligations else "SCORED",
+        "n_obligations": n,
+        "agent": {"correct": agent_ok, "no_answer": sum(r["agent_verdict"] == "NO_ANSWER" for r in rows),
+                  "wrong": n - agent_ok - sum(r["agent_verdict"] == "NO_ANSWER" for r in rows),
+                  "confident_mismatch": sum(r["confident_mismatch"] for r in rows),
+                  "accuracy": round(agent_ok / n, 4) if n else None},
+        "rule_only_baseline": {"correct": rule_ok, "accuracy": round(rule_ok / n, 4) if n else None},
+        "rows": rows,
+        "note": "只含 obligation_id / verdict / file_id，不含路径与正文，可回传",
+    }

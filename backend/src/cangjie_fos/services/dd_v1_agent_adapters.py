@@ -90,22 +90,24 @@ def _kill_tree(p: subprocess.Popen) -> None:
         pass
 
 
-def run_cli(argv: list[str], cwd: Path, timeout_s: float) -> tuple[int | None, str, str, float, bool]:
-    """跑一个 CLI：stdin=/dev/null（防止等待输入挂起），新进程组，超时杀整组。
+def run_cli(argv: list[str], cwd: Path, timeout_s: float,
+            stdin_text: str | None = None) -> tuple[int | None, str, str, float, bool]:
+    """跑一个 CLI：stdin=/dev/null（防止等待输入挂起）或给定文本后立即 EOF，新进程组，超时杀整组。
 
     返回 (exit_code|None, stdout, stderr, elapsed_s, timed_out)。
     """
     t0 = time.monotonic()
     try:
         p = subprocess.Popen(
-            argv, cwd=str(cwd), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            argv, cwd=str(cwd), stdin=subprocess.DEVNULL if stdin_text is None else subprocess.PIPE,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
             **({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}),
         )
     except OSError as e:  # CLI 不存在 / 不可执行 → CALL_FAILED，而不是让调用方崩溃
         return 127, "", f"SPAWN_FAILED:{type(e).__name__}:{e}", 0.0, False
     try:
-        out, err = p.communicate(timeout=timeout_s)
+        out, err = p.communicate(input=stdin_text, timeout=timeout_s)
         return p.returncode, out, err, round(time.monotonic() - t0, 2), False
     except subprocess.TimeoutExpired:
         _kill_tree(p)
@@ -240,14 +242,103 @@ class ManualExchangeAdapter:
         return res
 
 
+SECRET_NAME_RE = ("KEY", "TOKEN", "SECRET", "PASSWORD")
+
+
+def redact_secrets(text: str, env: dict[str, str] | None = None) -> str:
+    """把环境变量里看起来是密钥的值从日志文本中抹掉（用户自己的 key 永不落盘）。"""
+    env = os.environ if env is None else env
+    for k, v in env.items():
+        if v and len(v) >= 8 and any(t in k.upper() for t in SECRET_NAME_RE):
+            text = text.replace(v, f"<REDACTED:{k}>")
+    return text
+
+
+def load_dsh_config(path: Path | None) -> dict[str, Any]:
+    """dsh 本地配置（JSON）：binary / profile / extra_args / mode。不允许在配置里写密钥。
+
+    mode="stdin"（默认）：任务包经标准输入传给 `dsh ... -`，命令行里没有任何材料文字——
+    Windows 上 .cmd 经 cmd.exe 启动时不会被解释（无注入、无 8191 长度限制），dsh 也不需要读文件权限。
+    mode="file"：让 dsh 自己读 workdir/PROMPT.txt（需要 dsh 有读文件能力，不推荐）。
+    """
+    cfg: dict[str, Any] = {"binary": "dsh", "profile": "headless", "extra_args": [], "mode": "stdin"}
+    if path:
+        user = json.loads(Path(path).read_text("utf-8-sig"))
+        bad = [k for k in user if any(t in k.upper() for t in SECRET_NAME_RE)]
+        if bad:
+            raise ValueError(f"DSH_CONFIG_MUST_NOT_CONTAIN_SECRETS:{bad}（密钥放在你自己的环境变量里）")
+        unknown = set(user) - set(cfg)
+        if unknown:
+            raise ValueError(f"DSH_CONFIG_UNKNOWN_FIELDS:{sorted(unknown)}")
+        cfg.update(user)
+    if cfg["mode"] not in ("stdin", "file"):
+        raise ValueError(f"DSH_CONFIG_BAD_MODE:{cfg['mode']}")
+    return cfg
+
+
+def extract_json_text(text: str) -> str | None:
+    """从 CLI 的最终回答里取出 JSON 对象（容忍 ```json 围栏和前后说明文字）。取不到返回 None。"""
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else ""
+        t = t.rsplit("```", 1)[0]
+    lo, hi = t.find("{"), t.rfind("}")
+    return t[lo:hi + 1] if lo != -1 and hi > lo else None
+
+
 class DeepSeekHarnessAdapter:
-    """考生3 桩：UNAVAILABLE / BLOCKED_ON_CHAIRMAN（OQ-1）。不调用任何进程或网络。"""
-    adapter_id, vendor, role = "deepseek-harness", "deepseek-harness", "EXAMINEE_3"
+    """DeepSeek Harness（dsh）。
+
+    默认（enabled=False）：桩，UNAVAILABLE，不起任何进程、不联网——仓库默认行为不变。
+    本地 opt-in（enabled=True，只能由操作员在自己的机器上用 `--allow-local-dsh` 显式打开）：
+    在隔离 workdir 里跑 ``dsh --profile <profile> headless <prompt>``（stdin=/dev/null，硬超时），
+    最终回答取 stdout。本代码不上传、不外发任何东西；dsh 自己如何调用模型由操作员的 dsh 配置决定。
+    """
+    adapter_id, vendor = "deepseek-harness", "deepseek-harness"
+
+    def __init__(self, enabled: bool = False, binary: str | list[str] = "dsh", profile: str = "headless",
+                 mode: str = "stdin", role: str = "EXAMINEE_3", extra_args: list[str] | None = None):
+        if mode not in ("stdin", "file"):
+            raise ValueError(f"BAD_MODE:{mode}")
+        self.enabled, self.profile, self.mode, self.role = enabled, profile, mode, role
+        self.binary = [binary] if isinstance(binary, str) else list(binary)
+        self.extra_args = list(extra_args or [])
+
+    @classmethod
+    def from_config(cls, cfg: dict[str, Any], *, enabled: bool, role: str = "PRIMARY_LOCAL_DSH") -> "DeepSeekHarnessAdapter":
+        return cls(enabled=enabled, binary=cfg["binary"], profile=cfg["profile"], mode=cfg["mode"],
+                   role=role, extra_args=cfg["extra_args"])
 
     def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
-        return AdapterResult(self.adapter_id, self.vendor, self.role, status=UNAVAILABLE,
-                             workdir=str(workdir),
-                             reason="BLOCKED:dsh retired 2026-10-11; OQ-1 pending chairman; no purchase, no API fallback")
+        res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK, workdir=str(workdir))
+        if not self.enabled:
+            res.status = UNAVAILABLE
+            res.reason = ("BLOCKED:dsh not enabled in this environment (repo default). "
+                          "Operator may opt in locally with --allow-local-dsh; no purchase, no API fallback")
+            return res
+        for stale in ("answer.txt", "stderr.log", "PROMPT.txt"):
+            (workdir / stale).unlink(missing_ok=True)
+        prompt = _prompt_for(packet, self.adapter_id, self.vendor, inline=True)
+        # 命令行里只放固定的 ASCII 参数；材料文字绝不进 argv（#78 复核 High-1：cmd.exe 注入 / 8191 限制）
+        if self.mode == "stdin":
+            argv, stdin_text = [*self.binary, "--profile", self.profile, *self.extra_args, "-"], prompt
+        else:
+            (workdir / "PROMPT.txt").write_text(prompt, "utf-8")
+            argv = [*self.binary, "--profile", self.profile, *self.extra_args,
+                    "Read PROMPT.txt in the current directory and follow it exactly. Output only JSON."]
+            stdin_text = None
+        res.argv_summary = list(argv)
+        code, out, err, el, to = run_cli(argv, workdir, budget.timeout_s, stdin_text=stdin_text)
+        res.elapsed_s = el
+        out, err = redact_secrets(out), redact_secrets(err)
+        (workdir / "answer.txt").write_text(out, "utf-8")
+        (workdir / "stderr.log").write_text(err, "utf-8")
+        if to or code != 0:
+            return _fail(res, code, err, to)
+        res.exit_code = 0
+        res.raw_text = extract_json_text(out)
+        res.cost_usd_or_UNKNOWN = "UNKNOWN(operator dsh account)"
+        return res
 
 
 ADAPTERS: dict[str, Callable[[], Any]] = {
