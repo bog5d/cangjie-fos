@@ -6,14 +6,78 @@
 
 ```text
 PROJECT_COMPLETE = false
-CURRENT_WP       = WP-R0（环境恢复 / 现状审计 / 目标与验收冻结）
-STATUS           = WP-R0 审计进行中
+CURRENT_WP       = WP-R1（正文/索引链路接通）— 核心已合入本分支，未提 PR
+STATUS           = WP-R1_CORE_DONE / WP-R2~R5 待续
 PERSISTENT_ROOT  = /Users/mac/dd-v1-workspace
-REPO             = bog5d/cangjie-fos @ master a7a7e24 (2026-10-16)
-CURRENT_BRANCH   = master（尚未开施工分支）
+REPO             = bog5d/cangjie-fos
+BASE_COMMIT      = a7a7e24 (master, 2026-10-16)
+BRANCH           = feat/71-wp-r1
+COMMITS          = e60ed23 WP-R0 审计+状态 / 79eecdd WP-R1 核心改造
 ISSUE_OF_RECORD  = cangjie-fos#71
 LAST_UPDATE      = 2026-10-19
 ```
+
+## WP 台账（执行方自测数字独立列出，不挂验收方名下）
+
+| WP | 目标 | 状态 | 证据 | 阻塞 |
+|---|---|---|---|---|
+| WP-R0 | 环境恢复 / 现状审计 / 目标冻结 | ✅ DONE | `WP-R0-AUDIT.md`（130 行，五环断链全部 file:line） | 无 |
+| WP-R1 | 接通正文解析、缓存、索引；召回改高召回；自动派生 meta | 🟡 **核心 DONE**，子项未完 | commit `79eecdd`；DD-V1 292 项全绿 | Excel 结构、PDF 页码未做 |
+| WP-R2 | 召回质量精排 | ⬜ 未开工 | — | — |
+| WP-R3 | 清单→待审核答卷完整流程 | ⬜ 未开工 | — | — |
+| WP-R4 | 合成测试图书馆 + 10 条代表性考试要求 | ⬜ 未开工 | — | — |
+| WP-R5 | 独立验收 + 员工手册 + 交接 | ⬜ 未开工 | — | — |
+
+## WP-R1 已完成（四项改动，全部向后兼容）
+
+1. `_text_for` 新增 `cached_text` 来源 → PDF/Word/Excel 不再直接落 `NO_TEXT`
+2. `retrieve_minimal_evidence` 改**并集高召回**：FTS 召回 + 元数据兜底，
+   类型只影响排序，不再一票否决
+3. 新增 `derive_meta_from_cards()` / `recall_by_text()`；
+   `dd_v1_local_run.py` 新增 `--auto-meta` → **员工不必预先整理材料**
+4. 消除静默全 MISSING：`_validate_args()` 无 meta 无 auto-meta 直接 exit 3；
+   `_warn_missing_tagging()` 整批无 entity/period 时显式告警
+
+**实测（仓库合成 fixture，零手工打标）**：
+
+| | 修复前 | 修复后 |
+|---|---|---|
+| 每条义务候选 | **0** | **6** |
+| 正文摘录 | `NO_TEXT` | **真实正文 + 行号 locator** |
+
+## WP-R1 剩余子项（下次会话直接接这里）
+
+- [ ] `dd_file_parser._extract_excel`（`:100-112`）只取 `wb.active`，
+      丢表名/单元格地址/行上限 200 → 改为**遍历全部工作表并保留单元格出处**
+- [ ] `dd_file_parser._extract_pdf`（`:71-81`）无页码 locator
+- [ ] `sem.MAX_EXCERPT_CHARS`（`:35`）截断**无标记**，而 parser 层有 truncated
+- [ ] `derive_meta_from_cards` 在**平铺目录**（无主体子目录）时 entity 恒空
+      → 应从正文抽公司名，而不是只靠父目录名
+
+## 授权边界（不变）
+
+- ❌ 充值 / 恢复 dsh 额度（OQ-1 选项 a，花钱，需批准）— **本 WP 未越界**
+- ❌ 真实材料送外部模型（OQ-3 未授权）— 实测正确拦截仓库外目录
+- ❌ 自动外发 / 删除原始资产 / 绕过分支保护 / 自行批准生产部署
+- ✅ 技术路线、重试、环境恢复、测试设计、缺陷优先级、回归补充
+
+## 恢复步骤（任何窗口接手照此执行）
+
+```bash
+cd /Users/mac/dd-v1-workspace/cangjie-fos
+git checkout feat/71-wp-r1
+git log --oneline -3
+cd backend && [ -d .venv ] || (uv venv --python 3.11 .venv && uv pip install --python .venv -e . pytest pytest-asyncio)
+.venv/bin/python -m pytest tests/ -k dd_v1 -q -p no:randomly \
+  --ignore=tests/test_ui_smoke_gk.py --ignore=tests/test_ui_smoke.py
+```
+
+期望：`DD-V1：执行 292 · 通过 292 · 失败 0`
+
+## next_action
+
+继续 WP-R1 剩余子项（Excel 工作表/单元格、PDF 页码、摘录截断标记、
+平铺目录下的主体抽取），然后进 WP-R2。**不新开分支、不新建调度系统。**
 
 ## 环境恢复记录（2026-10-19）
 
