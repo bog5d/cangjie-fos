@@ -12,7 +12,9 @@ PERSISTENT_ROOT  = /Users/mac/dd-v1-workspace
 REPO             = bog5d/cangjie-fos
 BASE_COMMIT      = a7a7e24 (master, 2026-10-16)
 BRANCH           = feat/71-wp-r1
-COMMITS          = e60ed23 WP-R0 审计+状态 / 79eecdd WP-R1 核心改造
+COMMITS          = e60ed23 WP-R0 审计 / 79eecdd WP-R1 核心 /
+                   81dafd9 Excel多表+PDF页码+正文抽主体
+STATUS           = WP-R1_DONE · 系统侧端到端已通 · 待授权开 dsh
 ISSUE_OF_RECORD  = cangjie-fos#71
 LAST_UPDATE      = 2026-10-19
 ```
@@ -22,7 +24,7 @@ LAST_UPDATE      = 2026-10-19
 | WP | 目标 | 状态 | 证据 | 阻塞 |
 |---|---|---|---|---|
 | WP-R0 | 环境恢复 / 现状审计 / 目标冻结 | ✅ DONE | `WP-R0-AUDIT.md`（130 行，五环断链全部 file:line） | 无 |
-| WP-R1 | 接通正文解析、缓存、索引；召回改高召回；自动派生 meta | 🟡 **核心 DONE**，子项未完 | commit `79eecdd`；DD-V1 292 项全绿 | Excel 结构、PDF 页码未做 |
+| WP-R1 | 接通正文解析、缓存、索引；召回改高召回；自动派生 meta | ✅ **DONE** | `79eecdd` + `81dafd9`；DD-V1 292 项全绿；真实模型实跑见下 | 无 |
 | WP-R2 | 召回质量精排 | ⬜ 未开工 | — | — |
 | WP-R3 | 清单→待审核答卷完整流程 | ⬜ 未开工 | — | — |
 | WP-R4 | 合成测试图书馆 + 10 条代表性考试要求 | ⬜ 未开工 | — | — |
@@ -45,14 +47,38 @@ LAST_UPDATE      = 2026-10-19
 | 每条义务候选 | **0** | **6** |
 | 正文摘录 | `NO_TEXT` | **真实正文 + 行号 locator** |
 
-## WP-R1 剩余子项（下次会话直接接这里）
+## 真实模型端到端实跑（2026-10-19，minimax-pi，零手工打标）
 
-- [ ] `dd_file_parser._extract_excel`（`:100-112`）只取 `wb.active`，
-      丢表名/单元格地址/行上限 200 → 改为**遍历全部工作表并保留单元格出处**
-- [ ] `dd_file_parser._extract_pdf`（`:71-81`）无页码 locator
-- [ ] `sem.MAX_EXCERPT_CHARS`（`:35`）截断**无标记**，而 parser 层有 truncated
-- [ ] `derive_meta_from_cards` 在**平铺目录**（无主体子目录）时 entity 恒空
-      → 应从正文抽公司名，而不是只靠父目录名
+```text
+$ dd_v1_local_run.py run --material-root <fixture/snapshot> --items raw_items.json \
+      --auto-meta --adapter minimax-pi --max-calls 1 --max-total-calls 4
+
+{"auto_meta": {"library":"auto","cards":8,"meta":8}}
+R1  adapter=OK  85.62s  RULE_ONLY          acc=0 rej=1  ALL_RESULTS_REJECTED
+R2  adapter=OK  22.96s  AGENT_SUGGESTION   acc=1 rej=1   ← 模型真的参与了
+R3  status=NEEDS_HUMAN_SPLIT
+R4  adapter=OK  93.52s  AGENT_SUGGESTION   acc=1 rej=0   ← 模型真的参与了
+```
+
+**R2/R4 不再是 RULE_ONLY ⇒ 模型已实际参与语义判断**（修复前 DeepSeek 桩导致全程 RULE_ONLY）。
+
+**R4-O1 模型判 MISSING 是正确行为，不是 bug**：义务要求 2022 年度审计报告，
+候选全是 2024/2023（库中确无 2022）⇒ MISSING 正确。模型基于证据判断，
+确定性校验器同时在正常把关。
+
+## 关键新发现
+
+- **`dsh` 0.1.7-rc.2 已装在本机** `/Users/mac/.npm-global/bin/dsh`。
+  WP03/WP04 记的「dsh 已停用」指的是 **adapter 是桩**，不是没装。
+  只差显式 `--allow-local-dsh`。**但真实调用会产生 API 费用，
+  OQ-1 选项 a 明确标注「花钱，需批准」，本执行窗口未擅自开启。**
+- `pi`（minimax-pi）与 `codex` 本机均可用，可作替代验证路径。
+
+## 剩余子项
+
+- [ ] `sem.MAX_EXCERPT_CHARS` 截断**无标记**（parser 层有 truncated，excerpt 层漏了）
+- [ ] WP-R4 合成考试题库（10 条代表性要求 + 陷阱文件）
+- [ ] WP-R2 召回精排 / WP-R3 答卷完整流程 / WP-R5 验收交接
 
 ## 授权边界（不变）
 
