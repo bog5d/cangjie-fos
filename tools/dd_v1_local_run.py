@@ -31,6 +31,66 @@ from cangjie_fos.services import dd_v1_semantic_retrieval_service as sem  # noqa
 YEAR = re.compile(r"(20\d\d)")
 
 
+# ---------------------------------------------------------------- WP-R1 自动派生
+#
+# 此前 meta 完全靠 `cmd_scaffold` 让员工**手工逐个文件**打 entity/doc_type/period，
+# 而 `retrieve_minimal_evidence` 拿 entity+doc_type 做等值硬筛。
+# 员工不打标 ⇒ 该文件对模型完全不可见 ⇒ 静默全 MISSING，且**不报错**。
+# 这违反董事长指令第 4 条「不能要求员工预先把文件重命名或精细分类」。
+#
+# `_auto_meta` 把「扫描 → 抽正文 → 建认知卡/FTS → 自动派生 meta」串成一条链：
+# 员工只需给一个材料文件夹 + 一份清单，不需要预先整理任何东西。
+
+_AUTO: dict = {}
+
+
+def _auto_meta(snap_dir: Path, library_id: str):
+    """从材料目录自动派生 meta，返回 (meta, recaller, cached_text_getter)。"""
+    from cangjie_fos.services import dd_v1_card_service as cs
+    from cangjie_fos.services import dd_v1_manifest_service as mf
+    from cangjie_fos.services import dd_v1_parser_service as ps
+    from cangjie_fos.services import dd_v1_semantic_retrieval_service as sem
+
+    mf.register_library(library_id, str(snap_dir), authorized_by="auto-meta",
+                        display_name=library_id)
+    mf.build_manifest(library_id, mode="full")
+    ps.parse_pending_batch(library_id, limit=2000)
+    cs.build_cards_for_library(library_id)
+
+    rows = mf.list_manifest(library_id, limit=100000)
+    path_by_id = {r["file_id"]: r["rel_path"] for r in rows}
+    cards = [cs.get_card(r["file_id"]) for r in rows]
+    cards = [c for c in cards if c]
+    meta = sem.derive_meta_from_cards(cards, file_path_by_id=path_by_id)
+
+    # 召回：用义务原文做正文/标题检索；正文从 Data Plane 缓存取
+    def recaller(ob):
+        q = ob.get("text") or ob.get("obligation") or ""
+        return sem.recall_by_text(library_id, q, limit=12)
+
+    def cached_text_getter(fid):
+        try:
+            return cs.get_cached_text(fid) or None
+        except Exception:  # noqa: BLE001
+            return None
+
+    _AUTO.update({"library": library_id, "cards": len(cards), "meta": len(meta)})
+    return meta, recaller, cached_text_getter
+
+
+def _warn_missing_tagging(meta: list[dict[str, str]]) -> None:
+    """旧 meta 若整批没有 entity/period，显式告警——**不允许静默全 MISSING**。"""
+    if not meta:
+        return
+    if not any(m.get("entity") for m in meta):
+        print("[告警] 所有文件都没有主体标识；检索将退化为全文召回，"
+              "主体相关判定会判 UNCERTAIN。建议用 --auto-meta 自动派生。",
+              file=sys.stderr)
+    if not any(m.get("doc_type") for m in meta):
+        print("[告警] 没有文件能识别出文档类型；旧路径会把它们全部排除，"
+              "建议用 --auto-meta 从正文派生。", file=sys.stderr)
+
+
 def _load_items(p: Path) -> list[dict[str, str]]:
     if p.suffix.lower() == ".csv":
         with open(p, encoding="utf-8-sig", newline="") as fh:
@@ -83,7 +143,7 @@ def _adapter(a):
 
 
 def cmd_run(a) -> int:
-    meta = _json(Path(a.meta))
+    meta = _json(Path(a.meta)) if a.meta else []
     fixture = sem._inside(Path(a.material_root), ROOT / "backend" / "tests" / "fixtures")
     try:  # 仓库内合成 fixture 免开关；其他任何目录都视为真实材料，必须 --allow-real-material
         snap_dir = sem.local_material_snapshot(Path(a.material_root), meta,
@@ -98,6 +158,12 @@ def cmd_run(a) -> int:
     items = _load_items(Path(a.items))
     obligations = _json(Path(a.obligations)) if a.obligations else None
     text_root = Path(a.text_root).resolve() if a.text_root else None
+    recaller = cached_text_getter = None
+    if a.auto_meta:
+        meta, recaller, cached_text_getter = _auto_meta(snap_dir, a.library)
+        print(json.dumps({"auto_meta": _AUTO}, ensure_ascii=False), flush=True)
+    else:
+        _warn_missing_tagging(meta)
     budget = ad.Budget(timeout_s=a.timeout, max_calls=a.max_calls)
     per_item = not a.single_pack
     groups = [[it] for it in items] if per_item else [items]
@@ -133,7 +199,8 @@ def cmd_run(a) -> int:
             return 3
         wd.mkdir(parents=True, exist_ok=True)
         rec = sem.run_semantic(_adapter(a), snap_dir, meta, g, budget, workdir=wd,
-                               obligations=obs_g, text_root=text_root)
+                               obligations=obs_g, text_root=text_root,
+                               recaller=recaller, cached_text_getter=cached_text_getter)
         calls_total += rec.get("calls_used", 1)
         v = rec["semantic_validation"]
         summary.append({"group": tag, "adapter_status": rec["adapter"]["status"],
@@ -164,6 +231,18 @@ def cmd_score(a) -> int:
     return 0
 
 
+def _validate_args(a) -> str | None:
+    """参数自检。**没有 meta 也没开 --auto-meta 时明确报错**，
+    不允许走到检索阶段才静默全 MISSING。"""
+    if getattr(a, "cmd", "") != "run":
+        return None
+    if not a.meta and not getattr(a, "auto_meta", False):
+        return ("缺少 --meta 且未开 --auto-meta。\n"
+                "  手工打标：先跑 cmd_scaffold 生成 meta.json 再 --meta 传入；\n"
+                "  推荐：直接 --auto-meta，由系统从材料内容自动派生（无需预先整理）")
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -171,9 +250,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--entity", default="")
     s = sub.add_parser("split"); s.add_argument("--items", required=True); s.add_argument("--out", required=True)
     r = sub.add_parser("run")
-    r.add_argument("--material-root", required=True); r.add_argument("--meta", required=True)
+    r.add_argument("--material-root", required=True)
+    r.add_argument("--meta", default=None,
+                   help="材料清单 meta.json（cmd_scaffold 生成）。"
+                        "配合 --auto-meta 时可省略，由系统自动派生")
     r.add_argument("--items", required=True); r.add_argument("--obligations", default=None)
     r.add_argument("--text-root", default=None); r.add_argument("--out", required=True)
+    r.add_argument("--library", default="auto",
+                   help="--auto-meta 时用的材料库标识（同一库可复用已抽正文）")
+    r.add_argument("--auto-meta", action="store_true",
+                   help="从材料目录自动扫描/抽正文/建认知卡并派生 meta（不需手工打标）")
     r.add_argument("--adapter", choices=sorted(ad.ADAPTERS), default="deepseek-harness",
                    help="默认 deepseek-harness（主力）；codex 只作刘江的备用")
     r.add_argument("--allow-real-material", action="store_true",
@@ -196,6 +282,10 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--out", required=True); c.add_argument("--material-root", default=None)
     c.add_argument("--text-root", default=None)
     a = p.parse_args(argv)
+    err = _validate_args(a)
+    if err:
+        print(err, file=sys.stderr)
+        return 3
     if a.cmd == "run" and a.cost_cap is not None:
         print("拒绝：--cost-cap 无法执行——本地 CLI（dsh/codex）不报告每次费用。"
               "请改用 --max-total-calls N 限制调用次数，并在 DeepSeek 平台设置余额预警", file=sys.stderr)

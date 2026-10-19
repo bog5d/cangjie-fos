@@ -114,36 +114,73 @@ def _excerpt(text: str, ob: dict[str, Any], meta: dict[str, str]) -> tuple[str, 
     return f"L{lo + 1}-L{hi + 1}", body
 
 
-def _text_for(snapshot_dir: Path, m: dict[str, str], text_root: Path | None) -> str | None:
-    """文本层：meta.text_path（相对 text_root，只读、不得越界）优先；否则只读取文本类文件；二进制不整读。"""
+def _text_for(snapshot_dir: Path, m: dict[str, str], text_root: Path | None,
+              *, cached_text: str | None = None) -> str | None:
+    """文本层，按可用性依次尝试：
+
+    1. ``meta.text_path``（相对 text_root，只读、不得越界）——员工自备文本版；
+    2. 文本类后缀直接读快照里的原文件；
+    3. ``cached_text`` —— Data Plane 里由 ``dd_v1_parser_service`` 抽好的正文
+       （**新增**，见 WP-R1）。此前 PDF/Word/Excel 因为不在 TEXT_SUFFIXES 里，
+       一步就落到 ``None``，模型连 300 字摘录都拿不到。
+
+    三者都拿不到才返回 None（→ NO_TEXT）。**不假装已解析。**
+    """
     if m.get("text_path"):
         if text_root is None:
             raise PermissionError("TEXT_PATH_WITHOUT_TEXT_ROOT")
         return _read_only(text_root, m["text_path"]).decode("utf-8", errors="replace")
     if Path(m["relative_path"]).suffix.lower() in TEXT_SUFFIXES:
         return _read_only(snapshot_dir, m["relative_path"]).decode("utf-8", errors="replace")
+    if cached_text:
+        return cached_text
     _read_only_check(snapshot_dir, m["relative_path"])
     return None
 
 
-def _read_only_check(snapshot_dir: Path, rel: str) -> None:
-    root = snapshot_dir.resolve()
-    p = (root / rel).resolve()
-    if root not in p.parents:
-        raise PermissionError(f"PATH_OUTSIDE_SNAPSHOT:{rel}")
-
-
 def retrieve_minimal_evidence(snapshot_dir: Path, meta: list[dict[str, str]],
                               ob: dict[str, Any], *, snap: dict[str, Any] | None = None,
-                              text_root: Path | None = None) -> list[dict[str, Any]]:
-    """同主体 + 同文档类型才进入证据；别的主体、别的文档类型（包括注入文件）模型看不到。"""
+                              text_root: Path | None = None,
+                              recalled: list[dict[str, str]] | None = None,
+                              cached_text_getter=None) -> list[dict[str, Any]]:
+    """候选证据检索。
+
+    **WP-R1 改动**：原先这里是 ``entity`` + ``doc_type`` 双重**等值硬筛**，
+    拿 7 类文档类型字典当**准入闸**。后果：任何未被人工打标的文件、
+    任何拆不出 doc_type 的义务，候选恒为空 → 静默全 MISSING。
+
+    现在改为**并集高召回**：
+
+    - ``recalled``：由正文/全文索引召回的候选（高召回，不要求类型相等）；
+    - 元数据等值匹配：仍保留，作为精排信号与兜底，但**不再是一票否决**。
+
+    排序仍是「同期间 + 有效版本优先」，可复现。类型只影响排序，不影响**能否被看见**。
+    """
     snap = snap if snap is not None else ar.load_snapshot(snapshot_dir, meta)
-    pool = [m for m in meta if m["entity"] == ob["entity"] and m.get("doc_type") == ob["doc_type"]]
-    # 排序：期间一致、有效版本优先；稳定排序保证可复现
-    pool.sort(key=lambda m: (m["period"] != ob["period"], m.get("version_status") != EFFECTIVE, m["file_id"]))
+    by_id = {m["file_id"]: m for m in meta}
+
+    # 来源 1：全文/正文召回（新增）
+    ids: list[str] = []
+    if recalled:
+        for r in recalled:
+            fid = r.get("file_id") if isinstance(r, dict) else r
+            if fid in by_id and fid not in ids:
+                ids.append(fid)
+
+    # 来源 2：元数据等值匹配（保留为兜底 + 精排信号）
+    for m in meta:
+        if m["file_id"] not in ids:
+            if m["entity"] == ob["entity"] and m.get("doc_type") == ob["doc_type"]:
+                ids.append(m["file_id"])
+
+    def sort_key(m: dict[str, str]) -> tuple:
+        return (m["period"] != ob["period"], m.get("version_status") != EFFECTIVE, m["file_id"])
+
     out = []
-    for m in pool[:MAX_FILES_PER_OBLIGATION]:
-        text = _text_for(snapshot_dir, m, text_root)
+    for fid in sorted(ids, key=lambda i: sort_key(by_id[i]))[:MAX_FILES_PER_OBLIGATION]:
+        m = by_id[fid]
+        text = _text_for(snapshot_dir, m, text_root,
+                         cached_text=(cached_text_getter(fid) if cached_text_getter else None))
         loc, body = _excerpt(text, ob, m) if text is not None else ("UNKNOWN", NO_TEXT)
         out.append({
             "file_id": m["file_id"], "relative_path": m["relative_path"], "sha256": snap[m["file_id"]].sha256,
@@ -152,6 +189,13 @@ def retrieve_minimal_evidence(snapshot_dir: Path, meta: list[dict[str, str]],
             "locator": loc, "untrusted_excerpt": body,
         })
     return out
+
+
+def _read_only_check(snapshot_dir: Path, rel: str) -> None:
+    root = snapshot_dir.resolve()
+    p = (root / rel).resolve()
+    if root not in p.parents:
+        raise PermissionError(f"PATH_OUTSIDE_SNAPSHOT:{rel}")
 
 
 def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[str, Any]:
@@ -174,15 +218,21 @@ def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[str, A
 def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
                           raw_items: list[dict[str, str]], *,
                           obligations: list[dict[str, Any]] | None = None,
-                          text_root: Path | None = None) -> dict[str, Any]:
+                          text_root: Path | None = None,
+                          recaller=None, cached_text_getter=None) -> dict[str, Any]:
     """obligations：操作员预先拆好的义务（真实清单字典外条目多时用），给了就不再规则拆分。"""
     snap = ar.load_snapshot(snapshot_dir, meta)
     if obligations is not None:
         obs, flags = obligations, []
     else:
         obs, flags = split_items(raw_items)
-    evidence = {o["obligation_id"]: retrieve_minimal_evidence(snapshot_dir, meta, o, snap=snap, text_root=text_root)
-                for o in obs}
+    evidence = {
+        o["obligation_id"]: retrieve_minimal_evidence(
+            snapshot_dir, meta, o, snap=snap, text_root=text_root,
+            recalled=(recaller(o) if recaller else None),
+            cached_text_getter=cached_text_getter)
+        for o in obs
+    }
     return {
         "schema_version": ar.SCHEMA_VERSION,
         "prompt_version": SEMANTIC_PROMPT_VERSION,
@@ -279,11 +329,14 @@ def validate_semantic(raw: str | None, snapshot_dir: Path, meta: list[dict[str, 
 
 def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], raw_items: list[dict[str, str]],
                  budget: Any = None, workdir: Path | None = None, *,
-                 obligations: list[dict[str, Any]] | None = None, text_root: Path | None = None) -> dict[str, Any]:
+                 obligations: list[dict[str, Any]] | None = None, text_root: Path | None = None,
+                 recaller=None, cached_text_getter=None) -> dict[str, Any]:
     """建语义包 → Adapter（WP03）→ R4 校验 → 语义校验。run_record 里两层结果都留着。"""
     from cangjie_fos.services import dd_v1_agent_adapters as ad
 
-    packet = build_semantic_packet(snapshot_dir, meta, raw_items, obligations=obligations, text_root=text_root)
+    packet = build_semantic_packet(snapshot_dir, meta, raw_items, obligations=obligations,
+                                   text_root=text_root, recaller=recaller,
+                                   cached_text_getter=cached_text_getter)
     non_eff = frozenset(m["file_id"] for m in meta if m.get("version_status", EFFECTIVE) != EFFECTIVE)
     # #77 复核中：两层用同一份 non_effective，结论不会互相矛盾；下游只认 authoritative_validation
     rec = ad.run_agent(adapter, snapshot_dir, meta, packet["obligations"], budget,
@@ -397,3 +450,79 @@ def score_against_gold(run_records: list[dict[str, Any]] | None = None, gold: li
         "rows": rows,
         "note": "只含 obligation_id / verdict / file_id，不含路径与正文，可回传",
     }
+
+
+# ---------------------------------------------------------------- WP-R1 自动派生
+#
+# 此前 `meta` 由 `tools/dd_v1_local_run.py:cmd_scaffold` **让员工手工填**
+# （entity/doc_type/period 逐个文件打标），而 `retrieve_minimal_evidence` 又拿
+# entity+doc_type 做等值硬筛。后果：员工不逐个打标 ⇒ 该文件对模型完全不可见 ⇒
+# 全池空 ⇒ 静默全 MISSING（`local_run.py:52` 的 --entity 不传时更会全空串）。
+#
+# 这直接违反董事长指令第 4 条「文件夹内部不能要求员工预先把所有文件重命名或
+# 精细分类」。WP-R1 的解法：**从材料内容自动派生 meta**，员工不填也能跑。
+
+DERIVED_FROM = "auto-derived"
+
+
+def derive_meta_from_cards(
+    cards: list[dict[str, Any]],
+    *,
+    file_path_by_id: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
+    """从认知卡派生 run 链路的 ``meta``。
+
+    取值全部**已有出处**，不重新猜测：
+      entity  ← card.entity（本身带 FACT/INFERRED/UNKNOWN 出处）
+      period  ← card.fiscal_period
+      doc_type← 由 card.purpose 关键词反查 DOC_TYPES（查不到就留空，
+                **空值不再是致命伤**：召回已改为并集，元数据只影响排序）
+      part    ← 「附注」出现在 purpose/标题才标 附注，否则正文
+    """
+    out: list[dict[str, str]] = []
+    for c in cards:
+        purposes = c.get("purpose") or []
+        if isinstance(purposes, str):
+            try:
+                purposes = json.loads(purposes)
+            except Exception:  # noqa: BLE001
+                purposes = [purposes] if purposes else []
+        blob = " ".join(str(p) for p in purposes) + " " + str(c.get("title") or "")
+        dt = ""
+        for alias, canon in DOC_TYPE_ALIASES.items():
+            blob = blob.replace(alias, canon)
+        for d in DOC_TYPES:
+            if d in blob:
+                dt = d
+                break
+        out.append({
+            "file_id": c["file_id"],
+            "relative_path": (file_path_by_id or {}).get(c["file_id"], ""),
+            "entity": str(c.get("entity") or ""),
+            "period": str(c.get("fiscal_period") or ""),
+            "doc_type": dt,
+            "part": "附注" if "附注" in blob else "正文",
+            "version_status": str(c.get("version") or EFFECTIVE) and EFFECTIVE,
+            "derived_from": DERIVED_FROM,
+        })
+    return out
+
+
+def recall_by_text(
+    library_id: str,
+    query: str,
+    *,
+    limit: int = 12,
+    db_path=None,
+) -> list[dict[str, str]]:
+    """按正文/标题做**高召回**检索，返回可并入候选池的 file_id 列表。
+
+    用 ``dd_v1_card_service.search_materials_loose``（二元组 OR）。
+    宽松 OR 是短语查询的超集，**只会多召回不会漏**，精度由后续精排与
+    确定性校验器收窄。
+    """
+    from cangjie_fos.services import dd_v1_card_service as cs  # noqa: PLC0415
+    if not (query or "").strip():
+        return []
+    hits = cs.search_materials_loose(library_id, query, limit=limit, db_path=db_path)
+    return [{"file_id": h["file_id"]} for h in hits]
