@@ -464,6 +464,41 @@ def score_against_gold(run_records: list[dict[str, Any]] | None = None, gold: li
 
 DERIVED_FROM = "auto-derived"
 
+# 从正文抽公司主体。尽调材料常用「XX有限公司/XX股份有限公司」这类全称，
+# 且**常常出现在正文里而不在目录名里**（尤其平铺目录）。
+# 只靠父目录名会导致：文件平铺 ⇒ entity 恒空 ⇒ 主体相关判定全落 UNCERTAIN。
+_ENTITY_RE = re.compile(
+    r"[\u4e00-\u9fff（）()]{2,20}?"
+    r"(?:有限责任公司|股份有限公司|有限公司|集团公司|控股集团|母公司)")
+# 匹配会贪婪带上前缀（「本所对湖南路虎汽车有限公司」），先剥掉这些引导词
+_ENTITY_LEAD_RE = re.compile(
+    r"^(?:本所|贵司|贵公司|该公司|本公司|受托人|委托人|审计机构|目标公司|"
+    r"关于|针对|对于|以及|向|对|及|与|或|和|的)+")
+# 整名命中即丢弃（不是包含就丢，否则「示例科技」这类真名会被误杀）
+_ENTITY_STOP_EXACT = {
+    "本公司", "该公司", "贵司", "贵公司", "本所", "受托人", "委托人",
+    "审计机构", "会计师事务所", "目标公司",
+}
+
+
+def entity_from_text(text: str, limit: int = 3) -> list[str]:
+    """从正文抽公司主体全称（确定性正则，不调模型）。
+
+    命中即返回；**抽不到就返回空列表**，绝不编造。
+    """
+    if not text:
+        return []
+    out: list[str] = []
+    for m in _ENTITY_RE.finditer(text):
+        name = _ENTITY_LEAD_RE.sub("", m.group(0)).strip("（）() ")
+        if len(name) < 4 or name in _ENTITY_STOP_EXACT:
+            continue
+        if name not in out:
+            out.append(name)
+        if len(out) >= limit:
+            break
+    return out
+
 
 def derive_meta_from_cards(
     cards: list[dict[str, Any]],
@@ -495,10 +530,16 @@ def derive_meta_from_cards(
             if d in blob:
                 dt = d
                 break
+        # 主体：认知卡给的（来自目录名）优先；平铺目录拿不到时从**正文**抽
+        entity = str(c.get("entity") or "")
+        if not entity:
+            body = c.get("body_preview") or c.get("evidence_text") or ""
+            found = entity_from_text(body)
+            entity = found[0] if found else ""
         out.append({
             "file_id": c["file_id"],
             "relative_path": (file_path_by_id or {}).get(c["file_id"], ""),
-            "entity": str(c.get("entity") or ""),
+            "entity": entity,
             "period": str(c.get("fiscal_period") or ""),
             "doc_type": dt,
             "part": "附注" if "附注" in blob else "正文",

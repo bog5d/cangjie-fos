@@ -69,16 +69,25 @@ def extract_full_text(file_path: Path, max_chars: int = 6000) -> tuple[str, bool
 
 
 def _extract_pdf(path: Path, max_chars: int, max_pages: int | None = 3) -> str:
+    """保留**页码**前缀（``[第N页]``），供 locator 指到具体页。
+
+    WP-R1 改动。此前把各页直接拼接、无页码，模型给的 locator 只能标 UNKNOWN，
+    人工无法回原文核对——这正是「引用可追溯」的要求所不允许的。
+    """
     import pdfplumber
     texts: list[str] = []
     with pdfplumber.open(str(path)) as pdf:
+        total = len(pdf.pages)
         pages = pdf.pages if max_pages is None else pdf.pages[:max_pages]
-        for page in pages:
+        for n, page in enumerate(pages, 1):
             t = page.extract_text() or ""
-            texts.append(t)
+            if t.strip():
+                texts.append(f"[第{n}页] " + t.strip())
             if sum(len(x) for x in texts) >= max_chars:
                 break
-    return " ".join(texts)[:max_chars]
+        if total > len(pages):
+            texts.append(f"[共{total}页，本次只读前{len(pages)}页]")
+    return "\n".join(texts)[:max_chars]
 
 
 def _extract_docx(path: Path, max_chars: int) -> str:
@@ -97,16 +106,45 @@ def _extract_docx(path: Path, max_chars: int) -> str:
     return " ".join(parts)[:max_chars]
 
 
-def _extract_excel(path: Path, max_chars: int, max_rows: int = 30) -> str:
+def _cell_ref(col_idx: int, row_idx: int) -> str:
+    """1-based 单元格地址，如 B7。供模型与人工核对数字出处。"""
+    s, col = "", col_idx + 1
+    while col:
+        col, rem = divmod(col - 1, 26)
+        s = chr(65 + rem) + s
+    return f"{s}{row_idx}"
+
+
+def _extract_excel(path: Path, max_chars: int, max_rows: int = 30,
+                   max_sheets: int = 8) -> str:
+    """遍历**全部工作表**，保留表名与单元格地址。
+
+    WP-R1 改动。此前只取 ``wb.active`` 活动表、``values_only`` 丢地址、
+    行上限 30（调用方默认）⇒ 华西《盈利预测_2026-2030.xlsx》(233 个数字单元格)
+    与《研发费用辅助账》(1521 个单元格) 这类**多表预测/台账**几乎读不到内容，
+    正是报告点名的 19 份未收录材料的主要形态。
+
+    保留 ``表名!单元格=值`` 形式，满足「Excel 应保留工作表、单元格及数字来源」。
+    """
     import openpyxl
     wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
-    ws = wb.active
-    rows: list[str] = []
-    for i, row in enumerate(ws.iter_rows(values_only=True)):
-        cells = [str(c).strip() for c in row if c is not None and str(c).strip() not in ("", "None")]
-        if cells:
-            rows.append(f"行{i + 1}: " + " | ".join(cells))
-        if i >= max_rows:
+    out: list[str] = []
+    for ws in wb.worksheets[:max_sheets]:
+        rows: list[str] = []
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            cells = []
+            for j, c in enumerate(row):
+                if c is None or str(c).strip() in ("", "None"):
+                    continue
+                cells.append(f"{_cell_ref(j, i + 1)}={str(c).strip()}")
+            if cells:
+                rows.append(" ".join(cells))
+            if i >= max_rows:
+                rows.append(f"...（{ws.title} 表第 {max_rows + 1} 行后省略，共 {ws.max_row} 行）")
+                break
+        if rows:
+            out.append(f"【工作表】{ws.title}\n" + "\n".join(rows))
+        if sum(len(x) for x in out) >= max_chars:
             break
     wb.close()
-    return "\n".join(rows)[:max_chars]
+    return "\n".join(out)[:max_chars]
