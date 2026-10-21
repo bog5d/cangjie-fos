@@ -186,42 +186,47 @@
     ],
     "hard_gates": [
       {
-        "id": "GM_ONE_WRITER",
+        "id": "ONE_WRITER",
         "status": "UNKNOWN",
         "evidence_refs": []
       },
       {
-        "id": "GOLD_PHYSICAL_ISOLATION",
+        "id": "REAL_FOS_CALL",
         "status": "UNKNOWN",
         "evidence_refs": []
       },
       {
-        "id": "SENSITIVE_OUTBOUND_AUTH",
+        "id": "GOLD_ISOLATION",
         "status": "UNKNOWN",
         "evidence_refs": []
       },
       {
-        "id": "FALSE_MATCH_DEFENCE",
+        "id": "SENSITIVE_AUTH",
         "status": "UNKNOWN",
         "evidence_refs": []
       },
       {
-        "id": "REAL_FOS_PROVENANCE",
+        "id": "FALSE_MATCH_GUARD",
         "status": "UNKNOWN",
         "evidence_refs": []
       },
       {
-        "id": "REVIEWER_INDEPENDENT",
+        "id": "PRECISE_PACKAGING",
         "status": "UNKNOWN",
         "evidence_refs": []
       },
       {
-        "id": "NO_CI_BYPASS",
+        "id": "INDEPENDENT_REVIEW",
         "status": "UNKNOWN",
         "evidence_refs": []
       },
       {
-        "id": "MAC_RESTART_OR_RESUME_PROOF",
+        "id": "WINDOWS_REAL_E2E",
+        "status": "UNKNOWN",
+        "evidence_refs": []
+      },
+      {
+        "id": "UNATTENDED_HANDOFF",
         "status": "UNKNOWN",
         "evidence_refs": []
       }
