@@ -1,0 +1,22 @@
+=== 真实材料回归 20261022-034822 ===
+被测 FOS : /Users/mac/cangjie-fos-wt-a1
+解释器   : /Users/mac/cangjie-fos-wt-a1/backend/.venv/bin/python
+被测代码 : /Users/mac/cangjie-fos-wt-a1/backend/src/cangjie_fos
+
+  案例A exit=0
+  案例B exit=0
+  案例C exit=0
+
+案例                        义务  CONFLICT  RESTRICTED  MISSING  UNCERT  MATCHED      跨法人     自证  门限
+案例A(2法人)                  32         0           0        0      32        0     78%   12%  T1 entity_scope=0 T3 CONFLICT<=4 ❌
+                       └ 语义桥接：未运行（SKIPPED_BY_FLAG）→ 入口 A 原有输出不受影响
+案例B(1法人)                  46         0           0        3      43        0      0%    0%  T1 entity_scope=0 T3 CONFLICT<=4 ❌
+                       └ 语义桥接：未运行（SKIPPED_BY_FLAG）→ 入口 A 原有输出不受影响
+案例C(3法人)                 241         0           0        3     238        0     73%    0%  T1 entity_scope=0 T3 CONFLICT<=8 ❌
+                       └ 语义桥接：未运行（SKIPPED_BY_FLAG）→ 入口 A 原有输出不受影响
+
+合计 义务 319 | CONFLICT 0 | RESTRICTED 0 | MISSING 6 | UNCERTAIN 313 | MATCHED 0
+基线 义务 319 | CONFLICT 284 | RESTRICTED 29 | MISSING 6 | UNCERTAIN 0 | MATCHED 0
+变化 CONFLICT 284→0 | RESTRICTED 29→0 | UNCERTAIN 0→313 | MATCHED 0→0
+
+报告目录: <司仓归档区（真实材料不入 Git，内部路径不外发）>

@@ -103,7 +103,12 @@ def _read_only(snapshot_dir: Path, rel: str) -> bytes:
 
 def _excerpt(text: str, ob: dict[str, Any], meta: dict[str, str]) -> tuple[str, str]:
     lines = text.splitlines()
-    keys = [ob["doc_type"], meta.get("part", ""), ob["period"] if ob["period"] not in ("CURRENT", "UNKNOWN") else ""]
+    # WP-A1（G1 桥接）：义务 doc_type 是英文 key（audit_report…），
+    # 而材料正文是中文 ⇒ 只拿 key 去搜必然落空、退化成「取前 3 行」。
+    # `doc_type_terms` 由桥接侧用 requirement service 的 `_DOC_TYPE_RULES` 翻出的中文词
+    # （`rq.doc_type_search_terms`），与召回侧同一张表，不另抄一份正则。
+    keys = [ob["doc_type"], *(ob.get("doc_type_terms") or []),
+            meta.get("part", ""), ob["period"] if ob["period"] not in ("CURRENT", "UNKNOWN") else ""]
     keys += ["盖章", "草稿", "征求意见", "取代", "现行有效", "修订"]
     hit = [i for i, ln in enumerate(lines) if any(k and k in ln for k in keys)]
     if not hit:
@@ -176,13 +181,35 @@ def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
                           obligations: list[dict[str, Any]] | None = None,
                           text_root: Path | None = None) -> dict[str, Any]:
     """obligations：操作员预先拆好的义务（真实清单字典外条目多时用），给了就不再规则拆分。"""
+    # WP-A1（G5 位置 1）：出模型前的 PII 拒识——义务文本与摘录进 prompt 前必须脱敏。
+    # 纯规则、确定性；拒识统计留痕进包（pii_redactions），原 raw_items 不得被就地改写。
+    from cangjie_fos.services import dd_v1_pii_service as pii
+
+    def _ob_view(o: dict[str, Any]) -> dict[str, Any]:
+        v = dict(o)
+        v["text"] = pii.redact(str(o.get("text") or ""))
+        return v
+
+    ob_views = [_ob_view(o) for o in obligations] if obligations is not None else None
+    redaction_count = {"count": 0}
+
     snap = ar.load_snapshot(snapshot_dir, meta)
-    if obligations is not None:
-        obs, flags = obligations, []
+    if ob_views is not None:
+        obs, flags = ob_views, []
     else:
         obs, flags = split_items(raw_items)
-    evidence = {o["obligation_id"]: retrieve_minimal_evidence(snapshot_dir, meta, o, snap=snap, text_root=text_root)
+        obs = [_ob_view(o) for o in obs]
+        flags = [{**f, "text": pii.redact(str(f.get("text") or ""))} for f in flags]
+    evidence = {o["obligation_id"]: retrieve_minimal_evidence(snapshot_dir, meta, o,
+                                                              snap=snap, text_root=text_root)
                 for o in obs}
+    # 摘录拒识（untrusted_excerpt 是不可信材料文本层，进 prompt 前必须脱敏）
+    for rows in evidence.values():
+        for e in rows:
+            if e.get("untrusted_excerpt") and e["untrusted_excerpt"] != NO_TEXT:
+                red = pii.redact_detailed(e["untrusted_excerpt"])
+                e["untrusted_excerpt"] = red["text"]
+                redaction_count["count"] += red["count"]
     return {
         "schema_version": ar.SCHEMA_VERSION,
         "prompt_version": SEMANTIC_PROMPT_VERSION,
@@ -198,6 +225,11 @@ def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
         "obligations": obs,
         "unsplit_items": flags,
         "evidence": evidence,
+        "pii_redactions": {
+            "applied": True,
+            "count": redaction_count["count"],
+            "note": "出模型前 PII 拒识（dd_v1_pii_service，纯规则）；占位符：[身份证]/[账号]/[手机]/[统一社会信用代码] 等",
+        },
     }
 
 

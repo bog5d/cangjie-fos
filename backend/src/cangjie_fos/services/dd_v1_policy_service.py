@@ -23,6 +23,9 @@ if card.get("sensitivity") in ("", None):
    一律不可外发。这是安全默认，宁可不发不可错发。
 4. **策略是数据不是代码**：等级名、判定维度、默认值都来自策略文件，
    业务负责人审核通过后改文件即可，**无需改代码、无需重新发版**。
+5. **可选的类型闸**（``sendable_doc_types``）：声明后只有清单内的 ``doc_type``
+   才可能外发。用于堵住「规则只按相等收紧 ⇒ 不认识的类型一条都不命中 ⇒ 落回声明级别」
+   的老坑。未声明该键 ⇒ 行为与引入前完全一致。
 
 ## 与 #75 草案的关系
 
@@ -85,6 +88,11 @@ class DisclosurePolicy:
     levels: dict = field(default_factory=dict)   # {LEVEL: {externally_sendable, requires_review}}
     default_level: str = FALLBACK_LEVEL
     rules: list = field(default_factory=list)   # 判定规则，按序
+    # **可选**的类型闸：声明后，只有清单内的 doc_type 才可能外发（须同时满足级别闸）。
+    # None = 策略未声明 ⇒ 不启用类型闸（保持既有行为，向后兼容）；
+    # []    = 声明为空 ⇒ 任何类型都不可外发（显式全禁）。
+    # 取值空间 = dd_v1_requirement_service._DOC_TYPE_RULES 的内部英文 key。
+    sendable_doc_types: list | None = None
 
     def strictest(self, *names: str) -> str:
         """取若干级别中最严的一个。"""
@@ -99,6 +107,33 @@ def _default_policy_path() -> Path:
     if env:
         return Path(env)
     return Path(__file__).resolve().parents[3] / "config" / "dd_v1_disclosure_policy.json"
+
+
+def _parse_sendable_doc_types(data: dict) -> list | None:
+    """解析**可选**的类型闸（可外发的 doc_type 清单）。
+
+    - 键不存在 → ``None`` ⇒ **不启用类型闸**，判定行为与本模块引入前完全一致（向后兼容）。
+    - 值为空列表 → ``[]`` ⇒ 显式「任何类型都不可外发」。
+    - 值不是列表、或含非空字符串以外的元素 → 抛 ``ValueError``，
+      由 ``load_policy`` 转成 ``load_error`` ⇒ **fail-closed**（策略不生效 ⇒ 全部不可外发）。
+
+    取值空间 = ``dd_v1_requirement_service._DOC_TYPE_RULES`` 的内部英文 key
+    （audit_report / financial_statement / tax / license / charter / capital /
+      resolution / ip / labor / contract），不是中文类型名，也不是文件扩展名。
+    """
+    if "sendable_doc_types" not in data:
+        return None
+    raw = data.get("sendable_doc_types")
+    if not isinstance(raw, list):
+        raise ValueError(f"必须是列表，实为 {type(raw).__name__}")
+    out: list[str] = []
+    for item in raw:
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"含非法元素：{item!r}")
+        key = item.strip().lower()
+        if key not in out:
+            out.append(key)
+    return out
 
 
 def load_policy(path: str | Path | None = None) -> DisclosurePolicy:
@@ -160,10 +195,19 @@ def load_policy(path: str | Path | None = None) -> DisclosurePolicy:
             load_error=f"策略把 default_level 设为可外发的 {default_level}，"
                        f"风险过高；默认级别必须不可外发（安全默认）")
 
+    try:
+        sendable = _parse_sendable_doc_types(data)
+    except ValueError as exc:
+        return DisclosurePolicy(
+            version=version,
+            load_error=f"策略文件的 sendable_doc_types 不合法：{exc}；"
+                       f"类型闸无法判定，按未生效处理，全部不可外发")
+
     return DisclosurePolicy(
         version=version, loaded=True, levels=levels,
         default_level=default_level,
-        rules=list(data.get("rules") or []))
+        rules=list(data.get("rules") or []),
+        sendable_doc_types=sendable)
 
 
 def evaluate(policy: DisclosurePolicy, sensitivity: str,
@@ -209,6 +253,28 @@ def evaluate(policy: DisclosurePolicy, sensitivity: str,
             final = policy.strictest(final, cand)
             matched = str(rule.get("id") or rule.get("name") or "")
 
+    # 3.5) **可选类型闸**：策略显式声明了可外发的 doc_type 清单时，
+    # 只有清单内的类型才可能外发（仍须同时过级别闸）。
+    # 为什么需要它：规则只能「按 doc_type 相等收紧」，因此**非空但不在 key 空间内**的
+    # doc_type（如中文类型名、文件扩展名、拼错的 key）会**一条规则都不命中**，
+    # 直接落回声明级别 ⇒ 若声明 PUBLIC 就被放行。那是「不认识就放行」的老坑，
+    # 与本模块「不认识 ≠ 更宽松，而是不可判定」的语义相反。
+    # **放在规则之后** ⇒ 收紧原因与命中规则照样留痕（可追溯）。
+    # 未声明该键的策略**完全不受影响**（向后兼容）。
+    if policy.sendable_doc_types is not None:
+        allowed = {s.strip().lower() for s in policy.sendable_doc_types}
+        key = (doc_type or "").strip().lower()
+        if key not in allowed:
+            final = policy.strictest(final, policy.default_level)
+            return PolicyDecision(
+                level=final,
+                externally_sendable=False, requires_review=True,
+                reason=(f"材料类型 {doc_type!r} 不在策略允许外发的类型清单 "
+                        f"{sorted(allowed)} 内"
+                        + (f"；规则已收紧为 {matched}" if matched else "")
+                        + "；不可判定，按最严处理，不得外发"),
+                policy_version=policy.version, matched_rule=matched)
+
     final_spec = policy.levels.get(final, {"externally_sendable": False,
                                            "requires_review": True})
     return PolicyDecision(
@@ -244,6 +310,9 @@ def policy_status() -> dict:
         "known_levels": sorted(pol.levels) if pol.levels else list(LEVELS),
         "externally_sendable_levels": [k for k, v in pol.levels.items()
                                        if v.get("externally_sendable")],
+        "sendable_doc_types": (list(pol.sendable_doc_types)
+                               if pol.sendable_doc_types is not None else None),
+        "doc_type_gate_active": pol.sendable_doc_types is not None,
         "effective": "全部材料按最严处理，一律不可对外交付" if not pol.loaded
                      else "按策略分级执行",
     }
