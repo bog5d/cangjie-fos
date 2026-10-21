@@ -106,37 +106,37 @@
     "work_to_goal_map": [
       {
         "work_item_id": "A0",
-        "goal_metric_id": "O1",
+        "goal_metric_id": "O1_REAL_FOS_CHAIN",
         "expected_change": "固定合成基线、实际入口证据、单writer权威，追踪每个FOS调用",
         "verified_change": "NONE"
       },
       {
         "work_item_id": "A1",
-        "goal_metric_id": "O1",
+        "goal_metric_id": "O1_REAL_FOS_CHAIN",
         "expected_change": "最薄Adapter接通Team Channel到FOS，禁止自造完整检索/组包",
         "verified_change": "NONE"
       },
       {
         "work_item_id": "A2",
-        "goal_metric_id": "O2",
+        "goal_metric_id": "O2_RECALL_CONTENT",
         "expected_change": "复用已有解析/索引/分层检索、候选召回，遇未知显式处理",
         "verified_change": "NONE"
       },
       {
         "work_item_id": "A3",
-        "goal_metric_id": "O3",
+        "goal_metric_id": "O3_COMPLETENESS_AND_COPY",
         "expected_change": "真实需求驱动的齐套+权限硬Gate及准确包集复制",
         "verified_change": "NONE"
       },
       {
         "work_item_id": "A4",
-        "goal_metric_id": "O4",
+        "goal_metric_id": "O4_WINDOWS_BLIND_EXAM",
         "expected_change": "冻结快照/Gold隔离/真实Windows测评/独立Review与复测",
         "verified_change": "NONE"
       },
       {
         "work_item_id": "A5",
-        "goal_metric_id": "O5",
+        "goal_metric_id": "O5_UNATTENDED_NEXT_WP",
         "expected_change": "GM合法持续派工/监工恢复/终态报告及skills复盘",
         "verified_change": "NONE"
       }
