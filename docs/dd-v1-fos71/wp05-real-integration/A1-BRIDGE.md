@@ -267,7 +267,14 @@ doc_type（中文类型名、文件扩展名、拼错的 key）会**一条规则
 | `real-regression-post-a1.txt` | 真实材料回归（**开**授权闸 ⇒ 桥接真跑；案例名已脱敏为 案例A/B/C） |
 | `real-regression-post-a1-no-bridge.txt` | 真实材料回归（**不开**授权闸 ⇒ 桥接降级，入口 A 输出不变） |
 | `SHA256SUMS-a1-evidence.txt` | 上述文件逐件 sha256（`shasum -c` 自检）——**冻结快照** |
-| `../SHA256SUMS-wp05.txt` | 整个交付目录（含本文件与 `a1-evidence/` 全部文件）的 sha256 ——**冻结快照** |
+| `../SHA256SUMS-wp05.txt` | **A1 交付目录**（本文件 + `a1-evidence/` 全部文件，共 20 件）的 sha256 —— **A1 冻结时刻的快照** |
+
+> ⚠️ **清单的覆盖范围（合并后仍然成立）**：`SHA256SUMS-wp05.txt` 收录的是
+> **A1 自己那 20 件**（本文件 + `a1-evidence/` 全套），**不覆盖** A0 的证据件。
+> A1 与 A0 合并进规格分支后，目录实有 52 件；A0 的 32 件由 A0 自己的
+> `a0-evidence/SHA256SUMS-a0-evidence.txt` 覆盖（各自冻结，互不冒充）。
+> ⇒ `shasum -c SHA256SUMS-wp05.txt` 全 OK **只代表 A1 那 20 件**，
+> 不是「整个目录」；此处按实际口径书写，不做过度声明。
 
 > ⚠️ **两份清单都含 `bridge-run-stdout.log` / `bridge-run-stderr.log`**：
 > 交付契约点名要这两个文件名，但 FOS 仓 `.gitignore:61` 有 `*.log`

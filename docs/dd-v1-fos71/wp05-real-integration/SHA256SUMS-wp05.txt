@@ -1,9 +1,9 @@
 # wp05-real-integration 交付目录 SHA256 冻结清单
-# 生成时间(UTC): 2026-10-21T19:54:38Z
+# 生成时间(UTC): 2026-10-21T20:13:41Z
 # 校验: cd wp05-real-integration && shasum -a 256 -c SHA256SUMS-wp05.txt
 # [round-4] R1 修复 + F-1 叙述层修正 + trace 输入冻结 ⇒ 重新冻结
-5801faf6dcc356365c37a337a03e207e5e28ab21497ce67f186b9aef28d3cedf  A1-BRIDGE.md
-c0f4061f46d75d04d68c51cc276d62f0bdb0d0164325f806c7f27db9363c3716  a1-evidence/SHA256SUMS-a1-evidence.txt
+80316157e2e2bc030e7a03f58f6bf7c82ac783e1e21c19563576875bea11c151  A1-BRIDGE.md
+477212ee46f20b0b7d1898543c8d062330dd9d6d612bee8080737419f2aabfbb  a1-evidence/SHA256SUMS-a1-evidence.txt
 da2a22bcbd7aab7ecf9ced3f228d868e8fb7de7346f56bc003ea7e6788bc5f45  a1-evidence/a1-trace-checklist.tsv
 209c82aa1a2cd8a494bc434b5910ef0b5560370589d96f9a517186c70fb5c501  a1-evidence/a1-trace-runner.py
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  a1-evidence/bridge-run-stderr.log
