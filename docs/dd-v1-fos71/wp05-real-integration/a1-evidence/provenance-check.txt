@@ -1,0 +1,20 @@
+# A1 回归对照的「被测代码来源」硬证据
+# 生成时间: 2026-10-21T19:52:48Z
+# 插件: a1-evidence/provenance_plugin.py（pytest session 起点打印解析到的源码树）
+# 为什么需要: venv 是 editable install（.pth 指向 A1 worktree 的 src），
+#   裸 python 会解析到 A1 树；pytest 因 pyproject 的 pythonpath=["src"]（rootdir 相对且前置）
+#   会解析到 rootdir 所在树。二者不同 ⇒ 必须当场打印，不能靠推断。
+
+=== A1 worktree 侧（应解析到 A1 树，marker=True）===
+PROVENANCE: cangjie_fos = /Users/mac/cangjie-fos-wt-a1/backend/src/cangjie_fos/__init__.py
+PROVENANCE: cwd = /Users/mac/cangjie-fos-wt-a1/backend
+PROVENANCE: rootdir = /Users/mac/cangjie-fos-wt-a1/backend
+PROVENANCE: sys.path[0:4] = ['/Users/mac/cangjie-fos-wt-a1/backend/tests', '/Users/mac/cangjie-fos-wt-a1/backend/src', '/Users/mac/cangjie-fos-wt-a1/backend', '/Users/mac/cangjie-fos-wt-a1/docs/dd-v1-fos71/wp05-real-integration/a1-evidence']
+PROVENANCE: has_A1_marker(主体未登记分支) = True
+
+=== master 侧（应解析到 master 树，marker=False）===
+PROVENANCE: cangjie_fos = /Users/mac/cangjie-fos/backend/src/cangjie_fos/__init__.py
+PROVENANCE: cwd = /Users/mac/cangjie-fos/backend
+PROVENANCE: rootdir = /Users/mac/cangjie-fos/backend
+PROVENANCE: sys.path[0:4] = ['/Users/mac/cangjie-fos/backend/tests', '/Users/mac/cangjie-fos/backend/src', '/Users/mac/cangjie-fos/backend', '/Users/mac/cangjie-fos-wt-a1/docs/dd-v1-fos71/wp05-real-integration/a1-evidence']
+PROVENANCE: has_A1_marker(主体未登记分支) = False

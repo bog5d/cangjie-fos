@@ -224,13 +224,20 @@ def extract_and_record(
 
     # 正文缓存（受控 Data Plane）。认知卡与 FTS 索引依赖它——
     # 没有正文缓存，FTS 就只能搜到标题，材料内容等于没进索引。
+    # WP-A1（G5 位置 2）：**入索引前 PII 拒识**——抽取正文写进卡片缓存 / FTS 前
+    # 必须脱敏（纯规则、确定性；缓存与索引里不得出现 PII 原串）。
     if res.readable and res.text:
         from cangjie_fos.services.dd_v1_card_service import (  # noqa: PLC0415
             cache_text,
         )
-        cache_text(file_id, library_id, res.text, method=res.method,
+        from cangjie_fos.services import dd_v1_pii_service as pii  # noqa: PLC0415
+
+        red = pii.redact_detailed(res.text)
+        cache_text(file_id, library_id, red["text"], method=res.method,
                    truncated=res.truncated, original_chars=res.original_chars,
                    db_path=db_path)
+        if red["redacted"]:
+            logger.info("正文入索引前拒识 PII %d 处（file_id=%s）", red["count"], file_id)
 
     out = res.to_dict()
     out.update({"file_id": file_id, "parse_status": status})

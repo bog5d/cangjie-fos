@@ -85,6 +85,24 @@ def _audit(year, entity="子公司甲"):
     return f"审计报告\n本报告为{year}年度财务审计结论，由{entity}出具。\n"
 
 
+def _register_subject(tmp_path, lib, name="子公司甲", relation="subsidiary"):
+    """把主体登记进**权威名单**（``dd_v1_entities``）。
+
+    ## 为什么这三条既有用例必须补这一行（G6 v2）
+
+    认知卡的 ``entity`` 是**父目录名**（INFERRED/path_segment），
+    冲突分桶与 STALE 判定**只认权威名单**（任务书 G6：
+    「主体未知的不同法人同年材料不报 CONFLICT；**登记同主体**且哈希不同才报 CONFLICT」）。
+    这三条用例的 docstring 本来就在测「**同主体**同期间…」，
+    但它们**没有登记主体** ⇒ 过去是靠「目录名冒充主体」才拿到 CONFLICT / STALE / MATCHED
+    —— 那是 G6 v2 修掉的缺陷，不是它们想测的东西。
+
+    ⇒ 补登记后，它们才真的在测自己声称的东西；**断言一字未改**。
+    """
+    rq.register_entity(lib, "S1", name, relation=relation,
+                       source_ref="工商登记", db_path=_db(tmp_path))
+
+
 def _unlock(lib, db, rel, sensitivity="PUBLIC"):
     """把材料标为策略认识的级别。**默认 PUBLIC**（可外发），其余级别仍被拒。"""
     fid = mf.get_manifest_entry(lib, rel, db_path=db)["file_id"]
@@ -292,6 +310,7 @@ def test_editing_resets_approval(tmp_path):
 def test_stale_detected_when_only_out_of_period_material(tmp_path):
     """只有 2019 年材料，要求 2021-2023 → 必须 STALE，不得拿旧版本顶当期。"""
     lib, _ = _setup(tmp_path, {"子公司甲/审计报告2019.txt": _audit(2019)})
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     _unlock(lib, _db(tmp_path), "子公司甲/审计报告2019.txt")
     rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供子公司甲2021-2023年度审计报告"}],
                         db_path=_db(tmp_path))
@@ -309,6 +328,7 @@ def test_conflict_detected_on_same_entity_period_different_content(tmp_path):
         "子公司甲/审计报告2023.txt": _audit(2023) + "补充说明一。\n",
         "子公司甲/审计报告2023_修订.txt": _audit(2023) + "补充说明二，完全不同。\n",
     })
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     for rel in ("子公司甲/审计报告2023.txt", "子公司甲/审计报告2023_修订.txt"):
         _unlock(lib, _db(tmp_path), rel)
     rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供2023年度审计报告"}],

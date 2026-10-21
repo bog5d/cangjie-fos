@@ -193,6 +193,24 @@ def _seed_library(tmp_path, lib, root, files: dict[str, str]):
     cs.build_cards_for_library(lib, db_path=_db(tmp_path))
 
 
+def _register_subject(tmp_path, lib, name="子公司甲", relation="subsidiary"):
+    """把主体登记进**权威名单**（``dd_v1_entities``）。
+
+    ## 为什么这三条既有用例必须补这一行（G6 v2）
+
+    认知卡的 ``entity`` 是**父目录名**（INFERRED/path_segment），
+    冲突分桶与 STALE 判定**只认权威名单**（任务书 G6：
+    「主体未知的不同法人同年材料不报 CONFLICT；**登记同主体**且哈希不同才报 CONFLICT」）。
+    这三条用例的 docstring 本来就在测「**同主体**同期间…」，
+    但它们**没有登记主体** ⇒ 过去是靠「目录名冒充主体」才拿到 CONFLICT / STALE / MATCHED
+    —— 那是 G6 v2 修掉的缺陷，不是它们想测的东西。
+
+    ⇒ 补登记后，它们才真的在测自己声称的东西；**断言一字未改**。
+    """
+    rq.register_entity(lib, "S1", name, relation=relation,
+                       source_ref="工商登记", db_path=_db(tmp_path))
+
+
 def _audit(year, entity="子公司甲"):
     return f"审计报告\n本报告为{year}年度财务审计结论，由{entity}出具。\n"
 
@@ -214,6 +232,7 @@ def _unlock_sensitivity(lib, db, rel: str):
 def test_single_file_does_not_satisfy_multi_year_requirement(tmp_path):
     """核心：找到一份审计报告 ≠ 三年要求被满足。"""
     lib, root = _lib(tmp_path)
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     _seed_library(tmp_path, lib, root, {"子公司甲/审计报告2022.txt": _audit(2022)})
     rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供子公司甲2021-2023年度审计报告"}],
                         db_path=_db(tmp_path))
@@ -235,6 +254,7 @@ def test_three_years_one_each_is_matched(tmp_path):
     })
     rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供子公司甲2021-2023年度审计报告"}],
                         db_path=_db(tmp_path))
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     for y in (2021, 2022, 2023):
         _unlock_sensitivity(lib, _db(tmp_path), f"子公司甲/审计报告{y}.txt")
     obl = rq.list_obligations(lib, db_path=_db(tmp_path))[0]
@@ -313,6 +333,7 @@ def test_capping_is_recorded_not_silent(tmp_path):
 def test_unknown_sensitivity_blocks_matched(tmp_path):
     """敏感等级未知 → 不得自动纳入可对外交付结果，因此不能判 MATCHED。"""
     lib, root = _lib(tmp_path)
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     _seed_library(tmp_path, lib, root, {"子公司甲/审计报告2023.txt": _audit(2023)})
     rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供2023年度审计报告"}],
                         db_path=_db(tmp_path))
@@ -328,6 +349,7 @@ def test_marking_sensitivity_unlocks_delivery(tmp_path):
     """一旦政策给出敏感等级且允许，才可能判 MATCHED。"""
     lib, root = _lib(tmp_path)
     _seed_library(tmp_path, lib, root, {"子公司甲/审计报告2023.txt": _audit(2023)})
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     rq.ingest_checklist(lib, [{"item_no": "1", "raw_text": "请提供2023年度审计报告"}],
                         db_path=_db(tmp_path))
     obl = rq.list_obligations(lib, db_path=_db(tmp_path))[0]

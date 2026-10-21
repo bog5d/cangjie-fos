@@ -28,6 +28,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from cangjie_fos.services import dd_v1_manifest_service as mf
+# WP-A1（G6 v2）：材料类型的**规范 key** 只能来自 requirement service 的权威规则表，
+# 本模块不另抄一份（复用纪律：同一张表只有一个来源）。
+# 依赖方向安全：requirement_service 只依赖 manifest_service ⇒ 无循环导入。
+from cangjie_fos.services import dd_v1_requirement_service as rq
 
 logger = logging.getLogger(__name__)
 
@@ -619,6 +623,94 @@ def get_cached_text(file_id: str, db_path: Path | None = None) -> str:
 
 def _v(card: dict, name: str):
     return card.get(name, {}).get("value", "")
+
+
+def multi_text(card: dict | None, name: str) -> str:
+    """读认知卡的**多值字段**并拼成一段文本，供关键词匹配用。
+
+    ## 为什么要单独一个函数
+
+    认知卡的 ``purpose`` / ``proves`` / ``key_facts`` / ``related_files``
+    在**表列里存的是 ``json.dumps(list)`` 字符串**，而 ``get_card()`` 只把
+    ``fields_json`` 解析成结构化 ``card["fields"]``，**顶层列仍是字符串**。
+
+    于是下面这种写法是**错的**：
+
+    ```python
+    " ".join(card.get("purpose") or [])   # ❌ 把 JSON 字符串逐字符迭代
+    ```
+
+    它把 ``'["审计报告→审计结论"]'`` 变成 ``'审 计 报 告 → 审 计 结 论'``
+    ⇒ 中文关键词（审计 / 章程 / 营业执照 …）**永远匹配不上**
+    ⇒ ``doctype_ok`` 恒 0 ⇒ ``doctype_cov`` 一票否决 ⇒ ``MATCHED`` 永远出不来。
+
+    正确读法（与本模块 ``related_files`` 的既有用法一致）：
+    **优先读结构化字段** ``card["fields"][name]["value"]``；
+    顶层列只作兜底，且按 **JSON 解析**、不按字符迭代。
+    """
+    if not card:
+        return ""
+    fields = card.get("fields") or {}
+    raw = (fields.get(name) or {}).get("value")
+    if raw is None:
+        raw = card.get(name)
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            raw = [raw]
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, (list, tuple)):
+        return ""
+    return " ".join(str(x) for x in raw)
+
+
+def purpose_text(card: dict | None) -> str:
+    """认知卡「用途」文本（多值拼一段）。见 :func:`multi_text` 的说明。"""
+    return multi_text(card, "purpose")
+
+
+def doc_type_key(card: dict | None) -> str:
+    """卡片材料的**规范类型 key**（``""`` = 认不出 / UNKNOWN）。
+
+    ## 合法取值空间只有一个
+
+    ``dd_v1_requirement_service._DOC_TYPE_RULES`` 的 10 个英文 key
+    （audit_report / financial_statement / tax / license / charter /
+    capital / resolution / ip / labor / contract）。
+
+    - 认知卡的 ``doc_type`` 列存的是**文件扩展名**（pdf / xlsx …）——
+      那是 A2 的 G-A2-7 要修的；在那之前**不得**把它当材料类型用；
+    - 中文类型名（审计报告…）同样**不是**合法取值，只是给人读的。
+
+    ## 取值顺序（**文件名优先**，不可改）
+
+    1. 卡片 ``doc_type`` **已经是**规范 key ⇒ 直接用（用公开 API 校验，不抄规则表）；
+    2. **文件名**（``rel_path``）—— 材料的类型身份由文件名决定，
+       且这是「营业执照2024.txt vs 车辆登记证2024.txt」这类判别的唯一可用信号
+       （两份材料的正文可能都是「审计报告…」）；
+    3. ``title``；
+    4. ``purpose``（正文用途）。
+
+    与 A2 的 G-A2-7「来源可复现：文件名关键词 → 正文 → 卡片 purpose → 显式映射规则」同向。
+
+    仍认不出 ⇒ 返回 ``""``（UNKNOWN）——**不得**拿扩展名或中文名占位。
+    """
+    if not card:
+        return ""
+    raw = str(card.get("doc_type") or "").strip().lower()
+    if raw and rq.doc_type_search_terms(raw):
+        return raw                      # 已是规范 key
+    for text in (str(card.get("rel_path") or ""),
+                 str(card.get("title") or ""),
+                 purpose_text(card)):
+        if not text:
+            continue
+        key, _provenance = rq.parse_doc_type(text)
+        if key:
+            return key
+    return ""
 
 
 def build_cards_for_library(

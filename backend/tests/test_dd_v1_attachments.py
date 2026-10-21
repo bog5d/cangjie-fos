@@ -73,6 +73,24 @@ def _seed(tmp_path, files: dict[str, str]):
     return lib
 
 
+def _register_subject(tmp_path, lib, name="子公司甲", relation="subsidiary"):
+    """把主体登记进**权威名单**（``dd_v1_entities``）。
+
+    ## 为什么这些既有用例必须补这一行（G6 v2）
+
+    认知卡的 ``entity`` 是**父目录名**（INFERRED/path_segment），
+    而冲突分桶 / STALE 判定**只认权威名单**（任务书 G6：
+    「主体未知的不同法人同年材料不报 CONFLICT；**登记同主体**且哈希不同才报 CONFLICT」）。
+    这些用例的 docstring 本来就在测「**子公司甲**的审计报告…」，
+    但它们**没有登记主体** ⇒ 过去是靠「目录名冒充主体」才拿到 MATCHED / PARTIAL
+    —— 那是 G6 v2 修掉的缺陷，不是它们想测的东西。
+
+    ⇒ 补登记后，它们才真的在测自己声称的东西；**断言一字未改**。
+    """
+    rq.register_entity(lib, "S1", name, relation=relation,
+                       source_ref="工商登记", db_path=_db(tmp_path))
+
+
 def _unlock(lib, db, rel, sensitivity="PUBLIC"):
     fid = mf.get_manifest_entry(lib, rel, db_path=db)["file_id"]
     conn = mf._connect(db)
@@ -126,6 +144,7 @@ def test_attach_key_strips_version_and_year():
 # ── 2. 附件维度进入覆盖判定 ──────────────────────────────────────────────
 def test_obligation_requiring_attachment_without_related_is_partial(tmp_path):
     lib = _seed(tmp_path, {"子公司甲/审计报告2023.txt": "审计报告\n本报告为2023年度审计结论。\n"})
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     _unlock(lib, _db(tmp_path), "子公司甲/审计报告2023.txt")
     rq.ingest_checklist(lib, [{"item_no": "1",
                               "raw_text": "请提供2023年度审计报告及其附件"}],
@@ -144,6 +163,7 @@ def test_obligation_requiring_attachment_with_related_can_match(tmp_path):
         "子公司甲/审计报告2023.txt": "审计报告\n本报告为2023年度审计结论。\n",
         "子公司甲/审计报告2023_附表.txt": "审计报告附表内容",
     })
+    _register_subject(tmp_path, lib)          # G6 v2：主体须在权威名单里
     for rel in ("子公司甲/审计报告2023.txt", "子公司甲/审计报告2023_附表.txt"):
         _unlock(lib, _db(tmp_path), rel)
     rq.ingest_checklist(lib, [{"item_no": "1",

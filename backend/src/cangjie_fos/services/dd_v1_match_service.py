@@ -165,7 +165,11 @@ def evaluate_file(
     # 材料类型维度
     dt = obligation.get("doc_type") or ""
     if dt:
-        purposes = " ".join(card.get("purpose") or []) if card else ""
+        # WP-A1 修正：**必须走结构化字段**（`cs.purpose_text`）。
+        # 卡片 `purpose` 列存的是 JSON 字符串，原写法 `" ".join(card.get("purpose") or [])`
+        # 把字符串**逐字符**加空格拼接 ⇒ 中文关键词永远匹配不上 ⇒ doctype_ok 恒 0
+        # ⇒ doctype_cov 一票否决 ⇒ MATCHED 永远出不来（详见 cs.multi_text 的说明）。
+        purposes = cs.purpose_text(card)
         keys = _DOC_TYPE_PURPOSE_MAP.get(dt)
         doc_ok = 1 if (card and ((not keys) or any(k in purposes or k in card.get("title", "") for k in keys))) else 0
     else:
@@ -280,6 +284,12 @@ def match_obligation(
 
     need_entities = rq.resolve_entities(
         library_id, obl.get("entity_scope") or "", obl.get("period_to") or None, db_path)
+    # WP-A1（G6 v2）**全量权威主体名单**（不按义务范围过滤）——
+    # 冲突分桶要回答的是「这个主体是不是登记过的法人」，不是
+    # 「这条义务要求哪几个主体」。义务范围为空时 need_entities 也是空的，
+    # 但权威名单里可能有登记主体 ⇒ 两件事必须分开取。
+    authority_entities = rq.resolve_entities(
+        library_id, "group_and_subs", obl.get("period_to") or None, db_path)
 
     # 召回：doc_type 词优先 + 义务原文词兜底；两者皆空说明**没真正查过**
     candidates, capped, used_terms = _recall_candidates(
@@ -300,7 +310,8 @@ def match_obligation(
     for i, r in enumerate(results, 1):
         r["rank"] = i
 
-    status = judge(obl, results, need_entities, capped, used_terms)
+    status = judge(obl, results, need_entities, capped, used_terms,
+                     authority_entities)
     _persist(conn, library_id, obligation_id, obl, results, status)
     return status
 
@@ -354,7 +365,8 @@ def detect_entity_substitution(pool, need_entities) -> list[dict]:
 
 
 def detect_anomalies(
-    obl: dict, pool: list[dict], need_entities: list[dict]
+    obl: dict, pool: list[dict], need_entities: list[dict],
+    authority_entities: list[dict] | None = None,
 ) -> dict:
     """检测 STALE（过期）与 CONFLICT（冲突）。
 
@@ -367,18 +379,85 @@ def detect_anomalies(
     """
     stale_entities: list[str] = []
     conflict_pairs: list[dict] = []
+    unknown_entities: list[dict] = []
+    unknown_types: list[dict] = []
     y_from, y_to = obl.get("period_from", 0), obl.get("period_to", 0)
 
-    # 按 (主体, 期间) 分桶
-    buckets: dict[tuple[str, str], set[str]] = {}
+    # 按 (主体, 期间) 分桶 —— WP-A1（G6）修正：
+    # 旧实现 ent 取 card.entity，为空时回落 `rel_path.split("/")[0]`；卡片 entity 空 +
+    # 扁平 rel_path 时回落仍为空 → 桶键 ("", period) → **跨法人混桶 → 假 CONFLICT**
+    # （A0 基线：319 条义务 284 条 89% 报 CONFLICT，全部由此产生）。
+    # FOS 自己的原则是「缺权威名单就判 UNCERTAIN，不得拿目录名凑数」：
+    # 1) 移除目录名回落——主体只能取 card.entity（权威来源：卡片声明/权威登记）；
+    # 2) 主体未知的材料**不参与 CONFLICT 判定**，单独记入 unknown_entities，
+    #    由 judge() 据此报 UNCERTAIN 并注明「主体未登记，无法判定是否同一主体」；
+    # 3) 只有主体已知 + 同主体 + 同期间 + 内容哈希不同才报 CONFLICT。
+    # ── WP-A1（G6 v2）权威主体名单 ────────────────────────────────────────
+    # **「主体未知」的准确定义是「该主体不在权威名单里」，不是「card.entity 为空」。**
+    #
+    # 为什么必须查名单：认知卡的 ``entity`` 在真实材料上**就是父目录名**
+    # （``dd_v1_card_service.build_card`` 的 ``parts[-2]``，provenance=INFERRED、
+    # evidence.kind=path_segment，全仓唯一写入点）——**非空**。
+    # 只判空 ⇒ 「主体未登记」被误判成「主体已知」⇒ 同目录的**不同法人**
+    # 落进同一个桶 ⇒ 报假 CONFLICT（A0 基线 319 条义务里 284 条 89% 报 CONFLICT
+    # 就是这么来的），且 ``has_unknown_entities=False`` ⇒
+    # ``judge()`` 的「主体未登记 ⇒ 降级 UNCERTAIN」**根本不触发**。
+    #
+    # 名单来源（两个来源取并集）：
+    # - 第 3 位参 ``need_entities``：**任务书与验收脚本的权威名单口径**
+    #   （独立 Reviewer 的三支脚本都把权威名单放在这个位参）；
+    # - 第 4 位参 ``authority_entities``：产品路径额外传入的**全量权威名单**
+    #   （不按义务范围过滤）——「这条义务要求哪几个主体」与
+    #   「这个法人登记过没有」是两件事，必须分开取。
+    registered = {str(e.get("display_name") or "").strip()
+                  for e in (list(need_entities or []) + list(authority_entities or []))}
+    registered.discard("")
+    #
+    # 桶键 = (主体, 期间, 材料类型)
+    # 类型维度：不同材料类型（营业执照 vs 车辆登记证）**不得互判冲突**。
+    buckets: dict[tuple[str, str, str], set[str]] = {}
+    unknown_bucket: list[dict] = []
+    # ── WP-A1（G6 v3 · R1）材料类型认不出 ⇒ 不参与冲突判定 ──────────────────
+    # 桶键里的 doc_type 认不出时取空串 ""；空串照样进桶 ⇒ 两份**类型未知**材料
+    # 落进同一桶 (entity, period, "") ⇒ 同主体同期间异哈希 ⇒ **误报 CONFLICT**。
+    # 诚实性口径与「主体未登记」一致：认不出类型 ⇒ 无法判定两份材料是不是
+    # 同一材料类型的两个版本 ⇒ 不得断言冲突 ⇒ 单列桶 + judge() 降级 UNCERTAIN。
+    unknown_type_bucket: list[dict] = []
     for r in pool:
         card = r.get("card") or {}
-        ent = card.get("entity") or (r["manifest"]["rel_path"].split("/")[0]
-                                     if r.get("manifest") and "/" in r["manifest"]["rel_path"] else "")
+        ent = (card.get("entity") or "").strip()
         pv = str(card.get("fiscal_period") or "")
-        buckets.setdefault((ent, pv), set()).add(r["file_id"])
+        dt = cs.doc_type_key(card)
+        if not ent or ent not in registered:
+            # 主体未知（字段为空 **或** 未在权威名单里）⇒ 不参与冲突判定
+            unknown_bucket.append(r)
+            continue
+        if not dt:
+            # 类型未知（认不出规范 doc_type key）⇒ 不参与冲突判定
+            unknown_type_bucket.append(r)
+            continue
+        buckets.setdefault((ent, pv, dt), set()).add(r["file_id"])
+    if unknown_bucket:
+        rels = sorted(((r.get("card") or {}).get("rel_path")
+                       or (r.get("manifest") or {}).get("rel_path") or "")
+                      for r in unknown_bucket)
+        unknown_entities.append({
+            "count": len(unknown_bucket),
+            "rel_paths": rels,
+            "note": "主体未登记，无法判定是否同一主体；不参与内容冲突判定，需人工确认主体归属",
+        })
 
-    for (ent, pv), fids in buckets.items():
+    if unknown_type_bucket:
+        rels = sorted(((r.get("card") or {}).get("rel_path")
+                       or (r.get("manifest") or {}).get("rel_path") or "")
+                      for r in unknown_type_bucket)
+        unknown_types.append({
+            "count": len(unknown_type_bucket),
+            "rel_paths": rels,
+            "note": "材料类型认不出，无法判定是否同一材料类型；不参与内容冲突判定，需人工确认材料类型",
+        })
+
+    for (ent, pv, _dt), fids in buckets.items():
         if len(fids) > 1:
             # **主文档与它的附表不是「冲突版本」**，必须排除，
             # 否则「审计报告 + 审计报告附表」这种正常组合会被误判为内容冲突。
@@ -396,13 +475,14 @@ def detect_anomalies(
                     "files": sorted(fids), "distinct_hashes": len(hashes),
                 })
 
-    # STALE：有主体只在区间外被覆盖
+    # STALE：有主体只在区间外被覆盖（WP-A1：同样只用已声明的 card.entity，不用目录名凑数）
     if y_from and y_to:
         covered_by_entity: dict[str, set[int]] = {}
         for r in pool:
             card = r.get("card") or {}
-            ent = card.get("entity") or (r["manifest"]["rel_path"].split("/")[0]
-                                         if r.get("manifest") and "/" in r["manifest"]["rel_path"] else "")
+            ent = (card.get("entity") or "").strip()
+            if not ent or ent not in registered:
+                continue  # 主体未知不参与 STALE 判定（与冲突分桶同一口径：必须在权威名单里）
             pv = str(card.get("fiscal_period") or "")
             if pv.isdigit():
                 covered_by_entity.setdefault(ent, set()).add(int(pv))
@@ -420,14 +500,19 @@ def detect_anomalies(
     return {
         "stale_entities": stale_entities,
         "conflicts": conflict_pairs,
+        "unknown_entities": unknown_entities,
+        "unknown_types": unknown_types,
         "has_stale": bool(stale_entities),
         "has_conflict": bool(conflict_pairs),
+        "has_unknown_entities": bool(unknown_entities),
+        "has_unknown_types": bool(unknown_types),
     }
 
 
 def judge(
     obl: dict, results: list[dict], need_entities: list[dict], capped: bool,
     used_terms: list[str] | None = None,
+    authority_entities: list[dict] | None = None,
 ) -> dict:
     """四维覆盖 → 最终判定。**核心：不是「有没有找到相关文件」。**"""
     n_ent = len(need_entities)
@@ -530,13 +615,46 @@ def judge(
 
     # STALE / CONFLICT 优先于 MATCHED/PARTIAL：拿旧版本顶当期、或同主体同期多版本冲突，
     # 都必须让人看见，不能被「覆盖率够了」盖过去。
-    anom = detect_anomalies(obl, results, need_entities)
+    anom = detect_anomalies(obl, results, need_entities,
+                      authority_entities)
     if anom["has_conflict"]:
         verdict = V_CONFLICT
         missing.append(f"同一主体/期间存在 {len(anom['conflicts'])} 组内容冲突，需人工裁定")
     elif anom["has_stale"] and verdict in (V_MATCHED, V_PARTIAL):
         verdict = V_STALE
         missing.append("；".join(anom["stale_entities"]))
+
+    # WP-A1（G6）主体未登记 ⇒ **覆盖类判定不可信**，一律改判 UNCERTAIN。
+    #
+    # 为什么不能只挂在 MATCHED 上：主体未知 ⇒ 无法判定材料是不是目标主体那一份
+    # ⇒「覆盖率够了」这个结论本身就不成立（PARTIAL / MATCHED / RESTRICTED 全部建立在覆盖之上），
+    # 所以 RESTRICTED 也要一起改判——否则就会退回「受限所以不可外发」这一句，
+    # 把真正缺的那句「主体未登记，无法判定是否同一主体」盖掉。
+    # 为什么 CONFLICT 不改判：冲突是**更具体、必须人工裁定**的发现，
+    # 改判成 UNCERTAIN 反而把可行动信息降级；两条事实都写进 missing_detail，一个都不丢。
+    # 为什么放在 MATCHED→RESTRICTED 降级之后仍然有效：
+    # 降级只改 verdict 取值，不改「候选里有主体未知的材料」这个事实；
+    # 降级写下的受限原因已原样留在 missing_detail 里（见 restricted 追加逻辑）。
+    if anom.get("has_unknown_entities"):
+        if verdict in (V_MATCHED, V_PARTIAL, V_RESTRICTED):
+            verdict = V_UNCERTAIN
+        missing.append("主体未登记，无法判定是否同一主体；"
+                       f"候选中有 {anom['unknown_entities'][0]['count']} 份材料主体未登记，"
+                       "需人工确认主体归属")
+
+    # WP-A1（G6 v3 · R1）材料类型认不出 ⇒ **类型维度结论不可信** ⇒ 降级 UNCERTAIN。
+    #
+    # 为什么必须降级而不是只「不报 CONFLICT」：认不出类型 ⇒ 无法判定这份材料
+    # 是不是义务要求的那种材料 ⇒ 「类型覆盖够了」这个结论本身就不成立
+    # （PARTIAL / MATCHED / RESTRICTED 都建立在覆盖之上）。
+    # 为什么 CONFLICT 不改判：冲突是**更具体、必须人工裁定**的发现，
+    # 改判成 UNCERTAIN 反而把可行动信息降级（同 has_unknown_entities 的处理）。
+    if anom.get("has_unknown_types"):
+        if verdict in (V_MATCHED, V_PARTIAL, V_RESTRICTED):
+            verdict = V_UNCERTAIN
+        missing.append("材料类型认不出，无法判定是否同一材料类型；"
+                       f"候选中有 {anom['unknown_types'][0]['count']} 份材料类型认不出，"
+                       "需人工确认材料类型")
 
     return {
         "obligation_id": obl["obligation_id"],
