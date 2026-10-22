@@ -1,0 +1,28 @@
+# 执行者本地暂存区 · 原始测量日志登记（**不是交付件**）
+# 生成时间: 2026-10-22T14:33:59+0800
+# 位置: <workspace>/redact/evidence/  （**在 FOS 工作树之外**，不进仓、不进 GM 仓）
+# 仓内交付面（docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/）只放**派生摘要**，摘要零命中。
+#
+# ★ 诚实登记（C 段命中**数字现算**，非手写）：纯子串规则 8 处 / 词边界规则 0 处。
+#   原因：这些是 pytest 的**原始 junit xml**，其**测试节点 ID** 里含材料库代号的
+#        **英文单词内子串** —— 与司仓 A2 包已登记的「扫描器假阳性」同类
+#        （A2 已给其扫描器加词边界规则；本包扫描器也已按词边界修订）。
+#   ★ **改前 / 改后两份原始 junit 都有**这类子串命中（节点 ID 来自**未改**的用例名，
+#     而 Gate-2 ③ 已把那批用例**回退**到 HEAD）⇒ 两侧同源、同口径。
+#   ⇒ 它们是**测量日志**，按审计要求原样保留（不改测量数据），且**不进交付面**
+#     （交付面只放派生摘要）⇒ 单列于此。
+#   ⇒ 结论：交付面（A 段）与执行器脚本（B 段）**两套规则均 0 命中**（见 09）。
+#
+# C 段逐件命中（仅文件名 + 计数，**不含命中内容**）：
+#   after-junit.xml  code_bounded=0
+#   baseline-junit.xml  code_bounded=0
+#
+# 逐件 SHA256（供复核者比对）：
+
+  5920a8958b5b7c6e8dead3f05aeb571744a509d4d826b0341bde0c59123b17a3  baseline-junit.xml   # 改前（基线态）全量 pytest 的原始 junit xml
+  88a1217bc631a3c9124a7622dd4b3eccf38820eaec0325f1b9aacc29362dbf51  after-junit.xml   # 改后全量 pytest 的原始 junit xml
+  2dd0ed1bc6125b1c8fa53a88fb39f480498f4a632755e23c62edc871058775d7  baseline-pytest.out   # 改前 pytest stdout（点阵）
+  7b7dd0a17bd80a805345646d8ab541c46fe2c02c969ff197bd6c7ed3463d7243  after-pytest.out   # 改后 pytest stdout（点阵）
+  8e6fa7b14a41736f24173b58599b5332ee72e17a98bd085827009cab6fac372a  frontend-test.out   # 前端 vitest 实跑 stdout
+  433a546ac8b426018e170546108e06eb8380a7476f0e50c8d6dc984e72153cd2  frontend-build.out   # 前端 vite build 实跑 stdout
+  82855357870ac29183b123f1b99938f0980e08338469836b609fd819294b098c  delivery-scan.txt   # R-7 交付面扫描输出

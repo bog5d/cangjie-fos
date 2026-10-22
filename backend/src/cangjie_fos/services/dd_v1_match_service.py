@@ -968,21 +968,74 @@ def judge(
     # 都必须让人看见，不能被「覆盖率够了」盖过去。
     anom = detect_anomalies(obl, results, need_entities,
                       authority_entities, alias_map=_al)
-    if anom["has_conflict"]:
+    # gm-fix-f1-conflict-scope: CONFLICT 的**相关性闸**（F1 · 监工第 35 轮 P0）
+    #
+    # ★ 为什么必须加这道闸（司仓**独立复现**确认，不是采信口述）：
+    #   冲突是**候选池内部**的发现（桶键 = 主体 × 期间 × 材料类型），
+    #   与「本义务要求哪一类材料」**无关**。旧实现让**任意**类型的冲突对
+    #   无条件覆盖本义务的最终判定 ⇒ 一对
+    #   「2024 审计报告 + 2024 审计报告补充说明」把**整库**义务全打成 CONFLICT
+    #   ⇒ 与该义务毫无关系的「缺专利证书」这类**可行动缺口信号被覆盖**
+    #   （实测该义务的 missing_detail 里明明有「材料类型缺 1/1 份」）
+    #   ⇒ 材料包为空 ⇒ **系统在该库上完全不可用**。
+    #
+    # ★ 闸的口径：与 A2（G-A2-12）**同构** —— 冲突**只影响相关义务**：
+    #   冲突对里有「**可能是本义务要求的那一份**」的候选时
+    #   （`_may_be_required`，**同一套**相关性口径）本义务才改判 CONFLICT；
+    #   否则**只留痕**、**不改判**。
+    #
+    # ★ 不放宽冲突本身：
+    #   - `detect_anomalies` 的**检测口径一字不改**（桶键 / 唯一性 / 主体归一全不动）
+    #     ⇒ `anom["conflicts"]`、`anom["has_conflict"]` 与既有测试断言**完全不变**；
+    #   - 冲突事实仍落 `anomalies_json` 审计面 ⇒ **T3 语义不变**：
+    #     同主体同期同类型异哈希**仍然必须报**（只是不再染黑无关义务）；
+    #   - 义务**未指名类型** ⇒ 任何候选都可能是 ⇒ 一律按相关处理（最保守），
+    #     不会把真冲突放过；
+    #   - 缺 `_may_be_required` 标记的旧调用路径按最保守（True）处理。
+    _may_by_file: dict[str, bool] = {}
+    for _r in (results or []):
+        _may_by_file[str(_r.get("file_id") or "")] = bool(
+            _r.get("_may_be_required", True)
+        )
+    _conf_rel: list[dict] = []
+    _conf_irr: list[dict] = []
+    for _c in (anom.get("conflicts") or []):
+        _hit = any(_may_by_file.get(str(_f), True) for _f in (_c.get("files") or []))
+        (_conf_rel if _hit else _conf_irr).append(_c)
+    if _conf_rel:
         verdict = V_CONFLICT
         if n_ent:
-            missing.append(f"同一主体/期间存在 {len(anom['conflicts'])} 组内容冲突，需人工裁定")
+            missing.append(f"同一主体/期间存在 {len(_conf_rel)} 组内容冲突，需人工裁定")
         else:
             # ★ F3（监工第 33 轮）：该义务**未指名主体** ⇒ 主体维度从未参与判定
             #   ⇒「同一主体」是**对候选材料**的断言，不是对本义务的断言 ⇒ 措辞收窄。
             #   ★ 冲突这一**事实与 CONFLICT 判定都保留**：
             #   不得因为「断言不成立」就吞掉必须人工裁定的发现。
-            missing.append(f"候选材料中同一主体/期间存在 {len(anom['conflicts'])} 组内容冲突，"
+            missing.append(f"候选材料中同一主体/期间存在 {len(_conf_rel)} 组内容冲突，"
                            "需人工裁定（该义务未指名主体，此为**材料层**发现，"
                            "不构成该义务的主体维度断言）")
-    elif anom["has_stale"] and verdict in (V_MATCHED, V_PARTIAL):
-        verdict = V_STALE
-        missing.append("；".join(anom["stale_entities"]))
+    else:
+        if anom["has_stale"] and verdict in (V_MATCHED, V_PARTIAL):
+            verdict = V_STALE
+            missing.append("；".join(anom["stale_entities"]))
+    # gm-fix-f1-always-trace-irrelevant: 无关冲突**一律留痕**（不再藏在 `else:` 里）
+    #   ★ 病（结构）：原先 `if _conf_irr:` 在 `else:` 分支内 ⇒ 只要**存在相关冲突**，
+    #     无关冲突的留痕就**完全不出现** ⇒ 冲突事实在**消息层**被丢掉
+    #     （`anomalies_json` 里还在，但审核人看的是消息）。
+    #     独立 Reviewer 裁定书「风险 1」：当前 `ANNUAL_UNIQUE` 只有一种 ⇒ 不可达；
+    #     但若日后新增第二种类型，「相关 + 无关并存」时就会露出来。
+    #   ★ 治：留痕**移出 `else:`** ⇒ 无论有没有相关冲突，一律留痕。
+    #   ★ 只**多一行文案**，**不放宽任何闸**：判定分支与 `verdict` 取值**一字不改**，
+    #     STALE 分支的触发条件与位置**保持原样**，留痕文案**逐字不变**。
+    if _conf_irr:
+        # gm-fix-f1-conflict-scope: 冲突**存在**但**与本义务无关** ⇒ 只留痕。
+        #   冲突涉及的材料类型与本义务要求的类型**确定不同**
+        #   ⇒ 不可能是本义务要求的那一份 ⇒ **不改判**本义务
+        #   （否则可行动的缺口信号会被无关冲突覆盖）。
+        #   ⇒ 但**必须留痕**（不静默丢弃）：冲突事实与「需人工裁定」都保留。
+        missing.append(f"（留痕）候选材料中同一主体/期间存在 {len(_conf_irr)} 组内容冲突，"
+                       "但这些冲突涉及的材料类型与本义务要求的材料类型**确定不同** ⇒ "
+                       "不可能是本义务要求的那一份，不改判本义务；仍需人工裁定")
 
     # WP-A1（G6）主体未登记 ⇒ **覆盖类判定不可信**，一律改判 UNCERTAIN。
     #
