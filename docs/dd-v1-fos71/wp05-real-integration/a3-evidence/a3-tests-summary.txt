@@ -1,0 +1,29 @@
+A3 测试摘要（pytest · junit 口径）
+============================================================
+worktree        : /Users/mac/cangjie-fos-wt-a3
+代码基线        : 557cf3f
+实测 HEAD       : d2f3b48d5b06423574c38d77f74756515076f282
+解释器          : venv 3.13（worktree 自带）
+
+【全量】（判据 A3-6：零回归）
+  tests          : 1639
+  passed         : 1634
+  failures       : 0
+  errors         : 0
+  skipped        : 5
+  退出码         : 0
+  A2 封版基线    : 1595 passed（tests 1600 / skipped 5）
+  判定           : PASS（1634 >= 1595，零 failures/errors）
+
+【A3 新增用例三件套】
+  tests          : 39
+  passed         : 39
+  failures/errors: 0/0
+  文件：test_dd_v1_qc.py（15）/ test_dd_v1_selection.py（12）/ test_dd_v1_packaging_exact.py（12）
+
+★ 口径说明：
+  ① pytest 9 的 `-q` **不打印汇总** ⇒ 全部数字从 --junit-xml 现算；
+  ② 跑测试前卸掉代理（ALL_PROXY/all_proxy/HTTP_PROXY/http_proxy/HTTPS_PROXY/https_proxy）⇒ 否则 6 个 LLM-refine 用例会因 SOCKS 缺 socksio 而假红（环境问题，非代码问题）；
+  ③ 两侧都 --ignore=tests/test_doctor_script.py（既有约定）。
+
+★ 外部模型调用：0（真实材料回归实测，见 a3-real-regression.txt）。
