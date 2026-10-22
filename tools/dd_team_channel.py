@@ -9,9 +9,19 @@
 WP0–WP5 造的是引擎；**WP7 造的是让人用得起来的那个入口**。
 本脚本就是那个入口的最小可用形态：**一个命令 + 结构化输出**，不依赖前端、不依赖 LLM key。
 
-## 它做什么（一次跑完 6 步 + 1 个附段）
+## 它做什么（一次跑完 7 步 + 1 个附段）
 
-    建库 → 扫描材料 → 抽取正文 → 建认知卡 → 拆原子义务 → 四维匹配 → 出报告
+    建库 → 扫描材料 → 抽取正文 → 建认知卡 → 拆原子义务 → 四维匹配
+    → **生成审核包**（只读、零复制）→ 出报告
+
+**第 7 步（G-A3-6）**：接 `dd_v1_package_service.build_review_pack`，
+产出**可人工审核的审核包**（核对表 / 缺口与待确认清单 / 证据与完整性说明 /
+交付清单与 hash 核验），落在**数据面** `<data_dir>/reviews/<review_id>/`。
+它**只读材料、零复制**；**组包不可用时前 6 步的输出一字不变**。
+
+**交付原件（`--package`）**：显式给出 `--package` 且**给出人工批准人**
+`--approved-by` 时才走复制路径；**未给出批准人 ⇒ 拒绝，且复制零个原件**。
+没有自动批准开关，也没有默认批准人。
 
 **附段（WP-A1 引入）**：语义层桥接。规则链算完缺口后，把同一批义务与材料
 翻译成语义层能认的形状，取回**候选证据**（file_id + sha256 + locator）。
@@ -51,6 +61,10 @@ _REPO = Path(__file__).resolve().parents[1]
 _BACKEND = _REPO / "backend"
 if str(_BACKEND / "src") not in sys.path:
     sys.path.insert(0, str(_BACKEND / "src"))
+
+# gm_fix_a3_g6_g9_entry_wiring: APPLIED
+
+# gm_fix_a3_g7_snapshot_id: APPLIED
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -185,6 +199,13 @@ def cmd_run(a) -> int:
     print(f"  ✓ {res['obligations']} 条要求判定完成（候选上限 {res['candidate_cap']}，可调）")
     _print_verdicts(res["by_verdict"])
 
+    # ── 输入快照 ID（G-A3-7：让「输入快照 ID 可复核」有真字段）────────────
+    snap = _input_snapshot_id(lib, ing.get("checklist_fingerprint", ""))
+    print(f"  · 输入快照 ID：{snap['input_snapshot_id']}")
+    print(f"    （清单指纹 {snap['checklist_fingerprint'][:16]}…｜"
+          f"材料摘要 {snap['material_digest'][:16]}…｜材料 {snap['material_files']} 件｜"
+          f"代码 {snap['code_sha'][:7]}）")
+
     # ── 附：语义层桥接（**只作建议**，不改判定）────────────────────────
     # 桥接是**附段**：失败或跳过时，上面 6 步的输出一字不变。
     bridge = _run_bridge(lib, root, a)
@@ -203,6 +224,27 @@ def cmd_run(a) -> int:
         print(f"  · 语义层桥接未运行（{bridge.get('error')}）；"
               f"本次输出与未接桥接时完全一致")
 
+    # ── 7 审核包（G-A3-6：Team Channel 薄入口 → 审核组包 这条线的唯一落点）──
+    # ★ 本步**只读材料、零复制**；★ 失败**不得**影响前 6 步的输出。
+    pack = _run_review_pack(lib, a)
+    if pack.get("ok"):
+        p = pack["result"]
+        print(f"  ✓ 审核包已生成：{p['pack_path']}")
+        for fn in (p.get("files") or []):
+            print(f"      · {fn}")
+        print(f"  · 覆盖义务 {p.get('obligations')} 条｜判定分布 {p.get('by_verdict')}")
+        print(f"  · 复制原件数 {p.get('copied_source_files', 0)}"
+              "（审核包**只读材料、零复制**）")
+        print("  说明：交付原件必须经**人工批准**；未批准时本入口拒绝复制任何原件。")
+    else:
+        print(f"  · 审核包未生成（{pack.get('error')}）；"
+              "本次输出与未接组包时完全一致")
+
+    # ── 8 交付原件（G-A3-9：只有显式 --package 才走这条路径）──────────────
+    rc = EXIT_OK
+    if getattr(a, "package", False):
+        rc = _run_package(pack, a)
+
     # ── 报告 ──────────────────────────────────────────────────────────
     _hr("输出")
     outdir = Path(a.out) if a.out else Path(data_plane) / "团队报告"
@@ -210,7 +252,7 @@ def cmd_run(a) -> int:
     ts = time.strftime("%Y%m%d-%H%M%S")
     md = outdir / f"尽调报告-{lib}-{ts}.md"
     js = outdir / f"尽调结果-{lib}-{ts}.json"
-    _write_reports(md, js, lib, a, res, q, cov, parsed, scan, bridge)
+    _write_reports(md, js, lib, a, res, q, cov, parsed, scan, bridge, snap)
 
     print(f"  人看的报告：{md}")
     print(f"  机读结果  ：{js}")
@@ -218,6 +260,118 @@ def cmd_run(a) -> int:
     print("  ⚠️ 以上只是**建议**。交付前仍需人工逐条核对并明确批准；")
     print("     系统不会自动向机构发送任何材料。")
     print(f"\n用时 {time.time() - t0:.1f}s")
+    return rc
+
+
+def _run_review_pack(lib, a) -> dict:
+    """第 7 步：生成**审核包**（只读材料、零复制）。
+
+    ★ G-A3-6 接线修复：本函数是「Team Channel 薄入口 → 审核组包」这条线的唯一落点。
+    ★ 规格：`dd_v1_package_service.build_review_pack(library_id, institution=...)`
+      —— **不接受**输出目录参数 ⇒ 包落**数据面** `<data_dir>/reviews/<review_id>/`。
+    ★ **任何失败都不得影响前 6 步的输出**（与语义层桥接同规格）。
+
+    返回：
+    - ``{"ok": True, "result": <审核包产物>}``
+    - ``{"ok": False, "error": "..."}``（组包不可用；前 6 步输出不受影响）
+    """
+    try:
+        from cangjie_fos.services import dd_v1_package_service as pkg
+        res = pkg.build_review_pack(
+            lib, institution=getattr(a, "institution", "") or "")
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    return {"ok": True, "result": res}
+
+
+def _input_snapshot_id(lib: str, checklist_fingerprint: str) -> dict:
+    """输入快照 ID：把「清单指纹 + 材料逐件哈希 + 代码 sha」合成一个**可复核**的 ID。
+
+    ★ 合同（``user_visible_acceptance[0]``）要求「Windows 调用的命令、FOS 实际函数链、
+      **代码 sha**、**输入快照 ID** 均可复核」⇒ 必须有一个**真字段**，不能只是文档说法。
+    ★ 组成项**全部是既有产物**，不另立第二套机制：
+      - ``checklist_fingerprint``：清单原文归一化后的 sha256（``ingest_checklist`` 已产出）
+      - ``material_digest``：本库 manifest **每件 ``content_hash`` 排序后**的 sha256（已落库）
+      - ``code_sha``：当前代码 HEAD（与《接线说明书》里那个 sha 同一个）
+    ★ **只含哈希**，不含任何文件名 / 机构名 / 材料库代号 ⇒ 天然脱敏。
+    ★ **不影响判定**：只写进机读结果 JSON，不进判定层、不进审核包内容。
+    """
+    import hashlib
+    from cangjie_fos.services import dd_v1_manifest_service as mf
+    try:
+        rows = mf.list_manifest(lib, limit=1000000)
+    except Exception:  # noqa: BLE001
+        rows = []
+    hashes = sorted(str(r.get("content_hash") or "") for r in rows)
+    material_digest = hashlib.sha256(
+        "\n".join(hashes).encode("utf-8")).hexdigest()
+    code_sha = ""
+    try:
+        code_sha = os.popen(
+            f"git -C {_REPO} rev-parse HEAD").read().strip()
+    except Exception:  # noqa: BLE001
+        code_sha = ""
+    fp = str(checklist_fingerprint or "")
+    sid = hashlib.sha256(
+        "\n".join([fp, material_digest, code_sha]).encode("utf-8")).hexdigest()
+    return {
+        "input_snapshot_id": sid,
+        "checklist_fingerprint": fp,
+        "material_digest": material_digest,
+        "material_files": len(rows),
+        "code_sha": code_sha,
+    }
+
+
+def _count_files(d: Path) -> int:
+    """目录里的文件数（目录不存在 ⇒ 0）。用于「未批准 ⇒ 零复制」的当场自证。"""
+    if not d.exists():
+        return 0
+    return sum(1 for p in d.rglob("*") if p.is_file())
+
+
+def _run_package(pack: dict, a) -> int:
+    """``--package``：走「复制原件」路径。**HG1 人工闸不许绕。**
+
+    ★ G-A3-9：入口文档字符串早就承诺「复制必须经显式 ``--package`` 且必须有人工批准人」，
+      但该参数此前**根本不存在** ⇒ 承诺的操作在产品里是空的。
+    ★ 本函数**不另写一套批准逻辑**：批准与组包都走 `dd_v1_package_service` 自己的
+      `approve()` / `package_approved()`；HG1 闸在 `package_approved` → `assert_approval`
+      （闸在前、复制在后）。
+    ★ 红线：
+      - **没有任何自动批准开关**，**也没有默认批准人**
+        ⇒ 不给出批准人 ⇒ **拒绝**；
+      - 未批准 ⇒ **复制零个原件**，并**当场上报**交付目录文件数（必须为 0）；
+      - 任一 Gate 异常 ⇒ 同上（拒绝 + 零复制 + 退出码非 0）。
+    """
+    if not pack.get("ok"):
+        print("  ✗ 已拒绝：未生成审核包 ⇒ 无可组包对象；本次未复制任何原件。")
+        return EXIT_FAIL
+    p = pack["result"]
+    review_id = p["review_id"]
+    out_dir = (Path(a.package_out) if getattr(a, "package_out", "")
+               else Path(p["pack_path"]) / "交付包")
+    approver = str(getattr(a, "approved_by", "") or "").strip()
+    if not approver:
+        print("  ✗ 已拒绝：未提供**人工批准人**（--approved-by）。")
+        print("    HG1：未经人工最终批准，不得复制任何材料。")
+        print(f"    交付目录：{out_dir}（文件数 {_count_files(out_dir)}）")
+        print("    本次**未复制任何原件**。")
+        return EXIT_FAIL
+    try:
+        from cangjie_fos.services import dd_v1_package_service as pkg
+        pkg.approve(review_id, approved_by=approver,
+                    note="由薄入口 --package 显式发起（批准人须由人给出）")
+        res = pkg.package_approved(review_id, output_dir=str(out_dir))
+    except Exception as exc:  # noqa: BLE001
+        print(f"  ✗ 已拒绝：{type(exc).__name__}: {exc}")
+        print(f"    交付目录：{out_dir}（文件数 {_count_files(out_dir)}）")
+        print("    本次**未复制任何原件**。")
+        return EXIT_FAIL
+    print(f"  ✓ 交付包已生成：{res.get('output_dir') or out_dir}")
+    print(f"  · 复制原件数 {res.get('exported', 0)}｜受阻 {res.get('blocked', 0)}"
+          f"｜hash 不一致 {res.get('hash_mismatched', 0)}")
+    print(f"  · 批准人：{approver}")
     return EXIT_OK
 
 
@@ -297,7 +451,8 @@ def _print_verdicts(tally: dict) -> None:
         print(f"    {names.get(k, k):<10} {v} 条")
 
 
-def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge=None) -> None:
+def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge=None,
+                   snap=None) -> None:
     from cangjie_fos.services import (dd_v1_match_service as ms,
                                       dd_v1_policy_service as P,
                                       dd_v1_requirement_service as rq)
@@ -388,6 +543,7 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
     js.write_text(json.dumps({
         "library": lib, "institution": a.institution,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "input_snapshot": snap or {},
         "human_approval_required": True,
         "sent_to_institution": False,
         "disclosure_policy": pol,
@@ -434,6 +590,13 @@ def build_parser() -> argparse.ArgumentParser:
                    help="跳过语义层桥接（本次输出与未接桥接时完全一致）")
     r.add_argument("--allow-real-material", action="store_true",
                    help="材料库不是仓库内合成 fixture 时必须给（=真实材料，仅限本机）")
+    r.add_argument("--package", action="store_true",
+                   help="显式走「复制原件」路径（必须同时给 --approved-by；"
+                        "未批准 ⇒ 拒绝且零复制；无自动批准开关）")
+    r.add_argument("--approved-by", default="",
+                   help="人工批准人（配合 --package 使用；必填且不可留空）")
+    r.add_argument("--package-out", default="",
+                   help="交付目录（不给则用 <审核包>/交付包）")
     r.set_defaults(func=cmd_run)
 
     st = sp.add_parser("policy", help="查看披露策略是否生效")

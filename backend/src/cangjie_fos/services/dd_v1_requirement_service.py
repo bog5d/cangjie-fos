@@ -75,6 +75,12 @@ CREATE TABLE IF NOT EXISTS dd_v1_obligations (
     needs_attachments INTEGER NOT NULL DEFAULT 0,
     attachment_basis TEXT NOT NULL DEFAULT '',
     disclosure       TEXT NOT NULL DEFAULT '',
+    -- ★ A3（G-A3-1）：「应有几份」的承载体。
+    --   expected_count = 0   ⇒ 清单**未规定**份数（该维度不构成门槛）
+    --   expected_count = NULL ⇒ 清单**提及**份数但**解析不出**（该维不可判定 ⇒ 判 UNCERTAIN）
+    --   expected_count = N>0 ⇒ 权威份数 N（应有 N 份）
+    expected_count    INTEGER DEFAULT 0,
+    expected_count_basis TEXT NOT NULL DEFAULT 'UNKNOWN',
     fields_json      TEXT NOT NULL DEFAULT '{}',
     notes            TEXT NOT NULL DEFAULT '',
     created_at       REAL NOT NULL
@@ -187,7 +193,32 @@ def doc_type_uniqueness(doc_type: str) -> str:
 
 def _ensure_schema(conn) -> None:
     conn.executescript(_DDL)
+    _ensure_columns(conn)
     conn.commit()
+
+
+def _ensure_columns(conn) -> None:
+    """给**已存在**的库补齐 A3 新增列。
+
+    ★ ``CREATE TABLE IF NOT EXISTS`` **不会**给旧表加列 ⇒ 直接改 DDL
+      对已有数据面无效（旧库读不到 ``expected_count`` ⇒ KeyError）。
+    ⇒ 这里做一次**幂等**的列补齐：只看列名，不动任何既有数据。
+    """
+    try:
+        have = {r[1] for r in conn.execute(
+            "PRAGMA table_info(dd_v1_obligations)").fetchall()}
+    except Exception:  # noqa: BLE001 — 表还不存在时无需补列
+        return
+    for name, ddl in (("expected_count", "INTEGER DEFAULT 0"),
+                      ("expected_count_basis", "TEXT NOT NULL DEFAULT 'UNKNOWN'")):
+        if name in have:
+            continue
+        try:
+            conn.execute(
+                f"ALTER TABLE dd_v1_obligations ADD COLUMN {name} {ddl}")
+            logger.info("已补齐列 dd_v1_obligations.%s", name)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("补列失败 dd_v1_obligations.%s：%s", name, exc)
 
 
 @dataclass
@@ -207,6 +238,9 @@ class Obligation:
     needs_attachments: int = 0
     attachment_basis: str = UNKNOWN
     disclosure: str = ""
+    # ★ A3（G-A3-1）：「应有几份」。0=未规定 / None=提及但不可判定 / N=权威份数。
+    expected_count: int | None = 0
+    expected_count_basis: str = UNKNOWN
     notes: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -225,6 +259,8 @@ class Obligation:
             "needs_attachments": self.needs_attachments,
             "attachment_basis": self.attachment_basis,
             "disclosure": self.disclosure,
+            "expected_count": self.expected_count,
+            "expected_count_basis": self.expected_count_basis,
             "notes": self.notes,
         }
 
@@ -549,6 +585,61 @@ def parse_attachments(raw: str) -> tuple[int, str]:
     return 0, UNKNOWN
 
 
+# ── 「应有几份」的份数口径（G-A3-1）────────────────────────────────────────
+#: 份数的**提及**形态：
+#:   ① 数字 + 份（「3 份」「一式两份」）
+#:   ② 「若干/多/数/几 份」（⇒ 提到了但**数不出**）
+#:   ③ 「份数」（⇒ 提到了但可能没给数）
+#: ★ 「部分」里的「份」**不算**（那是词的一部分，不是数量）——
+#:   否则「请提供部分材料」会被当成份数要求 ⇒ 白白把义务判成 UNCERTAIN。
+_COUNT_MENTION_RE = re.compile(
+    r"(?:[0-9０-９]+|[一二两三四五六七八九十]+)\s*份"
+    r"|(?:若干|多|数|几)\s*份"
+    r"|份数"
+)
+#: 可解析的**具体**份数：「N 份」或「份数为 N」
+_COUNT_NUM_RE = re.compile(
+    r"([0-9]+|[一二两三四五六七八九十]+)\s*份"
+    r"|份数\s*(?:为|是|[:：])?\s*([0-9]+|[一二两三四五六七八九十]+)"
+)
+_CN_COUNT_NUM = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
+                 "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+
+def parse_expected_count(raw: str) -> tuple[int | None, str]:
+    """解析清单原文里的**「应有几份」**。
+
+    返回 ``(expected_count, basis)``，三态语义（A3-1）：
+
+    | 返回 | 含义 | 齐套判定上的后果 |
+    |---|---|---|
+    | ``(N, FACT)`` | 原文明文给出份数（「一式两份」「3 份」） | 份数维**构成门槛**，需 N 份 |
+    | ``(N, INFERRED)`` | 多处份数求和（「正本 1 份、副本 1 份」⇒ 2） | 同上 |
+    | ``(None, UNKNOWN)`` | 原文**提及**份数但**解析不出**（「若干份」「多份」） | 份数维**不可判定** ⇒ 判 UNCERTAIN + 人工确认 |
+    | ``(0, UNKNOWN)`` | 原文**根本没提**份数 | 份数维**不构成门槛**（与「期间未提」「无附件」同规格） |
+
+    ★ **不得默认 1 份**：解析不出时留 ``None``（不是 1），
+      让判定层诚实地说「这一维不可判定」，而不是替人编造一个权威份数。
+    """
+    text = str(raw or "")
+    if not _COUNT_MENTION_RE.search(text):
+        return 0, UNKNOWN
+    nums: list[int] = []
+    for m in _COUNT_NUM_RE.finditer(text):
+        tok = m.group(1) or m.group(2)
+        if not tok:
+            continue
+        n = int(tok) if tok.isdigit() else _CN_COUNT_NUM.get(tok)
+        if n and n > 0:
+            nums.append(n)
+    if not nums:
+        return None, UNKNOWN
+    total = sum(nums)
+    if len(nums) == 1:
+        return total, FACT
+    return total, INFERRED
+
+
 def build_obligations(
     raw: str,
     anchor_year: int | None = None,
@@ -587,6 +678,10 @@ def build_obligations(
         ob.caliber, ob.caliber_basis = parse_caliber(part)
         ob.seal_required, _ = parse_seal(part)
         ob.needs_attachments, ob.attachment_basis = parse_attachments(part)
+        # ★ A3（G-A3-1）：份数从**本段原文**解析（拆分后的每段各管各的份数）。
+        ob.expected_count, ob.expected_count_basis = parse_expected_count(part)
+        if ob.expected_count is None:
+            ob.notes.append("清单提及份数但无法解析出权威份数，份数维不可判定")
         ob.disclosure = ""
         out.append(ob)
     return out
@@ -692,14 +787,16 @@ def ingest_checklist(
                    (obligation_id, item_uid, library_id, seq, obligation,
                     entity_scope, entity_basis, period_from, period_to, period_basis,
                     doc_type, doc_type_basis, caliber, caliber_basis, seal_required,
-                    needs_attachments, attachment_basis, disclosure, fields_json,
+                    needs_attachments, attachment_basis, disclosure,
+                    expected_count, expected_count_basis, fields_json,
                     notes, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (uuid.uuid4().hex, item_uid, library_id, seq, ob.obligation,
                  ob.entity_scope, ob.entity_basis, ob.period_from, ob.period_to,
                  ob.period_basis, ob.doc_type, ob.doc_type_basis, ob.caliber,
                  ob.caliber_basis, ob.seal_required, ob.needs_attachments,
                  ob.attachment_basis, ob.disclosure,
+                 ob.expected_count, ob.expected_count_basis,
                  json.dumps(payload, ensure_ascii=False),
                  "; ".join(ob.notes), now),
             )
