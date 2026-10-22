@@ -1,5 +1,5 @@
 # A2 回归对照的「被测代码来源」硬证据
-# 生成时间: 2026-10-22T02:31:51Z
+# 生成时间: 2026-10-22T03:31:57Z
 # 插件: a2-evidence/provenance_plugin.py（pytest session 起点打印解析到的源码树）
 # A2 专属标记: cangjie_fos.services.dd_v1_entity_service.register_entity_alias
 #   （A2 新增；A1/master 不存在 ⇒ A2 树必须 True，另两树必须 False）
