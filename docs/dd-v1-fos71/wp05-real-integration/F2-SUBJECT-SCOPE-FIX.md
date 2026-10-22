@@ -62,23 +62,23 @@
 
 | 文件 | 改动 | 白名单 |
 |---|---|---|
-| `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 新增 `entity_registry_tokens()` / `entity_scope_from_registry()`；`parse_entity_scope()` 增 `registry` 参数并在**最后**回落；`build_obligations()` 增 `registry` 参数并传递；`ingest_checklist()` 取一次名单并传入（+108 / −4） | ✅ 本修正包授权 |
-| `backend/tests/test_dd_v1_f2_subject_scope.py` | **新建**（12 条） | ✅ 可新建 |
+| `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 新增 `entity_registry_tokens()` / `entity_scope_from_registry()`；`parse_entity_scope()` 增 `registry` 参数并在**最后**回落；`build_obligations()` 增 `registry` 参数并传递；`ingest_checklist()` 取一次名单并传入（+117 / −6） | ✅ 本修正包授权 |
+| `backend/tests/test_dd_v1_f2_subject_scope.py` | **新建**（15 条） | ✅ 可新建 |
 
 ★ **未改动**：`_SUBJECT_HINT_RE` / `_SUBJECT_HINT_MARKERS` / `_SCOPE_*` / `entity_scope_value()` /
 `entity_scope_label()` / `resolve_entities()` / 判定层任何逻辑 / 披露策略 / 任何既有字段语义。
 
-## 5. 判别力（12 条用例 + 探针 6/6）
+## 5. 判别力（15 条用例 + 探针 6/6）
 
 `/Users/mac/.minimax/sessions/.../workspace/gm_probe_f2_subject_scope.py`
 
 | 检查 | 结果 |
 |---|---|
-| BASE（现状）12 条全绿 | ✅ |
+| BASE（现状）15 条全绿 | ✅ |
 | BASE 确实从**本变体副本**加载（pytest 进程内断言） | ✅ |
 | OLD（**回退**回落段）必须转红 | ✅ **5 条转红** |
 | OLD 确实从副本加载 | ✅ |
-| 回退后 SHA256 确实变了 | ✅（`d82aa59c…` → `54c14e28…`） |
+| 回退后 SHA256 确实变了 | ✅（`c20e7512…` → `e2bc284e…`） |
 | 转红用例覆盖回落路径 | ✅ |
 
 ★ 转红的 5 条：`test_inline_subject_without_colon_resolves_via_registry`、
@@ -148,7 +148,7 @@
 | 树 | commit | 用例总数 | passed | skipped | **failed** |
 |---|---|---|---|---|---|
 | 基线 | `feat/71-a3-closeout` @ `90b1676` | 1641 | 1629 | 5 | **7** |
-| 修正包 | `feat/71-a3-f2-subject-scope` | 1653（**+12** = 本包新用例） | 1641 | 5 | **7** |
+| 修正包 | `feat/71-a3-f2-subject-scope` | 1656（**+15** = 本包新用例） | 1644 | 5 | **7** |
 
 ★ **失败集合逐字相同**（机器比对）：7 条**全部**是环境性既红
 （6 条 LLM-refine 代理缺 `socksio` + 1 条 `test_doctor_script` 缺 `.env`/`node_modules`）
@@ -163,5 +163,27 @@
 | 3 | 词表**每次摄取取一次**（不是每条义务取一次） | 性能与一致性取舍 |
 | 4 | 配置文件别名**不进**回落词表 | 口径边界（配置文件不是本库权威名单） |
 | 5 | 本包**不含** A4b 真机盲考证据 | 范围外（HG-08 前置未就绪） |
+| 6 | **旧库** `alias_kind` 迁移回填 `LEGAL` ⇒ **回落词表**与 `alias_map` 的 **DIRECTORY 口径分叉**（回落词表直读列值，判定层按形态重判会排除） | MINOR（**判定方向保守**：不产生假 MATCHED；独立 Reviewer 两轮均登记） |
+| 7 | **未登记**的更长名称（未登记的分公司名）仍会被**较短登记串**吸附 ⇒ 「最长匹配」只在**已登记集合内**比较 | MINOR（独立 Reviewer 两轮均登记） |
+| 8 | **A2 前缀形态**（`<主体>：<要求>`）下，片段继承仍会覆盖后续片段的 FACT 范围（并列片段2 被收窄成 `entity_hint:`） | INFO · **A2 既有行为**（基线即如此，**非本包引入**；三快照对照基线/两版修正包行为一致）—— 独立 Reviewer 第二轮建议登记 |
+| 9 | `entity_registry_tokens()` 的 `db_path` 形参**未被使用**（死参数） | INFO（独立 Reviewer 第二轮登记） |
+| 10 | `test_dd_v1_recovery.py::test_scale_baseline[20-25]` 是**计时型 flaky**（并发跑时两树各多 1 条，失败集合仍逐字相同） | INFO（失败条数对机器负载敏感，已登记） |
+| 11 | `tools/doctor.py` 每次全量 pytest 执行 `uv sync --extra dev` ⇒ **改写 `backend/uv.lock`** ⇒ 提交前必须确认该文件 diff 为空 | INFO（环境副作用，提交前自检项） |
 
 ★ **本包不含任何真实客户标识**：用例一律用「甲公司 / 乙公司 / 丙公司 / 甲科技」等虚构简称。
+
+<!-- gm-fix-f2-doc-d1 -->
+
+## 8. ★ 独立 Reviewer 第二轮裁定与 D-1 闭合
+
+| 项 | 内容 |
+|---|---|
+| 裁定 | `VERDICT: PASS`（**限定**：归档前必须更新 §4/§5/§6 的 6 处过期数字，见 D-1） |
+| 裁定书 | `cangjie-gm/work/evidence/W-DD-V1-REALINT-2026-F1/F2-REVIEW-VERDICT-ROUND2.md` |
+| R1–R7 | R1 PASS / R2 PASS / R3 PASS / R4 PASS / R5 PASS / R6 PASS / R7 **PARTIAL**（仅 D-1 数字项） |
+| D-1 闭合 | §4/§5/§6 **6 处**过期数字已按司仓**独立复算**结果更新（见上）；R7-f 的 §7 残留补登记已完成 |
+| D-1 数字来源 | diffstat `git diff --numstat 90b1676 2a91216` = **117 / 6**；用例数 **15**；sha 由探针**实跑**取得（BASE `c20e7512…` / 回退后 `e2bc284e…`）；回归数 **1656**（基线 1641 + 15） |
+| 零新增回归 | 基线 1641（failed 7）vs 修正包 **1656**（failed 7），失败集合**逐字相同** |
+| 判别力 | 15 条中 **8 条**在某个方向上可转红（5 条抓「回落被删」+ 2 条抓「F-1 未修」+ 1 条抓「A2 前缀传播被破坏」），其余 7 条为**回归护栏** |
+
+★ 独立 Reviewer 两轮的裁定、剩余问题与风险均**如实登记**，未粉饰。
