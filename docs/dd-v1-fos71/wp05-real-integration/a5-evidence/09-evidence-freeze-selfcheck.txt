@@ -1,0 +1,15 @@
+# 证据冻结 + 出厂自检①
+# 生成时间(UTC): 2026-10-22T09:23:54.412677+00:00
+# 清单: SHA256SUMS-a5-evidence.txt（条目 4）
+# ★ 清单**排除**本文件（自检输出）与清单自己 —— 消除自引用：
+#   否则「清单内容决定校验结果、校验结果又写回清单」是死循环，
+#   旧版就是这样跑出「09/10 FAILED 却写着 SELF_CHECK=PASS」的假绿。
+# 校验命令: cd /Users/mac/cangjie-fos-wt-a5/docs/dd-v1-fos71/wp05-real-integration/a5-evidence && shasum -a 256 -c SHA256SUMS-a5-evidence.txt
+# 结果: OK=4  FAILED=0
+
+03-fos-contract-chain-trace.txt: OK
+07-drill-real-loop-evidence.txt: OK
+08-sensitive-scan.txt: OK
+10-provenance.txt: OK
+
+SELF_CHECK=PASS

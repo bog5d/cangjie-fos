@@ -1,0 +1,17 @@
+# FOS 合同链路 call-trace 汇总（A5 取证）
+# 生成时间(UTC): 2026-10-22T09:23:54.412677+00:00
+# 口径：官方 FOS 入口 `tools/dd_team_channel.py` 的真实调用栈（sys.setprofile 观察）
+# ★ 被测树 = A4 工作树 @ c44700f（含 A3 交付面）；master 未合入 A3 ⇒ 交付层另说
+
+trace 脚本数 = 3
+  · tools/dd_team_channel.py @ head=c44700f0f3f0
+      args = ["run", "--library", "库甲", "--root", "/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/gm-a3-trace-erakyayt/材料库", "--checklist", "/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/gm-a3-trace-erakyayt/清单.tsv", "--institut
+  · tools/dd_team_channel.py @ head=c44700f0f3f0
+      args = ["run", "--library", "库甲", "--root", "/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/gm-a3-trace-erakyayt/材料库", "--checklist", "/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/gm-a3-trace-erakyayt/清单.tsv", "--institut
+  · tools/dd_v1_manifest.py @ head=c44700f0f3f0
+      args = ["alias", "--library", "库甲", "--id", "E1", "--alias", "甲公司简称", "--source", "合成夹具依据"]
+
+## 三层口径（不可混）
+  能力层：build_review_pack 存在且可用（dd_v1_package_service.py:251）
+  接线层：A2 树断 → A3 树通（package_service_called=false → true，调用 223 次）
+  交付层：master 未合入 A3/A4（PR #80 未合并）⇒ master 上仍复现是合分支未做

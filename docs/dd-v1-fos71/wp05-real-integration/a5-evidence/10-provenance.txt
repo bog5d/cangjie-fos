@@ -1,0 +1,24 @@
+# provenance（当场打印：谁 / 什么时间 / 用什么命令 / 拿到什么结果）
+# 生成时间(UTC): 2026-10-22T09:23:54.412677+00:00
+# 执行者: 司仓（GM）直连施工 + 本机活体数据
+
+## 命令与结果
+  $ git -C /Users/mac/cangjie-fos-wt-a5 log --oneline -1
+      453957e merge(A3): A3 齐套判定 + 精确组包接线合入规格分支（独立 Reviewer 第一轮 PASS：13/13 判据，0 BLOCKER / 0 MAJOR / 5 MINOR）
+  $ git -C /Users/mac/cangjie-fos-wt-a5 status --porcelain
+      M docs/dd-v1-fos71/wp05-real-integration/INTENT-SPEC-ARCHITECTURE.md
+      ?? docs/dd-v1-fos71/wp05-real-integration/A5-CLOSEOUT.md
+      ?? docs/dd-v1-fos71/wp05-real-integration/a5-evidence/
+  $ git -C /Users/mac/cangjie-gm log --oneline -2
+      851c8e7 feat(wp): WP-DRILL-2 收口门禁 + 指针自动前进取证（真实 Edit+Test+Commit）
+      19bde40 fix(gm-runtime): 接上「人类描述层 ↔ 结构化 type 层」这条线（断线#13）
+  $ cat /Users/mac/cangjie-gm/data/gm_runtime_lease.json
+      {   "lease": {     "holder": "controller-79498",     "generation": 41,     "heartbeat_at": "2026-10-22T09:23:27.612463+00:00",     "ttl_s": 180   } } 
+  $ python3.11 tools/skill_health.py catalog --root ~/skills-wt-wp1  (只读取数)
+      条目数与健康度分布见 A5-CLOSEOUT §8（数字可复算）
+
+## 环境
+  FOS A5 worktree = /Users/mac/cangjie-fos-wt-a5 @ 453957e2c969
+  GM repo         = /Users/mac/cangjie-gm @ 851c8e7cd36d
+  python          = Python 3.11.14
+  采集时刻(UTC)    = 2026-10-22T09:23:54.412677+00:00
