@@ -48,6 +48,9 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 
+# gm_fix_a3_g8_alias_subcommand: APPLIED
+
+
 def _svc():
     from cangjie_fos.services import dd_v1_manifest_service as mf
     return mf
@@ -283,6 +286,33 @@ def cmd_entity(a) -> int:
     return 0
 
 
+def cmd_alias(a) -> int:
+    """登记别名（简称 / 法定名称的另一种写法）。
+
+    ★ G-A3-8 接线：**只调**产品侧 `register_entity_alias`，
+      ⇒ CLI 层**不出现第二份别名规则**。以下守卫全部在服务侧，
+      本命令**不得**、也没有另写一套：
+        - 主体必须**已登记**（别名不能凭空存在）；
+        - 别名**不得跨主体复用**（已被别的实体占用 ⇒ 拒绝，不覆盖、不静默改写）；
+        - **材料分类目录不得登记为法定主体别名**（F1 产品侧守卫：
+          形态像分类目录的别名只能声明为 DIRECTORY；声明成 LEGAL/USCI ⇒ 拒绝）。
+
+    ★ 拒绝时**原因可见**：服务抛 `ValueError` ⇒ 由 `main()` 的既有约定打印
+      `[错误] ValueError: <拒绝原因>` 并返回**非 0** 退出码。
+    ★ **不提供批量自动登记别名路径**（会把分类目录又灌回去 ⇒ 复发 F1 的病）。
+    """
+    from cangjie_fos.services import dd_v1_entity_service as es
+    es.register_entity_alias(
+        a.library, a.id, a.alias,
+        source_ref=a.source,
+        alias_kind=(a.kind or None),
+    )
+    _out({"registered": a.id, "library": a.library, "alias": a.alias,
+          "alias_kind": a.kind or "（未声明 ⇒ 由服务按形态判定）",
+          "source_ref": a.source})
+    return 0
+
+
 # ── WP4 子命令：人工审核、组包与安全 Gate ──────────────────────────────────
 def cmd_review(a) -> int:
     from cangjie_fos.services import dd_v1_package_service as pkg
@@ -454,6 +484,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--valid-to", type=int, default=0)
     sp.add_argument("--source", required=True, help="权威依据出处（必填）")
     sp.set_defaults(func=cmd_entity)
+
+    sp = sub.add_parser("alias", help="给已登记主体登记别名（简称 / 法定名称的另一种写法）")
+    sp.add_argument("--library", required=True)
+    sp.add_argument("--id", required=True, help="已登记的主体编号")
+    sp.add_argument("--alias", required=True, help="要登记的别名（一次一条）")
+    sp.add_argument("--source", required=True, help="权威依据出处（必填）")
+    sp.add_argument("--kind", default="", choices=["", "LEGAL", "USCI", "DIRECTORY"],
+                    help="别名类型（不给则由服务按形态判定；分类目录型必须声明 DIRECTORY）")
+    sp.set_defaults(func=cmd_alias)
 
     # ── WP4：人工审核、组包与安全 Gate ──────────────────────────────────
     sp = sub.add_parser("review", help="生成审核包（只读材料、零复制原件）")

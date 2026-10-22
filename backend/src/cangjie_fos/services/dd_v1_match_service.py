@@ -48,6 +48,9 @@ from cangjie_fos.services import dd_v1_doc_type_service as dts
 from cangjie_fos.services import dd_v1_entity_service as es
 from cangjie_fos.services import dd_v1_manifest_service as mf
 from cangjie_fos.services import dd_v1_policy_service as dpol
+# A3（G-A3-3）：五维齐套组装层（主体/期间/类型/附件/份数）。
+# ★ 只做「维度状态 + 缺哪一维」，**不重算**任何覆盖率 ⇒ 不产生第二份规则表。
+from cangjie_fos.services import dd_v1_qc_service as qc
 from cangjie_fos.services import dd_v1_requirement_service as rq
 
 logger = logging.getLogger(__name__)
@@ -130,6 +133,12 @@ def _ensure_schema(conn) -> None:
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(dd_v1_obligation_status)")}
     if "anomalies_json" not in cols:
         conn.execute("ALTER TABLE dd_v1_obligation_status ADD COLUMN anomalies_json TEXT NOT NULL DEFAULT '{}'")
+    # ★ A3（G-A3-1）：义务表的**份数列**也要平滑升级。
+    #   不做这一步 ⇒ **既有库**上 `SELECT * FROM dd_v1_obligations` 取不到
+    #   `expected_count` ⇒ 判定层拿到 None ⇒ 被当成「份数不可判定」
+    #   ⇒ **全部义务误判 UNCERTAIN**（A2 封版的库直接踩坑）。
+    # ⇒ 复用 requirement_service 的**唯一**列补齐实现（不另写第二份列清单）。
+    rq._ensure_schema(conn)
     conn.commit()
 
 
@@ -871,10 +880,10 @@ def judge(
         # 必须在报告里显式标注（否则读者会把截断后的结论当成全量结论）。
         missing.append("【置信提示】候选池打满（召回上限已触顶），"
                        "类型维度结论置信度低")
-    if n_ent and ent_cov < FULL_COVERAGE:
-        missing.append(f"主体缺 {n_ent - round(ent_cov * n_ent)}/{n_ent} 家")
-    if need_periods and period_cov < FULL_COVERAGE:
-        missing.append(f"期间缺 {need_periods - round(period_cov * need_periods)}/{need_periods} 年")
+    # ★ A3（G-A3-3）：主体/期间/类型/附件/份数**每一维**的缺口都要指名，
+    #   由 qc_service 统一产出（见本函数末尾）——
+    #   旧实现只报**第一个**命中的分支 ⇒ 其余维度静默丢失，
+    #   复核者只会看到「缺 1 样」，不知道缺的是哪一维。
 
     # 判定
     #
@@ -935,7 +944,6 @@ def judge(
         verdict = V_PARTIAL
     elif attach_cov < FULL_COVERAGE:
         verdict = V_PARTIAL
-        missing.append("必备附件缺失")
     else:
         verdict = V_MATCHED
 
@@ -1032,6 +1040,45 @@ def judge(
         missing.append("主体维度未经核对（该义务未指名主体，权威名单解析出 0 个主体）："
                        "ent_cov=1.0 只是「无约束」而非「已核对」；不得据此判 MATCHED")
 
+    # ── ★ A3（G-A3-1 / G-A3-3）：**份数维度**接入齐套判定 ──────────────────
+    # 「可交付份数」按**同一「主体 × 期间」格子**算，不是候选池总数——
+    # 否则「5 份不同年份的审计报告」会被误当成「一式五份」而假装齐备。
+    _avail = sum(
+        1 for r in pool
+        if (r.get("ev") or {}).get("deliverable")
+        and (r.get("ev") or {}).get("entity_ok")
+        and (r.get("ev") or {}).get("period_ok")
+        and (r.get("ev") or {}).get("doctype_ok")
+    )
+    _cov = {
+        "entity": {"covered": round(ent_cov * n_ent), "total": n_ent},
+        "period": {"covered": round(period_cov * need_periods), "total": need_periods},
+        "doctype": {"covered": round(doctype_cov * need_type), "total": need_type},
+        "attachment": {
+            "covered": round(attach_cov * len(pool)),
+            "total": len(pool) if obl.get("needs_attachments") else 0,
+        },
+    }
+    _qc = qc.build_completeness(obl, _cov, _avail)
+    _cdim = _qc["by_dimension"][qc.DIM_COUNT]
+    # ★ A3（G-A3-3）：把**每一维**的缺口都指名写进 missing_detail
+    #   （旧实现只报第一个命中的分支 ⇒ 其它维度静默丢失）。
+    for _d in _qc["missing"]:
+        if _d["dimension"] == qc.DIM_COUNT:
+            continue
+        missing.append(_d["detail"])
+    if not _cdim["determinable"]:
+        # 清单**提及**份数但解析不出 ⇒ 该维不可判定 ⇒ 不得判齐备。
+        # ★ 只把结论改**保守**（MATCHED/PARTIAL/RESTRICTED → UNCERTAIN），
+        #   MISSING（确证缺失）/ CONFLICT（须人工裁定）/ STALE 不受影响。
+        if verdict in (V_MATCHED, V_PARTIAL, V_RESTRICTED):
+            verdict = V_UNCERTAIN
+        missing.append(_cdim["detail"])
+    elif _cdim["required"] and not _cdim["ok"]:
+        if verdict == V_MATCHED:
+            verdict = V_PARTIAL
+        missing.append(_cdim["detail"])
+
     return {
         "obligation_id": obl["obligation_id"],
         "verdict": verdict,
@@ -1047,6 +1094,10 @@ def judge(
         "deliverable_count": len(matched),
         "recall_terms": list(used_terms or []),
         "actually_searched": searched,
+        # ★ A3（G-A3-3）：五维齐套状态（随判定一起走，供核对表逐维展示）
+        "completeness": _qc,
+        "count_expected": _cdim["expected"],
+        "count_available": _avail,
         **anom,
     }
 
