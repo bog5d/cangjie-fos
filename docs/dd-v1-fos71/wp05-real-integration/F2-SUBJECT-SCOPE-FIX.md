@@ -90,6 +90,59 @@
 ★ 已知坑已避开：`pyproject.toml` 的 `pythonpath=["src"]` 用 `-o pythonpath=` 覆盖；
 「模块确实从副本加载」的断言写在 **pytest 进程内**（`pytest_configure` 插件）。
 
+## 5.5 ★ 独立 Reviewer 裁定：第一轮 **FAIL（F-1）** → 修正 → 复裁
+
+<!-- gm-fix-f2-doc-disclose-f1 -->
+
+> **披露口径**：本包**第一轮**经独立 Reviewer 裁定为 **`VERDICT: FAIL`**（F-1 · MAJOR）。
+> 下面是**那一版的原文问题**与修正，**不得**只登记修正后的读数。
+
+### F-1（假 MATCHED）：名单回落口径**跨片段继承**
+
+**病**：A2（G-A2-11 11d）的「前缀传播」机制把**第 0 片段**的主体口径继承给同项其它片段。
+我给 `parse_entity_scope()` 加了名单回落之后，第 0 片段**也可能**产出 `entity_hint:`
+⇒ **回落口径被跨片段继承** ⇒ 覆盖其它片段**自己的 FACT 范围**：
+
+| 输入（清单项） | 基线 | 第一版修正包（**被判 FAIL**） |
+|---|---|---|
+| `甲公司提供营业执照、各全资子公司提供审计报告` | 片段2 = `subsidiaries`/**FACT** | 片段2 = `entity_hint:甲公司`/**INFERRED** ❌ |
+
+**端到端后果**（Reviewer 实测，真实产品管线 + 合成材料）：
+`甲公司提供2024年度审计报告、各全资子公司分别提供2024年度审计报告`
+（库内只有母公司的审计报告）⇒ 基线 `need_entities=2`、判 **PARTIAL**；
+第一版修正包 `need_entities=1`、判 **MATCHED**
+⇒ 两条子公司的缺失报告**不再被要求** ⇒ **假 MATCHED**。
+
+★ 我第一版的用例 `test_fact_scope_wins_over_registry_fallback` **只覆盖单片段**
+  ⇒ 发现不了这个问题（Reviewer 原话：「该用例无法发现此问题」）。
+
+### 修正（恢复 A2 原义，不新增口径）
+
+前缀继承**只继承「文本主体前缀」**：`subject_hint_prefix(parts[0])`，
+**不再**用 `parse_entity_scope(parts[0])` 的结果去判断「是不是前缀口径」。
+
+| 口径 | 修正后行为 |
+|---|---|
+| 文本前缀形态（`<主体>：<要求>`） | 跨片段继承**与 A2 逐字一致**（Reviewer 已实测基线同形） |
+| 名单回落 | **逐片段独立**判定，**不跨片段继承** |
+| 片段自己的 FACT 范围 | **永远不被覆盖**（回落只在 FACT 之后才生效） |
+
+### 补的守卫（3 条，判别力已实测）
+
+| 用例 | 锁住什么 |
+|---|---|
+| `test_parallel_fragment_keeps_its_own_fact_scope` | 并列片段自己的 FACT 范围不被回落口径覆盖 |
+| `test_prefix_hint_still_propagates_to_parallel_fragments` | A2 的前缀传播行为**一字不变** |
+| `test_parallel_fallback_does_not_shrink_subject_dimension` | 端到端：主体维度**不得**被收窄（登记 3 个 subsidiary ⇒ 断言展开成 **3** 个，收窄成 1 就转红） |
+
+★ **判别力实测**：`gm_probe_f1_guard_discriminative.py` —— 回退 F-1 修正 ⇒
+**2 条守卫转红**，且「模块确实从副本加载」的断言写在 **pytest 进程内** ⇒ 非假绿。
+★ **实测踩到的一个环境坑**：源码副本放 `/tmp` 时，副本会在子进程启动前**被清掉**
+  ⇒ pytest 静默回落到基线树 ⇒ **验证无效**（假绿）。
+  ⇒ 副本改放**会话工作区**，且加载路径在进程内断言 —— 这条坑已写进探针注释。
+
+---
+
 ## 6. 零新增回归（两树全量对跑）
 
 | 树 | commit | 用例总数 | passed | skipped | **failed** |

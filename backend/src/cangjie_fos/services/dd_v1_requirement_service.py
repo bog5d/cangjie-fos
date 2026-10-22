@@ -760,11 +760,18 @@ def build_obligations(
     #   ★ 只传**主体口径**，**不改义务原文**（原文零丢失是硬校验）。
     _hint_scope = ""
     if parts:
-        # ★ gm-fix-f2-subject-scope: 同项的并列片段**共享**主体口径
-        #   （名单回落也算一种口径 ⇒ 同一项的其它片段同样继承）
-        _s, _b = parse_entity_scope(parts[0], registry=registry)
-        if _s.startswith(ENTITY_HINT_PREFIX):
-            _hint_scope = _s
+        # gm-fix-f2-parallel-fact-scope: 前缀继承**只继承「文本主体前缀」**口径
+        #   （A2 G-A2-11 11d 的原义）。
+        # ★ **不可**用 parse_entity_scope() 的结果去判「是不是前缀口径」——
+        #   **名单回落也会产出 entity_hint:** ⇒ 回落口径会跨片段继承
+        #   ⇒ 覆盖同项其它片段**自己的 FACT 范围**（如「各全资子公司」）
+        #   ⇒ 主体维度被悄悄收窄成一家主体 ⇒ **假 MATCHED**
+        #   （独立 Reviewer 裁定书 R3-c / F-1 实测）。
+        # ⇒ 文本前缀形态的继承行为与 A2 **逐字一致**；
+        #   名单回落改为**逐片段独立**判定，不跨片段继承。
+        _prefix = subject_hint_prefix(parts[0])
+        if _prefix:
+            _hint_scope = f"{ENTITY_HINT_PREFIX}{_prefix}"
     for _idx, part in enumerate(parts):
         ob = Obligation(obligation=part)
         ob.entity_scope, ob.entity_basis = parse_entity_scope(part, registry=registry)

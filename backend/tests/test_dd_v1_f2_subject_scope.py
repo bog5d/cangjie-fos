@@ -240,3 +240,60 @@ def test_fallback_scope_label_is_desensitized(tmp_path):
     label = rq.entity_scope_value(obl["entity_scope"])
     assert label == rq.ENTITY_HINT_LABEL
     assert "甲科技有限公司" not in label
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# F-1 守卫（独立 Reviewer 实测出的回归：假 MATCHED）
+#   名单回落口径**不得跨片段继承** ⇒ 片段自己的 FACT 范围**不得**被覆盖
+# gm-fix-f2-tests-parallel-scope: 三条守卫（前缀传播行为不变 + FACT 范围不被覆盖
+#   + 端到端主体维度不被收窄）
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_parallel_fragment_keeps_its_own_fact_scope(tmp_path):
+    """并列片段自己的 FACT 范围（「各全资子公司」）不被回落口径覆盖。"""
+    lib = _setup(tmp_path, {"甲公司/营业执照.txt": "营业执照"})
+    _register(tmp_path, lib, "E1", "甲公司")
+    obl = _ingest(tmp_path, lib, "甲公司提供营业执照、各全资子公司提供审计报告")
+    assert len(obl) == 2, "同一条清单项应切出两个并列义务"
+    # 片段 2：自己的 FACT 范围必须保住
+    assert obl[1]["entity_scope"] == "subsidiaries"
+    assert obl[1]["entity_basis"] == rq.FACT
+
+
+def test_prefix_hint_still_propagates_to_parallel_fragments(tmp_path):
+    """A2（G-A2-11 11d）的**前缀传播**行为**一字不变**（冒号前缀形态）。"""
+    lib = _setup(tmp_path, {"甲公司/营业执照.txt": "营业执照"})
+    _register(tmp_path, lib, "E1", "甲公司")
+    obl = _ingest(tmp_path, lib, "甲公司：提供营业执照、各全资子公司提供审计报告")
+    assert len(obl) == 2
+    assert obl[0]["entity_scope"] == "entity_hint:甲公司"
+    # ★ 前缀形态下片段 2 继承前缀口径 —— 这是 A2 **既有**行为（基线即如此）
+    assert obl[1]["entity_scope"] == "entity_hint:甲公司"
+    assert obl[1]["entity_basis"] == rq.INFERRED
+
+
+def test_parallel_fallback_does_not_shrink_subject_dimension(tmp_path):
+    """端到端：并列片段的主体维度**不得**被收窄（不得出现假 MATCHED）。
+
+    ★ 复现 Reviewer 的 F-1 实测：库内只有母公司的审计报告，
+      「各全资子公司分别提供审计报告」必须仍然要求**全部子公司**。
+    """
+    lib = _setup(tmp_path, {
+        "甲公司/审计报告2024.txt": "甲公司 2024 年度审计报告 标准无保留意见",
+    })
+    # ★ 登记 **3 个** subsidiary 主体：
+    #   FACT 范围「subsidiaries」⇒ 展开成 3 个；名单回落（命中「甲公司」）⇒ 只有 1 个。
+    #   ⇒ 断言 3 ⇒ **被收窄成 1 就会转红**（断言有判别力，不是 `>= 1` 的假绿）。
+    _register(tmp_path, lib, "E1", "甲公司")
+    _register(tmp_path, lib, "E2", "甲子公司一")
+    _register(tmp_path, lib, "E3", "甲子公司二")
+    obl = _ingest(tmp_path, lib, "甲公司提供2024年度审计报告、各全资子公司分别提供2024年度审计报告")
+    assert len(obl) == 2
+    subs = obl[1]
+    assert subs["entity_scope"] == "subsidiaries"
+    assert subs["entity_basis"] == rq.FACT
+    # ★ 主体维度：FACT 范围「各全资子公司」必须展开成**全部 3 个**主体
+    # gm-fix-f2-tests-harden-shrink-guard: 断言必须能抓住「收窄成 1 个」
+    ents = rq.resolve_entities(lib, subs["entity_scope"], None, _db(tmp_path))
+    assert len(ents) == 3, f"主体维度被收窄成 {len(ents)} 个（应 3 个）⇒ 回落口径跨片段继承了"
