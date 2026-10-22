@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import re
@@ -159,6 +160,21 @@ CREATE TABLE IF NOT EXISTS dd_v1_scan_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_dd_v1_runs_lib
     ON dd_v1_scan_runs(library_id, status);
+
+-- 清单排除审计记录（W8 / A2-1）：每轮扫描一行，只存**计数与规则 id**，
+-- 不存任何真实文件名 ⇒ 对外可审计，又不泄露客户材料名。
+CREATE TABLE IF NOT EXISTS dd_v1_checklist_exclusions (
+    run_id                          TEXT PRIMARY KEY,
+    library_id                      TEXT NOT NULL,
+    ruleset_version                 TEXT NOT NULL DEFAULT '',
+    rules_source                    TEXT NOT NULL DEFAULT '',
+    excluded_checklist_count        INTEGER NOT NULL DEFAULT 0,
+    excluded_by_rule                TEXT NOT NULL DEFAULT '{{}}',
+    rule_hit_but_not_excluded_count INTEGER NOT NULL DEFAULT 0,
+    created_at                      REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_dd_v1_chk_excl_lib
+    ON dd_v1_checklist_exclusions(library_id, created_at);
 """
 
 
@@ -314,6 +330,450 @@ def make_file_id(library_id: str, rel_path: str) -> str:
     return hashlib.sha256(raw).hexdigest()[:32]
 
 
+# ── 清单类文件排除规则（W8 / A2-1）────────────────────────────────────────
+#
+# 缺陷背景：材料库里混着**机构下发的尽调清单**（清单 / 资料清单 / 尽职调查清单 /
+# 授信资料清单 / 尽调清单 ...）。清单是**考题**，不是**证据**；一旦清单文件自己
+# 进入材料库、又被匹配到对应义务，就会出现「清单自证」——用考题证明自己交了考题。
+# 实测案例A的清单自证率 12%，目标 0%。
+#
+# 因此：**清单类文件一律不得进入材料库**（只做软删除，绝不动客户原始文件）。
+#
+# 判定规则集是**命名 + 结构化 + 可配置**的：
+#   - 内置规则写在代码里（``_BUILTIN_CHECKLIST_RULES``），调整口径不必改代码；
+#   - 运行时用环境变量 ``CANGJIE_DD_V1_CHECKLIST_RULES`` 指向一个 JSON 规则文件即可覆盖；
+#   - 规则文件损坏/读不出来 ⇒ **回退内置规则**并记 ``load_error``：
+#     绝不因为配置坏了就把清单放回材料库（排除行为 fail-closed）。
+#
+# 规则字段（每条规则都带 id 与 priority；priority 小的先判，命中即止 ⇒ 结果确定）：
+#
+#   rule_id      规则标识，出现在 ``excluded_by_rule`` 里（对外只暴露 id 与计数）
+#   priority     判定顺序（小者先判）；同 priority 按 rule_id 字典序兜底
+#   kind         判定方式：
+#                 filename_keyword —— 文件名主干含 patterns 之一
+#                 path_segment     —— 任一**目录名**等于 patterns 之一（子目录里的清单同样命中）
+#                 extension        —— 扩展名命中 extensions（可用 patterns 收窄文件名）
+#                 content_sniff    —— 正文前 sniff_bytes 字节命中 patterns / require_all
+#   patterns     命中词（kind=content_sniff 时按正则解释）
+#   require_all  全部必须命中（kind=content_sniff 时为正则 AND 组；其余 kind 为文件名 AND 组）
+#   extensions   扩展名集合；kind=extension 时是命中集合，其余 kind 是收窄条件
+#   vetoes       出现即**不**命中（避免把「资产清单」这类真证据误杀）
+#   sniff_bytes  正文嗅探字节数上限（默认 64KB）
+#   enabled      是否启用
+#   description  人读说明（审计用）
+#
+# 已知边界（留给司仓定策，代码不擅自扩大口径）：
+#   - content_sniff 只对**纯文本类扩展名**有效；.xlsx/.pdf 是压缩/二进制容器，
+#     正文嗅探读不到表头，只能靠文件名/目录名规则兜。
+#   - 「清单」二字在中文材料里既可能是考题（尽调清单）也可能是证据（资产清单），
+#     内置口径按「默认考题 + 已知证据合成词放行」处理，白名单需人工维护。
+
+CHECKLIST_RULES_ENV = "CANGJIE_DD_V1_CHECKLIST_RULES"
+DEFAULT_CHECKLIST_RULESET_VERSION = "dd-v1-checklist-rules-v1"
+_CHECKLIST_SNIFF_BYTES = 64 * 1024
+_RULE_KINDS = ("filename_keyword", "path_segment", "extension", "content_sniff")
+
+# 泛化「清单」时需要放行的**真证据**合成词（veto）：这些是材料本身，不是考题。
+_CHECKLIST_NAME_VETOES = (
+    "资产清单", "债权清单", "借款清单", "固定资产清单", "存货清单",
+    "费用清单", "工资清单", "薪酬清单", "抵债资产清单",
+)
+
+# 内置规则集（结构化、可审计、可被 JSON 文件整体覆盖）。
+_BUILTIN_CHECKLIST_RULES: tuple[dict, ...] = (
+    {
+        "rule_id": "CL-001-path-segment",
+        "priority": 10,
+        "kind": "path_segment",
+        "patterns": [
+            "清单", "尽调清单", "尽调资料清单", "尽职调查清单", "尽调材料清单",
+            "资料清单", "授信资料清单", "检查清单", "核查清单",
+            "checklist", "dd_checklist", "due_diligence_checklist",
+        ],
+        "description": "文件所在任一目录名就是清单目录 ⇒ 该目录整体是考题，不进材料库",
+    },
+    {
+        "rule_id": "CL-002-exam-phrase-in-filename",
+        "priority": 20,
+        "kind": "filename_keyword",
+        "patterns": [
+            "尽职调查清单", "尽调清单", "尽职调查资料清单", "尽调资料清单",
+            "尽职调查材料清单", "尽调材料清单", "尽调材料目录", "尽调资料目录",
+            "授信资料清单", "资料清单", "检查清单", "核查清单",
+            "checklist", "dd checklist", "due diligence checklist",
+        ],
+        "description": "文件名直接是尽调考题（强特征，无放行词）",
+    },
+    {
+        "rule_id": "CL-003-generic-qingdan-in-filename",
+        "priority": 30,
+        "kind": "filename_keyword",
+        "patterns": ["清单"],
+        "vetoes": list(_CHECKLIST_NAME_VETOES),
+        "description": "文件名只说「清单」：默认按考题处理，已知属于真证据的合成词放行",
+    },
+    {
+        "rule_id": "CL-004-checklist-table-header",
+        "priority": 40,
+        "kind": "content_sniff",
+        "extensions": [".txt", ".md", ".csv", ".tsv", ".json", ".xml", ".html", ".htm"],
+        "require_all": [
+            r"(需提供|要求提供|是否提供|是否齐备|是否具备|是否提交|提供情况|是否齐全|是否到位)",
+            r"(序号|编号|清单项|材料名称|资料名称|项目名称|材料要求|item\s*no)",
+        ],
+        "description": "正文表头同时出现「供给状态列」与「表头列」⇒ 典型清单表（只嗅探文本类扩展名）",
+    },
+    {
+        "rule_id": "CL-005-tabular-checklist-file",
+        "priority": 50,
+        "kind": "extension",
+        "extensions": [".tsv", ".csv"],
+        "patterns": ["清单", "checklist"],
+        "vetoes": list(_CHECKLIST_NAME_VETOES),
+        "description": "表格类清单文件（机构下发清单常为 TSV/CSV）：扩展名 + 名称双特征",
+    },
+)
+
+
+@dataclass(frozen=True)
+class ChecklistRule:
+    """一条清单排除规则（结构化、可序列化、可被 JSON 文件覆盖）。"""
+
+    rule_id: str
+    priority: int
+    kind: str
+    patterns: tuple[str, ...] = ()
+    require_all: tuple[str, ...] = ()
+    extensions: tuple[str, ...] = ()
+    vetoes: tuple[str, ...] = ()
+    sniff_bytes: int = _CHECKLIST_SNIFF_BYTES
+    enabled: bool = True
+    description: str = ""
+
+
+@dataclass(frozen=True)
+class ChecklistRules:
+    """一份可用的规则集（内置或来自 JSON 文件）。"""
+
+    ruleset_version: str
+    source: str            # builtin / config / env
+    path: str
+    rules: tuple[ChecklistRule, ...]
+    load_error: str = ""
+
+    def to_dict(self) -> dict:
+        """对外摘要：只给版本、来源与规则 id（不含任何文件名）。"""
+        return {
+            "ruleset_version": self.ruleset_version,
+            "source": self.source,
+            "path": self.path,
+            "load_error": self.load_error,
+            "rule_ids": [r.rule_id for r in self.rules],
+        }
+
+
+def _checklist_rules_config_path() -> Path | None:
+    """规则文件路径：环境变量优先，其次仓库默认 config（存在才用）。"""
+    env = (os.getenv(CHECKLIST_RULES_ENV) or "").strip()
+    if env:
+        return Path(env)
+    default = Path(__file__).resolve().parents[3] / "config" / "dd_v1_checklist_rules.json"
+    return default if default.exists() else None
+
+
+def _rule_from_dict(raw: object) -> ChecklistRule | None:
+    """把一条 JSON 规则转成 ``ChecklistRule``；不合法则整条丢弃（不影响其它规则）。"""
+    if not isinstance(raw, dict):
+        return None
+    rule_id = str(raw.get("rule_id") or "").strip()
+    kind = str(raw.get("kind") or "").strip().lower()
+    if not rule_id or kind not in _RULE_KINDS:
+        return None
+
+    def _strlist(key: str) -> tuple[str, ...]:
+        val = raw.get(key) or []
+        if isinstance(val, str):
+            val = [val]
+        if not isinstance(val, list):
+            return ()
+        return tuple(str(x).strip() for x in val if str(x).strip())
+
+    try:
+        priority = int(raw.get("priority", 100))
+    except (TypeError, ValueError):
+        priority = 100
+    try:
+        sniff_bytes = int(raw.get("sniff_bytes") or _CHECKLIST_SNIFF_BYTES)
+    except (TypeError, ValueError):
+        sniff_bytes = _CHECKLIST_SNIFF_BYTES
+
+    exts = tuple(
+        (e if e.startswith(".") else "." + e).lower() for e in _strlist("extensions")
+    )
+    rule = ChecklistRule(
+        rule_id=rule_id,
+        priority=priority,
+        kind=kind,
+        patterns=_strlist("patterns"),
+        require_all=_strlist("require_all"),
+        extensions=exts,
+        vetoes=_strlist("vetoes"),
+        sniff_bytes=sniff_bytes,
+        enabled=bool(raw.get("enabled", True)),
+        description=str(raw.get("description") or ""),
+    )
+    # 必填项缺失 ⇒ 该规则永远不会命中，留着只是噪音，直接丢弃。
+    if kind in ("filename_keyword", "path_segment") and not rule.patterns:
+        return None
+    if kind == "extension" and not rule.extensions:
+        return None
+    if kind == "content_sniff" and not (rule.patterns or rule.require_all):
+        return None
+    if kind == "content_sniff":
+        for pat in rule.patterns + rule.require_all:
+            try:
+                re.compile(pat)
+            except re.error:
+                return None
+    return rule
+
+
+_RULES_CACHE: dict[tuple, ChecklistRules] = {}
+
+
+def load_checklist_rules(path: str | Path | None = None) -> ChecklistRules:
+    """加载清单排除规则集。
+
+    优先级：显式 ``path`` > 环境变量 ``CANGJIE_DD_V1_CHECKLIST_RULES`` > 内置规则。
+
+    **读不出来就回退内置规则**（排除行为不因配置坏了而失效），
+    失败原因记在 ``load_error`` 里，供审计如实展示。
+    """
+    if path is not None:
+        cfg = Path(path)
+    else:
+        cfg = _checklist_rules_config_path()
+
+    if cfg is None:
+        return ChecklistRules(
+            ruleset_version=DEFAULT_CHECKLIST_RULESET_VERSION,
+            source="builtin",
+            path="",
+            rules=_builtin_rules(),
+        )
+
+    key = _rules_cache_key(cfg)
+    cached = _RULES_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    source = "env" if (os.getenv(CHECKLIST_RULES_ENV) or "").strip() else "config"
+    rules, version, error = _parse_rules_file(cfg)
+    if rules is None:
+        # 规则文件不可用 ⇒ 回退内置（fail-closed：清单照常被排除）
+        ruleset = ChecklistRules(
+            ruleset_version=DEFAULT_CHECKLIST_RULESET_VERSION,
+            source="builtin",
+            path=str(cfg),
+            rules=_builtin_rules(),
+            load_error=error or f"规则文件不可用：{cfg}",
+        )
+        _RULES_CACHE[key] = ruleset
+        return ruleset
+
+    ruleset = ChecklistRules(
+        ruleset_version=version or DEFAULT_CHECKLIST_RULESET_VERSION,
+        source=source,
+        path=str(cfg),
+        rules=rules,
+        load_error=error,
+    )
+    _RULES_CACHE[key] = ruleset
+    return ruleset
+
+
+def _rules_cache_key(cfg: Path) -> tuple:
+    try:
+        st = cfg.stat()
+        return (str(cfg), st.st_mtime_ns, st.st_size)
+    except OSError:
+        return (str(cfg), 0, 0)
+
+
+def _parse_rules_file(cfg: Path) -> tuple[tuple[ChecklistRule, ...] | None, str, str]:
+    """解析 JSON 规则文件。返回 (rules, version, error)；rules=None 表示不可用。"""
+    try:
+        data = json.loads(cfg.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001 — 规则文件坏了必须回退内置
+        return None, "", f"规则文件无法解析：{exc}"
+    if not isinstance(data, dict):
+        return None, "", "规则文件根节点必须是对象"
+
+    raw_rules = data.get("rules")
+    if not isinstance(raw_rules, list) or not raw_rules:
+        return None, "", "规则文件缺 rules 列表（或为空）"
+
+    rules: list[ChecklistRule] = []
+    seen: set[str] = set()
+    errors: list[str] = []
+    for raw in raw_rules:
+        rule = _rule_from_dict(raw)
+        if rule is None:
+            errors.append("有条规则字段不合法，已丢弃")
+            continue
+        if rule.rule_id in seen:
+            errors.append(f"规则 id 重复：{rule.rule_id}（保留首条）")
+            continue
+        seen.add(rule.rule_id)
+        rules.append(rule)
+
+    if not rules:
+        return None, "", "规则文件里没有一条可用规则"
+
+    # 确定性顺序：priority 小者先判；同 priority 按 rule_id 字典序。
+    rules.sort(key=lambda r: (r.priority, r.rule_id))
+    version = str(data.get("ruleset_version") or "").strip()
+    return tuple(rules), version, ("；".join(errors) if errors else "")
+
+
+def _builtin_rules() -> tuple[ChecklistRule, ...]:
+    rules = [r for r in (_rule_from_dict(x) for x in _BUILTIN_CHECKLIST_RULES) if r]
+    rules.sort(key=lambda r: (r.priority, r.rule_id))
+    return tuple(rules)
+
+
+def _stem(name: str) -> str:
+    """文件名主干（去扩展名）。"""
+    return name.rsplit(".", 1)[0] if "." in name else name
+
+
+def _path_segments(rel_path: str) -> tuple[str, ...]:
+    """相对路径里的**目录名**（不含文件名本身）。"""
+    parts = Path(rel_path).parts
+    return tuple(p.casefold() for p in parts[:-1])
+
+
+def _decode_sniff(raw: bytes) -> str:
+    """嗅探字节解码。
+
+    顺序：**严格 UTF-8 → 截尾 UTF-8 → 严格 GB18030**。
+
+    不能用「谁的中文字符多就用谁」—— UTF-8 字节被当成 GBK 解出来的乱码
+    （搴忓彿…）同样是中文且数量更多，会把正常材料判成乱码。
+    """
+    if not raw:
+        return ""
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+    # 嗅探窗口可能把 UTF-8 的最后一个字符切成半个序列 ⇒ 去掉尾字节再试。
+    for trim in range(1, 5):
+        if len(raw) <= trim:
+            break
+        try:
+            return raw[: len(raw) - trim].decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+    try:
+        return raw.decode("gb18030")
+    except UnicodeDecodeError:
+        return raw.decode("utf-8", errors="ignore")
+
+
+def _sniff_text(file_path: Path, sniff_bytes: int, cache: dict) -> str:
+    """读取文件头部若干字节并解码成文本（只读，不改文件）。"""
+    key = (str(file_path), sniff_bytes)
+    if key in cache:
+        return cache[key]
+    text = ""
+    try:
+        with file_path.open("rb") as fh:
+            raw = fh.read(max(0, sniff_bytes))
+        text = _decode_sniff(raw)
+    except OSError:
+        text = ""
+    cache[key] = text
+    return text
+
+
+def _rule_matches(
+    rule: ChecklistRule,
+    rel_path: str,
+    file_path: Path,
+    text_cache: dict,
+) -> bool:
+    """单条规则是否命中。判定纯确定性，不依赖时间/顺序/外部状态。"""
+    name = Path(rel_path).name
+    ext = Path(name).suffix.lower()
+    stem = _stem(name).casefold()
+
+    # 扩展名收窄（kind=extension 时它就是命中集合）
+    if rule.extensions and ext not in rule.extensions:
+        return False
+
+    if rule.kind == "filename_keyword":
+        if any(v.casefold() in stem for v in rule.vetoes):
+            return False
+        if not any(p.casefold() in stem for p in rule.patterns):
+            return False
+        return all(p.casefold() in stem for p in rule.require_all)
+
+    if rule.kind == "path_segment":
+        want = {p.casefold() for p in rule.patterns}
+        for seg in _path_segments(rel_path):
+            if seg in want:
+                if any(v.casefold() in seg for v in rule.vetoes):
+                    continue
+                return True
+        return False
+
+    if rule.kind == "extension":
+        if ext not in rule.extensions:
+            return False
+        if any(v.casefold() in stem for v in rule.vetoes):
+            return False
+        if rule.patterns and not any(p.casefold() in stem for p in rule.patterns):
+            return False
+        return True
+
+    if rule.kind == "content_sniff":
+        text = _sniff_text(file_path, rule.sniff_bytes, text_cache)
+        if not text:
+            return False
+        for pat in rule.vetoes:
+            if re.search(pat, text):
+                return False
+        if rule.require_all:
+            return all(re.search(p, text) for p in rule.require_all)
+        return any(re.search(p, text) for p in rule.patterns)
+
+    return False
+
+
+def classify_checklist_file(
+    rel_path: str,
+    file_path: Path,
+    rules: ChecklistRules,
+    text_cache: dict | None = None,
+) -> tuple[str, str] | None:
+    """判定一个文件是否属于「清单类（考题）」。
+
+    返回 ``(rule_id, kind)`` 表示命中；``None`` 表示是材料（证据），应进材料库。
+    **返回里绝不含文件名**：调用方拿到的只是规则 id 与计数。
+    """
+    cache = text_cache if text_cache is not None else {}
+    for rule in rules.rules:
+        if not rule.enabled:
+            continue
+        try:
+            if _rule_matches(rule, rel_path, file_path, cache):
+                return rule.rule_id, rule.kind
+        except Exception as exc:  # noqa: BLE001 — 单条规则异常不得中断整轮扫描
+            logger.warning("清单排除规则 %s 判定异常，本条跳过：%s", rule.rule_id, exc)
+    return None
+
+
 def _iter_candidate_files(root: Path, library_id: str) -> Iterator[Path]:
     """遍历材料库内的候选文件，复用既有排除规则（复用优先，不另立标准）。"""
     for f in root.rglob("*"):
@@ -338,6 +798,10 @@ class ScanStats:
     unchanged: int = 0
     failed: int = 0
     removed: int = 0
+    # 清单排除（W8 / A2-1）：结构化计数，对外只给数量与规则 id
+    excluded_checklist_count: int = 0
+    excluded_by_rule: dict = field(default_factory=dict)
+    rule_hit_but_not_excluded_count: int = 0
     status: str = RUN_RUNNING
     as_dict: dict = field(default_factory=dict)
 
@@ -354,6 +818,9 @@ class ScanStats:
             "failed": self.failed,
             "removed": self.removed,
             "status": self.status,
+            "excluded_checklist_count": self.excluded_checklist_count,
+            "excluded_by_rule": dict(self.excluded_by_rule),
+            "rule_hit_but_not_excluded_count": self.rule_hit_but_not_excluded_count,
         }
 
 
@@ -436,6 +903,8 @@ def build_manifest(
     seen_rel: set[str] = set()
     last_rel = ""
     last_commit_at = time.time()
+    rules = load_checklist_rules()
+    text_cache: dict = {}
 
     try:
         files = list(_iter_candidate_files(root, library_id))
@@ -461,6 +930,18 @@ def build_manifest(
 
         for f in files:
             rel = f.relative_to(root).as_posix()
+            # 清单 = 考题，不是证据：命中规则的文件**不进材料库**（W8 / A2-1）。
+            hit = classify_checklist_file(rel, f, rules, text_cache)
+            if hit is not None:
+                rule_id, _kind = hit
+                stats.excluded_checklist_count += 1
+                stats.excluded_by_rule[rule_id] = stats.excluded_by_rule.get(rule_id, 0) + 1
+                # 排除动作：把历史轮次可能已入库的同一路径软删除（绝不碰客户原文件）。
+                _exclude_from_corpus(conn, library_id, rel, now)
+                # 命中规则却仍留在材料库 ⇒ 计数（必须恒为 0；非 0 即是缺陷）。
+                if _still_in_corpus(conn, library_id, rel):
+                    stats.rule_hit_but_not_excluded_count += 1
+                continue
             seen_rel.add(rel)
             last_rel = rel
             try:
@@ -499,12 +980,72 @@ def build_manifest(
             (RUN_FAILED, str(exc)[:500], run_id),
         )
         conn.commit()
+        # 失败也要留痕：排除动作已发生的部分必须可审计。
+        _record_checklist_exclusions(conn, library_id, run_id, rules, stats, now)
+        conn.commit()
         raise
+
+    _record_checklist_exclusions(conn, library_id, run_id, rules, stats, now)
+    conn.commit()
+    if stats.excluded_checklist_count:
+        logger.info(
+            "清单类文件已排除 %d 份（规则分布 %s；命中未排除 %d）",
+            stats.excluded_checklist_count,
+            ", ".join(f"{rid}={cnt}" for rid, cnt in sorted(stats.excluded_by_rule.items())),
+            stats.rule_hit_but_not_excluded_count,
+        )
 
     out = stats.to_dict()
     out["data_plane"] = str(data_plane)
     out["source_root"] = str(root)
+    out["checklist_rules"] = rules.to_dict()
     return out
+
+
+def _exclude_from_corpus(conn: sqlite3.Connection, library_id: str, rel_path: str, now: float) -> None:
+    """把一份清单类文件从材料库里摘掉（**软删除**，绝不删客户原文件）。
+
+    幂等：已删除的行不受影响；历史轮次已入库的清单靠这一步退出材料库。
+    """
+    conn.execute(
+        """UPDATE dd_v1_manifest SET deleted_at=?
+           WHERE library_id=? AND rel_path=? AND deleted_at IS NULL""",
+        (now, library_id, rel_path),
+    )
+
+
+def _still_in_corpus(conn: sqlite3.Connection, library_id: str, rel_path: str) -> bool:
+    """该路径是否仍有一条**存活**的材料记录（命中规则却仍在库 ⇒ 缺陷）。"""
+    row = conn.execute(
+        """SELECT 1 FROM dd_v1_manifest
+           WHERE library_id=? AND rel_path=? AND deleted_at IS NULL LIMIT 1""",
+        (library_id, rel_path),
+    ).fetchone()
+    return row is not None
+
+
+def _record_checklist_exclusions(
+    conn: sqlite3.Connection,
+    library_id: str,
+    run_id: str,
+    rules: ChecklistRules,
+    stats: ScanStats,
+    now: float,
+) -> None:
+    """把本轮排除结果落成一行审计记录（**只存计数与规则 id，不存文件名**）。"""
+    conn.execute(
+        """INSERT OR REPLACE INTO dd_v1_checklist_exclusions
+           (run_id, library_id, ruleset_version, rules_source,
+            excluded_checklist_count, excluded_by_rule,
+            rule_hit_but_not_excluded_count, created_at)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        (
+            run_id, library_id, rules.ruleset_version, rules.source,
+            stats.excluded_checklist_count,
+            json.dumps(dict(sorted(stats.excluded_by_rule.items())), ensure_ascii=False),
+            stats.rule_hit_but_not_excluded_count, now,
+        ),
+    )
 
 
 def _touch(
@@ -655,8 +1196,57 @@ def find_same_name_across_subjects(
     ]
 
 
+def _exclusion_record(row: sqlite3.Row) -> dict:
+    """一行审计记录 → 结构化 dict（只含计数与规则 id）。"""
+    try:
+        by_rule = json.loads(row["excluded_by_rule"] or "{}")
+    except (ValueError, TypeError):
+        by_rule = {}
+    if not isinstance(by_rule, dict):
+        by_rule = {}
+    return {
+        "run_id": row["run_id"],
+        "ruleset_version": row["ruleset_version"],
+        "rules_source": row["rules_source"],
+        "excluded_checklist_count": row["excluded_checklist_count"],
+        "excluded_by_rule": by_rule,
+        "rule_hit_but_not_excluded_count": row["rule_hit_but_not_excluded_count"],
+        "created_at": row["created_at"],
+    }
+
+
+def _latest_exclusion_record(conn: sqlite3.Connection, library_id: str) -> dict:
+    """该材料库最近一轮的排除记录 + 历次累计（无记录时给全 0）。"""
+    row = conn.execute(
+        """SELECT * FROM dd_v1_checklist_exclusions
+           WHERE library_id=? ORDER BY created_at DESC, run_id DESC LIMIT 1""",
+        (library_id,),
+    ).fetchone()
+    if row is None:
+        return {
+            "run_id": "", "ruleset_version": "", "rules_source": "",
+            "excluded_checklist_count": 0, "excluded_by_rule": {},
+            "rule_hit_but_not_excluded_count": 0, "created_at": 0,
+            "excluded_checklist_total": 0, "rule_hit_but_not_excluded_total": 0,
+        }
+    rec = _exclusion_record(row)
+    agg = conn.execute(
+        """SELECT COALESCE(SUM(excluded_checklist_count),0) AS s,
+                  COALESCE(SUM(rule_hit_but_not_excluded_count),0) AS h
+           FROM dd_v1_checklist_exclusions WHERE library_id=?""",
+        (library_id,),
+    ).fetchone()
+    rec["excluded_checklist_total"] = agg["s"]
+    rec["rule_hit_but_not_excluded_total"] = agg["h"]
+    return rec
+
+
 def manifest_summary(library_id: str, db_path: Path | None = None) -> dict:
-    """材料库概览：按解析状态与扩展名统计（供 Gate 与报告使用）。"""
+    """材料库概览：按解析状态与扩展名统计（供 Gate 与报告使用）。
+
+    同时给出清单排除的结构化计数（只含数量与规则 id，不含文件名），
+    便于调用方直接读数而不必去解析日志文本。
+    """
     conn = _connect(db_path)
     total = conn.execute(
         "SELECT COUNT(*) c FROM dd_v1_manifest WHERE library_id=? AND deleted_at IS NULL",
@@ -671,6 +1261,7 @@ def manifest_summary(library_id: str, db_path: Path | None = None) -> dict:
             (library_id,),
         )
     }
+    excl = _latest_exclusion_record(conn, library_id)
     return {
         "library_id": library_id,
         "total": total,
@@ -679,6 +1270,44 @@ def manifest_summary(library_id: str, db_path: Path | None = None) -> dict:
             "SELECT COUNT(*) c FROM dd_v1_manifest WHERE library_id=? AND deleted_at IS NOT NULL",
             (library_id,),
         ).fetchone()["c"],
+        "excluded_checklist_count": excl["excluded_checklist_count"],
+        "excluded_by_rule": excl["excluded_by_rule"],
+        "rule_hit_but_not_excluded_count": excl["rule_hit_but_not_excluded_count"],
+        "checklist_exclusion": excl,
+    }
+
+
+def get_checklist_exclusion_report(
+    library_id: str | None = None,
+    run_id: str | None = None,
+    db_path: Path | None = None,
+) -> dict:
+    """清单排除审计报告：只给计数与规则 id，**不给任何真实文件名**。
+
+    - 传 ``run_id`` ⇒ 该轮扫描的排除记录；
+    - 传 ``library_id`` ⇒ 该库最近一轮的排除记录 + 历次累计；
+    - 都不传 ⇒ 全库最近一轮。
+    """
+    conn = _connect(db_path)
+    if run_id:
+        row = conn.execute(
+            "SELECT * FROM dd_v1_checklist_exclusions WHERE run_id=?", (run_id,)
+        ).fetchone()
+        return _exclusion_record(row) if row else {
+            "run_id": run_id, "ruleset_version": "", "rules_source": "",
+            "excluded_checklist_count": 0, "excluded_by_rule": {},
+            "rule_hit_but_not_excluded_count": 0, "created_at": 0,
+        }
+    if library_id:
+        return _latest_exclusion_record(conn, library_id)
+    row = conn.execute(
+        """SELECT * FROM dd_v1_checklist_exclusions
+           ORDER BY created_at DESC, run_id DESC LIMIT 1"""
+    ).fetchone()
+    return _exclusion_record(row) if row else {
+        "run_id": "", "ruleset_version": "", "rules_source": "",
+        "excluded_checklist_count": 0, "excluded_by_rule": {},
+        "rule_hit_but_not_excluded_count": 0, "created_at": 0,
     }
 
 
@@ -687,7 +1316,12 @@ def get_run(run_id: str, db_path: Path | None = None) -> dict | None:
     row = _connect(db_path).execute(
         "SELECT * FROM dd_v1_scan_runs WHERE run_id=?", (run_id,)
     ).fetchone()
-    return dict(row) if row else None
+    if row is None:
+        return None
+    out = dict(row)
+    # 顺带带上本轮的清单排除计数（不改动原表结构，只做读取合并）。
+    out["checklist_exclusion"] = get_checklist_exclusion_report(run_id=run_id, db_path=db_path)
+    return out
 
 
 def find_resumable_run(library_id: str, db_path: Path | None = None) -> dict | None:

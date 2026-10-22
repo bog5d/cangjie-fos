@@ -32,6 +32,11 @@ from cangjie_fos.services import dd_v1_manifest_service as mf
 # 本模块不另抄一份（复用纪律：同一张表只有一个来源）。
 # 依赖方向安全：requirement_service 只依赖 manifest_service ⇒ 无循环导入。
 from cangjie_fos.services import dd_v1_requirement_service as rq
+# A2（G-A2-7）：材料类型解析的**唯一来源**（不另抄一份类型口径）。
+# 依赖方向安全：doc_type_service 只依赖 requirement_service ⇒ 无循环导入。
+from cangjie_fos.services import dd_v1_doc_type_service as dts
+# A2（G-A2-2）：敏感等级默认映射来自**版本化披露策略**（策略是数据，判定是代码）。
+from cangjie_fos.services import dd_v1_policy_service as dpol
 
 logger = logging.getLogger(__name__)
 
@@ -343,11 +348,40 @@ def build_card(
     ext = manifest_row.get("ext") or Path(rel).suffix.lower()
     b = CardBuilder()
 
-    # ── FACT：文件系统直接可读 ──────────────────────────────────────────
-    b.set("doc_type", ext.lstrip("."), FACT,
-          [{"kind": "fs_ext", "loc": rel}])
-
     stem = Path(file_name).stem
+
+    # 用途关键词先算：材料类型解析的第 3 优先级要用它（G-A2-7）。
+    purpose_hits: list = []
+    _haystack = f"{stem}\n{text[:4000]}"
+    for _kw, _purpose in _PURPOSE_KEYWORDS.items():
+        if _kw in _haystack:
+            purpose_hits.append(f"{_kw}→{_purpose}")
+
+    # ── 材料类型：**规范材料类型**（A2 · G-A2-7），不是文件扩展名 ──────────
+    # 过去这里写的是扩展名（pdf/xlsx…）⇒ 语义层证据池恒空 + 披露规则层惰性。
+    # 现在按「文件名 → 正文 → 用途」解析成规范 key；认不出就留空标 UNKNOWN，
+    # **不得**用扩展名占位（扩展名只作为「这不是类型」的留痕记在证据里）。
+    # ★ A2（G-A2-10 · 10a）：索引/目录件**不是材料** ⇒ 类型强制留空 + 留痕。
+    #   （过去它被解析成 audit_report ⇒ 与真审计报告同桶 ⇒ **假 CONFLICT**。）
+    if dts.is_index_artifact(file_name):
+        doc_type_value, doc_type_basis, doc_type_evidence = "", UNKNOWN, [{
+            "kind": "index_artifact",
+            "loc": rel,
+            "rule": "索引/目录/清单件**不是材料**（只是同目录材料的列表）"
+                    "⇒ 不作为材料类型证据、不参与内容冲突判定、不可交付；"
+                    "需人工确认",
+        }]
+    else:
+        doc_type_value, doc_type_basis, doc_type_evidence = dts.resolve_doc_type(
+            file_name=file_name, text=text, purpose=" ".join(purpose_hits))
+    b.set("doc_type", doc_type_value, doc_type_basis,
+          list(doc_type_evidence) + [{
+              "kind": "fs_ext_not_type",
+              "loc": rel,
+              "rule": f"文件扩展名 {ext.lstrip('.') or '(无)'} 只是容器格式，"
+                      f"不是材料类型，不得写入 doc_type",
+          }])
+
     b.set("title", stem, INFERRED,
           [{"kind": "filename_stem", "loc": rel, "rule": "取文件名去扩展名；可能是草稿名，非正式标题"}])
 
@@ -396,20 +430,31 @@ def build_card(
           [{"kind": "no_capability",
             "note": "无图像/印章核验能力，不得据文件名猜测是否盖章"}])
 
-    # ── 敏感等级：无制度依据，必须 UNKNOWN ──────────────────────────────
-    b.set("sensitivity", "", UNKNOWN,
-          [{"kind": "no_policy",
-            "note": "未接入披露政策分级规则，不得自行判定敏感等级"}])
+    # ── 敏感等级：披露策略声明的**类型默认映射**（A2 · G-A2-2）────────────
+    # 策略未声明该类型 → 等级**留空** → 不可判定 → 不可外发（保持现状）；
+    # 声明了 → 填入并标 INFERRED（机器默认定级，**不是**人工逐件定级，
+    # 外发仍须逐件人工复核 + 最终人工批准）。
+    _pol = dpol.load_policy()
+    _sens_level, _sens_basis = dpol.default_sensitivity(_pol, doc_type_value)
+    if _sens_level:
+        b.set("sensitivity", _sens_level, _sens_basis, [{
+            "kind": "policy_default",
+            "loc": rel,
+            "rule": f"披露策略 {(_pol.version or 'unknown')} 按材料类型 "
+                    f"{doc_type_value!r} 声明的默认敏感等级 {_sens_level}；"
+                    f"机器默认定级，非人工逐件定级，外发仍须逐件人工复核",
+        }])
+    else:
+        b.set("sensitivity", "", UNKNOWN, [{
+            "kind": "no_policy_default",
+            "note": "披露策略未声明该材料类型的默认敏感等级 → 等级留空 → "
+                    "不可判定 → 不可外发；不得自行猜测等级",
+        }])
 
     # ── 材料用途：关键词命中即标记，但仅代表「材料自称」 ─────────────────
-    hits = []
-    haystack = f"{stem}\n{text[:4000]}"
-    for kw, purpose in _PURPOSE_KEYWORDS.items():
-        if kw in haystack:
-            hits.append(f"{kw}→{purpose}")
-    b.multi("purpose", hits, FACT if hits else UNKNOWN,
+    b.multi("purpose", purpose_hits, FACT if purpose_hits else UNKNOWN,
             [{"kind": "keyword_hit", "loc": rel,
-              "rule": "关键词命中即记录；仅描述材料自称用途，不代表已核实法律效力"}] if hits else [])
+              "rule": "关键词命中即记录；仅描述材料自称用途，不代表已核实法律效力"}] if purpose_hits else [])
 
     # ── 证明内容 / 关键事实：无抽取能力时留空，不编造 ────────────────────
     b.set("proves", "", UNKNOWN,
@@ -446,6 +491,14 @@ def build_card(
 
     # ── 证据位置 ────────────────────────────────────────────────────────
     b.set("evidence_loc", rel, FACT, [{"kind": "fs_path", "loc": rel}])
+
+    # ── 人工复核定级**优先**：重新建卡不得覆盖人工改写 ────────────────────
+    # 只有 doc_type / sensitivity 是「机器推断、可以由人拍板」的字段。
+    _prev = _existing_card_fields(conn, manifest_row["file_id"])
+    for _fname in ("doc_type", "sensitivity"):
+        _ov = _human_override(_prev, _fname)
+        if _ov:
+            b.set(_fname, _ov["value"], FACT, _ov["evidence"])
 
     card = b.as_dict()
     now = time.time()
@@ -701,16 +754,95 @@ def doc_type_key(card: dict | None) -> str:
         return ""
     raw = str(card.get("doc_type") or "").strip().lower()
     if raw and rq.doc_type_search_terms(raw):
-        return raw                      # 已是规范 key
-    for text in (str(card.get("rel_path") or ""),
-                 str(card.get("title") or ""),
-                 purpose_text(card)):
-        if not text:
-            continue
-        key, _provenance = rq.parse_doc_type(text)
-        if key:
-            return key
+        return raw                      # 已是规范 key（G-A2-7 之后建卡即写入规范 key）
+    rel = str(card.get("rel_path") or "")
+    key, _basis, _evidence = dts.resolve_doc_type(
+        file_name=Path(rel).name if rel else "",
+        purpose=purpose_text(card))
+    if key:
+        return key
+    title = str(card.get("title") or "")
+    if title:
+        k, _b = rq.parse_doc_type(title)
+        if k:
+            return k
     return ""
+
+
+def _existing_card_fields(conn, file_id: str) -> dict:
+    """读出既有卡片的字段字典（用于保留人工改写）。读不到就当没有。"""
+    try:
+        row = conn.execute(
+            "SELECT fields_json FROM dd_v1_material_cards WHERE file_id=?",
+            (file_id,)).fetchone()
+    except Exception:  # noqa: BLE001
+        return {}
+    if not row:
+        return {}
+    try:
+        data = json.loads(row[0] or "{}")
+    except Exception:  # noqa: BLE001
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _human_override(fields: dict, name: str) -> dict | None:
+    """取人工改写值：provenance=FACT 且证据里带 ``human_override``。"""
+    f = (fields or {}).get(name)
+    if not isinstance(f, dict):
+        return None
+    if str(f.get("provenance") or "") != FACT:
+        return None
+    ev = f.get("evidence") or []
+    if not any(isinstance(e, dict) and e.get("kind") == "human_override" for e in ev):
+        return None
+    val = f.get("value")
+    if val in (None, "", [], {}):
+        return None
+    return {"value": val, "evidence": ev}
+
+
+def set_human_override(file_id: str, field: str, value: str,
+                       *, db_path: Path | None = None,
+                       note: str = "人工复核定级") -> dict:
+    """人工改写认知卡字段（**人工优先**：后续重新建卡不得覆盖）。
+
+    只允许 ``doc_type`` / ``sensitivity`` —— 这两个是「机器推断、可以由人拍板」
+    的字段；其余字段仍由建卡管线全权负责。
+
+    写入后 provenance 记为 ``FACT``、证据记 ``human_override``，
+    ``build_card`` 重建时会**保留**该值（见 ``_human_override``）。
+    """
+    if field not in ("doc_type", "sensitivity"):
+        raise ValueError(f"不支持人工改写的字段：{field!r}（仅 doc_type / sensitivity）")
+    val = str(value or "").strip()
+    if not val:
+        raise ValueError("人工改写值不得为空")
+    conn = _card_conn(db_path)
+    _ensure_schema(conn)
+    row = conn.execute(
+        "SELECT fields_json FROM dd_v1_material_cards WHERE file_id=?",
+        (file_id,)).fetchone()
+    if not row:
+        raise KeyError(f"卡片不存在：{file_id}")
+    try:
+        fields = json.loads(row[0] or "{}")
+    except Exception:  # noqa: BLE001
+        fields = {}
+    if not isinstance(fields, dict):
+        fields = {}
+    evidence = [{"kind": "human_override", "note": note}]
+    fields[field] = {"value": val, "provenance": FACT, "evidence": evidence}
+    conn.execute(
+        "UPDATE dd_v1_material_cards SET fields_json=?, updated_at=? WHERE file_id=?",
+        (json.dumps(fields, ensure_ascii=False), time.time(), file_id))
+    # 顶层列同步（get_card 返回的顶层列就是它）
+    col = "doc_type" if field == "doc_type" else "sensitivity"
+    conn.execute(
+        f"UPDATE dd_v1_material_cards SET {col}=? WHERE file_id=?",
+        (val, file_id))
+    conn.commit()
+    return fields
 
 
 def build_cards_for_library(

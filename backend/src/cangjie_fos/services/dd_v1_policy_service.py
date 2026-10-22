@@ -93,6 +93,11 @@ class DisclosurePolicy:
     # []    = 声明为空 ⇒ 任何类型都不可外发（显式全禁）。
     # 取值空间 = dd_v1_requirement_service._DOC_TYPE_RULES 的内部英文 key。
     sendable_doc_types: list | None = None
+    # **可选**的敏感等级默认映射（A2 · G-A2-2）：规范 doc_type → 级别。
+    # {} = 策略未声明 ⇒ 卡片等级留空（不可判定 ⇒ 不可外发），与本模块引入前一致。
+    sensitivity_defaults: dict = field(default_factory=dict)
+    # 被拒的默认映射（留痕）：级别不要求人工复核 ⇒ 该映射不生效。
+    rejected_defaults: list = field(default_factory=list)
 
     def strictest(self, *names: str) -> str:
         """取若干级别中最严的一个。"""
@@ -134,6 +139,79 @@ def _parse_sendable_doc_types(data: dict) -> list | None:
         if key not in out:
             out.append(key)
     return out
+
+
+def _parse_sensitivity_defaults(data: dict, levels: dict) -> tuple[dict, list]:
+    """解析**可选**的敏感等级默认映射（``sensitivity_defaults``）。
+
+    返回 ``(mapping, rejected)``：
+
+    - 键不存在 → ``({}, [])`` ⇒ 不启用默认映射，卡片等级留空（向后兼容）；
+    - 值不是对象 / key 不是规范 doc_type / 级别不在已知级别内 → 抛 ``ValueError``
+      ⇒ 由 ``load_policy`` 转成 ``load_error`` ⇒ **fail-closed**（策略不生效 ⇒ 全部不可外发）；
+    - 某类型默认到 ``PUBLIC`` 但**未**在 ``public_defaults_authorized`` 里声明业务授权
+      → 抛 ``ValueError``（同上的 fail-closed）；
+    - 目标级别的 ``requires_review`` 为 false → **该条映射被拒**（不生效、留痕），
+      卡片等级留空 ⇒ 不可外发。
+
+    取值空间 = ``dd_v1_requirement_service`` 的 10 个规范英文 key
+    （audit_report / financial_statement / tax / license / charter / capital /
+      resolution / ip / labor / contract）——**不是**中文类型名，**不是**文件扩展名。
+    """
+    raw = data.get("sensitivity_defaults")
+    if raw is None:
+        return {}, []
+    if not isinstance(raw, dict):
+        raise ValueError(f"必须是对象，实为 {type(raw).__name__}")
+
+    from cangjie_fos.services import dd_v1_doc_type_service as dts
+
+    authorized = {
+        str(x).strip().lower()
+        for x in (data.get("public_defaults_authorized") or [])
+        if isinstance(x, str) and x.strip()
+    }
+
+    mapping: dict[str, str] = {}
+    rejected: list[dict] = []
+    for key, val in raw.items():
+        k = str(key).strip().lower()
+        if not dts.is_canonical(k):
+            raise ValueError(
+                f"{key!r} 不是规范 doc_type（合法取值 = "
+                f"audit_report / financial_statement / tax / license / charter / "
+                f"capital / resolution / ip / labor / contract）；"
+                f"中文类型名与文件扩展名都不是合法取值")
+        level = str(val).strip().upper()
+        if level not in _LEVEL_ORDER:
+            raise ValueError(f"{k} 的默认级别 {level!r} 不在已知级别 {list(LEVELS)} 内")
+        if level == "PUBLIC" and k not in authorized:
+            raise ValueError(
+                f"{k} 默认到 PUBLIC，但未在 public_defaults_authorized 中声明业务授权；"
+                f"PUBLIC 语义是「已人工批准为可公开的材料」，机器不得凭空授予")
+        spec = levels.get(level) or {}
+        if not spec.get("requires_review", True):
+            rejected.append({
+                "doc_type": k, "level": level,
+                "reason": "目标级别不要求人工复核，不得用于机器默认定级；该映射不生效",
+            })
+            continue
+        mapping[k] = level
+    return mapping, rejected
+
+
+def default_sensitivity(policy: DisclosurePolicy, doc_type: str) -> tuple[str, str]:
+    """按材料类型取默认敏感等级。
+
+    返回 ``(level, basis)``：未声明的类型返回 ``("", "")`` ⇒ 等级留空 ⇒ 不可外发。
+    """
+    key = str(doc_type or "").strip().lower()
+    if not key:
+        return "", ""
+    level = policy.sensitivity_defaults.get(key)
+    if not level:
+        return "", ""
+    return level, "INFERRED"
 
 
 def load_policy(path: str | Path | None = None) -> DisclosurePolicy:
@@ -203,11 +281,21 @@ def load_policy(path: str | Path | None = None) -> DisclosurePolicy:
             load_error=f"策略文件的 sendable_doc_types 不合法：{exc}；"
                        f"类型闸无法判定，按未生效处理，全部不可外发")
 
+    try:
+        sensitivity_defaults, rejected_defaults = _parse_sensitivity_defaults(data, levels)
+    except ValueError as exc:
+        return DisclosurePolicy(
+            version=version,
+            load_error=f"策略文件的 sensitivity_defaults 不合法：{exc}；"
+                       f"默认定级无法判定，按未生效处理，全部不可外发")
+
     return DisclosurePolicy(
         version=version, loaded=True, levels=levels,
         default_level=default_level,
         rules=list(data.get("rules") or []),
-        sendable_doc_types=sendable)
+        sendable_doc_types=sendable,
+        sensitivity_defaults=sensitivity_defaults,
+        rejected_defaults=rejected_defaults)
 
 
 def evaluate(policy: DisclosurePolicy, sensitivity: str,
@@ -313,6 +401,9 @@ def policy_status() -> dict:
         "sendable_doc_types": (list(pol.sendable_doc_types)
                                if pol.sendable_doc_types is not None else None),
         "doc_type_gate_active": pol.sendable_doc_types is not None,
+        "sensitivity_defaults": dict(pol.sensitivity_defaults),
+        "sensitivity_defaults_active": bool(pol.sensitivity_defaults),
+        "rejected_sensitivity_defaults": list(pol.rejected_defaults),
         "effective": "全部材料按最严处理，一律不可对外交付" if not pol.loaded
                      else "按策略分级执行",
     }

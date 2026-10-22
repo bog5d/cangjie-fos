@@ -42,6 +42,10 @@ import uuid
 from pathlib import Path
 
 from cangjie_fos.services import dd_v1_card_service as cs
+from cangjie_fos.services import dd_v1_doc_type_service as dts
+# A2（G-A2-8）：主体名归一（法定全称 / 已登记别名 / 未登记）。
+# 依赖方向安全：entity_service 只依赖 manifest_service ⇒ 无循环导入。
+from cangjie_fos.services import dd_v1_entity_service as es
 from cangjie_fos.services import dd_v1_manifest_service as mf
 from cangjie_fos.services import dd_v1_policy_service as dpol
 from cangjie_fos.services import dd_v1_requirement_service as rq
@@ -136,13 +140,61 @@ def _conn(db_path: Path | None = None):
 
 
 # ── 单文件对单义务的维度判定 ────────────────────────────────────────────────
+def _alias_map_for(library_id: str, db_path: Path | None = None) -> dict:
+    """取该库的别名表（库内登记 + 可选配置文件）。取不到就当没有别名。
+
+    **取不到别名 ≠ 放行**：主体匹配不上仍然是「未登记」⇒ UNCERTAIN。
+
+    ★★ **必须传 `db_path`**（2026-10-22 修 · 监工第 38 轮定位，司仓独立复现）：
+    不传 ⇒ `mf._connect(None)` ⇒ 打开**默认库**而不是本次运行的数据目录
+    ⇒ **别名表读出来是空的** ⇒ 别名归一**永远失配**
+    ⇒ 目录名/简称类的卡片永远判「主体未登记」⇒ 主体维度不可判定
+    ⇒ 明明齐套的义务被判 PARTIAL。
+    """
+    lib = str(library_id or "").strip()
+    if not lib:
+        return {}
+    try:
+        # ★ F1 产品侧守卫：**DIRECTORY 型别名（材料分类目录）不参与主体归一**
+        #   ⇒ 既不算 entity_ok，也不参与冲突分桶
+        #   ⇒ 落「主体未登记」桶 ⇒ **不产生假 CONFLICT**，同时**照常留痕**。
+        return es.alias_map(lib, db_path, include_directory=False)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _match_subject(value: str, scope_entities: list, aliases: dict) -> dict:
+    """主体线索 → 权威主体（**含别名归一**）。
+
+    - 与登记全称逐字相等 ⇒ ``FACT``；
+    - 与已登记别名相等 ⇒ ``ALIAS``/``INFERRED``；
+    - 都不匹配 ⇒ 未登记（**不猜**）。
+    - 归一后的主体**必须在本义务的主体范围内**，否则不算命中。
+    """
+    m = es.match_entity(value, list(scope_entities or []), aliases)
+    if m.get("matched") and m.get("entity_id"):
+        ids = {str(e.get("entity_id") or "") for e in (scope_entities or [])}
+        if m["entity_id"] not in ids:
+            m = dict(m, matched=False, evidence=list(m.get("evidence") or []) + [{
+                "kind": "subject_out_of_scope",
+                "note": "别名归一后的主体不在本义务要求的主体范围内",
+            }])
+    return m
+
+
 def evaluate_file(
     obligation: dict,
     card: dict | None,
     manifest_row: dict | None,
     need_entities: list[dict],
+    alias_map: dict | None = None,
 ) -> dict:
-    """算出一份材料对一个义务的四维命中情况。**确定性，不含 LLM。**"""
+    """算出一份材料对一个义务的四维命中情况。**确定性，不含 LLM。**
+
+    ★ `alias_map`：**由调用方一次取好传进来**（`None` ⇒ 自己按 `db_path` 取）
+    —— 一是**避免每条候选重复读库**，二是**保证与判定层用同一份别名表**
+    （避免「桶键一份、覆盖一份」这种两套口径）。
+    """
     ent_ok = per_ok = doc_ok = seal_ok = 0
 
     # 主体维度
@@ -150,6 +202,14 @@ def evaluate_file(
         names = {e["display_name"] for e in need_entities}
         blob = f"{card.get('entity','')} {card.get('rel_path','')} {card.get('title','')}"
         ent_ok = 1 if any(n and n in blob for n in names) else 0
+        if not ent_ok:
+            # A2（G-A2-8）别名归一：卡片的 entity 常是**材料库目录名/简称**，
+            # 与权威名单里的法定全称永不相等 ⇒ 登记过别名才算命中。
+            _m = _match_subject(
+                card.get("entity") or "", need_entities,
+                alias_map if alias_map is not None else _alias_map_for(
+                    (manifest_row or {}).get("library_id") or ""))
+            ent_ok = 1 if _m.get("matched") else 0
     elif not need_entities:
         # 义务没要求特定主体范围（如「贵司」）→ 主体维度不构成门槛
         ent_ok = 1
@@ -162,9 +222,19 @@ def evaluate_file(
     else:
         per_ok = 1   # 期间未锚定 → 由 obligation_status 判 UNCERTAIN，不在此扣分
 
+    # ★ A2（G-A2-10 · 10a）：索引/目录件**不是材料** ⇒ 类型维度不算命中、不可交付。
+    _is_index = False
+    if manifest_row is not None:
+        _fname = manifest_row.get("file_name") or Path(str(manifest_row.get("rel_path") or "")).name
+        _is_index = dts.is_index_artifact(_fname)
+    # 注：索引件的**处置**（记原因 + 不可交付）在下面 ``reasons`` 初始化之后做
+    #     —— 这里只做**检测**（``doc_ok`` 需要它）。
+
     # 材料类型维度
     dt = obligation.get("doc_type") or ""
-    if dt:
+    if _is_index:
+        doc_ok = 0
+    elif dt:
         # WP-A1 修正：**必须走结构化字段**（`cs.purpose_text`）。
         # 卡片 `purpose` 列存的是 JSON 字符串，原写法 `" ".join(card.get("purpose") or [])`
         # 把字符串**逐字符**加空格拼接 ⇒ 中文关键词永远匹配不上 ⇒ doctype_ok 恒 0
@@ -185,6 +255,9 @@ def evaluate_file(
     # 可交付性：不可读/解析失败/披露不可外发 → 不得自动纳入对外交付
     deliverable = 1
     reasons = []
+    if _is_index:
+        reasons.append("索引/目录件，不是材料")
+        deliverable = 0
     # 默认按最严：无卡片 / 无策略时一律不可外发，**不允许「没信息」等于「没问题」**
     disclosure = dpol.PolicyDecision().to_dict()
     if manifest_row is not None:
@@ -291,9 +364,28 @@ def match_obligation(
     authority_entities = rq.resolve_entities(
         library_id, "group_and_subs", obl.get("period_to") or None, db_path)
 
+    # ★ A2（G-A2-12 · F4 配套）：**`need_entities` 不得空洞**。
+    #   义务**未指名**主体、而本库**恰好登记了一个**主体时，
+    #   主体维度**不是空洞的** —— 库里唯一的主体就是本条要求的**隐含对象**
+    #   （义务没说给谁，库里只有一个人）⇒ 把它作为隐含要求纳入 `need_entities`。
+    #   ⇒ `ent_cov` 才不是「无约束的 1.0」，MATCHED 也才有主体维度的实证。
+    # ★ 义务指名了主体但**没登记上** ⇒ **不回落**（仍然 need_entities=0，不猜）。
+    # ★ 库里 ≥2 个主体 ⇒ 不补（G-A2-11 闸：主体维度不可判定，不得 MATCHED/PARTIAL）。
+    if (not need_entities
+            and not (obl.get("entity_scope") or "").strip()
+            and len(authority_entities or []) == 1):
+        need_entities = list(authority_entities)
+
     # 召回：doc_type 词优先 + 义务原文词兜底；两者皆空说明**没真正查过**
     candidates, capped, used_terms = _recall_candidates(
         obl, library_id, candidate_cap, db_path)
+
+    # ★★ **别名表一次取、往下传**（2026-10-22 修 · 监工第 38 轮定位）：
+    #   ① 必须在**本库**上取（`library_id`），且**必须带 `db_path`**
+    #      ⇒ 否则读的是**默认库**的别名表（空的）⇒ 别名归一永远失配；
+    #   ② 取一次给三个下游用 ⇒ 省掉每条义务 3 次库读，
+    #      且**保证「桶键 / 覆盖 / 归一」三处用同一份** ⇒ 不产生第二套口径。
+    _alias_map = _alias_map_for(library_id, db_path)
 
     results = []
     for c in candidates:
@@ -301,19 +393,57 @@ def match_obligation(
         mrow = conn.execute(
             "SELECT * FROM dd_v1_manifest WHERE file_id=?", (c["file_id"],)
         ).fetchone()
-        ev = evaluate_file(obl, card, dict(mrow) if mrow else None, need_entities)
+        ev = evaluate_file(obl, card, dict(mrow) if mrow else None, need_entities,
+                           alias_map=_alias_map)
         score = (ev["entity_ok"] + ev["period_ok"] + ev["doctype_ok"] + ev["seal_ok"]) / 4.0
         results.append({**c, "card": card, "manifest": dict(mrow) if mrow else None,
                         "ev": ev, "score": round(score, 4)})
+
+    # ★ A2（G-A2-12 · 相关性闸）：给每条候选打「**是不是本义务要求的那一份**」的标记。
+    #   降级闸（主体未登记 / 类型认不出）只看标记为 True 的那些候选 ——
+    #   与本义务要求的类型**确定不同**的材料，压根不是那一类，
+    #   不该把结论打成 UNCERTAIN。
+    #   ★ 留痕字段（unknown_entities / unknown_types）与冲突判定口径**一字不改**。
+    _obl_dt = str(obl.get("doc_type") or "").strip()
+    _obl_terms = rq.doc_type_search_terms(_obl_dt) if _obl_dt else []
+    _textmap: dict[str, str] = {}
+    try:
+        for _row in conn.execute("SELECT file_id, text FROM dd_v1_text_cache"):
+            _textmap[str(_row["file_id"])] = str(_row["text"] or "")
+    except Exception:  # noqa: BLE001
+        _textmap = {}
+    for _r in results:
+        _r["_may_be_required"] = _may_be_required_type(
+            _r, _obl_dt, _obl_terms, _textmap)
 
     results.sort(key=lambda r: -r["score"])
     for i, r in enumerate(results, 1):
         r["rank"] = i
 
+    # ★ A2（G-A2-11 · 11c）：主体证据闸的输入。
+    #   ① 义务指名了主体但**没登记上** ⇒ need_entities 为空而 entity_scope 非空
+    #      （judge 里已有对应分支，文案已脱敏）；
+    #   ② 义务**没指名**主体，而**本库登记了多于一个**主体
+    #      ⇒ 主体维度不可判定 ⇒ 不得产出 MATCHED/PARTIAL。
+    _scope = str(obl.get("entity_scope") or "")
+    _entity_unverifiable = bool(
+        (not _scope) and len(authority_entities or []) > 1)
+
     status = judge(obl, results, need_entities, capped, used_terms,
-                     authority_entities)
+                   authority_entities, entity_unverifiable=_entity_unverifiable,
+                   alias_map=_alias_map)
     _persist(conn, library_id, obligation_id, obl, results, status)
     return status
+
+
+def _blocking_info(rows: list[dict], note: str) -> list[dict]:
+    """把「阻断集」整理成与留痕字段同构的结构（计数 + 相对路径 + 说明）。"""
+    if not rows:
+        return []
+    rels = sorted(((r.get("card") or {}).get("rel_path")
+                    or (r.get("manifest") or {}).get("rel_path") or "")
+                   for r in rows)
+    return [{"count": len(rows), "rel_paths": rels, "note": note}]
 
 
 def _related_of(r: dict) -> list[str]:
@@ -367,6 +497,7 @@ def detect_entity_substitution(pool, need_entities) -> list[dict]:
 def detect_anomalies(
     obl: dict, pool: list[dict], need_entities: list[dict],
     authority_entities: list[dict] | None = None,
+    alias_map: dict | None = None,
 ) -> dict:
     """检测 STALE（过期）与 CONFLICT（冲突）。
 
@@ -409,32 +540,69 @@ def detect_anomalies(
     # - 第 4 位参 ``authority_entities``：产品路径额外传入的**全量权威名单**
     #   （不按义务范围过滤）——「这条义务要求哪几个主体」与
     #   「这个法人登记过没有」是两件事，必须分开取。
-    registered = {str(e.get("display_name") or "").strip()
-                  for e in (list(need_entities or []) + list(authority_entities or []))}
+    # A2（G-A2-8）：**主体名先归一再分桶** ——
+    # 归一口径 = 与权威登记全称逐字相等（FACT）或与已登记别名相等（ALIAS/INFERRED）；
+    # 都对不上 ⇒ 主体未登记（不猜、不退化）。
+    entities_all = list(need_entities or []) + list(authority_entities or [])
+    _pool_lib = ""
+    for _r in pool:
+        _lib = (_r.get("manifest") or {}).get("library_id")
+        if _lib:
+            _pool_lib = str(_lib)
+            break
+    _aliases = alias_map if alias_map is not None else _alias_map_for(_pool_lib)
+    registered = {str(e.get("display_name") or "").strip() for e in entities_all}
     registered.discard("")
     #
     # 桶键 = (主体, 期间, 材料类型)
     # 类型维度：不同材料类型（营业执照 vs 车辆登记证）**不得互判冲突**。
     buckets: dict[tuple[str, str, str], set[str]] = {}
     unknown_bucket: list[dict] = []
+    # ★ A2（G-A2-12）：**阻断集** = 「可能是本义务要求的那一份」的未知候选。
+    #   未知候选**全部**仍进 unknown_bucket（留痕 + 不参与冲突判定，口径不变）；
+    #   只有阻断集里的那些才让 judge() 降级 UNCERTAIN。
+    #   ★ 缺 `_may_be_required` 标记的候选（直接调用本函数的旧用法）按**最保守**处理。
+    blocking_unknown_entity: list[dict] = []
+    blocking_unknown_type: list[dict] = []
     # ── WP-A1（G6 v3 · R1）材料类型认不出 ⇒ 不参与冲突判定 ──────────────────
     # 桶键里的 doc_type 认不出时取空串 ""；空串照样进桶 ⇒ 两份**类型未知**材料
     # 落进同一桶 (entity, period, "") ⇒ 同主体同期间异哈希 ⇒ **误报 CONFLICT**。
     # 诚实性口径与「主体未登记」一致：认不出类型 ⇒ 无法判定两份材料是不是
     # 同一材料类型的两个版本 ⇒ 不得断言冲突 ⇒ 单列桶 + judge() 降级 UNCERTAIN。
     unknown_type_bucket: list[dict] = []
+    # ★ A2（G-A2-10）：索引件单独成桶（留痕）；合法多份单独成桶（留痕）
+    index_artifacts: list[dict] = []
+    multi_legal: list[dict] = []
     for r in pool:
         card = r.get("card") or {}
-        ent = (card.get("entity") or "").strip()
+        ent_raw = (card.get("entity") or "").strip()
         pv = str(card.get("fiscal_period") or "")
-        dt = cs.doc_type_key(card)
-        if not ent or ent not in registered:
-            # 主体未知（字段为空 **或** 未在权威名单里）⇒ 不参与冲突判定
-            unknown_bucket.append(r)
+        # 10a：索引/目录件**不是材料** ⇒ 不参与任何冲突判定（但留痕）
+        _mfrow = r.get("manifest") or {}
+        _fname = _mfrow.get("file_name") or Path(str(_mfrow.get("rel_path") or "")).name
+        if dts.is_index_artifact(_fname):
+            index_artifacts.append(r)
             continue
+        dt = cs.doc_type_key(card)
+        _sm = _match_subject(ent_raw, entities_all, _aliases)
+        if not _sm.get("matched"):
+            # 主体未知（字段为空 / 未在权威名单里 / 别名未登记）⇒ 不参与冲突判定
+            unknown_bucket.append(r)
+            if r.get("_may_be_required", True):
+                blocking_unknown_entity.append(r)
+            continue
+        ent = _sm.get("display_name") or ent_raw   # 归一后的权威主体名
         if not dt:
             # 类型未知（认不出规范 doc_type key）⇒ 不参与冲突判定
             unknown_type_bucket.append(r)
+            if r.get("_may_be_required", True):
+                blocking_unknown_type.append(r)
+            continue
+        # ★ A2（G-A2-10 · 10b）：**期间内合法多份**的类型 ⇒ 不报冲突，只留痕。
+        #   （如工商底档多分册、执照正副本、按月财务报表、多份合同。）
+        #   ★ **唯一性类（ANNUAL_UNIQUE）不受影响** ⇒ 真冲突仍必须报（判据双向）。
+        if rq.doc_type_uniqueness(dt) == "MULTI_LEGAL":
+            multi_legal.append(r)
             continue
         buckets.setdefault((ent, pv, dt), set()).add(r["file_id"])
     if unknown_bucket:
@@ -480,9 +648,11 @@ def detect_anomalies(
         covered_by_entity: dict[str, set[int]] = {}
         for r in pool:
             card = r.get("card") or {}
-            ent = (card.get("entity") or "").strip()
-            if not ent or ent not in registered:
+            _sm = _match_subject((card.get("entity") or "").strip(),
+                                 entities_all, _aliases)
+            if not _sm.get("matched"):
                 continue  # 主体未知不参与 STALE 判定（与冲突分桶同一口径：必须在权威名单里）
+            ent = _sm.get("display_name") or (card.get("entity") or "").strip()
             pv = str(card.get("fiscal_period") or "")
             if pv.isdigit():
                 covered_by_entity.setdefault(ent, set()).add(int(pv))
@@ -497,11 +667,44 @@ def detect_anomalies(
             if not inside and outside:
                 stale_entities.append(f"{ent}: 仅有 {sorted(outside)}，要求 {y_from}-{y_to}")
 
+    if index_artifacts:
+        rels = sorted(((r.get("card") or {}).get("rel_path")
+                       or (r.get("manifest") or {}).get("rel_path") or "")
+                      for r in index_artifacts)
+        index_artifacts_info = [{
+            "count": len(index_artifacts),
+            "rel_paths": rels,
+            "note": "索引/目录件不是材料；不参与内容冲突判定（留痕），需人工确认",
+        }]
+    else:
+        index_artifacts_info = []
+
+    if multi_legal:
+        rels = sorted(((r.get("card") or {}).get("rel_path")
+                       or (r.get("manifest") or {}).get("rel_path") or "")
+                      for r in multi_legal)
+        multi_legal_info = [{
+            "count": len(multi_legal),
+            "rel_paths": rels,
+            "note": "该材料类型在同一主体同一期间**合法多份**"
+                    "（唯一性口径 MULTI_LEGAL）⇒ 不判内容冲突，仅留痕",
+        }]
+    else:
+        multi_legal_info = []
+
     return {
         "stale_entities": stale_entities,
         "conflicts": conflict_pairs,
         "unknown_entities": unknown_entities,
+        "blocking_unknown_entities": _blocking_info(
+            blocking_unknown_entity,
+            "主体未登记，且**可能是本义务要求的那一份** ⇒ 结论降级"),
+        "blocking_unknown_types": _blocking_info(
+            blocking_unknown_type,
+            "材料类型认不出，且**可能是本义务要求的那一份** ⇒ 结论降级"),
         "unknown_types": unknown_types,
+        "index_artifacts": index_artifacts_info,
+        "multi_legal": multi_legal_info,
         "has_stale": bool(stale_entities),
         "has_conflict": bool(conflict_pairs),
         "has_unknown_entities": bool(unknown_entities),
@@ -509,10 +712,67 @@ def detect_anomalies(
     }
 
 
+def _requirement_summary(obl: dict) -> str:
+    """把一条义务**要求什么**写成一句可读的摘要（给 MISSING 的缺口定位用）。
+
+    目的：MISSING 不能给出一份空白缺口清单——复核者要能据此去追缺口。
+    """
+    parts = []
+    if obl.get("doc_type"):
+        parts.append(f"材料类型={obl['doc_type']}")
+    if obl.get("entity_scope"):
+        # ★ A2（G-A2-11）：主体前缀是客户标识 ⇒ 摘要里只写脱敏标签
+        #   （脱敏规则由 requirement_service 单一来源提供，不在这里另写一份）
+        parts.append(f"主体范围={rq.entity_scope_value(obl['entity_scope'])}")
+    pf, pt = obl.get("period_from") or 0, obl.get("period_to") or 0
+    if pf and pt:
+        parts.append(f"期间={pf}-{pt}")
+    elif obl.get("period_basis") in ("relative_unresolved", "unresolved"):
+        parts.append("期间=提及但无法解析")
+    if obl.get("seal_required"):
+        parts.append(f"签章={obl['seal_required']}")
+    if obl.get("needs_attachments"):
+        parts.append("需附件")
+    return "、".join(parts) or "（未识别出可定位的维度）"
+
+
+def _may_be_required_type(r: dict, obl_dt: str, terms: list[str],
+                          text_lookup: dict[str, str]) -> bool:
+    """这条候选**是不是**本义务要求的那一份材料？
+
+    ★ A2（G-A2-12 · 相关性闸）：「主体未登记 / 类型认不出 ⇒ 降级 UNCERTAIN」
+      这条闸原本挂在**整个候选池**上 ⇒ 池子里一份身份证复印件就能把
+      「营业执照齐备没有」打成 UNCERTAIN ⇒ MATCHED 永远出不来。
+    ⇒ 降级只看**可能是本义务要求的那一份**的候选：
+
+    - 义务**没**要求类型 ⇒ 任何候选都可能是（最保守）；
+    - 候选类型**认得出**且与要求**相等** ⇒ 是；
+    - 候选类型**认得出**但**不等** ⇒ **不是**（它压根不是那一类）；
+    - 候选类型**认不出** ⇒ 查**全文**（路径 + 标题 + 正文缓存）：
+      要求类型的关键词在里面 ⇒ 它**可能**是那一类（保守：阻断）；不在 ⇒ **不是**。
+
+    ★ 只影响「要不要因『认不出』而降级」，**不改变**：
+      冲突判定口径、唯一性口径、doctype_cov 口径、留痕字段。
+    """
+    dt_c = str(cs.doc_type_key(r.get("card") or {}) or "").strip()
+    if not obl_dt:
+        return True
+    if dt_c:
+        return dt_c == obl_dt
+    hay = " ".join([
+        str((r.get("manifest") or {}).get("rel_path") or ""),
+        str((r.get("card") or {}).get("title") or ""),
+        str(text_lookup.get(str(r.get("file_id") or "")) or ""),
+    ])
+    return any(t and t in hay for t in terms)
+
+
 def judge(
     obl: dict, results: list[dict], need_entities: list[dict], capped: bool,
     used_terms: list[str] | None = None,
     authority_entities: list[dict] | None = None,
+    entity_unverifiable: bool = False,
+    alias_map: dict | None = None,
 ) -> dict:
     """四维覆盖 → 最终判定。**核心：不是「有没有找到相关文件」。**"""
     n_ent = len(need_entities)
@@ -527,14 +787,34 @@ def judge(
     pool = results
 
     # 主体覆盖：需要的主体里有多少被覆盖
+    # 主体别名表（**全义务共用一份**，避免每条候选重复读库）
+    # ★★ 优先用**调用方传进来的**那份（`match_obligation` 已取好）
+    #   ⇒ 与 `evaluate_file` / `detect_anomalies` 用**同一份**别名表
+    #   ⇒ 桶键、覆盖、归一**三处口径一致**（不出现「两套口径」）。
+    _al: dict = alias_map if alias_map is not None else {}
+    if not _al:
+        for r in pool:
+            _lib = (r.get("manifest") or {}).get("library_id")
+            if _lib:
+                _al = _alias_map_for(str(_lib))
+                break
+
     ent_cov = 0.0
     if n_ent:
         covered = set()
         for r in pool:
             blob = f"{(r['card'] or {}).get('entity','')} {r['manifest']['rel_path'] if r['manifest'] else ''}"
+            hit = False
             for e in need_entities:
                 if e["display_name"] and e["display_name"] in blob:
                     covered.add(e["entity_id"])
+                    hit = True
+            if not hit:
+                # A2（G-A2-8）别名归一：目录名/简称匹配到已登记主体也算覆盖
+                _m = _match_subject((r.get("card") or {}).get("entity") or "",
+                                     need_entities, _al)
+                if _m.get("matched") and _m.get("entity_id"):
+                    covered.add(_m["entity_id"])
         ent_cov = len(covered) / n_ent
     else:
         ent_cov = 1.0
@@ -553,8 +833,30 @@ def judge(
     else:
         period_cov = 1.0
 
-    doctype_cov = (sum(1 for r in pool if r["ev"]["doctype_ok"]) / len(pool)
-                   if pool else 0.0)
+    # ── 类型维度覆盖：**按「需要多少份该类型材料」计**（A2 · G-A2-4）────
+    # 旧口径 = 类型命中候选数 / 全部候选数 ⇒ 候选池里混进十几份无关材料，
+    # 就把「找到 1 份对的」也算成 0.05 ⇒ 一票否决 ⇒ 判 PARTIAL。
+    # 实测：案例A/B/C 有类型的义务中 63%–67% 因此判 PARTIAL。
+    # 那是**召回噪声**被当成了**类型覆盖不足**。
+    # 新口径（与其它三维同构：都是「覆盖到的需求数 / 需求总数」）：
+    #   分子 = 覆盖到该类型材料的「主体 × 期间」格子数；
+    #   分母 = 本义务**需要的**该类型材料数 = 主体数 × 年数（无约束时取 1）。
+    # 红线：**不是**把 doctype_cov 恒置 1，也**不是**把分母硬编码成 1 ——
+    #       分母由义务的主体/期间约束算出来，主体×年份不足时照样 < 1。
+    need_type = max(1, (n_ent or 1) * (need_periods or 1))
+    _cells = set()
+    for r in pool:
+        _ev = r.get("ev") or {}
+        if not _ev.get("doctype_ok"):
+            continue
+        _card = r.get("card") or {}
+        if need_periods and not _ev.get("period_ok"):
+            continue          # 期间不满足 ⇒ 不算覆盖到该格子
+        _m = _match_subject(_card.get("entity") or "", need_entities, _al)
+        _ent = _m.get("display_name") or "*"
+        _pv = str(_card.get("fiscal_period") or "") if need_periods else "*"
+        _cells.add((_ent, _pv))
+    doctype_cov = (min(len(_cells), need_type) / need_type) if need_type else 0.0
     # 必备附件覆盖：义务要求附件时，看**可交付**的命中材料里有多少带可观察的关联件。
     # 认知卡的 related_files 自 WP6 起可由确定性规则填充，故此维度不再是恒 0。
     if obl.get("needs_attachments"):
@@ -564,6 +866,11 @@ def judge(
         attach_cov = 1.0
 
     missing = []
+    if capped:
+        # A2（G-A2-4）：候选池打满 ⇒ 召回被截断 ⇒ **类型维度结论置信度低**，
+        # 必须在报告里显式标注（否则读者会把截断后的结论当成全量结论）。
+        missing.append("【置信提示】候选池打满（召回上限已触顶），"
+                       "类型维度结论置信度低")
     if n_ent and ent_cov < FULL_COVERAGE:
         missing.append(f"主体缺 {n_ent - round(ent_cov * n_ent)}/{n_ent} 家")
     if need_periods and period_cov < FULL_COVERAGE:
@@ -584,19 +891,44 @@ def judge(
     elif not results and obl.get("entity_scope") and not need_entities:
         # 要求了主体范围却没有权威名单 → 判 UNCERTAIN，不得拿目录名凑数
         verdict = V_UNCERTAIN
-        missing.append(f"要求主体范围「{obl['entity_scope']}」但无权威主体名单，"
-                       f"无法判定（候选 0 份）；不得用目录名凑数")
+        missing.append(f"要求{rq.entity_scope_label(obl['entity_scope'])}"
+                       f"但无权威主体名单，无法判定（候选 0 份）；不得用目录名凑数")
     elif not results:
         verdict = V_MISSING
+        # A2（G-A2-0）：MISSING 必须**说清缺什么、为什么缺**，
+        # 不能给出一份空白的缺口清单（那会让复核者无从下手）。
+        missing.append(
+            f"未检索到任何候选材料（检索词：{'、'.join(used_terms or []) or '（无）'}）；"
+            f"本条要求：{_requirement_summary(obl)} ⇒ 缺口：缺上述材料")
+    elif not n_ent and obl.get("entity_scope"):
+        # ★ A2（G-A2-11 · 11c① · **M-1 整改**）：主体闸**必须早于所有 PARTIAL 分支**。
+        #   ★ 独立 Reviewer 第一轮实测抓到：期间分支早于主体闸 ⇒
+        #     「义务指名的主体未登记」被「期间只覆盖一部分」抢先 ⇒ 产出 **PARTIAL**
+        #     ⇒ 主体维度**从未核对过**却给出了「部分齐备」的结论 ⇒ **判据违反**。
+        #   ★ 该顺序在 A1 时代是**潜伏**的（A1 的 entity_scope 恒空 ⇒ 该闸永不触发），
+        #     A2 引入非空 entity_scope 后被**激活成可达** ⇒ 由 A2 收口。
+        #   ★ 只把结论**改保守**（PARTIAL → UNCERTAIN），不放松任何硬 Gate。
+        verdict = V_UNCERTAIN
+        # ★ A2（G-A2-11）：主体前缀是**客户标识** ⇒ 文案里**不得**出现原文
+        #   （脱敏规则由 requirement_service 单一来源提供，不在这里另写一份）
+        _scope_label = rq.entity_scope_label(obl.get("entity_scope"))
+        missing.append(f"要求{_scope_label}但无权威主体名单，"
+                       f"无法判定（候选 {len(results)} 份）；不得用目录名凑数")
     elif need_periods and period_cov < 1.0 and period_cov > 0:
         verdict = V_PARTIAL
-    elif not obl.get("period_basis") or obl.get("period_basis") == "relative_unresolved":
+    elif not obl.get("period_basis"):
         verdict = V_UNCERTAIN
-    elif not n_ent and obl.get("entity_scope"):
-        # 要求了主体范围却没有权威名单 → 不得用目录名凑数，判 UNCERTAIN
+        missing.append("期间基准缺失（义务未解析出期间口径），"
+                       "不得当作「没有期间要求」放行")
+    elif obl.get("period_basis") in ("relative_unresolved", "unresolved"):
+        # A2（G-A2-5）：**期间提及但解析不出** ⇒ 不得当作「没有期间要求」放行。
+        # 口径区分：`period_basis=UNKNOWN` 是「文本压根没提期间」，
+        # 该维度**不构成门槛**（不得因此把 98% 的义务判成 UNCERTAIN——
+        # 实测 241 条真实义务里 236 条的清单根本没写年份）；
+        # 只有「提了却解析不出」才必须诚实地说「期间无法解析」。
         verdict = V_UNCERTAIN
-        missing.append(f"要求主体范围「{obl['entity_scope']}」但无权威主体名单，"
-                       f"无法判定（候选 {len(results)} 份）；不得用目录名凑数")
+        missing.append("期间无法解析（相对期间缺锚定年 / 期间口径不明），"
+                       "不得当作「没有期间要求」放行")
     elif ent_cov < FULL_COVERAGE:
         verdict = V_PARTIAL
     elif doctype_cov < FULL_COVERAGE:
@@ -607,6 +939,17 @@ def judge(
     else:
         verdict = V_MATCHED
 
+    # ★ A2（G-A2-11 · 11c②）：**主体维度不可判定** ⇒ 不得产出 MATCHED / PARTIAL。
+    #   触发条件：义务**没有**指名主体（entity_scope 空），而**本库登记了多于一个主体**
+    #   ⇒ 无法判定这条义务针对哪个主体 ⇒ 主体维度**不构成门槛**的老口径
+    #   （`ent_ok=1` 无门槛放行）会产出**假 MATCHED**。
+    #   ★ 该闸**只会把结论改保守**（MATCHED/PARTIAL → UNCERTAIN），
+    #     **不会**放松任何硬 Gate；确证缺失（MISSING）也不受影响（缺失与主体无关）。
+    if entity_unverifiable and verdict in (V_MATCHED, V_PARTIAL):
+        verdict = V_UNCERTAIN
+        missing.append("主体维度不可判定：义务未指名主体，而本库登记了多个主体，"
+                       "无法判定该义务针对哪个主体；不得无门槛放行为 MATCHED")
+
     # 受限材料不能顶替：覆盖完整但**一份都不可交付**时，不得判 MATCHED。
     # 这是硬门槛 HG1「未经人工最终批准不得对外交付」的机器侧兜底。
     if verdict == V_MATCHED and not matched:
@@ -616,10 +959,19 @@ def judge(
     # STALE / CONFLICT 优先于 MATCHED/PARTIAL：拿旧版本顶当期、或同主体同期多版本冲突，
     # 都必须让人看见，不能被「覆盖率够了」盖过去。
     anom = detect_anomalies(obl, results, need_entities,
-                      authority_entities)
+                      authority_entities, alias_map=_al)
     if anom["has_conflict"]:
         verdict = V_CONFLICT
-        missing.append(f"同一主体/期间存在 {len(anom['conflicts'])} 组内容冲突，需人工裁定")
+        if n_ent:
+            missing.append(f"同一主体/期间存在 {len(anom['conflicts'])} 组内容冲突，需人工裁定")
+        else:
+            # ★ F3（监工第 33 轮）：该义务**未指名主体** ⇒ 主体维度从未参与判定
+            #   ⇒「同一主体」是**对候选材料**的断言，不是对本义务的断言 ⇒ 措辞收窄。
+            #   ★ 冲突这一**事实与 CONFLICT 判定都保留**：
+            #   不得因为「断言不成立」就吞掉必须人工裁定的发现。
+            missing.append(f"候选材料中同一主体/期间存在 {len(anom['conflicts'])} 组内容冲突，"
+                           "需人工裁定（该义务未指名主体，此为**材料层**发现，"
+                           "不构成该义务的主体维度断言）")
     elif anom["has_stale"] and verdict in (V_MATCHED, V_PARTIAL):
         verdict = V_STALE
         missing.append("；".join(anom["stale_entities"]))
@@ -636,11 +988,19 @@ def judge(
     # 降级只改 verdict 取值，不改「候选里有主体未知的材料」这个事实；
     # 降级写下的受限原因已原样留在 missing_detail 里（见 restricted 追加逻辑）。
     if anom.get("has_unknown_entities"):
-        if verdict in (V_MATCHED, V_PARTIAL, V_RESTRICTED):
-            verdict = V_UNCERTAIN
-        missing.append("主体未登记，无法判定是否同一主体；"
-                       f"候选中有 {anom['unknown_entities'][0]['count']} 份材料主体未登记，"
-                       "需人工确认主体归属")
+        if anom.get("blocking_unknown_entities"):
+            # ★ G-A2-12：只有「**可能是本义务要求的那一份**」的未知主体候选才降级。
+            if verdict in (V_MATCHED, V_PARTIAL, V_RESTRICTED):
+                verdict = V_UNCERTAIN
+            missing.append("主体未登记，无法判定是否同一主体；"
+                           f"候选中有 {anom['blocking_unknown_entities'][0]['count']} 份材料主体未登记，"
+                           "且**可能是本义务要求的那一份**；需人工确认主体归属")
+        else:
+            # ★ G-A2-12：类型与本义务要求的类型**确定不同** ⇒ 不可能是那一份
+            #   ⇒ **不降级**，但**必须留痕**（不静默丢弃）。
+            missing.append(f"（留痕）候选中有 {anom['unknown_entities'][0]['count']} 份材料主体未登记，"
+                           "但它们与本义务要求的材料类型**确定不同** ⇒ 不可能是本义务要求的那一份，"
+                           "不阻断结论；仍需人工确认主体归属")
 
     # WP-A1（G6 v3 · R1）材料类型认不出 ⇒ **类型维度结论不可信** ⇒ 降级 UNCERTAIN。
     #
@@ -650,11 +1010,27 @@ def judge(
     # 为什么 CONFLICT 不改判：冲突是**更具体、必须人工裁定**的发现，
     # 改判成 UNCERTAIN 反而把可行动信息降级（同 has_unknown_entities 的处理）。
     if anom.get("has_unknown_types"):
-        if verdict in (V_MATCHED, V_PARTIAL, V_RESTRICTED):
-            verdict = V_UNCERTAIN
-        missing.append("材料类型认不出，无法判定是否同一材料类型；"
-                       f"候选中有 {anom['unknown_types'][0]['count']} 份材料类型认不出，"
-                       "需人工确认材料类型")
+        if anom.get("blocking_unknown_types"):
+            # ★ G-A2-12：只有「**可能是本义务要求的那一份**」的未知类型候选才降级。
+            if verdict in (V_MATCHED, V_PARTIAL, V_RESTRICTED):
+                verdict = V_UNCERTAIN
+            missing.append("材料类型认不出，无法判定是否同一材料类型；"
+                           f"候选中有 {anom['blocking_unknown_types'][0]['count']} 份材料类型认不出，"
+                           "且**可能是本义务要求的那一份**；需人工确认材料类型")
+        else:
+            missing.append(f"（留痕）候选中有 {anom['unknown_types'][0]['count']} 份材料类型认不出，"
+                           "但它们**不是**本义务要求的材料类型（全文无该类型关键词）"
+                           "⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型")
+
+    # ★ F4（监工第 33 轮 · B8b）：MATCHED 要求主体维度**确实核对过**。
+    #   `n_ent == 0` 时 `ent_cov = 1.0` 只是「本义务没要求主体 ⇒ 该维度无约束」的
+    #   **空洞满分**，不是「主体已核对」⇒ 不得据此说「材料齐备」⇒ 不得产出 MATCHED。
+    #   ★ 只把 MATCHED 降为 UNCERTAIN；RESTRICTED（找到了但不可外发）**不受影响**
+    #     —— 它断言的是「找到了」，而「没要求主体」时「找到」并不空洞。
+    if verdict == V_MATCHED and n_ent == 0:
+        verdict = V_UNCERTAIN
+        missing.append("主体维度未经核对（该义务未指名主体，权威名单解析出 0 个主体）："
+                       "ent_cov=1.0 只是「无约束」而非「已核对」；不得据此判 MATCHED")
 
     return {
         "obligation_id": obl["obligation_id"],
