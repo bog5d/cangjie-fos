@@ -1,0 +1,20 @@
+{
+ "results": [
+  {
+   "item_id": "R6",
+   "obligation_id": "R6-O1",
+   "agent_id": "synthetic-replay",
+   "provider": "SYNTHETIC",
+   "model_id_or_unknown": "UNKNOWN",
+   "prompt_version": "fos71-wp04-p1",
+   "source_snapshot_id": "snap-da8f944ca5c9d242",
+   "candidate_files": [],
+   "proposed_verdict": "UNCERTAIN",
+   "confidence_or_uncertain": "UNCERTAIN",
+   "abstain_reason": "合成样本：证据不足以判定该义务是否满足",
+   "warnings": [],
+   "elapsed": 0,
+   "token_usage_or_UNKNOWN": "UNKNOWN"
+  }
+ ]
+}

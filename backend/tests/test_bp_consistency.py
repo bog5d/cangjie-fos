@@ -16,7 +16,7 @@ def _job(job_id, who, inst, words):
 
 def test_bp_hard_conflict_detected(monkeypatch):
     """BP 写 800 万、访谈说 8 万 → conflict 硬矛盾。"""
-    jobs = [("j1", _job("j1", "波总", "泽天智航", ["创业启动资金8万元"]))]
+    jobs = [("j1", _job("j1", "波总", "主体丙", ["创业启动资金8万元"]))]
     monkeypatch.setattr(
         "cangjie_fos.services.pitch_job_db.db_job_list_for_tenant",
         lambda tenant_id, limit=8: jobs,
@@ -38,7 +38,7 @@ def test_bp_hard_conflict_detected(monkeypatch):
 
 
 def test_bp_consistent_not_flagged(monkeypatch):
-    jobs = [("j1", _job("j1", "波总", "泽天", ["营收一个亿"]))]
+    jobs = [("j1", _job("j1", "波总", "主体丙", ["营收一个亿"]))]
     monkeypatch.setattr(
         "cangjie_fos.services.pitch_job_db.db_job_list_for_tenant",
         lambda tenant_id, limit=8: jobs,
@@ -54,7 +54,7 @@ def test_bp_consistent_not_flagged(monkeypatch):
 
 def test_bp_topic_not_in_interviews_skipped(monkeypatch):
     """BP 提了但访谈没提的口径不参与比对。"""
-    jobs = [("j1", _job("j1", "波总", "泽天", ["随便聊聊"]))]
+    jobs = [("j1", _job("j1", "波总", "主体丙", ["随便聊聊"]))]
     monkeypatch.setattr(
         "cangjie_fos.services.pitch_job_db.db_job_list_for_tenant",
         lambda tenant_id, limit=8: jobs,
@@ -89,3 +89,5 @@ def test_bp_check_api(monkeypatch):
                    json={"tenant_id": "t1", "bp_text": "BP正文..."})
         assert r.status_code == 200
         assert r.json()["bp_topics"] == 2
+# gm-pubredact-r1: 真实标识脱敏（替身代称）
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

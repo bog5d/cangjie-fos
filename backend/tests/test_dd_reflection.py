@@ -59,7 +59,7 @@ def test_reflection_switches_to_alt_candidate(monkeypatch):
     ])
     sid = create_match_session("zt", "清单", folder, [], context_note="")
     iid = _mk_item_with_candidates(
-        sid, "泽天湖南2021年12月增值税申报表",
+        sid, "主体丙主体甲2021年12月增值税申报表",
         "/d/reflect1/2022申报表.txt", "2022申报表.txt",
         "/d/reflect1/2021申报表.txt", "2021申报表.txt",
     )
@@ -135,3 +135,5 @@ def test_parse_alt_candidates_excludes_current():
     assert [a["file_path"] for a in alts] == ["/x/b.pdf"]
     assert dms._parse_alt_candidates(None, "/x/a.pdf") == []
     assert dms._parse_alt_candidates("坏JSON", "/x/a.pdf") == []
+# gm-pubredact-r1: 真实标识脱敏（替身代称）
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

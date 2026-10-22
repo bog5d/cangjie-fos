@@ -63,7 +63,7 @@ GM Mac: 唯一工作包/租约/执行/恢复；MiniMax 独立监工/Reviewer观�
 **注意**：代码里已有 `dd_v1_agent_result_service.validate_agent_output` 负责引用/hash/主体/期间，`dd_v1_semantic_retrieval_service.validate_semantic` 有parts检查，但它们并非“拥有31份权威数量的金标齐套器”。需从原清单提炼规范义务/可信主体清单或人工补充清单，而非读取Gold猜数量。旧 `dd_match_service.run_matching` 与 `dd_v1_match_service.judge` 是不同路径，应先对比再复用，禁止靠函数名硬连。
 
 ### Kernel / Pack / Extension
-- Kernel：Manifest、来源/hash校验、受控检索、Agent schema、Gate、抽象材料证据及组包契约，不写泽天/机构特例。
+- Kernel：Manifest、来源/hash校验、受控检索、Agent schema、Gate、抽象材料证据及组包契约，不写具体客户名/机构特例。
 - Department Pack：尽调类型词表、主体/期间/签章/附件拆解、财务材料业务规则。
 - Company Extension：具体公司材料库路径、别名映射、权限策略、文件命名、机构模板；配置化，不写进Kernel。
 - Team Channel：入口Router + 进度显示 + 审核入口；DD核心不迁入TeamChannel。
@@ -90,3 +90,4 @@ GM Mac: 唯一工作包/租约/执行/恢复；MiniMax 独立监工/Reviewer观�
 - 开发Spec/PR合并=工程产物；合成测试通过=隔离功能；Windows盲测+真实FOS调用+人工确认+hash+独立Reviewer=业务证据；GM真正会话外恢复/下一WP=持续性证据。
 - 任何 P0 缺口 (Gold隔离、数据安全、伪MATCH、无FOS真实调用、单写者冲突) 未通过，项目不封箱。
 - 计划、验收矩阵、进度双账、状态快照、两套启动指令与Skills回执见同目录其他文件。
+<!-- gm-fix-spec-name-leak: 真实客户短名已中性化 -->

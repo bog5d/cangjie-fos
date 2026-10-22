@@ -481,13 +481,103 @@ def subject_hint_prefix(raw: str) -> str:
     return prefix
 
 
-def parse_entity_scope(raw: str) -> tuple[str, str]:
+def entity_registry_tokens(
+    library_id: str,
+    conn,
+    db_path: Path | None = None,
+) -> list[tuple[str, str]]:
+    """本库**权威主体名单 + 别名**的可匹配词表 ⇒ ``[(原文串, entity_id), ...]``。
+
+    ★ gm-fix-f2-subject-scope: F2（MAJOR）· 主体指名范围
+      主体前缀抽取只认「<主体>：<要求>」一种形态，其余形态**一律抽不出**
+      ⇒ `entity_scope` 为空 ⇒ 主体维度永久不可判定 ⇒ 判 UNCERTAIN。
+      ★ **别名登记救不了**：失败发生在**抽取阶段**，压根没进查表路径。
+      ⇒ 本函数提供「**回落查权威名单**」所需的词表。
+
+    ★ 只收**登记过的**串：登记全称（`dd_v1_entities.display_name`）+
+      库内别名（`dd_v1_entity_aliases.alias`，**排除 DIRECTORY 型**
+      —— 分类目录是分类维度，不是主体标识，与 F1 产品侧守卫同一口径）。
+    ★ 不含配置文件别名：配置文件不是**本库**的权威名单 ⇒ 不进回落路径。
+    ★ 长串优先（最长匹配更具体）；同长度按串本身排序 ⇒ 结果**可复现**。
+    """
+    out: list[tuple[str, str]] = []
+    lib = str(library_id or "").strip()
+    if not lib:
+        return out
+    try:
+        for _r in conn.execute(
+                "SELECT entity_id, display_name FROM dd_v1_entities "
+                "WHERE library_id=?", (lib,)):
+            _n = str(_r["display_name"] or "").strip()
+            if _n:
+                out.append((_n, str(_r["entity_id"] or "")))
+    except Exception:  # noqa: BLE001 — 名单取不到就当没有 ⇒ 不猜
+        pass
+    try:
+        for _r in conn.execute(
+                "SELECT entity_id, alias FROM dd_v1_entity_aliases "
+                "WHERE library_id=? AND alias_kind<>?",
+                (lib, "DIRECTORY")):
+            _n = str(_r["alias"] or "").strip()
+            if _n:
+                out.append((_n, str(_r["entity_id"] or "")))
+    except Exception:  # noqa: BLE001 — 别名表还没有就当没有
+        pass
+    return sorted(out, key=lambda kv: (-len(kv[0]), kv[0]))
+
+
+def entity_scope_from_registry(
+    raw: str,
+    tokens: list[tuple[str, str]],
+) -> tuple[str, str]:
+    """**回落查权威名单**：原文里**逐字**出现了哪个登记名/别名。
+
+    ★ gm-fix-f2-subject-scope: F2（MAJOR）
+      口径（**不猜不退化**）：
+        - 只认**逐字出现**的登记串 ⇒ 认不出还是认不出（不模糊、不语义猜）；
+        - **最长匹配**且唯一 ⇒ 取它（更具体的那个）；
+        - 多个**同等长度**的登记串同时出现 ⇒ 不知该指谁 ⇒ **不猜**（UNKNOWN）；
+        - 命中**别名**时，判定层照常用别名表归一（**别名从此才有机会生效**）。
+      ★ 返回的 scope 复用 `entity_hint:` 前缀 ⇒ 对外仍是**脱敏标签**，
+        原文不落任何交付面。
+    """
+    text = str(raw or "")
+    if not text.strip() or not tokens:
+        return "", UNKNOWN
+    best_len = 0
+    best: list[tuple[str, str]] = []
+    for _tok, _eid in tokens:
+        if len(_tok) < 2:
+            continue
+        if _tok not in text:
+            continue
+        if len(_tok) > best_len:
+            best_len = len(_tok)
+            best = [(_tok, _eid)]
+        elif len(_tok) == best_len:
+            best.append((_tok, _eid))
+    if not best:
+        return "", UNKNOWN
+    if len({e for _t, e in best}) > 1:
+        # ★ 同等长度、指向**不同主体** ⇒ 判定不了该指谁 ⇒ 不猜
+        return "", UNKNOWN
+    return f"{ENTITY_HINT_PREFIX}{best[0][0]}", INFERRED
+
+
+def parse_entity_scope(raw: str, registry=None) -> tuple[str, str]:
     """识别主体范围。**只认原文明文**，不推测。
 
     A2（G-A2-11）：除原有的范围口径外，新增**主体前缀**口径
     （「<主体简称>：<要求>」）⇒ ``("entity_hint:<简称>", INFERRED)``。
     ★ basis 是 **INFERRED**（不是 FACT）：简称是线索，不是法律事实；
       是否真的对上登记主体，由判定层用**权威名单**核实。
+
+    ★ gm-fix-f2-subject-scope: F2（MAJOR）
+      新增**回落查权威名单**路径 —— 前缀口径与 FACT 范围口径都落空时，
+      用**本库登记的主体名/别名**在原文里逐字找一次
+      （`entity_scope_from_registry`）。
+      ★ 顺序不变：**文本前缀命中 > FACT 范围 > 名单回落**
+        ⇒ 既有口径**不被削弱**（FACT 范围不会被回落路径覆盖）。
     """
     _hint = subject_hint_prefix(raw)
     if _hint:
@@ -500,6 +590,12 @@ def parse_entity_scope(raw: str) -> tuple[str, str]:
         return "parent_only", FACT
     if _SCOPE_SELF.search(raw):
         return "self", FACT
+    # ★ gm-fix-f2-subject-scope: 回落查权威名单/别名表
+    #   （**只认登记过的、逐字出现的**；匹配不到就还是不知道 ⇒ 不猜不退化）
+    if registry:
+        _sc, _bs = entity_scope_from_registry(raw, registry)
+        if _sc:
+            return _sc, _bs
     return "", UNKNOWN
 
 
@@ -643,6 +739,7 @@ def parse_expected_count(raw: str) -> tuple[int | None, str]:
 def build_obligations(
     raw: str,
     anchor_year: int | None = None,
+    registry=None,
 ) -> list[Obligation]:
     """把一条清单要求拆成原子义务。
 
@@ -663,12 +760,21 @@ def build_obligations(
     #   ★ 只传**主体口径**，**不改义务原文**（原文零丢失是硬校验）。
     _hint_scope = ""
     if parts:
-        _s, _b = parse_entity_scope(parts[0])
-        if _s.startswith(ENTITY_HINT_PREFIX):
-            _hint_scope = _s
+        # gm-fix-f2-parallel-fact-scope: 前缀继承**只继承「文本主体前缀」**口径
+        #   （A2 G-A2-11 11d 的原义）。
+        # ★ **不可**用 parse_entity_scope() 的结果去判「是不是前缀口径」——
+        #   **名单回落也会产出 entity_hint:** ⇒ 回落口径会跨片段继承
+        #   ⇒ 覆盖同项其它片段**自己的 FACT 范围**（如「各全资子公司」）
+        #   ⇒ 主体维度被悄悄收窄成一家主体 ⇒ **假 MATCHED**
+        #   （独立 Reviewer 裁定书 R3-c / F-1 实测）。
+        # ⇒ 文本前缀形态的继承行为与 A2 **逐字一致**；
+        #   名单回落改为**逐片段独立**判定，不跨片段继承。
+        _prefix = subject_hint_prefix(parts[0])
+        if _prefix:
+            _hint_scope = f"{ENTITY_HINT_PREFIX}{_prefix}"
     for _idx, part in enumerate(parts):
         ob = Obligation(obligation=part)
-        ob.entity_scope, ob.entity_basis = parse_entity_scope(part)
+        ob.entity_scope, ob.entity_basis = parse_entity_scope(part, registry=registry)
         if _idx > 0 and _hint_scope:
             ob.entity_scope, ob.entity_basis = _hint_scope, INFERRED
         ob.period_from, ob.period_to, ob.period_basis, notes = parse_period(
@@ -740,6 +846,10 @@ def ingest_checklist(
     now = time.time()
     n_items = n_obls = 0
     dropped: list[dict] = []
+    # ★ gm-fix-f2-subject-scope: F2（MAJOR）
+    #   本库**权威主体名单 + 别名**的回落词表（**一次取**，循环里共用
+    #   ⇒ 不重复读库、也保证同一次摄取里口径一致）。
+    _registry = entity_registry_tokens(library_id, conn, db_path)
 
     # ── A2（G-A2-9）幂等：同一份清单重复摄取**不得**产生重复义务 ──────────
     # 旧实现每次都 INSERT 新 item + 新义务（uuid4）⇒ 同一 data dir 跑两次
@@ -780,7 +890,8 @@ def ingest_checklist(
         )
         n_items += 1
 
-        for seq, ob in enumerate(build_obligations(raw, anchor_year), 1):
+        for seq, ob in enumerate(
+                build_obligations(raw, anchor_year, registry=_registry), 1):
             payload = ob.to_dict()
             conn.execute(
                 """INSERT INTO dd_v1_obligations

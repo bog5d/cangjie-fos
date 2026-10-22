@@ -1,0 +1,18 @@
+# 前端检查（本包改动了 **1** 个前端组件：`frontend/src/components/DueDiligenceWizard.tsx`）
+# 生成时间: 2026-10-22T14:33:59+0800
+# 环境: frontend/package.json 有 test(vitest run) 与 build(vite build) 两个脚本
+# 依赖: node_modules 已在（frontend/.gitignore 覆盖 ⇒ 不污染仓库）
+
+## npm test（vitest run）
+  Test Files  12 passed (12)
+  Tests       27 passed (27)
+  退出码: 0
+  （含 DueDiligenceWizard 的组件测试 ⇒ 本包改动的 .tsx 被直接覆盖）
+
+## npm run build（vite build + TypeScript）
+  ✓ 490 modules transformed · built in 1.10s
+  退出码: 0
+
+## 结论
+  前端检查**已实跑**：vitest 退出码 0、vite build 退出码 0。
+  ★ 原始 stdout 落执行者本地暂存区（**非交付件**），登记于 10-raw-measurement-logs.txt。
