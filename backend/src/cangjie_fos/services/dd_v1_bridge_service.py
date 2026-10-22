@@ -41,6 +41,7 @@ A0 实测（真 trace，两入口零重叠）：
 | 档 | 含义 | 来源 |
 |---|---|---|
 | ``AUTHORITY`` | 权威登记主体名 | ``dd_v1_entities``（``rq.resolve_entities``） |
+| ``ALIAS_RESOLVED`` | 目录名命中**已登记别名** ⇒ 归一到权威主体名（**INFERRED**：别名登记是事实，「这份材料的主体就是该法人」仍待核验） | ``dd_v1_entity_aliases`` |
 | ``CARD_INFERRED`` | 卡片主体**线索**：认知卡的 entity 字段，来源是**目录名**（``path_segment``，INFERRED），**不是法律事实** | ``card.entity`` |
 | ``UNKNOWN`` | 无任何主体线索 | — |
 
@@ -61,6 +62,8 @@ from typing import Any
 
 from cangjie_fos.services import dd_v1_agent_adapters as ad
 from cangjie_fos.services import dd_v1_card_service as cs
+# A2（G-A2-3 判据⑤ / G-A2-8）：主体归一（法定全称 / 已登记别名 / 未登记）。
+from cangjie_fos.services import dd_v1_entity_service as es
 from cangjie_fos.services import dd_v1_manifest_service as mf
 from cangjie_fos.services import dd_v1_match_service as ms
 from cangjie_fos.services import dd_v1_requirement_service as rq
@@ -127,19 +130,34 @@ def _entity_blob(card: dict[str, Any], row: dict[str, Any]) -> str:
     return f"{card.get('entity','')} {row.get('rel_path','')} {card.get('title','')}"
 
 
-def _match_authoritative(blob: str, entities: list[dict]) -> tuple[str, bool]:
+def _match_authoritative(blob: str, entities: list[dict],
+                         aliases: dict | None = None,
+                         card_entity: str = "") -> tuple[str, bool, str]:
     """把材料归一到权威主体名。
 
-    返回 ``(display_name, ambiguous)``；``ambiguous=True`` 表示**命中多个**权威主体
-    （材料主体表述有歧义）⇒ 不归一，保留卡片原值并记账。
+    返回 ``(display_name, ambiguous, basis)``：
+
+    - ``basis="AUTHORITY"``：法定全称**逐字命中**权威名单；
+    - ``basis="ALIAS_RESOLVED"``：卡片的 entity **逐字**等于某个**已登记别名**
+      ⇒ 归一到该主体的法定全称（**INFERRED**，不是 FACT）；
+    - ``basis=""``：未命中 ⇒ 保留卡片原值（调用方记 ``CARD_INFERRED``）。
+
+    ``ambiguous=True`` 表示**命中多个**权威主体（材料主体表述有歧义）
+    ⇒ 不归一，保留卡片原值并记账（原口径不变）。
     """
     hits = [e["display_name"] for e in entities
             if e.get("display_name") and e["display_name"] in blob]
     if len(hits) == 1:
-        return hits[0], False
+        return hits[0], False, "AUTHORITY"
     if len(hits) > 1:
-        return "", True
-    return "", False
+        return "", True, ""
+    # A2（G-A2-8）别名通道：**逐字**匹配已登记别名（不做子串匹配——
+    # 目录名做子串匹配会把无关目录也认成主体）。
+    if aliases and card_entity:
+        hit = aliases.get(es.normalize_name(card_entity))
+        if hit and hit.get("display_name"):
+            return str(hit["display_name"]), False, "ALIAS_RESOLVED"
+    return "", False, ""
 
 
 def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[dict], dict]:
@@ -149,22 +167,33 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
     「同主体 + 同 doc_type」取每条义务的最小证据。
     """
     entities = rq.resolve_entities(library_id, "group_and_subs", db_path=db_path)
+    # A2（G-A2-8）：别名表（库内登记 + 可选配置）。取不到就当没有别名
+    # ⇒ 主体仍是「未归一」，**不因此放行**。
+    try:
+        aliases = es.alias_map(library_id, db_path=db_path)
+    except Exception:  # noqa: BLE001
+        aliases = {}
     meta: list[dict] = []
     ambiguous = 0
     unknown_doc_type = 0
+    alias_resolved = 0
     for row in mf.list_manifest(library_id, limit=100000, db_path=db_path):
         card = cs.get_card(row["file_id"], db_path=db_path) or {}
         dt = resolve_material_doc_type(card)
         if not dt:
             unknown_doc_type += 1
-        ent, amb = _match_authoritative(_entity_blob(card, row), entities)
+        card_entity = str(card.get("entity") or "").strip()
+        ent, amb, ent_basis = _match_authoritative(
+            _entity_blob(card, row), entities, aliases, card_entity)
         if amb:
             ambiguous += 1
-        card_entity = str(card.get("entity") or "").strip()
+        if ent_basis == "ALIAS_RESOLVED":
+            alias_resolved += 1
         meta.append({
             "file_id": row["file_id"],
             "relative_path": row["rel_path"],
             "entity": ent or card_entity,
+            "entity_basis": ent_basis or "CARD_INFERRED",
             "period": _material_period(card, dt),
             "doc_type": dt,
             "part": "附注" if (_ATTACH_RE.search(row.get("rel_path") or "")
@@ -175,8 +204,10 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
         "materials": len(meta),
         "doc_type_unknown": unknown_doc_type,
         "entity_ambiguous": ambiguous,
+        "entity_alias_resolved": alias_resolved,
         "entity_declared": sum(1 for m in meta if m["entity"]),
         "authoritative_entities": len(entities),
+        "entity_aliases": len(aliases),
     }
     return meta, stats
 
@@ -216,14 +247,20 @@ def build_semantic_obligations(
     - 一条义务按**主体分簇**：每簇一个语义义务，``obligation_id`` 加 ``@主体`` 后缀。
       这样每份证据里**只含同一主体的材料**，跨法人不混桶。
     """
-    entities_by_dt: dict[str, set[str]] = {}
+    # 主体 → basis（AUTHORITY > ALIAS_RESOLVED > CARD_INFERRED）
+    _BASIS_PRIORITY = {"AUTHORITY": 3, "ALIAS_RESOLVED": 2, "CARD_INFERRED": 1}
+    entities_by_dt: dict[str, dict] = {}
     for m in meta:
-        entities_by_dt.setdefault(m["doc_type"], set())
-        if m["entity"]:
-            entities_by_dt[m["doc_type"]].add(m["entity"])
+        slot = entities_by_dt.setdefault(m["doc_type"], {})
+        if not m["entity"]:
+            continue
+        b = m.get("entity_basis") or "CARD_INFERRED"
+        cur = slot.get(m["entity"])
+        if cur is None or _BASIS_PRIORITY.get(b, 0) > _BASIS_PRIORITY.get(cur, 0):
+            slot[m["entity"]] = b
 
     out: list[dict] = []
-    basis_tally = {"AUTHORITY": 0, "CARD_INFERRED": 0, "UNKNOWN": 0}
+    basis_tally = {"AUTHORITY": 0, "ALIAS_RESOLVED": 0, "CARD_INFERRED": 0, "UNKNOWN": 0}
     truncated = 0
     for obl in obl_rows:
         dt = str(obl.get("doc_type") or "").strip()
@@ -233,7 +270,9 @@ def build_semantic_obligations(
         if auth:
             clusters = [(e["display_name"], "AUTHORITY") for e in auth if e.get("display_name")]
         else:
-            clusters = [(e, "CARD_INFERRED") for e in sorted(entities_by_dt.get(dt, set()))]
+            # 义务侧沿用**材料侧归一后的主体名与 basis** ⇒ 两侧同一口径
+            slot = entities_by_dt.get(dt) or {}
+            clusters = [(e, slot.get(e) or "CARD_INFERRED") for e in sorted(slot)]
         if not clusters:
             clusters = [("", "UNKNOWN")]
 
@@ -372,6 +411,11 @@ def bridge_library(
     # ── 告警区：必须显式说出来的东西，不许藏在计数里 ──
     warnings: list[str] = []
     basis = obl_stats.get("entity_basis") or {}
+    if basis.get("ALIAS_RESOLVED"):
+        warnings.append(
+            f"{basis['ALIAS_RESOLVED']} 条义务的主体经**已登记别名**归一到权威主体名"
+            "（INFERRED：别名登记是事实，「这份材料的主体就是该法人」仍待人工核验）；"
+            "这些语义证据只能当候选提示，主体归属须人工核验后方可使用")
     if basis.get("CARD_INFERRED"):
         warnings.append(
             f"{basis['CARD_INFERRED']} 条义务的主体取自**卡片主体线索**"

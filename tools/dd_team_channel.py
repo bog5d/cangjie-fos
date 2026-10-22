@@ -163,6 +163,9 @@ def cmd_run(a) -> int:
     ing = rq.ingest_checklist(lib, rows, anchor_year=a.anchor_year,
                               institution=a.institution)
     print(f"  ✓ 录入 {ing['items']} 条原文，拆出 {ing['obligations']} 条待办要求")
+    if ing.get("skipped_duplicates"):
+        print(f"  · 幂等：跳过 {ing['skipped_duplicates']} 条重复清单条目"
+              f"（清单指纹 {ing.get('checklist_fingerprint','')}）——重复摄取不产生重复义务")
     print(f"  · 原文零丢失校验：{'通过' if ing['original_text_roundtrip_ok'] else '**未通过**'}")
     if ing["dropped"]:
         print(f"  · 有 {len(ing['dropped'])} 条原文为空被拒收（不会凭空生成要求）")

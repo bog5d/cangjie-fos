@@ -25,6 +25,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -109,6 +110,18 @@ _PERIOD_RANGE_CN = re.compile(r"(\d{4})\s*(?:年)?\s*(?:至|到|-|—|–|~)\s*(
 _PERIOD_LIST = re.compile(r"(\d{4})\s*年?")
 _PERIOD_REL = re.compile(r"(近|最近|过去)\s*([一二三四五六七八九十两\d]+)\s*年")
 _PERIOD_SINGLE = re.compile(r"(\d{4})\s*年度?")
+# ★ A2（G-A2-5）新增：**「提到了期间但解析不出」的识别式**（保守）。
+#   覆盖的是那些**语义上是期间、但无法换算成绝对年份**的说法：
+#   「最近三个月」「本年度」「去年」「上年度」「最近一期」「上一期」……
+#   ★ 必须**保守**：只认「近/最近/过去/前/本/今/上/该 + 数词 + 年/月/季度/期」这类形态，
+#     不做泛化匹配（否则把普通句子里的「上」字也当期间 ⇒ 义务被无端判 UNCERTAIN）。
+#   ★ 判定顺序：RANGE → REL → LIST → SINGLE → **MENTION** → UNKNOWN
+#     ⇒ 能解析的照旧解析；只有「提了却解析不出」才落 `unresolved`。
+_PERIOD_MENTION = re.compile(
+    r"(?:近|最近|过去|前|本|今|上|该|去)\s*(?:一|二|两|三|四|五|六|七|八|九|十|\d)*\s*"
+    r"(?:年度?|个月|季度|期)"
+    r"|去年同期|往年|历史期间|本报告期|当期"
+)
 _CN_NUM = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5,
            "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
 
@@ -134,6 +147,42 @@ _DOC_TYPE_RULES = (
     ("labor", "(劳动合同|社保|花名册|员工)"),
     ("contract", "(合同|协议)"),
 )
+
+
+# ── 材料类型的**唯一性口径**（G-A2-10）────────────────────────────────
+# 与上面的 ``_DOC_TYPE_RULES`` **不是同一维度**：
+#   ``_DOC_TYPE_RULES`` 决定「这是哪一类材料」；
+#   这里决定「这一类材料在同一主体同一期间下**是否应当只有一份**」。
+# ★ **不是第二份类型规则表**：键必须取自上面那 10 个 key，只多一个维度。
+_DOC_TYPE_UNIQUENESS = {
+    "audit_report": "ANNUAL_UNIQUE",       # 审计报告：一年一份（法定）
+    "financial_statement": "MULTI_LEGAL",  # 财务报表：按月/多项目，可多份合法
+    "license": "MULTI_LEGAL",              # 执照：正本/副本并存
+    "charter": "MULTI_LEGAL",              # 章程：可有修正案/工商底档多分册
+    "capital": "MULTI_LEGAL",              # 出资/验资：多笔
+    "tax": "MULTI_LEGAL",                  # 税务：按期多份
+    "resolution": "MULTI_LEGAL",           # 决议：多份
+    "ip": "MULTI_LEGAL",                   # 知识产权：多项
+    "labor": "MULTI_LEGAL",                # 劳动合同/社保：多份
+    "contract": "MULTI_LEGAL",             # 合同/协议：多份
+}
+
+
+def doc_type_uniqueness(doc_type: str) -> str:
+    """材料类型的唯一性口径：``ANNUAL_UNIQUE`` / ``MULTI_LEGAL`` / ``UNKNOWN``。
+
+    - ``ANNUAL_UNIQUE``：同一主体同一期间**应当只有一份**
+      ⇒ 出现内容哈希不同的多份 ⇒ **真冲突，必须报**；
+    - ``MULTI_LEGAL``：同一主体同一期间**合法多份**
+      （正/副本、修正案、按月报表、多项目、底档多分册……）
+      ⇒ **不报**内容冲突，只**留痕**；
+    - ``UNKNOWN``：认不出唯一性口径 ⇒ 按不唯一处理并**留痕**
+      （**不得**默认当成真冲突，也不得当成可放行）。
+
+    ★ 这**不是**放松硬 Gate：只是把「本来就合法多份」从「冲突」挪到「留痕」，
+      **唯一性类的真冲突仍然必须报**（判据双向）。
+    """
+    return _DOC_TYPE_UNIQUENESS.get(str(doc_type or "").strip(), "UNKNOWN")
 
 
 def _ensure_schema(conn) -> None:
@@ -277,8 +326,136 @@ def text_search_terms(text: str, max_terms: int = 8) -> list[str]:
     return out
 
 
+#: 义务原文里的**主体前缀**形态：「<主体简称>：<要求>」
+#:   （真实材料实测形如「<主体简称>公司：最新的营业执照正」）
+#: ★ 刻意**保守**：只看冒号**前**的一小段，且必须像机构名
+#:   （含「公司/集团/银行/厂/所/中心/合作社/事务所/有限/股份」之一），
+#:   并排除常见非主体词（说明/备注/注意/其他/如下…）。
+#:   宁可漏判（当作没指名主体）也不误判（把「说明：」当主体）。
+_SUBJECT_HINT_RE = re.compile(r"^\s*([^：:]{2,12})\s*[：:]")
+_SUBJECT_HINT_STOP = {
+    "说明", "备注", "注意", "其他", "如下", "例如", "包括", "具体", "详见",
+    "备注说明", "背景", "目的", "范围", "要求", "内容", "问题", "建议",
+}
+_SUBJECT_HINT_MARKERS = (
+    "公司", "集团", "银行", "厂", "所", "中心", "合作社", "事务所",
+    "有限", "股份", "研究院", "委员会",
+)
+
+
+#: 主体前缀 scope 的**唯一**前缀常量（仓内只有这一处定义）。
+ENTITY_HINT_PREFIX = "entity_hint:"
+
+#: 主体前缀在**文案**里的统一脱敏标签（客户标识 ⇒ 原文不得外露）。
+ENTITY_HINT_LABEL = "义务指名的主体（简称）"
+
+
+def entity_scope_value(scope: str) -> str:
+    """把 ``entity_scope`` 变成**可展示**的值（脱敏）。
+
+    ★ 单一来源：仓内只有这一处决定「主体范围的值怎么对外写」。
+    ★ ``entity_hint:<简称>`` 里存的是**客户标识**（简称）⇒ 展示时统一脱敏
+      成「义务指名的主体（简称）」，原文**不得**进任何判据文案 / 报告 / 交付物。
+    ★ 数据库里的**原值不动**（判定层要用它做主体解析）。
+    """
+    s = str(scope or "").strip()
+    if not s:
+        return ""
+    if s.startswith(ENTITY_HINT_PREFIX):
+        return ENTITY_HINT_LABEL
+    return s
+
+
+def entity_scope_label(scope: str) -> str:
+    """把 ``entity_scope`` 变成可直接嵌进文案的**短语**。
+
+    - ``entity_hint:...`` ⇒ 「义务指名的主体（简称）」（脱敏）
+    - 其它 ⇒ 「主体范围「xxx」」（与既有文案**逐字一致**）
+    """
+    v = entity_scope_value(scope)
+    if not v:
+        return ""
+    if v == ENTITY_HINT_LABEL:
+        return v
+    return f"主体范围「{v}」"
+
+
+#: 结尾的**角色括号后缀**（如「（保证人）」「(借款方)」）—— 只带文字的才算角色后缀
+_PAREN_TAIL_RE = re.compile(r"[（(][^（()）]{0,24}[)）]\s*$")
+
+
+def _strip_trailing_paren(s: str) -> str:
+    """剥掉结尾的**角色括号后缀**；没有就原样返回。
+
+    ★ A2（G-A2-13）：义务里的主体简称可能带角色后缀
+      （形如「<主体>（保证人）」）⇒ 归一后对不上登记的简称。
+    ★ **只剥带文字的**；纯数字内容（副本后缀「(1)」）交给 `normalize_name` 处理，
+      避免两个只差副本号的简称被合并。
+    """
+    raw = str(s or "")
+    m = _PAREN_TAIL_RE.search(raw)
+    if not m:
+        return raw
+    content = re.sub(r"[（()）\s]", "", m.group(0))
+    if not content or content.isdigit():
+        return raw
+    return raw[:m.start()].strip()
+
+
+def _hint_lookup_keys(hint: str) -> list[str]:
+    """主体简称的**查表键候选**（由严到宽）。
+
+    ★ A2（G-A2-13）：先试**原样归一**（命中角色后缀形式的登记别名），
+      再试**剥掉角色括号后缀**后的归一（命中「只登记了干净简称」的情况）。
+    ★ 只在**查表路径**剥：登记侧不剥 ⇒ 不会制造归一碰撞
+      （登记侧本就有「归一键不得跨主体复用」的守卫）。
+    ★ 剥不掉就认不了 ⇒ 调用方判「未登记」（不猜、不退化）。
+    """
+    try:
+        from cangjie_fos.services import dd_v1_entity_service as es
+        norm = es.normalize_name
+    except Exception:  # noqa: BLE001
+        def norm(x):  # type: ignore[misc]
+            return str(x or "").strip().casefold()
+    keys: list[str] = []
+    raw = str(hint or "").strip()
+    for cand in (raw, _strip_trailing_paren(raw)):
+        k = norm(cand)
+        if k and k not in keys:
+            keys.append(k)
+    return keys
+
+
+def subject_hint_prefix(raw: str) -> str:
+    """取义务原文里的**主体前缀**（简称线索），没有就返回空串。
+
+    ★ 返回的是**原文里的简称**，属客户标识 ⇒
+      判据文案里**不得**直接打印（要脱敏），也不得进任何 Git 交付物。
+    """
+    m = _SUBJECT_HINT_RE.match(str(raw or ""))
+    if not m:
+        return ""
+    prefix = m.group(1).strip()
+    if not (2 <= len(prefix) <= 12):
+        return ""
+    if prefix in _SUBJECT_HINT_STOP:
+        return ""
+    if not any(k in prefix for k in _SUBJECT_HINT_MARKERS):
+        return ""
+    return prefix
+
+
 def parse_entity_scope(raw: str) -> tuple[str, str]:
-    """识别主体范围。**只认原文明文**，不推测。"""
+    """识别主体范围。**只认原文明文**，不推测。
+
+    A2（G-A2-11）：除原有的范围口径外，新增**主体前缀**口径
+    （「<主体简称>：<要求>」）⇒ ``("entity_hint:<简称>", INFERRED)``。
+    ★ basis 是 **INFERRED**（不是 FACT）：简称是线索，不是法律事实；
+      是否真的对上登记主体，由判定层用**权威名单**核实。
+    """
+    _hint = subject_hint_prefix(raw)
+    if _hint:
+        return f"{ENTITY_HINT_PREFIX}{_hint}", INFERRED
     if _SCOPE_GROUP_SUB.search(raw):
         return "group_and_subs", FACT
     if _SCOPE_SUBS.search(raw):
@@ -328,6 +505,15 @@ def parse_period(raw: str, anchor_year: int | None = None) -> tuple[int, int, st
     if m:
         y = int(m.group(1))
         return y, y, FACT, notes
+
+    # ★ A2（G-A2-5）：**提到了期间但解析不出绝对区间** ⇒ basis="unresolved"
+    #   （**不是** UNKNOWN：UNKNOWN 表示「文本压根没提期间」，该维度不构成门槛；
+    #     而「提了却解析不出」必须诚实地说「期间无法解析」并降 UNCERTAIN，
+    #     否则期间闸门会被**静默丢掉** —— 那是危险方向：闸门消失，不是变松）。
+    m = _PERIOD_MENTION.search(raw)
+    if m:
+        notes.append(f"文本提及期间「{m.group(0)}」但未能解析为绝对区间")
+        return 0, 0, "unresolved", notes
 
     return 0, 0, UNKNOWN, notes
 
@@ -379,9 +565,21 @@ def build_obligations(
 
     parts = _split_parallel(raw)
     out: list[Obligation] = []
-    for part in parts:
+    # ★ A2（G-A2-11 · 11d）：同一条清单项切出的并列义务**共享主体前缀**。
+    #   「<主体>：最新的营业执照正、副本复印件」按「、」切成两条后，
+    #   第二条若丢掉前缀 ⇒ 主体维度**无门槛放行** ⇒ 假 MATCHED 的口子。
+    #   ⇒ 把第一段识别到的主体前缀**传给同项的其它片段**。
+    #   ★ 只传**主体口径**，**不改义务原文**（原文零丢失是硬校验）。
+    _hint_scope = ""
+    if parts:
+        _s, _b = parse_entity_scope(parts[0])
+        if _s.startswith(ENTITY_HINT_PREFIX):
+            _hint_scope = _s
+    for _idx, part in enumerate(parts):
         ob = Obligation(obligation=part)
         ob.entity_scope, ob.entity_basis = parse_entity_scope(part)
+        if _idx > 0 and _hint_scope:
+            ob.entity_scope, ob.entity_basis = _hint_scope, INFERRED
         ob.period_from, ob.period_to, ob.period_basis, notes = parse_period(
             part, anchor_year)
         ob.notes.extend(notes)
@@ -405,6 +603,30 @@ def _split_parallel(raw: str) -> list[str]:
 
 
 # ── 落库 ────────────────────────────────────────────────────────────────────
+def _checklist_fingerprint(library_id: str, institution: str, item_no: str,
+                           raw_text: str) -> str:
+    """清单条目的**内容指纹**（前 16 位 sha256）。
+
+    **只含结构化字段**（库 / 机构 / 条目编号 / 原文归一化空白）——
+    **不打印真实文件名与路径**，因此可以安全地写进结构化日志。
+    """
+    h = hashlib.sha256()
+    for part in (library_id or "", institution or "", item_no or "",
+                 " ".join(str(raw_text or "").split())):
+        h.update(str(part).encode("utf-8"))
+        h.update(b"\x1f")
+    return h.hexdigest()[:16]
+
+
+def _checklist_digest(fingerprints: list) -> str:
+    """整份清单的**摘要指纹**（版本标识）。"""
+    h = hashlib.sha256()
+    for fp in sorted(fingerprints):
+        h.update(str(fp).encode("ascii"))
+        h.update(b"\x1f")
+    return h.hexdigest()[:16]
+
+
 def ingest_checklist(
     library_id: str,
     rows: list[dict],
@@ -424,12 +646,35 @@ def ingest_checklist(
     n_items = n_obls = 0
     dropped: list[dict] = []
 
+    # ── A2（G-A2-9）幂等：同一份清单重复摄取**不得**产生重复义务 ──────────
+    # 旧实现每次都 INSERT 新 item + 新义务（uuid4）⇒ 同一 data dir 跑两次
+    # ⇒ 义务数翻倍（实测 32 → 64）⇒ 判定数字全部失真。
+    # 现在按**内容指纹**去重：已存在 ⇒ 跳过并留痕（跳过条数 + 指纹），
+    # 不重复入库。**不得**用「清空数据目录」来回避幂等（那是掩盖，不是修复）。
+    seen_fp = set()
+    for _row in conn.execute(
+            "SELECT item_no, institution, raw_text FROM dd_v1_checklist_items "
+            "WHERE library_id=?", (library_id,)):
+        seen_fp.add(_checklist_fingerprint(library_id, _row["institution"],
+                                           _row["item_no"], _row["raw_text"]))
+    skipped_dup = 0
+    skipped_fps: list = []
+    new_fps: list = []
+
     for r in rows:
         raw = (r.get("raw_text") or "").strip()
         if not raw:
             dropped.append({"item_no": r.get("item_no", ""),
                             "reason": "原文为空，拒绝入库（不得凭空生成要求）"})
             continue
+        fp = _checklist_fingerprint(library_id, institution,
+                                    r.get("item_no") or "", raw)
+        if fp in seen_fp:
+            skipped_dup += 1
+            skipped_fps.append(fp)
+            continue
+        seen_fp.add(fp)
+        new_fps.append(fp)
         item_uid = uuid.uuid4().hex
         conn.execute(
             """INSERT INTO dd_v1_checklist_items
@@ -467,7 +712,9 @@ def ingest_checklist(
         "SELECT item_no, raw_text FROM dd_v1_checklist_items WHERE library_id=?",
         (library_id,),
     ).fetchall()
-    roundtrip_ok = len(stored) == n_items
+    # A2（G-A2-9）：去重后库里条目数会**多于**本次新增数 ⇒ 这里用 ``>=``；
+    # 真正的硬校验是下面的逐条「原样取回」检查（新增与跳过的条目都要取得到）。
+    roundtrip_ok = len(stored) >= n_items
     for r in rows:
         raw = (r.get("raw_text") or "").strip()
         if not raw:
@@ -485,6 +732,10 @@ def ingest_checklist(
         "dropped": dropped,
         "original_text_roundtrip_ok": roundtrip_ok,
         "anchor_year": anchor_year,
+        # A2（G-A2-9）幂等留痕：跳过条数 + 指纹（**不含真实文件名/路径**）
+        "skipped_duplicates": skipped_dup,
+        "checklist_fingerprint": _checklist_digest(new_fps + skipped_fps),
+        "skipped_fingerprints": skipped_fps[:50],
     }
 
 
@@ -569,6 +820,53 @@ def resolve_entities(
             if (r["valid_from"] <= as_of_year)
             and (r["valid_to"] == 0 or r["valid_to"] >= as_of_year)
         ]
+
+    if scope.startswith(ENTITY_HINT_PREFIX):
+        # ★ A2（G-A2-11 · 11b）：义务指名了某个主体 ⇒ 解析成**该主体**的登记行。
+        #   简称先经 `normalize_name` 归一（剥副本后缀）⇒
+        #   清单里的「<主体简称>公司」能对上登记的别名「<主体简称>公司(1)」。
+        #   命中不了 ⇒ 返回空 ⇒ 调用方据此判「未登记」（不猜、不退化）。
+        hint = scope.split(":", 1)[1].strip()
+        if not hint:
+            return []
+        try:
+            from cangjie_fos.services import dd_v1_entity_service as es
+            amap = es.alias_map(library_id, db_path)
+        except Exception:  # noqa: BLE001
+            amap = {}
+        try:
+            from cangjie_fos.services import dd_v1_entity_service as es
+            key = es.normalize_name(hint)
+        except Exception:  # noqa: BLE001
+            key = hint
+        # ★ A2（G-A2-13）：查表键**由严到宽**：先原样归一（命中带角色后缀的登记别名），
+        #   再剥掉角色括号后缀（命中只登记了干净简称的情况）。
+        keys = _hint_lookup_keys(hint)
+        hit = None
+        for _k in keys:
+            _cand = amap.get(_k)
+            if _cand and _cand.get("entity_id"):
+                hit = _cand
+                break
+        if hit and hit.get("entity_id"):
+            eid = str(hit.get("entity_id"))
+            return [r for r in rows if str(r.get("entity_id")) == eid]
+        # ★ A2（G-A2-13 配套）：**登记全称**逐字相等（归一后）也要算命中 ——
+        #   与材料侧 `dd_v1_entity_service.match_entity` 的第一档**同一口径**。
+        #   ★ 义务侧只查别名表而材料侧认全称 ⇒ 就是**两套口径**（G-A2-3 要消灭的东西）。
+        #   ★ 只认逐字相等（归一后），不做模糊匹配、不做子串匹配。
+        try:
+            from cangjie_fos.services import dd_v1_entity_service as es
+            _norm = es.normalize_name
+        except Exception:  # noqa: BLE001
+            _norm = lambda x: str(x or "").strip().casefold()  # noqa: E731
+        for _r in rows:
+            _dn = str(_r.get("display_name") or "").strip()
+            if not _dn:
+                continue
+            if any(_norm(_dn) == _k for _k in keys):
+                return [_r]
+        return []
 
     if scope == "group_and_subs":
         return rows
