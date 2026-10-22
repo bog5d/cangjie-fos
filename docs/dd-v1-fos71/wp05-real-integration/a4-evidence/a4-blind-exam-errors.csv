@@ -1,0 +1,9 @@
+﻿obligation_id,category,flags,confident_mismatch,expected_verdict,agent_verdict,expected_files,agent_files,expected_entity,expected_period,answer_entity,answer_period,confidence_or_uncertain,run_record_path,file_id,locator,locator_source,note
+R1-O1,TP,[],False,MATCH,MATCH,"[""F00001"", ""F00002""]","[""F00001"", ""F00002""]",主体甲,2024,主体甲,2024,0.9,run-R1/run_record.json,F00001,L2-L6,ANSWER_CANDIDATE,verdict 对 + 文件集相等
+R2-O1,FP,[],False,MATCH,MATCH,"[""F00001""]","[""F00001"", ""F00002""]",主体甲,2024,主体甲,2024,0.5,run-R2/run_record.json,F00001,L2-L6,ANSWER_CANDIDATE,文件集多出非期望件
+R3-O1,WRONG_PERIOD,"[""CONFIDENT_MISMATCH""]",True,MATCH,OUTDATED,"[""F00001""]","[""F00004""]",主体甲,2024,主体甲,2023,0.9,run-R3/run_record.json,F00004,L2-L6,ANSWER_CANDIDATE,答卷选中件的 period ≠ 期望期间
+R4-O1,WRONG_PERIOD,[],False,MATCH,OUTDATED,"[""F00001""]","[""F00004""]",主体甲,2024,主体甲,2023,0.5,run-R4/run_record.json,F00004,L2-L6,ANSWER_CANDIDATE,答卷选中件的 period ≠ 期望期间
+R5-O1,FN,[],False,MATCH,MISSING,"[""F00005""]",[],主体甲,2024,,,0.4,run-R5/run_record.json,F00005,主体甲/BLIND-0001_BLIND-0003_BLIND-0004_社保缴纳证明_2024.txt,RULE_ONLY_DERIVED,期望有货，答卷 MISSING / NO_ANSWER
+R6-O1,UNCERTAIN,[],False,MATCH,UNCERTAIN,"[""F00006""]",[],主体甲,2024,,,UNCERTAIN,run-R6/run_record.json,F00006,主体甲/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt,RULE_ONLY_DERIVED,答卷 verdict=UNCERTAIN ⇒ 单列（不计入 FN，也不计入 TP）
+R7-O1,WRONG_ENTITY,[],False,MATCH,MATCH,"[""F00008""]","[""F00001""]",主体乙,2024,主体甲,2024,0.7,run-R7/run_record.json,F00001,L2-L6,ANSWER_CANDIDATE,答卷选中件的 entity ≠ 期望主体
+R8-O1,WRONG_FILE_SET,[],False,MATCH,MATCH,"[""F00001"", ""F00002""]","[""F00001"", ""F00003""]",主体甲,2024,主体甲,2024,0.5,run-R8/run_record.json,F00001,L2-L6,ANSWER_CANDIDATE,verdict / 主体 / 期间都对，但文件集错选
