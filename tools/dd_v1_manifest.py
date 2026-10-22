@@ -8,7 +8,7 @@
 
     # 1) 登记一个经过授权的材料库（只此一步需要显式 authorized_by）
     python tools/dd_v1_manifest.py register --library lib1 --root /path/to/材料库 \\
-        --authorized-by "波总" --name "泽天集团材料库"
+        --authorized-by "波总" --name "主体丙集团材料库"
 
     # 2) 全量建库（源目录只读，产物落受控 Data Plane）
     python tools/dd_v1_manifest.py build --library lib1 --mode full
@@ -535,3 +535,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

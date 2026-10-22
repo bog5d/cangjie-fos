@@ -287,7 +287,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp = p.add_subparsers(dest="cmd", required=True)
 
     r = sp.add_parser("run", help="跑一次完整流程：清单进来 → 匹配结果与缺口清单出去")
-    r.add_argument("--library", required=True, help="材料库标识（自己起个名字，如 泽天材料库）")
+    r.add_argument("--library", required=True, help="材料库标识（自己起个名字，如 主体丙材料库）")
     r.add_argument("--root", required=True, help="材料库根目录（本机路径）")
     r.add_argument("--checklist", required=True, help="机构清单文件（每行：编号<TAB>原文）")
     r.add_argument("--institution", default="", help="机构名称")
@@ -324,3 +324,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）
