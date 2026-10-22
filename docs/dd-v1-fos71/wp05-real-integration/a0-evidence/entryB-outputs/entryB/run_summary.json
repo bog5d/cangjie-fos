@@ -1,0 +1,44 @@
+{
+ "limits": {
+  "cost_cap": "不限额（本地 CLI 不报告费用，代码无法按金额限制；请在 DeepSeek 平台设置余额/预警）",
+  "max_total_calls": "不限",
+  "max_calls_per_item": 2
+ },
+ "calls_total": 3,
+ "groups": [
+  {
+   "group": "R1",
+   "adapter_status": "PENDING_MANUAL",
+   "elapsed_s": null,
+   "mode": "RULE_ONLY",
+   "accepted": 0,
+   "rejected": 0,
+   "uncovered": [],
+   "degrade_reason": "AGENT_CALL_FAILED:PENDING_MANUAL:PASTE_MODEL_REPLY_TO:/private/tmp/a0-evidence-attachment/entryB/run-R1/reply.json"
+  },
+  {
+   "group": "R2",
+   "adapter_status": "PENDING_MANUAL",
+   "elapsed_s": null,
+   "mode": "RULE_ONLY",
+   "accepted": 0,
+   "rejected": 0,
+   "uncovered": [],
+   "degrade_reason": "AGENT_CALL_FAILED:PENDING_MANUAL:PASTE_MODEL_REPLY_TO:/private/tmp/a0-evidence-attachment/entryB/run-R2/reply.json"
+  },
+  {
+   "group": "R3",
+   "status": "NEEDS_HUMAN_SPLIT"
+  },
+  {
+   "group": "R4",
+   "adapter_status": "PENDING_MANUAL",
+   "elapsed_s": null,
+   "mode": "RULE_ONLY",
+   "accepted": 0,
+   "rejected": 0,
+   "uncovered": [],
+   "degrade_reason": "AGENT_CALL_FAILED:PENDING_MANUAL:PASTE_MODEL_REPLY_TO:/private/tmp/a0-evidence-attachment/entryB/run-R4/reply.json"
+  }
+ ]
+}
