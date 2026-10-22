@@ -184,7 +184,7 @@ def test_tail_only_keyword_still_recall_end_to_end(tmp_path):
     """端到端：关键信息只在句尾、材料标题就是该词 → 召回不得为 0。"""
     lib = _seed(tmp_path, {
         "股权结构说明.txt": "实际控制人及股权结构说明\n"
-                          "泽天科技第一大股东为长风资本，持股 42%。\n",
+                          "主体丙科技第一大股东为长风资本，持股 42%。\n",
     })
     rq.ingest_checklist(lib, [{"item_no": "L2", "raw_text": "请说明实际控制人及股权结构"}],
                         db_path=None)
@@ -203,7 +203,7 @@ def test_tail_only_keyword_still_recall_end_to_end(tmp_path):
 # 下面改用真实尽调材料的措辞（不复述义务），这才是有效的验证。
 
 _REALISTIC = {
-    "2024年审计报告.md": "本所对泽天科技2024年度财务报表进行了审计，发表标准无保留意见。\n",
+    "2024年审计报告.md": "本所对主体丙科技2024年度财务报表进行了审计，发表标准无保留意见。\n",
     "股权结构说明.txt": "关于实际控制人与持股情况的说明\n长风资本为第一大股东，持股 42%。\n",
 }
 
@@ -248,7 +248,7 @@ def test_genuinely_unrelated_material_still_not_recalled(tmp_path):
     防止把上一条修成「什么都召回」——那会把真缺口也抹掉。
     """
     lib = _seed(tmp_path, {
-        "2024年审计报告.md": "本所对泽天科技2024年度财务报表进行了审计。\n",
+        "2024年审计报告.md": "本所对主体丙科技2024年度财务报表进行了审计。\n",
         "投决会纪要.md": "各层级部门设置情况详见附表。\n",
     })
     rq.ingest_checklist(lib, [{"item_no": "L3",
@@ -257,3 +257,4 @@ def test_genuinely_unrelated_material_still_not_recalled(tmp_path):
     obl = rq.list_obligations(lib, db_path=None)[0]
     st = ms.match_obligation(lib, obl["obligation_id"], db_path=None)
     assert st["candidate_count"] == 0, "材料确实没提组织架构，不应硬召回"
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

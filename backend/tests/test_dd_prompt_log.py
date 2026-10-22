@@ -69,7 +69,7 @@ def test_matching_records_prompt(monkeypatch):
         )
     sid = create_match_session(
         "zt", "清单", folder, [{"item_no": "1", "category": "财务", "requirement": "审计报告"}],
-        context_note="多主体：泽天/四川",
+        context_note="多主体：主体丙/主体乙",
     )
     # mock 批量匹配的 LLM 客户端，返回空候选（不影响 prompt 记录——记录在调用前）
     monkeypatch.setattr(dms, "_refine_session_matches", lambda *a, **k: None)
@@ -93,4 +93,6 @@ def test_matching_records_prompt(monkeypatch):
     rows = plog.get_prompts(sid)
     matching_rows = [r for r in rows if r["stage"] == "matching"]
     assert matching_rows, "应记录 matching prompt"
-    assert "多主体：泽天/四川" in matching_rows[0]["prompt_text"]  # 注入背景可见
+    assert "多主体：主体丙/主体乙" in matching_rows[0]["prompt_text"]  # 注入背景可见
+# gm-pubredact-r1: 真实标识脱敏（替身代称）
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）
