@@ -20,13 +20,13 @@ def test_scan_excludes_cangjie_internal_dir(tmp_path, monkeypatch):
     """预热产物 _cangjie_预处理_md/ 不得被二次扫描入库（P1：污染候选集）。"""
     monkeypatch.setattr(idx, "_llm_summarize", lambda n, t: "摘要")
     # 原始材料 2 份
-    (tmp_path / "泽天湖南_增值税申报表.txt").write_text("增值税申报表正文", encoding="utf-8")
-    (tmp_path / "四川_成本结构.txt").write_text("成本结构正文", encoding="utf-8")
+    (tmp_path / "主体丙主体甲_增值税申报表.txt").write_text("增值税申报表正文", encoding="utf-8")
+    (tmp_path / "主体乙_成本结构.txt").write_text("成本结构正文", encoding="utf-8")
     # 预热派生 md（应被排除）
-    md = tmp_path / "_cangjie_预处理_md" / "泽天湖南"
+    md = tmp_path / "_cangjie_预处理_md" / "主体丙主体甲"
     md.mkdir(parents=True)
-    (md / "泽天湖南_增值税申报表.txt.md").write_text("# 派生md", encoding="utf-8")
-    (md / "四川_成本结构.txt.md").write_text("# 派生md", encoding="utf-8")
+    (md / "主体丙主体甲_增值税申报表.txt.md").write_text("# 派生md", encoding="utf-8")
+    (md / "主体乙_成本结构.txt.md").write_text("# 派生md", encoding="utf-8")
 
     res = idx.scan_and_index_folder(str(tmp_path), "zt")
     assert res["indexed"] == 2, "只应索引 2 份原始材料，派生 md 被排除"
@@ -42,7 +42,7 @@ def test_scan_keeps_file_when_summary_fails(tmp_path, monkeypatch):
     def boom(name, text):
         raise RuntimeError("Error code: 401 - Authentication Fails ... invalid")
     monkeypatch.setattr(idx, "_llm_summarize", boom)
-    (tmp_path / "泽天湖南_2021年12月增值税申报表.txt").write_text("申报表正文", encoding="utf-8")
+    (tmp_path / "主体丙主体甲_2021年12月增值税申报表.txt").write_text("申报表正文", encoding="utf-8")
 
     res = idx.scan_and_index_folder(str(tmp_path), "zt2")
     assert res["indexed"] == 1
@@ -50,3 +50,5 @@ def test_scan_keeps_file_when_summary_fails(tmp_path, monkeypatch):
     rows = _rows(str(tmp_path))
     assert len(rows) == 1
     assert rows[0]["summary"] is None  # 摘要降级为空，但文件已入库
+# gm-pubredact-r1: 真实标识脱敏（替身代称）
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

@@ -1,0 +1,25 @@
+# 白名单对账（改动集合**从 git 差集自动推导** + 与任务书白名单逐件对账）
+# 生成时间: 2026-10-22T14:33:59+0800
+# base commit: a7a7e24977eeb40b62e1b34d39d9d4a58dadd28d
+# 工作树改动文件数（git diff --name-only）= 12
+# 白名单件数 = 12
+# 白名单外改动 = 0  名单内未改 = 0
+
+## 逐件：文件 | 类别 | 脱敏替身口径 | 改前命中行 | marker | 改后 SHA256
+
+CHANGELOG.md | 真实名 | ['P4', 'P5', 'P8'] | 3 | YES | 3426d5c53df61fa49b7dd179264ea97196454c35e3e6012fea2e797b4d696f4a
+backend/tests/test_bp_consistency.py | 真实名 | ['P3', 'P8'] | 3 | YES | 8e6edb4d95555d8d213c99d3577277e7bd2feb4b23a357e950396b5456cd9a79
+backend/tests/test_dd_clarify.py | 真实名 | ['P4', 'P5', 'P8'] | 3 | YES | 4b7865e6fec787259f073611af15291314403ae533f85e5fb20e93530241e201
+backend/tests/test_dd_match_quality.py | 真实名 | ['P4', 'P5', 'P8'] | 6 | YES | 01102ff76bf77c2508ef6f19ce97877de479266747020ee4e9fe5313e0363946
+backend/tests/test_dd_prompt_log.py | 真实名 | ['P4', 'P8'] | 2 | YES | da8d73b1448d015761d676ad3915c38e336860244b16f5f7c362b8cb07c046a0
+backend/tests/test_dd_reflection.py | 真实名 | ['P5', 'P8'] | 1 | YES | 4da90963bdb324cf3dc71f2872ad3d52f8718951764e5ad17018ddc8de342754
+backend/tests/test_dd_scan_exclusions.py | 真实名 | ['P4', 'P5', 'P8'] | 6 | YES | a4259522339f260c69638cc380ddca5ec2c92105fa56bbe9ec8ede71a2401407
+backend/tests/test_desensitize.py | 真实名 | ['P3', 'P8'] | 3 | YES | 273e5f2a3404cd53e291ba2ba9659e60b9afb34b921b7e1e6911fac8f8d59537
+backend/tests/test_dd_v1_recall.py | 真实名 | ['P8'] | 3 | YES | f4a16f14f61b646c4a0a50c54f1d9b9c7fc67510e7290afe6e45691ba99eb252
+frontend/src/components/DueDiligenceWizard.tsx | 真实名 | ['P4', 'P5', 'P8'] | 1 | YES | 3f04458fcfc1bb28805e7d559364b199417a7a7b8d18ef984e87778adfd6f474
+tools/dd_team_channel.py | 真实名 | ['P8'] | 1 | YES | 052b22be4da9f31fb0edc7f93d0914de52e01acdd8d9d14b6bd023dab1e936ac
+tools/dd_v1_manifest.py | 真实名 | ['P8'] | 1 | YES | 445669d0cf5da3c33c3d100671f22301f6f0e3350820a68b32a7c4b114604f47
+
+白名单外改动清单: []
+名单内未改清单: []
+未跟踪文件（**非交付物**，司仓 push 时勿 git add -A 带入）: ['backend/.venv', 'docs/dd-v1-fos71/wp05-real-integration/PUBREDACT-NOTE.md', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/00-scope-and-method.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/01-scan-before-after.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/02-pytest-baseline-vs-after.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/03-frontend-checks.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/04-discriminative-probe.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/05-whitelist-reconciliation.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/07-provenance.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/08-observations-and-limits.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/09-delivery-surface-scan.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/10-raw-measurement-logs.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/README.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/SHA256SUMS-modified-files.txt', 'docs/dd-v1-fos71/wp05-real-integration/pubredact-evidence/SHA256SUMS-pubredact-evidence.txt']

@@ -1,0 +1,44 @@
+# 全仓扫描（真实名 + 材料库代号）· 改前 vs 改后
+# 生成时间: 2026-10-22T14:33:59+0800
+# 扫描器: /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/gm_fullrepo_realname_scan.py
+# 扫描面: 全仓**已跟踪文件**（git ls-tree -r HEAD），非 git 差集
+# 输出口径: 只含文件路径 + 命中计数；**永不打印命中内容/模式内容**
+#
+# ★ **匹配口径**（Gate-2 修订）：
+#   真实名（中文）= **子串**匹配 —— 中文没有词边界 ⇒ 2 字短名**也必须**命中；
+#   材料库代号（英文词）= **词边界**匹配 `(?<![A-Za-z0-9_])code(?![A-Za-z0-9_])`。
+#   ★ 旧口径（代号也用纯子串）会把**英文单词内的子串**误判成命中 ⇒ 扫描器已按词边界修订。
+#
+# ===== 改前（base commit a7a7e24977eeb40b62e1b34d39d9d4a58dadd28d 的内容树，/tmp 快照）=====
+REPO=/private/tmp/pubredact-baseline-tree
+REF=HEAD
+TRACKED_FILES=580  SCANNED_TEXT_FILES=541
+PATTERNS_LOADED=8  CASE_CODES_DERIVED=3
+HIT_FILES=12
+HIT	CHANGELOG.md	real=4	code=0
+HIT	backend/tests/test_bp_consistency.py	real=4	code=0
+HIT	backend/tests/test_dd_clarify.py	real=5	code=0
+HIT	backend/tests/test_dd_match_quality.py	real=5	code=0
+HIT	backend/tests/test_dd_prompt_log.py	real=4	code=0
+HIT	backend/tests/test_dd_reflection.py	real=2	code=0
+HIT	backend/tests/test_dd_scan_exclusions.py	real=5	code=0
+HIT	backend/tests/test_dd_v1_recall.py	real=3	code=0
+HIT	backend/tests/test_desensitize.py	real=5	code=0
+HIT	frontend/src/components/DueDiligenceWizard.tsx	real=3	code=0
+HIT	tools/dd_team_channel.py	real=1	code=0
+HIT	tools/dd_v1_manifest.py	real=1	code=0
+
+# ===== 改后（工作树 a7a7e24977eeb40b62e1b34d39d9d4a58dadd28d）=====
+REPO=/Users/mac/cangjie-fos-wt-redact
+REF=HEAD
+TRACKED_FILES=580  SCANNED_TEXT_FILES=541
+PATTERNS_LOADED=8  CASE_CODES_DERIVED=3
+HIT_FILES=0
+
+HIT_FILES_BEFORE=12
+HIT_FILES_AFTER=0
+REAL_NAME_FILES_BEFORE=12
+CASE_CODE_FILES_BEFORE=0
+REAL_NAME_FILES_AFTER=0
+CASE_CODE_FILES_AFTER=0
+# 判定：改前 12 个命中文件**全部在真实名侧**（代号侧 0）⇒ 改后 HIT_FILES=0 ⇒ R-1 / R-2 PASS
