@@ -65,10 +65,10 @@ def test_hits_reported_for_review():
 
 def test_longer_terms_first():
     """长词优先：'关联公司' 不应被 '公司' 抢先切断。"""
-    svc.add_term("t1", "secret", "泽天智航", "[公司A]")
-    r = svc.desensitize("泽天智航的BP", tenant_id="t1")
+    svc.add_term("t1", "secret", "主体丙", "[公司A]")
+    r = svc.desensitize("主体丙的BP", tenant_id="t1")
     assert "[公司A]" in r["masked_text"]
-    assert "泽天" not in r["masked_text"]
+    assert "主体丙" not in r["masked_text"]
 
 
 def test_term_crud():
@@ -107,3 +107,5 @@ def test_api_unknown_category_400():
         r = c.post("/api/v1/desensitize/terms",
                    json={"tenant_id": "t3", "category": "bogus", "term": "x"})
         assert r.status_code == 400
+# gm-pubredact-r1: 真实标识脱敏（替身代称）
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

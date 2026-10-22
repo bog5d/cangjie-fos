@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "dd_v1_agent_result.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "results"
+  ],
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item_id",
+          "obligation_id",
+          "agent_id",
+          "provider",
+          "model_id_or_unknown",
+          "prompt_version",
+          "source_snapshot_id",
+          "candidate_files",
+          "proposed_verdict",
+          "confidence_or_uncertain",
+          "abstain_reason",
+          "warnings",
+          "elapsed",
+          "token_usage_or_UNKNOWN"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "obligation_id": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "model_id_or_unknown": {
+            "type": "string"
+          },
+          "prompt_version": {
+            "type": "string"
+          },
+          "source_snapshot_id": {
+            "type": "string"
+          },
+          "candidate_files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file_id",
+                "relative_path",
+                "sha256",
+                "locator",
+                "entity",
+                "period",
+                "match_reason"
+              ],
+              "properties": {
+                "file_id": {
+                  "type": "string"
+                },
+                "relative_path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                },
+                "locator": {
+                  "type": "string"
+                },
+                "entity": {
+                  "type": "string"
+                },
+                "period": {
+                  "type": "string"
+                },
+                "match_reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "proposed_verdict": {
+            "type": "string",
+            "enum": [
+              "MATCH",
+              "PARTIAL",
+              "OUTDATED",
+              "CONFLICT",
+              "MISSING",
+              "UNCERTAIN"
+            ]
+          },
+          "confidence_or_uncertain": {
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "abstain_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "elapsed": {
+            "type": "string"
+          },
+          "token_usage_or_UNKNOWN": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

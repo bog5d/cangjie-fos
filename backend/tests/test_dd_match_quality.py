@@ -110,10 +110,10 @@ def _capture_match_prompt(items, context):
 def test_match_prompt_contains_rules_and_context():
     prompt = _capture_match_prompt(
         [{"id": "1", "requirement": "2021年审计报告"}],
-        context="本项目含泽天湖南、四川两个主体，材料须按主体区分。",
+        context="本项目含主体丙主体甲、主体乙两个主体，材料须按主体区分。",
     )
     assert "年份" in prompt and ("宁缺毋滥" in prompt or "真正满足" in prompt)  # 铁律
-    assert "泽天湖南" in prompt and "两个主体" in prompt                       # 背景注入
+    assert "主体丙主体甲" in prompt and "两个主体" in prompt                       # 背景注入
 
 
 def test_match_prompt_without_context_has_no_context_block():
@@ -125,13 +125,13 @@ def test_match_prompt_without_context_has_no_context_block():
 def test_create_match_session_stores_context():
     sid = ms.create_match_session(
         "t", "c", "/f", [{"item_no": "1", "requirement": "x"}],
-        context_note="多主体：湖南+四川",
+        context_note="多主体：主体甲+主体乙",
     )
     with _connect() as conn:
         ctx = conn.execute(
             "SELECT context_note FROM dd_match_sessions WHERE session_id = ?", (sid,),
         ).fetchone()[0]
-    assert ctx == "多主体：湖南+四川"
+    assert ctx == "多主体：主体甲+主体乙"
 
 
 def test_run_matching_threads_context_to_match(monkeypatch):
@@ -139,7 +139,7 @@ def test_run_matching_threads_context_to_match(monkeypatch):
     folder = "/data/ctx"
     sid = ms.create_match_session(
         "t", "c", folder, [{"item_no": "1", "requirement": "审计报告"}],
-        context_note="泽天双主体",
+        context_note="主体丙双主体",
     )
     with _connect() as conn:
         conn.execute(
@@ -157,4 +157,6 @@ def test_run_matching_threads_context_to_match(monkeypatch):
     monkeypatch.setattr(ms, "_refine_session_matches", lambda sid_, context="": None)
 
     ms.run_matching(sid, folder)
-    assert seen["context"] == "泽天双主体"
+    assert seen["context"] == "主体丙双主体"
+# gm-pubredact-r1: 真实标识脱敏（替身代称）
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

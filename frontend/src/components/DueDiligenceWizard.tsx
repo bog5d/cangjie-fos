@@ -937,7 +937,7 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
                 </label>
                 <textarea
                   className="w-full border rounded px-3 py-2 text-sm h-20 text-gray-900"
-                  placeholder="例如：本项目含「泽天湖南」和「四川」两个主体，材料须按主体区分；增值税申报表、成本结构等的年份/期间必须精确对应，差一年视为缺失；母子公司内部交易需单独识别。"
+                  placeholder="例如：本项目含「主体丙主体甲」和「主体乙」两个主体，材料须按主体区分；增值税申报表、成本结构等的年份/期间必须精确对应，差一年视为缺失；母子公司内部交易需单独识别。"
                   value={contextNote}
                   onChange={(e) => setContextNote(e.target.value)}
                 />
@@ -1626,3 +1626,5 @@ export default function DueDiligenceWizard({ open, onClose, initialChecklistText
     </div>
   );
 }
+// gm-pubredact-r1: 真实标识脱敏（替身代称）
+// gm-pubredact-r1b: 真实短名脱敏（替身代称）

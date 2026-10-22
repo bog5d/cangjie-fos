@@ -10,8 +10,8 @@ from cangjie_fos.services.db_base import _connect
 
 def _mk_session(context_note: str = "") -> str:
     items = [
-        {"item_no": "1", "category": "财务", "requirement": "泽天湖南2021年12月增值税申报表"},
-        {"item_no": "2", "category": "财务", "requirement": "泽天湖南2022年12月增值税申报表"},
+        {"item_no": "1", "category": "财务", "requirement": "主体丙主体甲2021年12月增值税申报表"},
+        {"item_no": "2", "category": "财务", "requirement": "主体丙主体甲2022年12月增值税申报表"},
         {"item_no": "3", "category": "业务", "requirement": "商业计划书"},
     ]
     return create_match_session("zt", "清单", "/data/x", items,
@@ -19,7 +19,7 @@ def _mk_session(context_note: str = "") -> str:
 
 
 _FAKE_Q = [
-    {"question": "材料含『泽天湖南』和『四川』两个主体，如何处理？",
+    {"question": "材料含『主体丙主体甲』和『主体乙』两个主体，如何处理？",
      "options": ["分主体匹配", "视为同一项目"], "allow_multi": False},
     {"question": "“增值税申报表”要哪一年？", "options": ["2021", "2022", "都要"], "allow_multi": True},
     {"question": "", "options": ["x"]},  # 非法：无 question / 选项不足 → 应被剔
@@ -129,3 +129,5 @@ def test_clarify_endpoints_e2e(monkeypatch):
     # 404 路径
     assert c.post("/api/v1/dd/sessions/nope/clarify").status_code == 404
     assert c.get("/api/v1/dd/sessions/nope/clarify").status_code == 404
+# gm-pubredact-r1: 真实标识脱敏（替身代称）
+# gm-pubredact-r1b: 真实短名脱敏（替身代称）

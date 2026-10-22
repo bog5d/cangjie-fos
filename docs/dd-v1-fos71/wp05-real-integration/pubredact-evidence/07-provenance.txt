@@ -1,0 +1,31 @@
+# provenance（T-FOS-PUBREDACT-2026-WP-R1）
+# 生成时间: 2026-10-22T14:33:59+0800
+# 工作树: /Users/mac/cangjie-fos-wt-redact
+# 分支: feat/public-redact-realnames
+# base commit: a7a7e24977eeb40b62e1b34d39d9d4a58dadd28d
+# HEAD (未提交，工作树为脏=预期): a7a7e24977eeb40b62e1b34d39d9d4a58dadd28d
+# git log -3:
+a7a7e24 Merge PR #79: [#71] runbook first-run + help text (docs only)
+44556bc docs(dd-v1-fos71): 手册填入 a58d865 + 必做的合成样例首跑（含文件模式备用）；--dsh-config 帮助文字 inline→mode (#71)
+a58d865 Merge pull request #78 from bog5d/feat/71-local-dsh
+# ★ **未改写历史**：本包不 commit / 不 push / 不 rebase / 不 filter-branch / 不动 master / 不开 PR
+#
+# 执行器脚本（全部在 workspace，**不在** FOS 工作树、**不在** GM 仓）:
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_fix_pubredact.py        幂等补丁脚本（第一轮，--manifest / --dry-run / --apply）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_fix_pubredact_gen_gate2.py  幂等补丁脚本（Gate-2 收口：三个生成器 + 探针 + 扫描器）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_fix_pubredact_marker_gate2.py 幂等补丁脚本（Gate-2 marker 注释语法修正）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_build_manifest_gate2.py  基线清单重建器（只读测量 + 逐行替换分解 + 自检）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_probe_discriminative.py  R-5 判别力探针
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_pubredact_evidence.py    本证据生成器
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_discover_hits.py         命中结构发现器（只读）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_analyze_structure.py     实体关系分析（只读，只出布尔/计数）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/gm_masked_view.py           掩码查看器（输出掩码行，不回显字面量）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/pubredact-manifest.json     基线清单（只含序号/计数/哈希，**零字面量**）
+#   /Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/gm_fullrepo_realname_scan.py       司仓提供的权威扫描器（未改动）
+#
+# 环境事实:
+#   后端解释器: backend/.venv/bin/python → 软链到 /Users/mac/cangjie-fos-wt-a2/backend/.venv
+#   （Python 3.13.12 / pytest 9.0.3）★ **未**执行 uv sync ⇒ backend/uv.lock 未被改写
+#   跑测试必须卸代理: env -u ALL_PROXY -u all_proxy -u HTTP_PROXY -u http_proxy \
+#                   -u HTTPS_PROXY -u https_proxy ...（否则 6 个 LLM-refine 用例假红：SOCKS 缺 socksio）
+#   前端: node v24.20.0 / npm ci 已装依赖（frontend/node_modules 已被 frontend/.gitignore 覆盖）
