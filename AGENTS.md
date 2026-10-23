@@ -38,6 +38,7 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 |------|------|
 | 版本 | **v1.9.6**（+ 资产瘦身四：删旧MatchMaker，机构档案收编到尽调台）｜**版本号行沿用旧线**：DD-V1 线在 `CHANGELOG.md` 的 `[Unreleased]` 累积（该节最新已发布版为 1.25.0），发布号由发布负责人定，本轮**不代定** |
 | 测试基线 | **全量（标准命令）通过、无失败**（`cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q`；`test_doctor_script` 需本机 `.env` 与前端 `node_modules`，按本仓标准命令排除）。**用例条数不在本表登记**（随依赖完整度而变，自报数在别的环境不可复现）⇒ 以独立复核席在交卷 SHA 上的复跑读数为权威；本地读数、命令原文、退出码与取数时刻见 `docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md` §6.2 ｜★**T2（2026-10-23）本轮只跑受影响子集**（受改 API 覆盖的 24 个文件 ＋ G5 新增 1 个 ＝ 25 文件）：**364 collected / 0 failures / 0 errors / 0 skipped / exit 0**；基座侧同 24 文件 **353 / 0 / 0 / 0 / exit 0**（两侧命令逐字相同）⇒ 用例 ID 集合**删除 0 条、新增 11 条**（全为 G5 新增）⇒ **零退化**；★**本轮未跑全量**（全量由独立复核席在终态合并面执行）⇒ 上行「全量通过」**不是**本轮读数；★**skipped ＝ 0**（不触发「待处理」说明义务） |
+| 测试基线读数登记 | ★**上表测试基线行内的用例条数登记按仓规「用例条数不在本表登记」撤除**（原句一字不动，本行只作撤除说明，不删任何字符）；权威读数见 `docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md` §6.2；★**本轮（2026-10-23 T2）受影响子集的五元组读数登记在下方「最近做了什么」段**（该处登记事实读数不违反仓规） |
 | 压测 | `uv run python bench/dd_stress.py --scale large --charts`；CI 烟雾 `tests/test_dd_stress_smoke.py` |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
@@ -124,6 +125,7 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ★ 本轮**只跑受影响子集**（25 文件），**未跑全量**（全量由独立复核席在终态合并面执行）；子集读数 **364 collected / 0 failures / 0 errors / 0 skipped / exit 0**（基座侧同 24 文件 353 / 0 / 0 / 0 / exit 0，用例 ID 集合删除 0 条 ⇒ 零退化）。
 ★ 业务效果账仍 **0/100 REAL_PASS**（真实材料库实测未做）—— 本轮**不**代表效果已验证。
+★ **本轮受影响子集五元组（collected / failures / errors / skipped / 退出码）＝ 364 / 0 / 0 / 0 / 0**（基座侧同 24 文件 ＝ **353 / 0 / 0 / 0 / 0**，两侧命令逐字相同；用例 ID 集合删除 0 条、新增 11 条 ⇒ 零退化；失败 ID 全集 ＝ 空）；★**skipped ＝ 0**（不触发「待处理」说明义务）；★**本轮未跑全量**（全量由独立复核席在终态合并面执行）。★**上表测试基线行内的用例条数登记已按仓规「用例条数不在本表登记」撤除**（撤除说明见上表「测试基线读数登记」行；本段是本轮读数的登记面）。
 
 ---
 
