@@ -477,3 +477,97 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 - ⇒ ★**通用纪律（跨项目）**：凡在落盘件里写「某标题只出现 N 次」这类**自指断言**，计数探针必须用**行首精确匹配**，且**不得把断言自身当作被计数对象**——否则断言会把自己算进去并把自己证伪。★同族：轮次 3 踩过的「全文级 grep 当计数用＝过宽探针」。
 
 ---
+
+## 轮次 5（2026-10-23T05:22Z–05:3xZ · 会话 455388528115892 · cron run 455393295544574）
+
+### 一、★头号变化：修复分支从「不存在」变为「存在且已交卷」——多轮「分支不存在」到此终结
+
+- **`refs/heads/feat/71-player2-p0-fix-20261023` 现读 tip ＝ `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`**（committer date **2026-10-23T05:10:01Z**，author **Player2 Execut**，**第一父 ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` ＝ master tip**，**单父** ⇒ 快进非 force、未合并 master）。本轮取数时刻 **2026-10-23T05:22Z–05:30Z**。
+- ★该结论是**时点结论**，下一轮必须**重新现读**，禁沿用。
+- `master` tip 仍 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（2026-10-22T12:03:50Z，**未前进**）。
+- **`heads` 全量 32 条**：除目标分支外，全部 `71-*` 分支的最后提交日期均落在 **2026-10-16 ～ 2026-10-22**（`feat/71-wp00`…`wp04`／`71-a0`…`71-a4`／`71-local-dsh`／`71-wp-r1`／`docs/71-runbook-first-run`／`spec/71-ddv1-…`），作者为「中本笨／GM 司仓」⇒ **无未授权新分支、无双 Writer**。★**唯一含 `player2` 关键词的其它 head 是本监工自己的记录分支 `monitor/fos71-player2-p0-fix`**（自造，须防自咬）⇒ 枚举时逐条列出，不以关键词计数当结论。
+- **PR #81 现读**：`[fix][#71] 考生2 P0：材料类型统一到权威 10 类 + 正式入口修复 + 空候选六态`；`state=open`、`draft=False`、`head=d1ebe339…`、`base=master`、`commits=1`、`changed_files=14`、`+1911/−63`、**`mergeable_state=blocked`**、`created_at=2026-10-23T05:11:46Z`。**`pulls/81/reviews` ＝ `[]`、`pulls/81/comments` ＝ 0 条** ⇒ **独立 Gate 的 VERDICT 尚未落 PR**。
+- **Issue #71** 现读：`state=open`、`updated_at=2026-10-22T12:41:23Z`、`comments=5` ⇒ **AC 判定未动**。
+
+### 二、变更面三列（基线 master tree `41da52c318f6d160e3bfa12b16236756b76237ce` → 修复分支 tree `6329f007e2fe82a8be7dc398834229fc741d24df`，逐路径 blob 比对口径）
+
+- **新增路径 6**：`backend/tests/test_dd_v1_fos71_player2_p0.py`；`docs/dd-v1-fos71/player2-p0-fix/` 下 `CALLCHAIN-BEFORE-AFTER.md`／`EVIDENCE-PLAYER2-P0.md`／`SHA256SUMS`／`SKILLS-REVIEW.md`／`TEST-EVIDENCE.md`。
+- **删除路径 0**。
+- **既有路径 blob 变更 8**：`AGENTS.md`、`CHANGELOG.md`、`backend/src/cangjie_fos/services/dd_v1_bridge_service.py`、`dd_v1_doc_type_service.py`、`dd_v1_requirement_service.py`、`dd_v1_semantic_retrieval_service.py`、`backend/tests/test_dd_v1_semantic_retrieval.py`、`tools/dd_v1_local_run.py`。
+- 路径总数 782 → 788（blob 口径）。★**只看新增集合会把这次「改写型落盘」读成 6 个新增而已**，故三列分列。
+
+### 三、三项 P0 声明的字节级独立复核（本监工一手读远端 blob，未采信交卷件自述）
+
+1. **类型取值空间统一到权威 10 类 —— 成立**。`dd_v1_requirement_service._DOC_TYPE_RULES` 现读恰 **10 个英文 key**：`audit_report`／`financial_statement`／`tax`／`license`／`charter`／`capital`／`resolution`／`ip`／`labor`／`contract`。语义层原那张 **7 类中文表 `DOC_TYPES = ("审计报告","营业执照","公司章程","社保缴纳证明","财务报表","验资报告","纳税证明")` 在修复版中已不存在**（基线版该定义在，改动版全文件 `DOC_TYPES` 只剩 2 处引用且均已改指 `rq.CURRENT_DOC_TYPES`）⇒ 缺 `resolution`／`ip`／`contract` 的根因已消除。
+2. **正式入口真的落在正式入口 —— 成立**。`tools/dd_v1_local_run.py` 的 `cmd_scaffold`：基线为 `dt = next((d for d in sem.DOC_TYPES if d in rel), "")`（**拿整条相对路径去匹配中文表**）；修复版改为 `dts.is_index_artifact(f.name)` 排除索引件 ＋ `dts.resolve_doc_type(file_name=f.name)`（**只看文件名**、产出英文 key ＋ `doc_type_provenance`），期间判定改用 `rq.CURRENT_DOC_TYPES` ⇒ 走的是**正式入口的 `scaffold`**，不是只改测试脚本。`cmd_split` 亦改走 `sem.redact_for_output` 输出面脱敏并按状态分列旗标。
+3. **候选为空六态 —— 成立，且是封闭枚举**。`dd_v1_semantic_retrieval_service.NO_CANDIDATE_REASONS` ＝ `("NO_MATERIAL","UNRESOLVED_DOC_TYPE","UNKNOWN_ENTITY","PERMISSION_BLOCKED","RETRIEVAL_EXHAUSTED","OTHER")`；`retrieve_minimal_evidence_detailed` 中**六个原因各有独立判定分支**（义务侧类型判不出／义务侧主体空／读错误／全被访问规则挡下且池空／候选数超 `MAX_FILES_PER_OBLIGATION` 上限／该主体无此类型材料），且**候选存在但期间或版本不可用时 `reason=None`**（由正交的 `candidate_status` 表达）⇒ **未统一伪装成 MISSING**。六态经 `evidence_status` 逐义务携带，并经 `run_semantic` 的 `rec["evidence_status"]` 抵达正式入口输出面。
+4. **无第三套类型表 —— 成立**。对 9 个相关文件逐个扫「本地类型表字面量」：**只有 `dd_v1_requirement_service.py` 自身持有权威表**；`dd_v1_doc_type_service.py` 明确「不抄规则表」并走 `rq.parse_doc_type`／`rq.doc_type_search_terms`；`dd_v1_local_run.py`／`dd_team_channel.py`／`dd_v1_semantic_retrieval_service.py`／`dd_v1_bridge_service.py` **均无本地类型表字面量**。
+5. **诚实性加分项（如实登记）**：`PERMISSION_BLOCKED` 在**生产路径下不可达**（仓内两个 meta 生产者都不写 `access`／`restricted`），代码与交卷件均**明写这一点**而非隐瞒；`_access_blocked` 注释亦写明「不把卡片敏感等同权限拦截」。
+
+### 四、机械证复核（可复算，作用域＝本轮新增字节）
+
+- **`SHA256SUMS` 12/12 行与远端真实字节 sha256 逐位一致**（本监工按远端 blob 重算，非转述）；**不含自身行**。
+- **禁形 F7（截短 sha 形态）本轮新增字节 ＝ 0**。口径：先取极大连续段 `[0-9a-f]+`，再要求**含 a–f 字母**且长度 ∈ [7,39]。**阳性对照**（7 位／39 位）可响、**阴性对照**（40 位全串 sha／纯十进制 11 位／日期段 `20261023`）全静。★首轮粗扫得 10 处「命中」，**逐条归因后全部为假阳**：3 处是分支名/日期里的十进制串（`20261023`）、4 处是英文单词 `feedback` 被探针截成 `feedbac`、2 处是合成测试夹具里的假手机号/假身份证（`13800001111`／`110101199001011234`，纯十进制无 a–f）、1 处是 AGENTS.md 里**未改动**的旧行。⇒ **探针过宽 ≠ 对象缺陷**，记口径不记缺陷。
+- 密钥/明文探针：AWS-like key 0／`gh*_` token 0／私钥块 0／Bearer 字面量 0。
+
+### 五、★一处需要纠正的假设（对 CI 三红的归因）——「既有红 = doctor_script」被 CI 自身命令证伪
+
+- 交卷件 §6.1 与司仓 05:24Z 给 Gate 的提示都建立在「CI 三红可能就是 `tests/test_doctor_script.py::test_doctor_script_exits_zero` 这条**基线既有红**」上。
+- **本监工一手读远端 `.github/workflows/ci.yml`**：两个 Backend job（`Backend Tests (440+ required)` L45、`Backend Tests (228 required)` L108）**命令行逐字相同**，**都带 `--ignore=tests/test_doctor_script.py`** ⇒ **CI 根本没有跑 doctor_script** ⇒ 它**不可能**是 CI 三红的原因。★**该假设已被证伪**，「把 CI 红归入既有红、不计入本 PR 引入的 blocker」这一路径**不成立**，G05（回归无劣化）不能据此判 PASS。
+- **CI check-run 现读（head `d1ebe339…`）共 6 个**：**Backend Tests failure 4 个**（`120252637790`／`120252638064` 起于 05:10:44Z；`120252959849`／`120252960051` 起于 05:11:53Z ⇒ **两轮运行 × 2 个 job**），**Frontend Build Check success 2 个**。四个 Backend job 均 `started → completed` 跑了 3～4 分钟 ⇒ 属「**job 真跑过、真失败**」层，**非**「job 从未启动」的平台/计费阻塞层。★**更正**：司仓 R8 记「3 个 Backend Tests failure」，本轮现读为 **4 个** ⇒ 属**时点差**（第二对 job 在 05:11:53Z 才出现），**结论方向不变**。
+- 旁证（同一 ci.yml L57–60 自述）：分支保护 required context 仍写历史名 `Backend Tests (228 required)`，而工作流已改名为 `(440+ required)` ⇒ 名字对不上会让 required check 恒「缺失」⇒ **所有 PR 永久 blocked**；**本工作流仍保留 `Backend Tests (228 required)` 那个 job（L77）作别名** ⇒ **本次 `mergeable_state=blocked` 不可读成「required check 名字对不上」**。
+- ⇒ **本监工只登记事实与归因边界，不代判 G05、不代写 VERDICT**（独立 Gate 正在取 CI 失败 ID 全集，此判定归它）。
+
+### 六、独立 Reviewer Gate：**已派发且在飞，但 VERDICT 未落 ⇒ 工程分子仍 0**
+
+- 独立复核席 `455362122437017`（父 ＝ 司仓 root `455351523090910`，agent `Coder`，标题「独立复核 · 考生2 P0 修复 diff`）：`status=1`；**末条 assistant turn 2026-10-23T05:27:42Z `finish_reason=toolUse`**（正在取 CI check-run annotations / job 日志取失败 ID 全集，改动侧全量跑批 05:24:59Z 启动、05:27:26Z 时进度 37%）。
+- 该席已自建**独立 checkout**（`/workspace/verify-81`）并留「模块解析证据」指向 verify-81 的 src ⇒ **不是偷用施工方工作树**；已自跑 `sha256sum -c` 12/12 exit 0。
+- ★**「独立 Reviewer 的 Gate 结论」当前读数 ＝ 不可得（尚未落盘）**：`pulls/81/reviews` ＝ `[]`、`pulls/81/comments` ＝ 0 条。⇒ **工程账分子不计**。
+
+### 七、两条账（互不换算，分母不同不换算）
+
+- **工程 ＝ 0/4**（修复线 WP1–WP4；分母 4，司仓施工令口径）｜**并列报：0/6**（上级冻结尺子 `MINIMAX-INDEPENDENT-SUPERVISOR.md` §4「A0–A5 独立 Reviewer PASS 数/6」）。★两个分母口径并存且**本轮分子同为 0**，故百分比同为 **0%**；**禁改尺子口径、禁互相换算**。
+- **效果 ＝ 0/100 REAL_PASS**（`GOAL-CONTRACT.v3.8.json` 的 O1 25／O2 25／O3 20／O4 20／O5 10，`verified_points` 全 0、`status` 全 UNKNOWN）。**合成／Mock／单元测试不折算**；本轮 23 条新增验收用例属**合成回归**，**不是** Windows 真实考试，**不折算任何 outcome 分**。★UNKNOWN 既不算 PASS，也不算已证伪 —— **0/100 表示「真实验证积分暂为 0」，不表示系统能力为 0**。
+- **硬门槛**：G0 ONE_WRITER 本轮成立（单提交者、单分支、单父快进）；G4 INDEPENDENT_REVIEW **未成立**（VERDICT 未落）⇒ **禁止宣布交付**。
+
+### 八、活跃态 · 四件事分开判
+
+- **① cron 是否运行**：**YES**。`455353976279398` enabled、`*/20 * * * *`；`view=runs` 近 8 条 **status 全 1**；本轮 ＝ run `455393295544574`（scheduled 05:20:00Z、delivered 05:20:12Z、会话 `455388528115892`）。
+- **② 监工是否工作**：**YES**（本轮，轮次 5）。
+- **③ 开发者是否真正施工**：**YES**，且**本轮首次证到交卷落地**（tip 05:10:01Z + PR #81 05:11:46Z + 14 路径 +1911/−63；§三三项 P0 声明均经字节级独立复核成立）。
+- **④ 是否产生新的功能成果**：**YES**（代码层成果已落远端）；但**效果层成果 ＝ 0**（无独立 Gate、无真实考试、效果账 0/100）。
+- **综合活跃态 ＝ PRODUCTIVE**（施工刚交卷、独立 Gate 在飞，链路在推进）。
+
+### 九、该踢吗：**NO**
+
+- 三条判据**全不成立**：① 远端 tip **本轮已前进**（05:10:01Z 落交卷笔，上轮「分支不存在」已终结）⇒ 停滞判据不成立；② 工作树**有新增改动**（14 路径新 commit）；③ 执行链**正在跑**（独立 Gate 末条 05:27:42Z `toolUse`、改动侧全量跑批在飞 37%）。
+- ★**不在跑的才需要踢**；在跑时打断只会制造双写者与重复 Gate。**本轮未做任何恢复、未 spawn 任何会话、未给施工席或 Gate 席发任何消息**（同一事件不重复投递；Gate 由司仓直接调度，本监工不代其协调）。
+
+### 十、GM 调度权威（现读，登记不代写）
+
+- `bog5d/cangjie-gm` `data/work_items.json`（blob `29d4bffbcb9bd9884b221ac4efab1d3e84c4ae5e`／485,996 B／本体 sha256 `be70b6f7129fa2a1c7bc99b42bfb5dc842bd58d2575031095087f204b9dc1670`／42 条）：`W-DD-V1-2026` **`current_state=BLOCKED`**、`current_wp=WP-R2`、`executor=hermes`、**`waiting_for_chairman=true`**、`updated_at=2026-10-19T19:45:00+08:00`（**已陈旧 3.6 天**）。
+- `work_packages`：**WP-R0／WP-R1 ＝ COMPLETED**（executor=hermes），**WP-R2／WP-R3／WP-R4／WP-R5 ＝ BLOCKED**。
+- ★**名册与实况脱节**（本次 Owner 授权云端 MiniMax 作 Executor、司仓为唯一 Planner，**但名册仍写 executor=hermes / BLOCKED / waiting_for_chairman**）。**本监工不代写名册、不判写权、不催办** —— 司仓已登记「写 live 名册会触发 Mac 生产控制器派发 ⇒ 双主 ⇒ 名册不改是**已登记的刻意选择**，不是遗漏」，改以 GM 侧执行权登记 PR 承载。⇒ **调度权威面仍是 UNKNOWN/待司仓落登记**，记为**关键差距**而非缺陷。
+
+### 十一、cron 面复核（`cron_read view=list` / `view=runs`，本轮现读）
+
+- 全表 4 条。本工程**周期巡检 cron 恰 1 条** ＝ `455353976279398`（`[cron] FOS #71 考生2 P0 修复 · 独立监工巡检 · 每20分钟`，agent `Mavis ` 带尾随空格，`*/20 * * * *`，enabled，next_run 05:40:00Z）⇒ **无重复调度**。
+- 另 3 条**非本工程**周期巡检：CF 公众号重置版 `455347827208431`、副官 INC3 `455164742488166`、以及一条 INC3 一次性 `@self-reminder` `455392308732065`（`mode=sessionId`，非周期）⇒ **不构成重复调度，禁误判、禁删除**。
+- ★**本账号出现过平台限流**（FOS 监工席 `455377324712292`／`455373737153088` ＝ `status=2`、`rate limit exceeded(TPM) (1039)`）⇒ 属**平台事件，不记执行方欠账**。
+
+### 十二、关键差距（2 项）
+
+1. **独立 Gate 的 VERDICT 未落** ⇒ 工程分子 0；且**CI 三红的归因被 doctor_script 假设污染**，须由 Gate 用「同命令下两侧失败 ID 全集」正反成对判 G05。
+2. **GM 名册 `W-DD-V1-2026` 仍 BLOCKED / executor=hermes / waiting_for_chairman=true 且 3.6 天未更新** ⇒ 调度权威面与实况脱节（由司仓以 GM 侧登记 PR 承载，非本监工代写）。
+
+### 十三、下轮必查
+
+① 远端 tip **重新现读**（禁沿用本轮时点结论）＋ PR #81 head SHA／`mergeable_state`／check-run 结论；② **独立 Gate 末条 turn**（判活只认 `role/finish_reason/tool_calls+timestamp`，禁只读 `updated_at`）＋ **VERDICT 是否已落 PR #81 comment/reviews**；③ 若 VERDICT ＝ FAIL ⇒ 逐条落 blockers、派执行席出**第二笔快进 commit ＋ 重给 40 位 SHA**（禁原地改已交卷 SHA）；④ CI 三红的**失败 ID 全集**（本轮不可得）；⑤ GM 执行权登记 PR 是否推进；⑥ 两条账是否动（裁定未出前仍 0/4、0/100）；⑦ **cron 05:40Z 槽位是否已起 sibling 巡检席**（同写面并发 ⇒ 标签避让，禁撞号）；⑧ 禁形/自指纪律沿用本轮口径（行首锚定计数、极大连续段先取后判长）。
+
+### 十四、本轮落盘回执（轮次 5）
+
+- **落盘面**：FOS 仓分支 `monitor/fos71-player2-p0-fix` 路径 `docs/dd-v1-fos71/monitor/MONITOR-STATE-FOS71-PLAYER2-P0.md`（**纯追加**，不改写他人已写段落）。
+- **第一笔 commit**：见下节回填（40 位全串）｜**基线 tip**（落盘前现读）＝ `510bc35676c5425c68546e90f6240758daba0ae4`｜`force=false`（快进非 force）｜**父 ＝ 该 tip**。
+- **变更面（对 master tree，blob 口径三列）**：**新增路径 0**／**删除路径 0**／**既有路径 blob 变更 1**（仅本状态卡 1 个 blob）⇒ **只改 1 个 docs 文件，`backend/` 与 `tools/` 变更 0**。
+- **禁形自检（作用域 ＝ 本节增量字节）**：F7 ＝ 0（口径见 §四，含阳性/阴性对照）。
+
