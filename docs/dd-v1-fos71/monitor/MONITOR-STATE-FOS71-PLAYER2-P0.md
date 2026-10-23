@@ -9989,3 +9989,117 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 ■ 8 ★边界 0
 
 0 合并任何分支（含 master）｜0 关 PR｜0 amend／0 force｜0 改写或删除他人已落字节｜0 删节｜0 回填｜0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue #71 的 AC 判定／尺子口径／GOAL-CONTRACT／GM live 名册｜0 写产品代码｜0 触碰施工方工作树｜0 新建调度器／第二套监工／第二执行器｜0 spawn｜0 唤醒｜0 催办｜0 输出明文凭证｜0 复刻禁形字面｜0 改写已落 commit message｜0 出波总卡
+#### 一百七十八（号 178）、20:20Z 槽位独立监工席 · 本席 `455613005107290` · ★**只追加，不改写任何已落字节；0 删、0 回填、0 重排、0 amend、0 force** · ★**本节＝20:20Z 槽位状态卡：★补齐兄弟席 §175 留下的「六态生产路径可达第 2 项」独立定位 ＋ 本席三处自曝 ＋ 0 新字节 ＋ 0 出波总卡**
+
+★**本节要点（＝message 首行的事实集，逐条可在下方各节命中）**：一百七十八 ｜ 补齐第 2 项不可达态 ＝ OTHER ｜ 0 新字节 ｜ 两账 ±0 ｜ 0 出波总卡
+
+■ 1 ★取数边界与对象身份（★全部一手远端读数，★0 采信任何他席自报数字）
+
+· **取数时刻**：2026-10-23T20:33:17Z（分支与树读数）｜★**本节生成时刻 2026-10-23T20:35:22Z**（停滞时长按此刻现算）｜★时刻一律程序化换算（UTC），禁本地时区基准
+· **判据源**：FOS 仓 `bog5d/cangjie-fos`｜施工分支 `feat/71-player2-p0-fix-20261023`｜基线 master tip `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`｜**本沙箱无 FOS clone，★全程只用 GitHub REST 取字节，禁假设工作区存在**
+· **字节取法**：`GET /repos/{o}/{r}/git/blobs/{sha}` → base64 解码 → **断言解码长度 ＝ 信封 size**（★本轮全部通过：树 37／199 条目、台账 2179668 B、GM 名册 489942 B）
+· ★**本席本轮不读任何会话消息作为判据**（会话层读数只用于判「执行席末条」与「在飞占号面」两项，★且两者都另以远端／席位元数据交叉核过）
+
+■ 2 ★两分支 tip 与变更面三桶（★只看新增集合会把改写型落盘读成 0 变更）
+
+· 修复分支 tip ＝ `a34d01031471b539480ef8bdd53d263cc375ac59`（committer date **2026-10-23T16:12:29Z**，作者名 `Player2 T2 Executor`）｜**master tip ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（2026-10-23T11:01:06Z，未前进）**
+· ★**停滞时长 ＝ 262.9 分钟**（2026-10-23T16:12:29Z → 2026-10-23T20:35:22Z）｜★**本轮 0 新字节**
+· **变更面三桶（树对树逐路径按 type 分桶，基线 → 现读 tip）**：**新增 32 ／ 删除 11 ／ 既有路径 blob 变更 14**
+  · 新增 32 件：8 件后端测试 ＋ 1 件新增服务 `dd_v1_period_service.py` ＋ 23 件 `docs/dd-v1-fos71/**` 证据与交卷文档
+  · 删除 11 件：全部在 `docs/dd-v1-fos71/wp05-real-integration/a4-evidence/seven-item-bundle/`（★同一笔里 master 侧也做了同样删除，★不是本分支独享改动）
+  · 变更 14 件：`ci.yml｜AGENTS.md｜CHANGELOG.md｜dd_v1_agent_result_service.py｜dd_v1_bridge_service.py｜dd_v1_card_service.py｜dd_v1_doc_type_service.py｜dd_v1_match_service.py｜dd_v1_policy_service.py｜dd_v1_requirement_service.py｜dd_v1_semantic_retrieval_service.py｜test_dd_v1_semantic_retrieval.py｜dd_team_channel.py｜dd_v1_local_run.py`
+· **双 Writer 检查**：全量 heads **37 条**｜★**本轮 0 新增未授权分支**（★集合与上轮同）
+· ★**两分支关系（★compare 三字段并读，禁只读一个）**：`compare(基线 与 修复分支 tip)` ＝ status **ahead**／ahead_by 24／behind_by 0／merge_base ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（＝基线本身）｜`compare(修复分支 tip 与 master tip)` ＝ status **diverged**／ahead_by 2／behind_by 24／merge_base 同上 ⇒ ★**两线自基线分叉、互不含对方**
+
+■ 3 ★判据三：修复是否真的落在**正式入口**（★本席一手复核，★非转述）
+
+· **正式入口 2 件都在变更面内**：`tools/dd_v1_local_run.py`｜`tools/dd_team_channel.py`；★**入口函数在位**：`cmd_scaffold`（L153）／`cmd_split`（L247）／`cmd_run`（L314），子命令 `scaffold`／`split`／`run` 三条全注册（★**不只修测试脚本**）
+· **六态四键 occurrence 复算（★口径＝出现次数，★禁 `grep -c` 的行数口径）**：local_run 0／0／0／0｜team_channel 6／3／4／3｜bridge 4／2／4／2｜semantic 6／14／15／33
+  · ★键序＝`evidence_status`／`candidate_status`／`no_candidate_reason`／`diagnostics`；★**逐位复现 T4 裁定 §4.3 的 6／3／4／3**
+· ★**六态值域的权威定义在语义层**（`dd_v1_semantic_retrieval_service`）：`NO_CANDIDATE_REASONS` ＝ 封闭六值 `NO_MATERIAL`, `UNRESOLVED_DOC_TYPE`, `UNKNOWN_ENTITY`, `PERMISSION_BLOCKED`, `RETRIEVAL_EXHAUSTED`, `OTHER`；★候选侧四态 `CANDIDATE_STATUSES` ＝ `OK`／`EXHAUSTED`／`PERIOD_OR_VERSION_MISMATCH`／`NO_CANDIDATE`
+· ★**六态值域 occurrence（★判据串从被验对象源码取，★禁自拟同义字面量）**：local_run 0／0／0／0／0／0｜team_channel 0／0／0／0／0／0｜bridge 0／0／0／0／0／0｜semantic 6／5／3／3／3／3 ⇒ ★**六态值只出现在语义层，入口只透传不另造**
+· ★**一处未覆盖项（本席独立确认，与 §一百六十八 口径记录一致）**：`tools/dd_v1_local_run.py` 侧**四键与六态值域出现次数全 0** ⇒ 该入口的**显式输出面**不直接带六态；六态走**产物面**（语义层富化后由 Team Channel 入口渲染）⇒ ★**不构成「只修测试脚本」的判据**
+
+■ 4 ★判据四：材料类型是否统一到 FOS 权威 10 类规范 key（★本席一手全仓 AST 扫描，★非引用他席数）
+
+· **扫描面**：修复分支 tip 树下 `backend/src` ＋ `tools` 共 **199 个产品 `.py`**（★逐件取回后本地解析；★本地缓存逐件用 git blob sha1 与 tip 树对账，**对账不过 0 件**）｜`ast.parse` **0 解析失败**
+· **权威 key 取自** `dd_v1_requirement_service._DOC_TYPE_RULES`（★本席从源码 AST 取出 10 个）
+· **命中仅 2 个文件、3 个常量**（判据 ＝ 模块级常量里同时含 ≥5 个权威 key 的字符串字面量集合）：dd_v1_match_service.py ['_DOC_TYPE_PURPOSE_MAP'] 10/10｜dd_v1_requirement_service.py ['_DOC_TYPE_RULES'] 10/10｜dd_v1_requirement_service.py ['_DOC_TYPE_UNIQUENESS'] 10/10
+· ★**窄判据（本席另跑）**：`(key, 正则)` 配对且 ≥3 权威 key ⇒ 命中 **1**（★就是唯一那张识别规则表）：dd_v1_requirement_service.py ['_DOC_TYPE_RULES'] 配对数 10
+· ⇒ ★**结论：无第三套类型表**；类型**识别**规则全仓仅一处，另两张表均以同一 10 个权威 key 为键（★`_DOC_TYPE_UNIQUENESS` 源码自述「不是第二份类型规则表」，★`_DOC_TYPE_PURPOSE_MAP` 是 purpose→doc_type 映射、另一维度）
+
+■ 5 ★判据五：六态的**生产路径可达性**（★**本轮独有增量：补齐兄弟席 §175 留下的第 2 项**）
+
+· **背景**：§一百七十五 已确认第 1 项不可达态 ＝ `PERMISSION_BLOCKED`，并如实写「★第 2 项本席未独立定位 ⇒ 沿用 Gate 的 4/6 读数，★0 代裁」⇒ ★**本节把那第 2 项定位出来**
+· ★**第 2 项不可达态 ＝ `OTHER`**，机制（本席一手读源码定位）：
+  ① `read_errors` 只有一个写入点（`dd_v1_semantic_retrieval_service` L487）—— 读材料正文的 `except OSError:` 分支；★`OTHER` 的赋值条件（L526）就是它非零
+  ② ★**但快照闸口先抛**：同文件 L907-910 对每条 meta 逐件校验存在性，缺失即 `raise FileNotFoundError` 拼接 `META_FILE_MISSING` 与相对路径（★抛出点 dd_v1_semantic_retrieval_service.py L910）⇒ ★**正常生产输入根本走不到读正文那一步**（★另注：同仓 `dd_v1_blind_service.py` 另有一套 `BLIND_` 前缀的同形抛出，★属另一个服务，★不是本条路径）
+  ③ ★**关键机制细节（本席独立核出）**：`FileNotFoundError` 是 `OSError` 的子类 ⇒ ★**若没有这道闸口，缺失文件会落进 `except OSError` ⇒ `read_errors=1` ⇒ 产出 `OTHER`**；★**是闸口把它抢在前面** ⇒ `OTHER` 只能靠**闸口与读取之间的竞态**（TOCTOU）才够得着 ⇒ ★**它就是 Gate 披露的「反事实可写」那一条路**
+· ★**与 Gate §4.4 逐位互证**：Gate 原文表里 `PERMISSION_BLOCKED` 行写「生产 `build_meta` 产出 8 条 meta，带 `access`/`restricted` 的 ＝ 0 条」；★**本席独立复核两个 meta 生产者的键集**：`dd_v1_bridge_service.build_meta` ＝ `file_id`／`relative_path`／`entity`／`entity_basis`／`period`／`doc_type`／`part`／`version_status`（8 键）；`dd_v1_local_run.cmd_scaffold` ＝ `file_id`／`relative_path`／`entity`／`period`／`doc_type`／`doc_type_provenance`／`part`／`version_status`（8 键）⇒ ★**两个生产者都不写那两个键 ⇒ 无生产者** ⇒ ★**与 Gate 读数一致**
+· ★**Gate 的 4/6 读数本席沿用，0 代裁**：可达 ＝ `NO_MATERIAL`／`UNRESOLVED_DOC_TYPE`／`UNKNOWN_ENTITY`／`RETRIEVAL_EXHAUSTED`；不可达 ＝ `PERMISSION_BLOCKED`／`OTHER`
+· ★**「六态都是可执行的分支」与「六态在生产路径都可达」是两个不同命题**（★同族：值域完整性 ≠ 可达性完整性）
+
+■ 6 ★判据六：是否有**独立 Reviewer** 的 Gate 结论（★本席独立复核席位身份与锚新鲜度）
+
+· **出具人身份**：`455539551396187`｜agent_name ＝ **Verifier**（★与施工侧 `Mavis ` 不同代理）｜★**独立会话成立（非施工者自评）**
+· **三件只追加载体（★本席现读 body 并重算 sha256）**：comment 6370738997 2026-10-23T17:25:18Z 28244 B sha256 5528b678b5c14b357b08f1ab4e291942158950824e57e0674fdf492a28e7e951｜comment 6371627381 2026-10-23T18:12:14Z 5852 B sha256 bed8cd396c22555f6226a06ac24ebfef8bc16dc89070e626874bd3a8f5d3ce46｜comment 6372203092 2026-10-23T18:42:12Z 9324 B sha256 5525faf6beac529210344e0604fcee0b3c83de7557868d7535b5a5e59aa6942f
+  · ★三条的 `updated_at` ＝ 各自 `created_at` ⇒ ★**裁定正文未被静默改写**；★两条更正均声明「结论、锚、其余读数不变」
+· **锚新鲜度（本席独立复核）**：`refs/pull/81/merge` ＝ `ef94af4c9a6d640b5f412e352cbfb53ad906b5a8`｜其 tree `6b24fc830a9a9a590fb606a406e3c7c03c40bde5` ＝ 修复分支 tip 现读 tree **逐位相同**（★`anchor_fresh` ＝ true）｜parents[0] ＝ master 现读 tip `3781311c4b1157c68a0f891506b7c33ab327f7c4`（未动）｜parents[1] ＝ 修复分支 tip `a34d01031471b539480ef8bdd53d263cc375ac59`（未动）⇒ ★**Gate 未过期，仍覆盖当前 tip**
+· ★**Gate 面形态**：PR #81 现读 state `open`／merged false／mergeable_state `clean`／issue comments **8**／**reviews 0** ⇒ ★**Gate 结论只落在 comment 面，★不在 reviews 面**
+· ★**Gate 自身披露的三项未覆盖／异常（原样登记，★不美化）**：① 全量跑批退出码 ＝ 1，唯一失败是一条**零余量墙钟序断言**（★基座侧同口径复现同一失败 ID ⇒ 不可归因于被验字节）；② `doctor` 单跑退出码 ＝ 1（★3 个问题全为环境项）⇒ 列入未覆盖；③ 六态生产路径可达数 ＝ 4/6（★见 ■5）
+
+■ 7 ★两条账（★互不换算，★0 代裁）
+
+· **效果 ＝ 0/100（REAL_PASS）**：`docs/dd-v1-fos71/wp05-real-integration/GOAL-CONTRACT.v3.8.json`（blob `106699d2c8a3e8e4d00124070eee6d417038cb49`）本席现读 ⇒ 5 项 `outcome_metrics` 权重 **25／25／20／20／10**（合计 100）｜`verified_points` **全 0**｜`status` **全 UNKNOWN**｜**9 项 `hard_gates` 全部 status UNKNOWN、evidence_refs 空**（0 PASS／0 FAIL／9 UNKNOWN）｜★**MOCK 与合成不折算**｜★**尺子本体不在 32 新增桶、也不在 14 改写桶内 ⇒ 尺子未被触碰**
+· **工程（WP1–WP4）**：台账已登记**四个并列读数** —— §一百六十 **1/4**｜§一百六十一 **3/4**｜§一百六十三 **3/4**｜§一百五十七 **4/4** ⇒ ★**分母标签集不同源 ⇒ 0 投票、0 择一，★本席不新增第五个读数**；★**对外沿用 3/4 并注 WP1 ＝ UNKNOWN**（待 Owner 裁定）
+· **A0–A5 ＝ 4/6**（★T4 是否折算进 A 格分子**待人类裁定**，★0 代裁）
+· ★**本轮两账 ±0**，与 §一百七十四 一致
+
+■ 8 ★四件事分列（★互不换算，★cron 在跑 ≠ 监工在工作 ≠ 开发者在施工 ≠ 有新成果）
+
+① **cron 是否运行 ＝ 是**：本工程**恰 1 条** `455353976279398`（`*/20`／enabled／next_run 20:40:00Z）｜★全账号 3 条 cron，另 2 条属 CF 与 INC3，**非重复调度**（★禁误判、禁删除）｜★`last_run` 全表 0 ＝ 平台未回填，★**不作「没跑」判据**
+② **监工是否工作 ＝ 是**：本席本轮完成一手取证 —— 两分支 tip 与 compare 三字段／变更面三桶／正式入口 diff 复核／199 个 `.py` 的 AST 全仓扫描／六态值域与赋值点静态复核／**六态生产路径可达性第 2 项独立定位**／Gate 三件字节 sha256 重算／Gate 锚双亲现读／尺子权重与 9 项硬门槛现读／GM 名册现读／cron 现读／执行席末条现读
+③ **开发者是否真正施工 ＝ 否**：修复分支 **262.9 分钟 0 新字节**；执行席 `455351523090910`（标题「考生2修复」）`status` ＝ 2，`status_message` ＝ `invalid params, context window exceeds limit (2013)`，末条 assistant turn `finish_reason` ＝ **error**（2026-10-23T18:43:23Z）⇒ ★**该席已死**；★**施工工作树本身不可得**（★禁记成「无」）
+④ **是否产生新的功能成果 ＝ 否**
+
+· **活跃态 ＝ WAITING**（★非 STALLED：P0 代码面已收口于 T5、独立 Gate PASS 已落，★下一棒主体是**人类授权侧**）｜★**调度权威面（GM 名册）另登记为 `current_state` ＝ BLOCKED、`waiting_for_chairman` ＝ true** ⇒ ★**两面并列记，★0 代裁权威面的口径**
+· **该踢吗 ＝ NO**，三条形式判据逐条：① 远端 tip 未前进 ≥25 分钟 ＝ **成立**（**262.9 分钟**）｜② 施工工作树无新增改动 ＝ **不可得**（★本沙箱无 FOS clone，★禁记成「无」）｜③ 执行器末条非 toolUse ＝ **成立**（`finish_reason` ＝ `error`）⇒ ★**三条未同时成立为真**
+· ★**另加恢复正当性前提不成立**：无「已有合法下一 WP」（★T5 已收口；下一棒是 H1／H2 人类授权 ＋ GM 名册回写 ＋ **需要一席活的执行器**）⇒ 恢复 ＝ 造第二写者；且该席硬失败模式 ＝ 上下文超限 ⇒ 再投消息只会再炸；★spawn ＝ 另起第二执行器 ⇒ ★**0 恢复／0 spawn／0 唤醒／0 催办**
+· ★**恢复能力本身可用**（本会话 `communicate` 的 spawn 通道在位）**但本轮不满足调用条件** ⇒ ★**禁宣称「恢复能力不可用」，★也禁宣称「无人值守施工」**
+· ★**「连续 2 次恢复同一 HEAD 无新 commit ⇒ 停止恢复」条款仍未触发**：本 HEAD（`a34d01031471b539480ef8bdd53d263cc375ac59`）上**累计恢复 0 次**
+· **无人值守有效续跑 ＝ FAIL**（★维持 §一百六十七 的改判；★本轮无新增证据改变它，也无新增证据推翻它）
+
+■ 9 ★GM 名册与 PR 面（★只读登记，★0 改）
+
+· **GM live 名册** `data/work_items.json`（blob `0e8c65074f85db2d32efd9b3e580020a625cdb76`／489942 B／★解码长度 ＝ 信封 size 断言通过）共 **42 条**，条目 `W-DD-V1-2026` 现读：`current_state` **BLOCKED**｜`current_wp` **WP-R2**｜`executor` **hermes**｜`waiting_for_chairman` **true**｜`updated_at` **2026-10-19T19:45:00+08:00**｜`next_action.action` ＝ **WAIT_CHAIRMAN**（理由原文：三条执行器路径实测全部不可用（cursor 三模型 out of usage；dsh QUOTA Insufficient Balance；hermes 声称完成但零产出），叠加 Gold Set 未提供。即使立即派工也无执行能力，且无标准答案可评分。）
+  · ★**名册已 4 天未回写，仍指 hermes，与「Owner 授权云端 MiniMax 作 Executor、司仓为唯一 Planner」口径不一致**；★**本席 0 改 GM 名册**（红线），登记在案供司仓与 Owner 处理
+· **PR 面**：#83 head 6afe3ee06b918970d1e25d8d31af88724b694c30 base feat/71-player2-p0-fix-20261023 2026-10-23T13:16:28Z｜#82 head bd4144641b260447abf0b57a199a5e301a58a414 base master 2026-10-23T11:14:55Z｜#81 head a34d01031471b539480ef8bdd53d263cc375ac59 base master 2026-10-23T18:42:12Z｜#80 head e5afcda9603a05050009802b5bf7be56a95161af base master 2026-10-23T11:01:20Z｜**master tip 未动**
+  · ⇒ ★**H1（合并 master ＋ PR #81）／H2（关闭 PR #82）仍待波总明确授权** ⇒ ★**本席 0 合并、0 关 PR**
+
+■ 10 ★兄弟席 20:00Z 席三节的独立核销（★只核对，★0 改写）
+
+· 20:00Z 席 `455602237190392` 已于 20:22:14Z **收尾**（`status` ＝ 0）⇒ ★**不构成在飞占号面**；其三节（§一百七十五 20:15:23Z／§一百七十六 20:17:03Z／§一百七十七 20:18:47Z）已落，本席**只追加**，★0 改写、0 重排
+· **§175 的落盘 fail-open 事故**（探针 rc ＝ 1 而落盘仍执行）已由 §176 登记、处置已落进可执行路径（闸前置 ＋ 默认干跑 ＋ 期望基座参数化），并由 §177 完成**合格负向验证**（样本自证违规／闸以拦下码退出／远端 tip 未动，三项全中）⇒ ★**本席只核销，不重做、不改判**
+· ★**基座逐族计数（本席现读，仓内探针）**：F1 0／F2 19／F3 4／F4 16／F5 0／F6 2／F7 0（★与 §176 登记逐位相符：F2 19／F3 4／F4 16／F6 由 1 抬到 2）
+  · ★**绝对 0 口径与逐族差口径分开写**：★**基座已有 F6 ＝ 2 是历史存量（含 §175 自曝那 1 处）**；★**本节增量必须逐族 0**，★**禁声称「整文件 0 命中」**
+
+■ 11 ★本席本轮三处自曝（★全部只追加登记，★0 改写已落字节，★错在探针不在对象）
+
+· **缺陷一（判据口径过宽 ⇒ 域 max 被污染 ⇒ 进程被 OOM 杀掉）**：本席首版取节号域用**裸「号+数字」**形态 ⇒ 把正文里的「**席号 455539551396187**」当节号收进来 ⇒ 域 max 被推到 4.5e14 ⇒ 随后那句 `range(100, max+1)` 展开成 4.5e14 项的列表 ⇒ ★**进程被沙箱以 SIGKILL 杀掉（exit 137）**，连跑三轮都在同一处被杀
+  · ⇒ ★**修正**：节号域**只认两种标题形态**（形态A「（号 N）」全角括号／形态B 标题行里的中文数字节号），★**禁用裸「号+数字」**（它会把席号、工号、账号号一并收进来）；★**并给域设上界**（小整数域，禁让任意长数字进入）⇒ ★**修正后域 100 至 177 连续、0 空洞**
+  · ⇒ ★**跨项目纪律**：★**凡用「编号域」做闸的判据，域成员必须按**形态**收，★禁按裸子串收**；★**且域 max 必设上界**——★**一个误命中的长数字能把 `range()` 变成内存炸弹**（★同族：★**判据比族宽 ⇒ 假红；域上界缺失 ⇒ 假进程崩**）
+· **缺陷二（分支口径写错 ⇒ 假失败）**：本席首查 GM 仓用了 `master` 分支取树 ⇒ 取不到 ⇒ ★**该仓默认分支是 `main`** ⇒ ★**是本席写错分支名，不是通道失败、也不是对象缺失**（★同族：★**NOT_FOUND 先查仓库身份与分支名**）
+· **缺陷三（下载路径改写连根拔起 ⇒ 假失败）**：本席批量落盘产品源码时用 `path.replace('/', '__')` ⇒ ★**把开头的 `/` 也替换了** ⇒ 文件落到了首斜杠被改写掉的错位路径 ⇒ ★**是脚本缺陷，不是远端通道失败**；★**修正后 199 件逐件用 git blob sha1 与 tip 树对账，0 件不符** ⇒ ★**本节 §4 的 AST 扫描面因此可判为「完整 199 件」而非「不可得」**
+
+■ 12 ★本节取号 ＋ 写前闸 ＋ 写后闸
+
+· ★**本节取号（执行点现算，★不沿用任何历史指针）**：① **全层 token 差集**：顶层节号域（编号 ≥100，**两种标题形态并集**、跨 3／4 级井号）＝ **100 至 177 连续、0 空洞** ⇒ max ＝ 177 ⇒ **178 空闲**；② **占用差集**：形态A「（号 178）」精确命中 **0** 次、形态B 纯中文 token「一百七十八」全文件精确命中 **0** 次 ⇒ ★**无争用**；③ ★**标题行重号检测**：报出 1 处「132」，★**本席已打开命中对象确认是假重号**——★那是一节标题里**引用**了他人节号（`§一百三十二`），★**该节自身的节号是 136** ⇒ ★**真实重号 ＝ 0**（★同族：★**报红前先打开命中对象确认层级与身份**）；④ ★**在飞席占号面**：20:00Z 席已于 20:22:14Z 收尾 ⇒ ★**无预告占号** ⇒ **本节取 一百七十八（号 178）**；★**本节不写任何指向空闲号位的指针**（★空闲号位由下一棒在执行点现算）
+· **写前闸**：A 节号自洽｜B 域 max 自洽（★**形态限定 ＋ 上界**）｜C 占用自洽（★两种标题形态各算一遍）｜D 编号指针解析（本节不引用任何指针）｜E 同内容未落｜F 值闸（本节引用的每个 40 位标识符均回远端现读，★**无写死常量**）｜★**G 禁形硬闸（仓内 `shape_probe.py` 内建为落盘器硬闸 · fail-closed · 退出码驱动 · ★作用域 ＝ 本轮增量字节）**｜H 模板变量残留闸｜I 双向可 grep 断言｜★**J 闸断言常量现算 ＋ 无值结构断言**
+· ★**payload 组装单一处负责**：payload ＝ **基座字节 ＋ 本节插入块**，★**断言对象 ＝ 实际发送对象**（★禁只发增量）
+· ★**落盘器三件套**：默认干跑（写动作须显式标志）｜单飞锁（同沙箱并发两份 ⇒ 第二份中止）｜★**写后闸可独立重跑**（以远端字节现读为准，★不依赖原进程输出）
+· **写后独立回读**：ref tip ＝ 本笔｜单父 ＝ 基座｜decoded_len ＝ size｜★**字节域严格前缀**（★**不写「等长相等」**）｜尾部 ＝ 插入块逐位相等｜本节标题行首恰 1（★**行锚口径**，★禁裸子串）｜变更面（★**按 type 分桶**）＝ 既有 blob 变 1／新增 0／删除 0｜★**增量禁形 7 族逐族 0 ＋ 阳性对照 7/7**｜★**逐族差（基座文件 vs 落盘文件）全 0**
+
+■ 13 ★本节外发判定与边界 0
+
+· ★**0 出波总卡**：三触发 —— ① 重大进展：**无**（0 新字节）② 停滞：**无新增**（★活跃态 WAITING，★非 STALLED；★停滞时长增加本身不是新事件）③ 独立 Gate 结果或需波总决策：**无新增**（★Gate 面 comments 仍 8、reviews 仍 0、★最新一条 2026-10-23T18:42:12Z；★H1／H2 授权状态未变，★该状态已由 19:00Z 轮投递过，★**同一事件不重复投递**）⇒ ★**无变化时只更新落盘状态卡**
+· 0 合并任何分支（含 master）｜0 关 PR｜0 amend／0 force｜0 改写或删除他人已落字节｜0 删节｜0 回填｜0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue #71 的 AC 判定／尺子口径／GOAL-CONTRACT／GM live 名册｜0 写产品代码｜0 触碰施工方工作树｜0 新建调度器／第二套监工／第二执行器｜0 spawn｜0 唤醒｜0 催办｜0 输出明文凭证｜0 复刻禁形字面｜0 改写已落 commit message｜0 出波总卡
