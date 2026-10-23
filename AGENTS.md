@@ -32,18 +32,19 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v1.9.6，2026-06-06）
+## 当前状态（v1.9.6，2026-10-23）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v1.9.6**（+ 资产瘦身四：删旧MatchMaker，机构档案收编到尽调台） |
-| 测试基线 | **803 passed**，0 failed |
+| 版本 | **v1.9.6**（+ 资产瘦身四：删旧MatchMaker，机构档案收编到尽调台）｜**版本号行沿用旧线**：DD-V1 线在 `CHANGELOG.md` 的 `[Unreleased]` 累积（该节最新已发布版为 1.25.0），发布号由发布负责人定，本轮**不代定** |
+| 测试基线 | **全量（标准命令）通过、无失败**（`cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q`；`test_doctor_script` 需本机 `.env` 与前端 `node_modules`，按本仓标准命令排除）。**用例条数不在本表登记**（随依赖完整度而变，自报数在别的环境不可复现）⇒ 以独立复核席在交卷 SHA 上的复跑读数为权威；本地读数、命令原文、退出码与取数时刻见 `docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md` §6.2 |
 | 压测 | `uv run python bench/dd_stress.py --scale large --charts`；CI 烟雾 `tests/test_dd_stress_smoke.py` |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
 | DB fixture | `_isolate_db_per_test` autouse：每测试独立 SQLite。用 `@pytest.mark.real_db` 声明豁免 |
 | Push hook | `.git/hooks/pre-push` 自动跑 DB fixture 测试 |
+| 本轮（2026-10-23） | 分支 `feat/71-player2-p0-fix-20261023`（PR 待独立复核）：材料类型取值空间在代码里收敛为 `dd_v1_requirement_service._DOC_TYPE_RULES` 的 10 个英文 key（语义层不再保留第二张 7 类中文表）；证据池比较前做 doc_type 归一；空候选返回结构化原因；正式入口 `tools/dd_v1_local_run.py` 的 `scaffold` 按**文件名**判类型。证据包 `docs/dd-v1-fos71/player2-p0-fix/`（**业务效果账待刘江 Windows 实测**） |
 
 ---
 

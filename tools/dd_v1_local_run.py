@@ -30,6 +30,8 @@ sys.path.insert(0, str(ROOT / "backend" / "src"))
 # GM:A4A:CLI:IMPORTS
 from cangjie_fos.services import dd_v1_agent_adapters as ad  # noqa: E402
 from cangjie_fos.services import dd_v1_blind_service as bl  # noqa: E402
+from cangjie_fos.services import dd_v1_doc_type_service as dts  # noqa: E402
+from cangjie_fos.services import dd_v1_requirement_service as rq  # noqa: E402
 from cangjie_fos.services import dd_v1_score_service as sc  # noqa: E402
 from cangjie_fos.services import dd_v1_semantic_retrieval_service as sem  # noqa: E402
 from cangjie_fos.services import dd_v1_snapshot_freeze_service as fz  # noqa: E402
@@ -149,19 +151,44 @@ def _synthetic_provenance(recs: list[dict]) -> dict:
 
 
 def cmd_scaffold(a) -> int:
+    """扫描材料目录 → meta.json 草稿（材料类型**只看文件自己的名字**）。
+
+    ★ **为什么不能按整条相对路径判类型**：真实材料库普遍按法人/类型建多级目录，
+      形如 ``1.审计报告(1)/营业执照2024.pdf`` —— 按路径判会把**目录里别人的类型**
+      认成这份材料的类型（``dd_v1_doc_type_service`` 的文档字符串已明确记载这个坑）。
+      现在走 ``resolve_doc_type(file_name=f.name)``：**只看文件名**、产出**英文 key** 与 provenance。
+
+    ★ **类型取值空间只有一处**：``dd_v1_requirement_service`` 的 10 个规范 key
+      （license / charter 等）—— 本文件**不另抄一份类型表**。
+    ★ **期间口径**：执照/章程无年度口径 ⇒ ``CURRENT``（与桥接层同口径）；
+      其余类型取路径里的年份；都没有 ⇒ 空（需人工补）。
+    """
     root = Path(a.material_root).resolve()
     meta = []
+    unresolved = 0
     for i, f in enumerate(sorted(x for x in root.rglob("*") if x.is_file() and not x.name.startswith("."))):
         rel = f.relative_to(root).as_posix()
         y = YEAR.findall(rel)
-        dt = next((d for d in sem.DOC_TYPES if d in rel), "")
+        # ★ 索引/目录/清单件**不是材料**（dd_v1_doc_type_service.is_index_artifact）：
+        #   「00_审计报告目录.md」只把同目录材料列一遍 ⇒ 若按文件名判类型会得到
+        #   audit_report，与**真**审计报告同主体、同类型、同期间落进同一冲突桶 ⇒ **假 CONFLICT**。
+        #   口径与卡片层（dd_v1_card_service）一致：类型强制留空 + 留痕（不静默丢弃）。
+        if dts.is_index_artifact(f.name):
+            dt, prov = "", dts.UNKNOWN
+        else:
+            dt, prov, _evidence = dts.resolve_doc_type(file_name=f.name)
+        if not dt:
+            unresolved += 1
+        period = "CURRENT" if dt in rq.CURRENT_DOC_TYPES else (y[-1] if y else "")
         meta.append({"file_id": f"F{i + 1:05d}", "relative_path": rel, "entity": a.entity or "",
-                     "period": y[-1] if y else ("CURRENT" if dt in ("营业执照", "公司章程") else ""),
-                     "doc_type": dt, "part": "附注" if "附注" in rel else "正文",
+                     "period": period,
+                     "doc_type": dt, "doc_type_provenance": prov,
+                     "part": "附注" if "附注" in rel else "正文",
                      "version_status": "DRAFT" if re.search(r"草稿|征求意见|draft", rel, re.I) else "EFFECTIVE"})
     Path(a.out).write_text(json.dumps(meta, ensure_ascii=False, indent=1), "utf-8")
     blank = sum(1 for m in meta if not (m["entity"] and m["period"] and m["doc_type"]))
-    print(json.dumps({"files": len(meta), "need_manual_fill": blank, "out": str(a.out)}, ensure_ascii=False))
+    print(json.dumps({"files": len(meta), "need_manual_fill": blank,
+                      "doc_type_unresolved": unresolved, "out": str(a.out)}, ensure_ascii=False))
     return 0
 
 
@@ -169,8 +196,14 @@ def cmd_scaffold(a) -> int:
 def cmd_split(a) -> int:
     items = _maybe_blind_items(a, _load_items(Path(a.items)))
     obs, flags = sem.split_items(items)
+    # ★ 输出面脱敏：写盘 / 打印的文本一律走 dd_v1_pii_service（不另抄正则）。
+    #   检索与摘录仍用原文（摘录的检索键是类型词/期间/附件，不含义务文本）⇒ 不退化。
+    obs, flags = sem.redact_for_output(obs, flags)
     Path(a.out).write_text(json.dumps(obs, ensure_ascii=False, indent=1), "utf-8")
-    print(json.dumps({"obligations": len(obs), "needs_human_split": flags, "out": str(a.out)}, ensure_ascii=False))
+    print(json.dumps({"obligations": len(obs),
+                      "needs_human_split": [f for f in flags if f.get("status") in ("NEEDS_HUMAN_SPLIT", "PARTIAL_SPLIT")],
+                      "ambiguous_splits": [f for f in flags if f.get("status") == "AMBIGUOUS_SPLIT"],
+                      "out": str(a.out)}, ensure_ascii=False))
     return 0
 
 

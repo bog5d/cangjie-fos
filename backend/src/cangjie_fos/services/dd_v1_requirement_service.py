@@ -154,6 +154,11 @@ _DOC_TYPE_RULES = (
     ("contract", "(合同|协议)"),
 )
 
+#: 「当前有效」类材料（**没有年度口径**，取现行有效的一份）：执照 / 章程。
+#: ★ 与 ``_DOC_TYPE_RULES`` 同源 —— 任何一侧都**不得**另抄一份类型子集。
+#:   语义层、桥接层、正式入口的「期间 = CURRENT」判定都从这里取。
+CURRENT_DOC_TYPES = ("license", "charter")
+
 
 # ── 材料类型的**唯一性口径**（G-A2-10）────────────────────────────────
 # 与上面的 ``_DOC_TYPE_RULES`` **不是同一维度**：
@@ -655,6 +660,51 @@ def parse_doc_type(raw: str) -> tuple[str, str]:
         if re.search(pat, raw):
             return key, FACT
     return "", UNKNOWN
+
+
+def parse_doc_type_spans(raw: str) -> list[tuple[str, int, int]]:
+    """文本里命中的**全部**规范材料类型及其位置（字符下标区间，左闭右开）。
+
+    与 ``parse_doc_type`` 的关系（**必须成立**，有用例锁死）：
+
+    - 文本里只有一类材料时，两者结论**逐位一致**；
+    - ``parse_doc_type`` 只返回**第一类**（规则表顺序），
+      本函数返回**全部**命中项 —— 供「一段文字里出现多类材料」的场景使用
+      （调用方自己决定怎么拆；本模块不替调用方做拆分决策）。
+
+    ★ **重叠消解**：不同类型的命中区间**重叠**时，按「规则表顺序优先、同序则命中更长者」取胜，
+      落败的一方**整段丢弃**。例：「劳动合同」里 labor 命中整词、contract 只命中「合同」⇒ 取 labor
+      ⇒ **不把一个复合词拆成两类**，与 ``parse_doc_type`` 结论一致。
+    ★ 同一个 key 的多处命中**全部保留**（调用方按 key 去重即可）。
+    """
+    text = str(raw or "")
+    spans: list[tuple[int, int, str, int]] = []   # (order, start, end, key)
+    for order, (key, pat) in enumerate(_DOC_TYPE_RULES):
+        for m in re.finditer(pat, text):
+            spans.append((order, m.start(), m.end(), key))
+    # 规则表顺序优先 ⇒ 复合词里「更靠前的规则」整体胜出
+    spans.sort(key=lambda s: (s[0], -(s[2] - s[1]), s[1]))
+    kept: list[tuple[str, int, int]] = []
+    for _order, st, en, key in spans:
+        if any(st < k_en and k_st < en for _k, k_st, k_en in kept):   # 与已保留的区间重叠
+            continue
+        kept.append((key, st, en))
+    kept.sort(key=lambda t: t[1])
+    return kept
+
+
+def parse_doc_types(raw: str) -> list[str]:
+    """文本里命中的**全部**规范材料类型（去重，按**出现位置**排序）。
+
+    - 判不出 ⇒ 空列表（**不得**拿扩展名或中文名占位）；
+    - 只有一类 ⇒ 与 ``parse_doc_type`` 一致；
+    - 多类 ⇒ 全部返回（复合词的重叠已由 ``parse_doc_type_spans`` 消解）。
+    """
+    out: list[str] = []
+    for key, _st, _en in parse_doc_type_spans(raw):
+        if key not in out:
+            out.append(key)
+    return out
 
 
 def parse_caliber(raw: str) -> tuple[str, str]:
