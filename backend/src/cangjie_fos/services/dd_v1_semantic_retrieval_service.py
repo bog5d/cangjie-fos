@@ -2,9 +2,20 @@
 
 本模块不调用任何模型。它做三件事：
 1. 拆条目：把一条原始清单拆成原子义务（文档类型 / 主体 / 期间 / 必需附件部分）。
+   ★ **材料类型只有一个取值空间**（``dd_v1_requirement_service`` 的 10 个规范英文 key），
+     本模块**不抄**任何类型表。历史上这里硬着一套 7 类中文表（只覆盖 10 类中的 7 类，
+     缺 resolution / ip / contract），与桥接层的英文 key 空间分叉 ⇒ **证据池恒空**。
+   ★ 一段里出现**多类**材料不再整条丢弃：按类拆成多条原子义务并留痕 ``AMBIGUOUS_SPLIT``；
+     复合词（员工合同 / 劳动合同）**不拆** —— 拆了就是猜。
    拆不出文档类型的条目不猜，标 NEEDS_HUMAN_SPLIT（弃答）。
 2. 只读最小证据检索（承接 WP03 复核 N4）：每条义务只给模型看同主体、同文档类型的少量文件，
    每个文件只给命中行的摘录 + 行号 locator + sha256；以 ``rb`` 只读打开，拒绝快照目录外的路径。
+   ★ 两侧 doc_type **先归一再比较**（旧 meta 存中文类型名时不再把池筛空），
+     主体按 ``dd_v1_entity_service`` 同口径归一（跨法人不混桶）。
+   ★ 候选为空时**必须区分原因**（``no_candidate_reason`` = 封闭六态 + 过滤诊断），
+   候选存在但期间/版本不可用时**不得**报「确实没有材料」
+   （``no_candidate_reason`` 留空 + ``candidate_status`` 明确表达），
+     不得统一伪装成「没有材料」。
 3. 确定性语义校验：在 WP01 R4 校验（结构/文件/主体/期间）之后再加一层——
    越权（用了没检索给它的文件）、文档类型不符、草稿/被取代版本当 MATCH、附件不全当 MATCH、
    locator 不在证据里、高置信却没有证据或解释（模糊自信错配）、弃答没有理由。
@@ -21,11 +32,11 @@ from pathlib import Path
 from typing import Any
 
 from cangjie_fos.services import dd_v1_agent_result_service as ar
+from cangjie_fos.services import dd_v1_doc_type_service as dts
+from cangjie_fos.services import dd_v1_requirement_service as rq
 
 SEMANTIC_PROMPT_VERSION = "fos71-wp04-p1"
 HIGH_CONFIDENCE = 0.8  # 与合同 scoring_rules.high_confidence_threshold 一致（测试锁定）
-DOC_TYPES = ("审计报告", "营业执照", "公司章程", "社保缴纳证明", "财务报表", "验资报告", "纳税证明")
-DOC_TYPE_ALIASES = {"社保证明": "社保缴纳证明", "完税证明": "纳税证明"}
 PART_RE = re.compile(r"[（(]含([^）)]+)[）)]")
 SPLIT_RE = re.compile(r"以及|及|和|、|；|;")
 YEAR_RE = re.compile(r"(20\d\d)\s*年")
@@ -36,6 +47,63 @@ MAX_EXCERPT_CHARS = 300
 TEXT_SUFFIXES = {".txt", ".md", ".csv", ".json", ".tsv"}
 NO_TEXT = "[NO_TEXT_LAYER: 非文本文件且没有 text_path，只提供元数据]"
 
+#: **候选为空**时的原因（**封闭六态**，派工令的枚举；**不得**统一伪装成「没有材料」）。
+#:
+#: - ``NO_MATERIAL`` —— 确实没有这种材料（该主体该类型确实没有）；
+#: - ``UNRESOLVED_DOC_TYPE`` —— 类型判不出（义务侧或材料侧）；
+#: - ``UNKNOWN_ENTITY`` —— 主体未知（义务侧主体为空）；
+#: - ``PERMISSION_BLOCKED`` —— 权限规则拦截（材料被访问规则挡下）★
+#:   **当前无生产者**（meta 的 ``access`` / ``restricted`` 是留出的扩展点，
+#:   仓内两个 meta 生产者都不写 ⇒ 生产路径下不可达，见 ``_access_blocked`` 的说明）；
+#: - ``RETRIEVAL_EXHAUSTED`` —— 候选检索被上限耗尽（**没看全** ⇒ 不得断言「确实没有」）；
+#: - ``OTHER`` —— 其他错误（读不到材料等兜底）。
+#:
+#: ★ **本枚举只管「候选为空」**。候选**存在**但期间/版本不可用（材料在、只是年份对不上
+#:   或版本是草稿）⇒ **不是「候选为空」** ⇒ ``no_candidate_reason`` 为 ``None``，
+#:   由 ``candidate_status``（见下）与 ``diagnostics`` 明确表达 ——
+#:   **绝不**报 ``NO_MATERIAL``（材料存在却报「确实没有」＝契约禁止的伪装）。
+NO_CANDIDATE_REASONS = (
+    "NO_MATERIAL",
+    "UNRESOLVED_DOC_TYPE",
+    "UNKNOWN_ENTITY",
+    "PERMISSION_BLOCKED",
+    "RETRIEVAL_EXHAUSTED",
+    "OTHER",
+)
+
+#: 候选侧的**状态**（与上面的原因枚举是**两个正交对象**，不是原因枚举的扩项）：
+#: ``OK`` 有可用候选 ｜ ``EXHAUSTED`` 候选被检索上限截断（没看全）
+#: ｜ ``PERIOD_OR_VERSION_MISMATCH`` 候选存在但期间/版本不可用
+#: ｜ ``NO_CANDIDATE`` 候选为空（原因见 ``no_candidate_reason``）。
+#: ★ **判定顺序写死**（实现里就是这个顺序，四态**互斥**）：
+#: ``OK`` → ``EXHAUSTED`` → ``PERIOD_OR_VERSION_MISMATCH`` → ``NO_CANDIDATE``。
+CANDIDATE_STATUSES = ("OK", "EXHAUSTED", "PERIOD_OR_VERSION_MISMATCH", "NO_CANDIDATE")
+
+#: 两类材料命中之间、**构成可分离**的连接词 / 标点（纯汉字连接词不在此列）。
+_TYPE_SEPARATORS = "、，,；;／/｜|＋+和及与或的之「」（）()《》\"' 　\t\r\n"
+
+#: 常用汉字区（用于判断间隔文字是不是「纯汉字连接」）。
+_CJK_RANGES = ((0x4E00, 0x9FFF), (0x3400, 0x4DBF), (0xF900, 0xFAFF))
+
+
+def _is_han(ch: str) -> bool:
+    return any(lo <= ord(ch) <= hi for lo, hi in _CJK_RANGES)
+
+
+def _is_separable_gap(gap: str) -> bool:
+    """两次类型命中之间的间隔文字，是不是把两者**分成了两类**（而不是一个复合词）。
+
+    - **空间隔**（两类紧挨着，如「员工合同」）⇒ 复合词 ⇒ **不拆**；
+    - 含**连接词 / 标点**（如「审计报告 / 营业执照」）⇒ 两类 ⇒ 拆；
+    - 含**非汉字字符**（年份 2024、拉丁字母、括号）⇒ 两类 ⇒ 拆；
+    - 纯**汉字连接**（如「甲公司营业执照」的「甲公司」）⇒ 保守 ⇒ **不拆**。
+    """
+    if not gap.strip():
+        return False
+    if any(ch in _TYPE_SEPARATORS for ch in gap):
+        return True
+    return any(not _is_han(ch) for ch in gap)
+
 
 class Blocked(RuntimeError):
     """依赖未授权资源（Gold Set / 真实材料）的功能。显式失败，绝不伪造结果。"""
@@ -43,40 +111,121 @@ class Blocked(RuntimeError):
 
 # ---------------------------------------------------------------- 1. 拆条目
 
-def _doc_type(text: str) -> str | None:
-    for alias, canon in DOC_TYPE_ALIASES.items():
-        text = text.replace(alias, canon)
-    hits = [d for d in DOC_TYPES if d in text]
-    return hits[0] if len(hits) == 1 else None
+def _doc_type_spans(seg: str) -> list[tuple[str, int, int]]:
+    """一段文字里**可分离**的规范材料类型（英文 key + 位置）。
+
+    ★ **取值空间只有一处**：``rq.parse_doc_type_spans``（requirement service 的权威表）。
+      本模块**不抄**任何类型列表 —— 旧实现里那张 7 类中文表已删除（它只覆盖 10 类中的 7 类，
+      且与桥接层的英文 key 空间分叉 ⇒ 证据池恒空）。
+
+    - 0 个 ⇒ 判不出类型（``NEEDS_HUMAN_SPLIT``）；
+    - 1 个 ⇒ 该类型；
+    - 多个 ⇒ **必须彼此可分离**（两次命中之间有分隔符）才返回多个；
+      不可分离（复合词，如「员工合同」「劳动合同」）⇒ 退回归一类型
+      （与 ``rq.parse_doc_type`` 一致），**不猜**。
+    """
+    spans = rq.parse_doc_type_spans(seg)
+    if not spans:
+        return []
+    first: dict[str, tuple[int, int]] = {}
+    for key, st, en in spans:
+        first.setdefault(key, (st, en))
+    ordered = sorted(first.items(), key=lambda kv: kv[1][0])
+    if len(ordered) == 1:
+        key, (st, en) = ordered[0]
+        return [(key, st, en)]
+    for i in range(len(ordered) - 1):
+        gap = seg[ordered[i][1][1]:ordered[i + 1][1][0]]
+        if not _is_separable_gap(gap):
+            # 复合词：两类挨在一起 ⇒ 不拆，退回权威第一类
+            key, _basis = rq.parse_doc_type(seg)
+            if not key:
+                return []
+            st, en = first.get(key, ordered[0][1])
+            return [(key, st, en)]
+    return [(k, st, en) for k, (st, en) in ordered]
 
 
-def split_item(item: dict[str, str]) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-    """返回 (原子义务列表, 无法拆分记录或 None)。纯规则，结果可复现。"""
+def split_item(item: dict[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """返回 (原子义务列表, 拆分留痕列表)。纯规则，结果可复现。
+
+    ★ **一段里出现多类材料不再整条丢弃**：按类拆成多条原子义务（每条一类，
+      共享该段的期间与附件要求），并留痕 ``AMBIGUOUS_SPLIT``。
+      复合词（不可分离）仍只出一条 —— 拆了就是猜。
+
+    ★ 期间的**唯一例外**：该类无年度口径（执照/章程）时取 ``CURRENT``，**不继承段年份**
+      （段年份属于段内带年份的那一类）。若执照类义务继承段级 ``2024``，
+      执照材料（期间 ``CURRENT``）就永远匹配不上 ⇒ 假缺口（更坏的方向）。
+    """
     text = item["text"]
     segments = [s.strip() for s in SPLIT_RE.split(PART_RE.sub(lambda m: m.group(0).replace("及", "+").replace("、", "+"), text)) if s.strip()]
     obligations: list[dict[str, Any]] = []
     last_year: str | None = None
     unsplit: list[str] = []
+    ambiguous: list[dict[str, Any]] = []
     for seg in segments:
-        dt = _doc_type(seg)
-        if dt is None:
+        spans = _doc_type_spans(seg)
+        if not spans:
             unsplit.append(seg)
             continue
         y = YEAR_RE.search(seg)
-        period = y.group(1) if y else ("CURRENT" if dt in ("营业执照", "公司章程") or "最新" in seg else (last_year or "UNKNOWN"))
-        last_year = y.group(1) if y else last_year
+        year = y.group(1) if y else None
+        # 期间：显式年份 > 现行有效类（执照/章程）或「最新」> 上一段年份 > UNKNOWN
+        if year:
+            period = year
+        elif all(k in rq.CURRENT_DOC_TYPES for k, _s, _e in spans) or "最新" in seg:
+            period = "CURRENT"
+        else:
+            period = last_year or "UNKNOWN"
+        last_year = year or last_year
         parts_m = PART_RE.search(seg)
         required = ["正文"] + [p for p in re.split(r"\+", parts_m.group(1)) if p] if parts_m else []
-        obligations.append({
-            "item_id": item["item_id"], "obligation_id": f"{item['item_id']}-O{len(obligations) + 1}",
-            "text": seg, "entity": item["entity"], "period": period, "doc_type": dt,
-            "required_parts": required, "split_method": "RULE_SPLIT",
-        })
+        multi = len(spans) > 1
+        ids: list[str] = []
+        # ★ 逐类期间：每个类型认领**自己紧邻片段**里的年份（「本类提及之前、上一个类型之后」
+        #   的那段文字）⇒ 「2024年度审计报告与2022年度财务报表」两类各拿各的年份
+        #   （判据③「多年度不混桶」）；本类片段里没年份 ⇒ 沿用**最近的前置年份**。
+        running_year: str | None = None
+        prev_end = 0
+        for key, st, en in spans:
+            oid = f"{item['item_id']}-O{len(obligations) + 1}"
+            ids.append(oid)
+            chunk_m = YEAR_RE.search(seg[prev_end:st])
+            type_year = chunk_m.group(1) if chunk_m else None
+            prev_end = en
+            # 期间：默认取「本类认领的年份」；没有则共享该段期间；
+            #   唯一的例外是「该类无年度口径」（执照/章程）
+            #   —— ★ **不继承段年份**：「请提供2024年度审计报告与营业执照」里的 2024 是
+            #     **审计报告**的年度口径，不是执照的 ⇒ 执照若继承 2024，
+            #     执照材料（期间 CURRENT）就永远匹配不上 ⇒ **假缺口**（本轮 P0 的核心 KPI）。
+            #     材料侧口径一致（scaffold / bridge：执照、章程 ⇒ CURRENT）⇒ 两侧同为 CURRENT。
+            ob_period = type_year or running_year or period
+            if key in rq.CURRENT_DOC_TYPES:
+                ob_period = "CURRENT"
+            running_year = type_year or running_year
+            obligations.append({
+                "item_id": item["item_id"], "obligation_id": oid,
+                "text": seg, "entity": item["entity"], "period": ob_period, "doc_type": key,
+                "doc_type_label": seg[st:en],
+                "doc_type_terms": rq.doc_type_search_terms(key),
+                "required_parts": required,
+                "split_method": "RULE_SPLIT_MULTI_TYPE" if multi else "RULE_SPLIT",
+                "ambiguous_split": multi,
+            })
+        if multi:
+            ambiguous.append({
+                "item_id": item["item_id"], "status": "AMBIGUOUS_SPLIT", "segment": seg,
+                "doc_types": [k for k, _s, _e in spans], "obligation_ids": ids,
+                "note": "一段里出现多类材料 ⇒ 按类拆成多条原子义务（共享该段期间与附件要求）",
+            })
+    flags: list[dict[str, Any]] = []
     if not obligations:
-        return [], {"item_id": item["item_id"], "text": text, "status": "NEEDS_HUMAN_SPLIT",
-                    "reason": "NO_KNOWN_DOC_TYPE"}
-    extra = {"item_id": item["item_id"], "unparsed_segments": unsplit, "status": "PARTIAL_SPLIT"} if unsplit else None
-    return obligations, extra
+        flags.append({"item_id": item["item_id"], "text": text, "status": "NEEDS_HUMAN_SPLIT",
+                      "reason": "NO_KNOWN_DOC_TYPE"})
+    elif unsplit:
+        flags.append({"item_id": item["item_id"], "unparsed_segments": unsplit, "status": "PARTIAL_SPLIT"})
+    flags.extend(ambiguous)
+    return obligations, flags
 
 
 def split_items(items: list[dict[str, str]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -85,8 +234,7 @@ def split_items(items: list[dict[str, str]]) -> tuple[list[dict[str, Any]], list
     for it in items:
         o, f = split_item(it)
         obs += o
-        if f:
-            flags.append(f)
+        flags += f
     return obs, flags
 
 
@@ -138,28 +286,176 @@ def _read_only_check(snapshot_dir: Path, rel: str) -> None:
         raise PermissionError(f"PATH_OUTSIDE_SNAPSHOT:{rel}")
 
 
-def retrieve_minimal_evidence(snapshot_dir: Path, meta: list[dict[str, str]],
-                              ob: dict[str, Any], *, snap: dict[str, Any] | None = None,
-                              text_root: Path | None = None) -> list[dict[str, Any]]:
-    """同主体 + 同文档类型才进入证据；别的主体、别的文档类型（包括注入文件）模型看不到。"""
+def _norm_entity(value: str) -> str:
+    """主体归一（**与 ``dd_v1_entity_service`` 同口径**）：去空白 / 去副本后缀 / 统一大小写。
+
+    ★ 两侧都过这里再比较 ⇒ 「甲公司」与「甲公司 」不会因为一个空格就跨法人混桶。
+    """
+    from cangjie_fos.services import dd_v1_entity_service as es
+    return es.normalize_name(value)
+
+
+def _access_blocked(m: dict[str, Any]) -> bool:
+    """这份材料是否被**访问规则**挡下（不进证据池）。
+
+    约定：meta 里带 ``access``（如 ``RESTRICTED``）或 ``restricted: true`` ⇒ 拦下。
+
+    ★ **当前没有生产者**（已知缺口，**不隐瞒**）：仓内现有两个 meta 生产者
+    （桥接链 ``build_meta``、正式入口 ``dd_v1_local_run.cmd_scaffold``）**都不写**这两个字段
+    ⇒ **生产路径下该状态不可达**；这里是**留出的扩展点**（将来某个权限层在 meta 上标记
+      受限材料时即生效）。
+    ★ **为什么不把「卡片敏感等级」接进来**：策略默认把 10 类里的 9 类定成 ``RESTRICTED``，
+      若按敏感等级过滤证据池 ⇒ 绝大多数材料对模型不可见 ⇒ 复核覆盖面塌陷。
+      受限材料的**披露**闸在 ``dd_v1_policy_service``（外发口径），不在证据召回口径。
+    ★ 拦下是**更严**的方向（模型看不到受限材料），且**必须留痕**（计入
+      ``rejected_by_permission``），不许悄悄消失。
+    """
+    if m.get("restricted") is True:
+        return True
+    acc = str(m.get("access") or "").strip().upper()
+    return acc in ("RESTRICTED", "CONFIDENTIAL", "BLOCKED", "DENIED")
+
+
+def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, str]],
+                                       ob: dict[str, Any], *, snap: dict[str, Any] | None = None,
+                                       text_root: Path | None = None) -> dict[str, Any]:
+    """同主体 + 同文档类型才进入证据；别的主体、别的文档类型（包括注入文件）模型看不到。
+
+    ★ **两侧 doc_type 都先归一**（``dts.normalize_doc_type``）再比较：
+      义务侧是英文 key、材料侧是中文类型名（旧 meta / 旧 fixture）时，
+      **不再**因为 key 空间不同就把证据池筛空。
+
+    返回 ``{"evidence": <证据列表>, "no_candidate_reason": str|None,
+    "candidate_status": str, "diagnostics": <诊断字典>}``：
+    - ``no_candidate_reason``：**候选为空**时的原因（取值域限 ``NO_CANDIDATE_REASONS``
+      的封闭六态）；候选**不为空**但期间/版本不可用时为 ``None``
+      （该档在原因枚举的**域外**，由 ``candidate_status`` 表达）；
+    - ``candidate_status``：候选侧状态（``CANDIDATE_STATUSES`` 四态）；
+    - ``diagnostics``：候选计数与各类过滤计数（年度 / 版本 / 附件 / 权限 / 截断），
+      **空结果不得掩盖这些过滤**。
+    """
     snap = snap if snap is not None else ar.load_snapshot(snapshot_dir, meta)
-    pool = [m for m in meta if m["entity"] == ob["entity"] and m.get("doc_type") == ob["doc_type"]]
+    ob_dt = dts.normalize_doc_type(ob.get("doc_type"))
+    ob_ent = _norm_entity(ob.get("entity"))
+    ob_period = str(ob.get("period") or "")
+    diagnostics: dict[str, Any] = {
+        "entity_materials": 0,          # 该主体名下的材料总数
+        "available_doc_types": [],      # 该主体名下**有**的材料类型（诊断用）
+        "candidates_total": 0,          # 同主体 + 同类型的候选数（未截断）
+        "candidates_used": 0,           # 实际进入证据的条数
+        "truncated_candidate_count": 0,  # 因上限被丢掉的候选数
+        "rejected_by_entity": 0,
+        "rejected_by_doc_type": 0,
+        "rejected_by_permission": 0,
+        "rejected_by_period": 0,
+        "rejected_by_version": 0,
+        "rejected_by_attachment": 0,
+        "read_errors": 0,
+    }
+    pool: list[dict[str, Any]] = []
+    for m in meta:
+        m_dt = dts.normalize_doc_type(m.get("doc_type"))
+        if _norm_entity(m.get("entity")) != ob_ent:
+            diagnostics["rejected_by_entity"] += 1
+            continue
+        diagnostics["entity_materials"] += 1
+        if m_dt != ob_dt:
+            if m_dt and m_dt not in diagnostics["available_doc_types"]:
+                diagnostics["available_doc_types"].append(m_dt)
+            diagnostics["rejected_by_doc_type"] += 1
+            continue
+        if _access_blocked(m):
+            diagnostics["rejected_by_permission"] += 1
+            continue
+        pool.append(m)
+    diagnostics["candidates_total"] = len(pool)
     # 排序：期间一致、有效版本优先；稳定排序保证可复现
-    pool.sort(key=lambda m: (m["period"] != ob["period"], m.get("version_status") != EFFECTIVE, m["file_id"]))
-    out = []
-    for m in pool[:MAX_FILES_PER_OBLIGATION]:
-        text = _text_for(snapshot_dir, m, text_root)
+    pool.sort(key=lambda m: (m["period"] != ob_period, m.get("version_status") != EFFECTIVE, m["file_id"]))
+    window = pool[:MAX_FILES_PER_OBLIGATION]
+    diagnostics["candidates_used"] = len(window)
+    diagnostics["truncated_candidate_count"] = max(0, len(pool) - MAX_FILES_PER_OBLIGATION)
+    out: list[dict[str, Any]] = []
+    for m in window:
+        try:
+            text = _text_for(snapshot_dir, m, text_root)
+        except PermissionError:
+            raise            # 越界路径是**安全拒绝**：必须抛，不得静默跳过
+        except OSError:
+            diagnostics["read_errors"] += 1
+            continue
         loc, body = _excerpt(text, ob, m) if text is not None else ("UNKNOWN", NO_TEXT)
         out.append({
             "file_id": m["file_id"], "relative_path": m["relative_path"], "sha256": snap[m["file_id"]].sha256,
-            "entity": m["entity"], "period": m["period"], "doc_type": m.get("doc_type"),
+            "entity": m["entity"], "period": m["period"],
+            # ★ 证据侧的 doc_type 也**归一**成规范 key（比较用）：
+            #   旧 meta 存的是中文类型名，义务侧是英文 key ⇒ 不归一就永远不相等。
+            #   原值另存 doc_type_raw（留痕，不丢信息）。
+            "doc_type": dts.normalize_doc_type(m.get("doc_type")),
+            "doc_type_raw": m.get("doc_type", ""),
             "part": m.get("part", "UNKNOWN"), "version_status": m.get("version_status", "UNKNOWN"),
             "locator": loc, "untrusted_excerpt": body,
         })
-    return out
+    # 过滤计数（**不删证据**：近邻材料仍要给模型看，供 OUTDATED 判定）
+    need_parts = set(ob.get("required_parts") or [])
+    for e in out:
+        if e["period"] != ob_period:
+            diagnostics["rejected_by_period"] += 1
+        if e["version_status"] != EFFECTIVE:
+            diagnostics["rejected_by_version"] += 1
+        if need_parts and e["part"] not in need_parts:
+            diagnostics["rejected_by_attachment"] += 1
+    # 「可用候选」：期间一致 + 现行有效（与 rule_hint 的 same 口径一致）
+    usable = [e for e in out if e["period"] == ob_period and e["version_status"] == EFFECTIVE]
+    reason: str | None = None
+    if not usable:
+        if not ob_dt:
+            reason = "UNRESOLVED_DOC_TYPE"        # 义务侧类型判不出
+        elif not ob_ent:
+            reason = "UNKNOWN_ENTITY"             # 义务侧主体未知
+        elif diagnostics["read_errors"]:
+            reason = "OTHER"                      # 材料读不到
+        elif diagnostics["rejected_by_permission"] and not pool:
+            reason = "PERMISSION_BLOCKED"         # 全被访问规则挡下
+        elif diagnostics["candidates_total"] > MAX_FILES_PER_OBLIGATION:
+            reason = "RETRIEVAL_EXHAUSTED"        # 没看全 ⇒ 不能断言「确实没有」
+        elif pool:
+            # ★ 同主体同类型的材料**存在**，只是期间不符 / 版本非现行有效
+            #   ⇒ 候选**不为空** ⇒ 「候选为空的原因枚举」不适用 ⇒ 原因留空（None），
+            #     由 candidate_status 明确表达（见下）。
+            #   **不得**报 NO_MATERIAL（材料存在却报「确实没有」＝契约禁止的伪装），
+            #   也**不得**报 UNRESOLVED_DOC_TYPE（类型明明判得出）。
+            reason = None
+        elif not diagnostics["entity_materials"]:
+            reason = "NO_MATERIAL"                # 该主体名下确实一份材料都没有
+        elif not diagnostics["available_doc_types"]:
+            reason = "UNRESOLVED_DOC_TYPE"        # 材料侧类型全判不出
+        else:
+            reason = "NO_MATERIAL"                # 该主体有材料，但没有这一类
+    if usable:
+        candidate_status = "OK"
+    elif diagnostics["candidates_total"] > MAX_FILES_PER_OBLIGATION:
+        candidate_status = "EXHAUSTED"           # 被上限截断 ⇒ 不能断言「确实没有」
+    elif pool:
+        candidate_status = "PERIOD_OR_VERSION_MISMATCH"   # 候选存在、期间/版本不可用
+    else:
+        candidate_status = "NO_CANDIDATE"        # 候选为空 ⇒ 原因见 no_candidate_reason
+    return {"evidence": out, "no_candidate_reason": reason,
+            "candidate_status": candidate_status, "diagnostics": diagnostics}
 
 
-def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[str, Any]:
+def retrieve_minimal_evidence(snapshot_dir: Path, meta: list[dict[str, str]],
+                              ob: dict[str, Any], *, snap: dict[str, Any] | None = None,
+                              text_root: Path | None = None) -> list[dict[str, Any]]:
+    """同主体 + 同文档类型才进入证据；别的主体、别的文档类型（包括注入文件）模型看不到。
+
+    （只想拿证据列表时用这个；要拿「为什么没有候选」用
+    ``retrieve_minimal_evidence_detailed``。）
+    """
+    return retrieve_minimal_evidence_detailed(snapshot_dir, meta, ob, snap=snap, text_root=text_root)["evidence"]
+
+
+def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]],
+              no_candidate_reason: str | None = None) -> dict[str, Any]:
     """纯元数据的规则提示（不是 Gold，不能用来评分）。"""
     same = [e for e in evidence if e["period"] == ob["period"] and e["version_status"] == EFFECTIVE]
     if same:
@@ -173,7 +469,39 @@ def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]]) -> dict[str, A
         [e for e in evidence if e["period"] < ob["period"]] if ob["period"].isdigit() else [])
     if stale:
         return {"verdict": "OUTDATED", "files": sorted(e["file_id"] for e in stale)}
-    return {"verdict": "MISSING", "files": [], "note": "OTHER_PERIODS_AVAILABLE" if evidence else "NO_EVIDENCE"}
+    hint: dict[str, Any] = {"verdict": "MISSING", "files": [],
+                            "note": "OTHER_PERIODS_AVAILABLE" if evidence else "NO_EVIDENCE"}
+    if not evidence and no_candidate_reason:
+        # 证据为空 ⇒ 必须说清**为什么**没有候选（不得统一伪装成「没有材料」）
+        hint["no_candidate_reason"] = no_candidate_reason
+    return hint
+
+
+def redact_for_output(obligations: list[dict[str, Any]],
+                      flags: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """把**对外落盘 / 外发**的拆分产物脱敏（义务文本 + 旗标文本）。
+
+    ★ 只作用于**输出面**：检索与摘录仍用**原文** ——
+      ``_excerpt`` 的检索键是「类型词 / 期间 / 附件」，**不含义务文本**
+      ⇒ 输出面脱敏**不会**让摘录退化。
+    ★ 脱敏走**同一个** ``dd_v1_pii_service``（不另抄正则）。
+    ★ 落盘面清单（全部必须过这一层）：
+      ① 命令 ``split`` 写盘的义务 ``text``；② 语义包的 ``split_flags``
+      （``segment`` / ``unparsed_segments`` / ``text``）；③ ``run_record.json``（随 ②）。
+    """
+    from cangjie_fos.services import dd_v1_pii_service as pii
+
+    obs = [{**o, "text": pii.redact(str(o.get("text") or ""))} for o in obligations]
+    out_flags: list[dict[str, Any]] = []
+    for f in flags:
+        g = dict(f)
+        for key in ("text", "segment"):
+            if key in g:
+                g[key] = pii.redact(str(g.get(key) or ""))
+        if isinstance(g.get("unparsed_segments"), list):
+            g["unparsed_segments"] = [pii.redact(str(x)) for x in g["unparsed_segments"]]
+        out_flags.append(g)
+    return obs, out_flags
 
 
 def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
@@ -199,10 +527,21 @@ def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
     else:
         obs, flags = split_items(raw_items)
         obs = [_ob_view(o) for o in obs]
-        flags = [{**f, "text": pii.redact(str(f.get("text") or ""))} for f in flags]
-    evidence = {o["obligation_id"]: retrieve_minimal_evidence(snapshot_dir, meta, o,
-                                                              snap=snap, text_root=text_root)
-                for o in obs}
+        # ★ 输出面脱敏：旗标里的 segment / unparsed_segments / text 同样可能带明文 PII
+        #   （义务文本已由 _ob_view 脱敏）⇒ 旗标必须走同一层，否则明文会经
+        #   packet.json → PROMPT.txt → run_record.json 落盘。
+        _, flags = redact_for_output([], flags)
+    detail = {o["obligation_id"]: retrieve_minimal_evidence_detailed(snapshot_dir, meta, o,
+                                                                   snap=snap, text_root=text_root)
+              for o in obs}
+    evidence = {oid: d["evidence"] for oid, d in detail.items()}
+    # 「为什么没有候选」结构化留痕（**不得**统一伪装成 MISSING / 没有材料）
+    evidence_status = {
+        oid: {"no_candidate_reason": d["no_candidate_reason"],
+              "candidate_status": d["candidate_status"],
+              "diagnostics": d["diagnostics"]}
+        for oid, d in detail.items()
+    }
     # 摘录拒识（untrusted_excerpt 是不可信材料文本层，进 prompt 前必须脱敏）
     for rows in evidence.values():
         for e in rows:
@@ -223,8 +562,10 @@ def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
             "proposed_verdict 只能取 " + "/".join(ar.ALLOWED_VERDICTS) + "。你的输出只是建议，最终由人工审核。"
         ),
         "obligations": obs,
-        "unsplit_items": flags,
+        "unsplit_items": [f for f in flags if f.get("status") in ("NEEDS_HUMAN_SPLIT", "PARTIAL_SPLIT")],
+        "split_flags": flags,
         "evidence": evidence,
+        "evidence_status": evidence_status,
         "pii_redactions": {
             "applied": True,
             "count": redaction_count["count"],
@@ -327,7 +668,12 @@ def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], r
     rec["authoritative_validation"] = "semantic_validation"
     rec["validation_note"] = "validation=R4 结构层（中间结果）；下游只读 semantic_validation"
     rec["unsplit_items"] = packet["unsplit_items"]
-    rec["rule_hints"] = {o["obligation_id"]: rule_hint(o, packet["evidence"][o["obligation_id"]])
+    rec["split_flags"] = packet.get("split_flags") or []
+    rec["evidence_status"] = packet.get("evidence_status") or {}
+    status = packet.get("evidence_status") or {}
+    rec["rule_hints"] = {o["obligation_id"]: rule_hint(
+                            o, packet["evidence"][o["obligation_id"]],
+                            (status.get(o["obligation_id"]) or {}).get("no_candidate_reason"))
                          for o in packet["obligations"]}
     rec["rule_hints_note"] = "规则提示不是 Gold，不能用于评分"
     wd = Path(a["workdir"]) if a.get("workdir") else workdir

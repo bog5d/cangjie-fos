@@ -76,6 +76,27 @@ def is_canonical(doc_type: str) -> bool:
     return bool(rq.doc_type_search_terms(raw))
 
 
+def normalize_doc_type(value: str) -> str:
+    """把**任意来源**的 doc_type 归一到规范 key（英文）。
+
+    这是「**比较/归一环节**」的唯一入口：证据池、义务侧、材料侧都先过这里，
+    再做相等比较 ⇒ **两侧 key 空间不同就不会再把证据池筛空**。
+
+    - 已是规范 key（``audit_report`` 等）⇒ 原样返回（大小写归一）；
+    - 中文类型名（审计报告 / 社保缴纳证明 等）⇒ 用 ``rq.parse_doc_type`` 归一到 key
+      （**旧 meta / 旧 fixture 里的中文 doc_type 仍然可用**，不必一次性改完调用方）；
+    - 文件扩展名（pdf / xlsx）、乱写、认不出 ⇒ **空串**（= UNKNOWN），
+      **不得**拿扩展名或中文名占位。
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if is_canonical(raw):
+        return raw.lower()
+    key, _basis = rq.parse_doc_type(raw)
+    return key
+
+
 #: **索引/目录件**识别（这类文件**不是材料**，只是同目录材料的列表）
 _INDEX_ARTIFACT_RE = re.compile(
     r"(索引|目录|文件说明|材料目录|readme|^index)", re.IGNORECASE)

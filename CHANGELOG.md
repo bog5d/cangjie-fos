@@ -40,6 +40,29 @@
   现改为版本化策略判定：未知等级按**不可判定**处理，一律不可外发。
   另修策略加载的一处逻辑反转：`default_level` 可外发（本应拒绝的最危险配置）
   反而被接受——由 `test_dangerous_default_level_is_rejected` 当场抓出。
+- **DD-V1 · 考生2 P0：材料类型统一到权威 10 类（#71）**：
+  语义层 `dd_v1_semantic_retrieval_service` 过去硬着一张**只覆盖 10 类中 7 类**的中文类型表
+  （缺 `resolution` 决议 / `ip` 知识产权 / `contract` 合同），且与桥接链的**英文 key 空间**分叉；
+  正式入口 `tools/dd_v1_local_run.py` 的 `scaffold` 又拿**整条相对路径**去匹配那张表
+  （真实材料库的 `1.审计报告(1)/营业执照2024.pdf` 会被认成审计报告）。
+  两处叠加 ⇒ 义务侧与材料侧 key 空间不同 ⇒ **证据池恒空且静默**（空列表没有原因）。
+  修法：**类型取值空间只剩一处**（`dd_v1_requirement_service._DOC_TYPE_RULES` 的 10 个英文 key）：
+  ① 语义层改走公开 API `rq.parse_doc_type_spans`（新增，同表同口径），
+     **一段里出现多类材料不再整条丢弃**：按类拆成多条原子义务并留痕 `AMBIGUOUS_SPLIT`；
+     复合词（「员工合同」「劳动合同」）**不拆**——拆了就是猜；
+  ② 证据比较前**归一**（新增 `dd_v1_doc_type_service.normalize_doc_type`）：
+     旧 meta / 旧 fixture 里的**中文 doc_type** 仍然可用，不必一次性改完调用方；
+     主体按 `dd_v1_entity_service` 同口径归一（跨法人不混桶）；
+  ③ **候选为空时区分六种原因**（`NO_MATERIAL` / `UNRESOLVED_DOC_TYPE` / `UNKNOWN_ENTITY` /
+     `PERMISSION_BLOCKED` / `RETRIEVAL_EXHAUSTED` / `OTHER`）+ 过滤诊断，
+     不得统一伪装成「没有材料」；其中「检索被上限耗尽」时**不谎称确实没有**；
+  ④ 正式入口 `scaffold` 改用 `dd_v1_doc_type_service.resolve_doc_type(file_name=f.name)`
+     （**只看文件名、不看目录**，产出英文 key 与 provenance）。
+  合成口径复算（同批 14 条义务 / 8 份材料）：拆解 12→17 条义务、**整条丢弃 4→0**、
+  材料侧类型与权威判定不一致 5→0、canonical 配对丢失 7→3（剩下 3 类是合成材料里确实没有的）。
+  证据包：`docs/dd-v1-fos71/player2-p0-fix/`。
+  ★ 本条登记在 `## [Unreleased]` 桶内（**未发布任何版本、未加版本号**），
+  `AGENTS.md` 的版本号行也**未 bump**（该行落后于本文件已发布版 1.25.0，发布号由发布负责人定）。
 
 ### Added
 - **DD-V1 · 必备附件关系识别**：认知卡 `related_files` 不再恒 UNKNOWN。

@@ -82,8 +82,9 @@ _ATTACH_RE = re.compile(r"附注|附件|附录|appendix", re.I)
 #: 英文命名的附注文件（fixture 用 ``*_notes.txt``；``body``/``memo`` 不算附件）
 _ATTACH_RE_EN = re.compile(r"(^|[_\-])notes([_\-.]|$)", re.I)
 _DRAFT_RE = re.compile(r"草稿|征求意见|draft", re.I)
-#: 与入口 B 的 ``scaffold`` 保持一致的「当前有效」类材料（执照/章程无年度）
-_CURRENT_DOC_TYPES = ("license", "charter")
+#: 与入口 B 的 ``scaffold`` 保持一致的「当前有效」类材料（执照/章程无年度）。
+#: ★ 取值空间来自 requirement service（``rq.CURRENT_DOC_TYPES``）—— **不另抄一份**。
+_CURRENT_DOC_TYPES = rq.CURRENT_DOC_TYPES
 
 
 # ─────────────────────────────────────────────────── 1. 材料侧：清单 + 认知卡 → meta
@@ -114,13 +115,24 @@ def resolve_material_doc_type(card: dict[str, Any] | None) -> str:
 
 
 def _material_period(card: dict[str, Any], doc_type: str) -> str:
-    """材料期间 → 语义层的期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。"""
+    """材料期间 → 语义层的期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。
+
+    ★ **唯一模型（司仓 C-1 裁定）**：语义层 period 空间对「无年度口径类型」
+      （``rq.CURRENT_DOC_TYPES``：执照 / 章程）**只有一个取值 CURRENT**
+      ⇒ 该类**优先于**年份取 ``CURRENT``。
+      年度信息**不丢**：仍留在 ``card.fiscal_period``（材料卡片）与 requirement 的
+      ``period_from`` / ``period_to``（义务卡）里，只是不进语义层 period。
+
+    ★ 为什么要改口径：材料侧「年份优先」+ 义务侧「恒 CURRENT」⇒ **反向假缺口**
+      （执照材料 period=2022、执照义务 period=CURRENT ⇒ 池里有材料、可用候选为空）。
+      两侧同源（都判 CURRENT）⇒ 口径一致，不再互相错位。
+    """
+    if doc_type in _CURRENT_DOC_TYPES:
+        return "CURRENT"
     fp = str((card or {}).get("fiscal_period") or "").strip()
     m = _YEAR_RE.match(fp)
     if m:
         return m.group(0)
-    if doc_type in _CURRENT_DOC_TYPES:
-        return "CURRENT"
     return "UNKNOWN"
 
 
@@ -215,12 +227,17 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
 # ─────────────────────────────────────────────────── 2. 义务侧：requirement → 语义义务
 
 def _obligation_period(obl: dict[str, Any], doc_type: str) -> str:
-    """义务期间 → 语义层期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。"""
+    """义务期间 → 语义层期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。
+
+    ★ **与 ``_material_period`` 同源**（司仓 C-1 裁定）：无年度口径类型
+      （执照 / 章程）恒为 ``CURRENT``（**优先于**年份）⇒ 材料侧与义务侧同值，
+      不会互相错位造成假缺口。年度信息仍留在 ``period_from`` / ``period_to``。
+    """
+    if doc_type in _CURRENT_DOC_TYPES:
+        return "CURRENT"
     y_from, y_to = obl.get("period_from", 0), obl.get("period_to", 0)
     if y_from and y_to and int(y_from) == int(y_to):
         return str(int(y_from))
-    if doc_type in _CURRENT_DOC_TYPES:
-        return "CURRENT"
     if y_from and y_to:
         return f"{int(y_from)}-{int(y_to)}"
     return "UNKNOWN"
