@@ -283,6 +283,8 @@ def parse_period_spec(raw: str, *, current_doc_type: bool = False) -> dict[str, 
     # ★已知残留（**散落年份轴**）：上方「散落年份 ⇒ 推断区间」分支在本分支**之前**先行 return
     #   ⇒ 该轴对 C-1 闸**零判别力**（文本含相对期间字面时仍可能被判成**放大**的 EXPLICIT 区间）；
     #   按 C-1 原始口径**不阻断 T4**。
+    # ★登记口径（**产品注释面／交卷文档／台账三处逐字同一句**，只追加不静默改写）：
+    #   仅单年 EXPLICIT 分支受相对期间闸保护；散落年份轴（≥2 散落年份 ⇒ 推断区间）为已知残留，方向为区间放大导致假阳性放行。
     if not _has_relative_marker(text):
         m = _YEAR_RE.search(text)
         if m:
