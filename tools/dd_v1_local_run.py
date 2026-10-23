@@ -192,10 +192,62 @@ def cmd_scaffold(a) -> int:
     return 0
 
 
+# GM:A4A:CLI:PERIOD-ANCHOR
+def _period_anchor_arg(raw: str | None) -> dict | None:
+    """把 ``--period-anchor``（JSON 文本）解析成**显式配置**的可验证锚点。
+
+    ★ 锚点优先级（期间服务口径）：**显式配置 > 原文声明 > 材料自身年度**；
+      本函数只负责第一档。默认空 ⇒ ``None`` ⇒ 相对期间若没有其它可验证锚点就判
+      「依据不足」（**不擅自拿系统时间当基准**）。
+    ★ 给了但不是合法 JSON 对象、或既没有 ``year`` 也没有 ``date`` ⇒ **报错退出**：
+      静默忽略会让口径悄悄退化成「无法判定」，而调用方以为锚点已生效。
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    try:
+        obj = json.loads(s)
+    except (TypeError, ValueError):
+        print("拒绝：--period-anchor 不是合法 JSON"
+              "（例：'{\"date\": \"2024-12-31\"}' 或 '{\"year\": 2024}'）",
+              file=sys.stderr)
+        raise SystemExit(3)
+    if not isinstance(obj, dict):
+        print("拒绝：--period-anchor 必须是一个 JSON 对象", file=sys.stderr)
+        raise SystemExit(3)
+    out: dict = {}
+    if obj.get("year") is not None:
+        try:
+            yi = int(obj["year"])
+        except (TypeError, ValueError):
+            print("拒绝：--period-anchor 的 year 必须是整数", file=sys.stderr)
+            raise SystemExit(3)
+        if not (1900 <= yi <= 2999):
+            print("拒绝：--period-anchor 的 year 超出可核验范围（1900-2999）",
+                  file=sys.stderr)
+            raise SystemExit(3)
+        out["year"] = yi
+    if obj.get("date") is not None:
+        d = str(obj["date"]).strip()
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", d):
+            print("拒绝：--period-anchor 的 date 必须是 YYYY-MM-DD", file=sys.stderr)
+            raise SystemExit(3)
+        out["date"] = d
+    if not out:
+        print("拒绝：--period-anchor 里必须有 year（四位年）或 date（YYYY-MM-DD）",
+              file=sys.stderr)
+        raise SystemExit(3)
+    for k in ("literal", "note"):
+        if obj.get(k):
+            out[k] = str(obj[k])
+    return out
+
+
 # GM:A4A:CLI:SPLIT
 def cmd_split(a) -> int:
     items = _maybe_blind_items(a, _load_items(Path(a.items)))
-    obs, flags = sem.split_items(items)
+    anchor = _period_anchor_arg(getattr(a, "period_anchor", None))
+    obs, flags = sem.split_items(items, period_anchor=anchor)
     # ★ 输出面脱敏：写盘 / 打印的文本一律走 dd_v1_pii_service（不另抄正则）。
     #   检索与摘录仍用原文（摘录的检索键是类型词/期间/附件，不含义务文本）⇒ 不退化。
     obs, flags = sem.redact_for_output(obs, flags)
@@ -225,6 +277,8 @@ def _adapter(a):
 
 # GM:A4A:CLI:RUN-HEAD
 def cmd_run(a) -> int:
+    # ★ 锚点先解析：**非法锚点在花任何模型调用之前就退出**（不静默忽略）。
+    anchor = _period_anchor_arg(getattr(a, "period_anchor", None))
     meta = _json(Path(a.meta))
     orig_material_root = Path(a.material_root).resolve()
     material_root, meta = _prepare_material(a, orig_material_root, meta)
@@ -267,7 +321,7 @@ def cmd_run(a) -> int:
         if obs_g == []:
             summary.append({"group": tag, "status": "NO_OBLIGATIONS"})
             continue
-        if obs_g is None and not sem.split_items(g)[0]:  # 拆不出义务就不调用模型（不浪费付费调用）
+        if obs_g is None and not sem.split_items(g, period_anchor=anchor)[0]:  # 拆不出义务就不调用模型（不浪费付费调用）
             summary.append({"group": tag, "status": "NEEDS_HUMAN_SPLIT"})
             print(json.dumps(summary[-1], ensure_ascii=False), flush=True)
             continue
@@ -292,7 +346,8 @@ def cmd_run(a) -> int:
                 print(f"拒绝：{err}", file=sys.stderr)
                 return 3
         rec = sem.run_semantic(_adapter(a), snap_dir, meta, g, budget, workdir=wd,
-                               obligations=obs_g, text_root=text_root)
+                               obligations=obs_g, text_root=text_root,
+                               period_anchor=anchor)
         calls_total += rec.get("calls_used", 1)
         v = rec["semantic_validation"]
         summary.append({"group": tag, "adapter_status": rec["adapter"]["status"],
@@ -383,10 +438,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--entity", default="")
 # GM:A4A:CLI:ARG-SPLIT
     s = sub.add_parser("split"); s.add_argument("--items", required=True); s.add_argument("--out", required=True)
+    s.add_argument("--period-anchor", default="",
+                   help="相对期间的可验证锚点（JSON）：'{\"date\": \"2024-12-31\"}' 或 '{\"year\": 2024}'。"
+                        "锚点优先级：显式配置 > 原文声明 > 材料自身年度；"
+                        "不给则不擅自假定（相对期间无其它可验证锚点时判「依据不足」）")
     s.add_argument("--blind-leak-words", default="", help="盲化泄漏词表（逗号分隔）；给了就把条目里的泄漏串换成盲化名")
     s.add_argument("--blind-items-out", default=None, help="盲化后的条目落盘路径（拆分依据）")
     r = sub.add_parser("run")
     r.add_argument("--material-root", required=True); r.add_argument("--meta", required=True)
+    r.add_argument("--period-anchor", default="",
+                   help="同 split：相对期间的可验证锚点（JSON）")
     r.add_argument("--items", required=True); r.add_argument("--obligations", default=None)
     r.add_argument("--text-root", default=None); r.add_argument("--out", required=True)
     r.add_argument("--adapter", choices=sorted(ad.ADAPTERS), default="deepseek-harness",
