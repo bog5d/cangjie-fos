@@ -1,18 +1,32 @@
+
 案例                        义务  CONFLICT  RESTRICTED  MISSING  PARTIAL  UNCERT  MATCHED      跨法人     自证  门限
-案例A(2法人)                  32         0           4        3        1      22        2     81%    0%  T1 entity_scope=32 T3 CONFLICT<=4 ✅
+# gm_rederive_a2_regression_evidence: APPLIED
+# ── 判据标签校正（监工第 26 条，2026-10-22）──────────────────────
+# 原门限列印的是「T1 entity_scope=N T3 CONFLICT<=N」——**两个标签都错**：
+#   ① entity_scope 非空条数 = **结构性事实**（案例B/C 清单无「<主体>：」前缀 ⇒
+#      主体维度不可判定），**既不是 T1 也不是 T3**；
+#   ② 「CONFLICT <= 4/8」= 本地自造阈值，**任务书 §6 根本没有这条判据**；
+#   ③ T3 = **旧 A1 正向红线**（已登记+同主体+同期间+同类型+异哈希 ⇒ 仍须报
+#      CONFLICT）是**合成用例**判据（tests/test_dd_v1_uniqueness.py，
+#      **9/9 PASS，双向锁**），**真实材料回归测不了它** ⇒ 本文件不应给它打标签。
+# 处置：**只重打标签，不动数据** —— 下面每一行的义务数/六档/跨法人/自证/
+#   主体名单/桥接计数**全部来自表头所写的原回归**（未重跑、未改动）；
+#   ★ 独立复核：这些数字**可由原回归目录 reg-20261022-093705 重跑汇总器复现**（已机器核对，逐项一致）。
+案例A(2法人)                  32         0           4        3        1      22        2     81%    0%  T1:CONFLICT=0✅ MATCHED=2 自证=0%✅ es=32/32(结构·非判据)
                        └ 判定档位合计 32/32 ✔ 对账
                        └ 权威主体名单 2 个｜「主体未登记」义务 26/32 条（81%）
                        └ 语义桥接：32 条义务 → 32 簇｜候选材料 25 份｜模式 RULE_ONLY｜外部模型调用 0｜主体档 {"AUTHORITY": 32, "ALIAS_RESOLVED": 0, "CARD_INFERRED": 0, "UNKNOWN": 0}
-案例B(1法人)                  46         0           9        3        0      33        1      0%    0%  T1 entity_scope=0 T3 CONFLICT<=4 ✅
+案例B(1法人)                  46         0           9        3        0      33        1      0%    0%  T1:CONFLICT=0✅ MATCHED=1 自证=0%✅ es=0/46(结构·非判据)
                        └ 判定档位合计 46/46 ✔ 对账
                        └ 权威主体名单 1 个｜「主体未登记」义务 35/46 条（76%）
                        └ 语义桥接：46 条义务 → 120 簇｜候选材料 22 份｜模式 RULE_ONLY｜外部模型调用 0｜主体档 {"AUTHORITY": 0, "ALIAS_RESOLVED": 43, "CARD_INFERRED": 74, "UNKNOWN": 3}
-案例C(3法人)                 241         0           0        3        0     238        0     87%    0%  T1 entity_scope=0 T3 CONFLICT<=8 ❌
+案例C(3法人)                 241         0           0        3        0     238        0     87%    0%  T1:CONFLICT=0✅ MATCHED=0 自证=0%✅ es=0/241(结构·非判据)
                        └ 判定档位合计 241/241 ✔ 对账
                        └ 权威主体名单 2 个｜「主体未登记」义务 238/241 条（99%）
                        └ 语义桥接：241 条义务 → 1592 簇｜候选材料 127 份｜模式 RULE_ONLY｜外部模型调用 0｜主体档 {"AUTHORITY": 11, "ALIAS_RESOLVED": 0, "CARD_INFERRED": 1579, "UNKNOWN": 2}
 
 合计 义务 319 | CONFLICT 0 | RESTRICTED 13 | MISSING 9 | PARTIAL 1 | UNCERTAIN 293 | MATCHED 3
+     判据判定（整跑口径）：**T1** 不得新增 CONFLICT ⇒ CONFLICT=0 ✅｜**T2** MATCHED ≥ 1 ⇒ MATCHED=3 ✅（逐位证据见交付文档 §2.2）｜**T3** 旧 A1 正向红线 ⇒ **不由本文件衡量**（合成用例 tests/test_dd_v1_uniqueness.py，9/9 PASS，双向锁）
      判定档位合计 319/319 ✔ 对账
 基线 义务 319 | CONFLICT 284 | RESTRICTED 29 | MISSING 6 | PARTIAL 0 | UNCERTAIN 0 | MATCHED 0
 变化 CONFLICT 284→0 | RESTRICTED 29→13 | UNCERTAIN 0→293 | MATCHED 0→3
