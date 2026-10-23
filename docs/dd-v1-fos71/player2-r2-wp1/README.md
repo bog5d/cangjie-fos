@@ -39,3 +39,37 @@
 ```bash
 python3 docs/dd-v1-fos71/player2-r2-wp1/shape_probe.py <本轮写出文件> [更多路径]
 ```
+
+## 段 2（笔2）：相对期间语义接线 + R4 闸
+
+- **四态口径**：期间语义四态（EXPLICIT 明确 / RELATIVE 相对 / CURRENT 当前 / UNKNOWN 未知）
+  在语义检索层落地为 `ob["period_spec"]`；旧 `ob["period"]` 字符串**逐字不动**，
+  兼容判定由 `spec_from_obligation()` 单一入口做降级（不新增第二套类型表）。
+- **CURRENT 三档（不扩枚举）**：`CLASS`（无年度口径类，如执照/章程；带年份副本仍兼容）、
+  `LATEST`（「最新/现行」⇒ 须取候选池最大年度）、`LABEL`（旧数据只有 CURRENT 标签 ⇒ 严格不放宽）。
+- **UNCERTAIN 出口**：依据不足时保留候选（`candidate_status` 阶梯与 `NO_CANDIDATE_REASONS` 不动），
+  经 `rule_hint` 返回 UNCERTAIN 判定，并附候选文件列表与 `abstain_reason` 说明文本；
+  **绝不升格 MATCHED**，也**不判「缺失/不合规」**。
+- **锚点来源（永不使用系统时间）**：`EXPLICIT_CONFIG` > `CHECKLIST_DECLARATION` > `MATERIAL_DATE`；
+  `assert_no_system_clock()` 为源码级守卫，纯整数月运算，不引入 datetime。
+- **R4 闸**：候选 MATCH/PARTIAL 但期间依据不足 ⇒ 报 `CANDIDATE_%i_PERIOD_BASIS_INSUFFICIENT`；
+  期间不符 ⇒ `CANDIDATE_%i_PERIOD_MISMATCH`。
+
+## 笔1：C-1 / F-1 修复（先于段 2 落远端）
+
+- **C-1**：文本同时含相对期间字面与四位年份时，单年 EXPLICIT 分支先 return
+  ⇒ 相对期间语义被静默丢弃（危害方向：自信地紧）。
+  修法：新增 `_has_relative_marker()`，含相对期间字面时改走相对期间分支（可被锚点展开）；
+  明确区间仍最优先。回归用例 2 条。
+- **F-1**：`test_module_has_no_second_doc_type_table` 的 AST 收集只取 `node.module`，
+  不看 `node.names` ⇒ 包级写法 `from cangjie_fos.services import dd_v1_requirement_service` 逃逸。
+  修法：抽出 `_imported_module_names()` 同时收两者；并加阳性对照用例（守卫必须抓到包级写法）。
+
+## 仓内证据件
+
+- `before_after_period.py`：同一合成输入集（9 条需求 × 同口径）在**基座树**与**改动树**各跑一次，
+  逐行对照「候选状态 + 规则判定」。用法：`python3 before_after_period.py <代码树根目录>`。
+
+```bash
+python3 docs/dd-v1-fos71/player2-r2-wp1/before_after_period.py /workspace/fos-wt2
+```

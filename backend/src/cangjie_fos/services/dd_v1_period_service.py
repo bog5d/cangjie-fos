@@ -48,6 +48,14 @@ COMPAT_STATUSES = ("MATCH", "MISMATCH", "UNVERIFIABLE", "NOT_A_CONSTRAINT")
 #: ★ **没有**「当前系统时间」这一档 —— 相对期间永不以运行时刻为隐式基准。
 ANCHOR_SOURCES = ("EXPLICIT_CONFIG", "CHECKLIST_DECLARATION", "MATERIAL_DATE")
 
+#: 「当前有效」口径的三种形态（同一态 ``CURRENT`` 下的**不同判据**，不是新枚举）：
+#: - ``CLASS``：该类**无年度口径**（执照/章程）⇒ 材料带不带年份都算这一类
+#:   （年份是版本/备案日期，不是年度要求）；
+#: - ``LATEST``：需求写的是「最新/现行」⇒ 取候选池中**年度最新**的那一份；
+#: - ``LABEL``：只知道义务的期间**标签**是 CURRENT（旧数据没有更细的口径）
+#:   ⇒ 只认标签同为 CURRENT 的材料（**不放宽**）。
+CURRENT_MODES = ("CLASS", "LATEST", "LABEL")
+
 _ANCHOR_PRIORITY = {src: i for i, src in enumerate(ANCHOR_SOURCES)}
 
 FACT = "FACT"
@@ -243,10 +251,11 @@ def parse_period_spec(raw: str, *, current_doc_type: bool = False) -> dict[str, 
         "kind": "UNKNOWN", "years": [], "literal": "", "relative": None,
         "anchor": None, "declared_anchor": parse_anchor_declaration(text),
         "resolved": True, "basis": UNKNOWN, "notes": [], "latest": False,
+        "current_mode": None,
     }
 
     if current_doc_type:
-        spec.update(kind="CURRENT", literal="CURRENT", basis=FACT)
+        spec.update(kind="CURRENT", literal="CURRENT", basis=FACT, current_mode="CLASS")
         spec["notes"].append("该类无年度口径（当前有效类）⇒ 期间口径为 CURRENT，不继承段落年份")
         return spec
 
@@ -321,7 +330,8 @@ def parse_period_spec(raw: str, *, current_doc_type: bool = False) -> dict[str, 
     # ③ 「当前有效」字面
     m = _LATEST_RE.search(text)
     if m:
-        spec.update(kind="CURRENT", literal=m.group(0), basis=FACT, latest=True)
+        spec.update(kind="CURRENT", literal=m.group(0), basis=FACT, latest=True,
+                    current_mode="LATEST")
         spec["notes"].append("「%s」口径：取候选池中年度最新的一份" % m.group(0))
         return spec
 
@@ -409,9 +419,32 @@ def build_period_spec(raw: str, *, current_doc_type: bool = False,
     return apply_anchor(spec, anchor)
 
 
+def spec_from_obligation(ob: dict[str, Any]) -> dict[str, Any]:
+    """从一条**义务**字典推导期间语义四态（**兼容旧数据**）。
+
+    - 有 ``period_spec``（R2-WP1 挂上的结构化口径）⇒ 直接用；
+    - 没有（旧 obligations.json / 手写义务）⇒ 按既有**字符串**口径**退化**成四态：
+      ``CURRENT`` ⇒ CURRENT（**标签**口径 current_mode=LABEL，不放宽）；
+      四位年份 ⇒ EXPLICIT；其余（含 ``UNKNOWN``）⇒ UNKNOWN（该维度不构成门槛）。
+
+    ★ 这是**唯一**的退化入口：语义层与 R4 校验层都走它 ⇒ 两端口径不会分叉。
+    """
+    spec = (ob or {}).get("period_spec")
+    if isinstance(spec, dict) and spec.get("kind"):
+        return dict(spec)
+    raw = str((ob or {}).get("period") or "").strip()
+    if raw.upper() == "CURRENT":
+        out = parse_period_spec("", current_doc_type=True)
+        out["current_mode"] = "LABEL"      # 旧数据只知道标签 ⇒ 只认同标签的材料
+        return out
+    if raw.isdigit() and len(raw) == 4:
+        return parse_period_spec("%s年度" % raw)
+    return parse_period_spec("")
+
+
 # ── 3. 兼容判定 ────────────────────────────────────────────────────────────
 
-def _norm_material_period(value: Any) -> dict[str, Any]:
+def normalize_material_period(value: Any) -> dict[str, Any]:
     """材料侧期间标签归一：``2024`` / ``CURRENT`` / 未知（空串等）。"""
     s = str(value or "").strip()
     if not s:
@@ -434,7 +467,7 @@ def compatibility(spec: dict[str, Any], material_period: Any, *,
     sp = spec or {}
     kind = str(sp.get("kind") or "UNKNOWN")
     years = [int(y) for y in (sp.get("years") or [])]
-    mp = _norm_material_period(material_period)
+    mp = normalize_material_period(material_period)
     res: dict[str, Any] = {
         "status": "NOT_A_CONSTRAINT", "reason": "", "abstain_reason": None,
         "obligation_kind": kind, "obligation_years": years,
@@ -447,10 +480,11 @@ def compatibility(spec: dict[str, Any], material_period: Any, *,
         return res
 
     if kind == "CURRENT":
-        if sp.get("latest"):
+        mode = str(sp.get("current_mode") or "CLASS")
+        if mode == "LATEST":
             pool_years = []
             for p in pool_periods or ():
-                pm = _norm_material_period(p)
+                pm = normalize_material_period(p)
                 if pm["kind"] == "YEAR":
                     pool_years.append(int(pm["year"]))
             if mp["kind"] == "YEAR" and pool_years:
@@ -470,9 +504,27 @@ def compatibility(spec: dict[str, Any], material_period: Any, *,
                        reason="材料自身无年度标注且候选池无年度可比 ⇒ 无法判定是否为最新",
                        abstain_reason="材料自身无年度标注，无法判定是否为「最新」的一份")
             return res
-        # 无年度口径类（执照/章程）：材料自带年份不构成年度冲突
-        res.update(status="MATCH",
-                   reason="「当前有效」口径：该类无年度口径，材料自带年份不构成年度冲突")
+        if mode == "LABEL":
+            # 旧数据只知道义务的期间**标签**是 CURRENT ⇒ 只认标签同为 CURRENT 的材料（不放宽）
+            if mp["kind"] == "CURRENT":
+                res.update(status="MATCH", reason="材料标签与义务同为「当前有效」")
+                return res
+            if mp["kind"] == "YEAR":
+                res.update(status="MISMATCH",
+                           reason="材料带年度标签 %s，与「当前有效」口径不一致" % mp["raw"])
+                return res
+            res.update(status="UNVERIFIABLE",
+                       reason="材料自身无年度标注 ⇒ 无法判定是否为「当前有效」的一份",
+                       abstain_reason="材料自身无年度标注，无法判定是否为「当前有效」的一份")
+            return res
+        # CLASS：该类无年度口径（执照/章程）⇒ 材料自带年份不构成年度冲突
+        if mp["kind"] in ("CURRENT", "YEAR"):
+            res.update(status="MATCH",
+                       reason="「当前有效」口径：该类无年度口径，材料自带年份不构成年度冲突")
+            return res
+        res.update(status="UNVERIFIABLE",
+                   reason="材料自身无年度标注 ⇒ 无法判定是否为「当前有效」的一份",
+                   abstain_reason="材料自身无年度标注，无法判定是否为「当前有效」的一份")
         return res
 
     if kind == "RELATIVE" and not sp.get("resolved"):

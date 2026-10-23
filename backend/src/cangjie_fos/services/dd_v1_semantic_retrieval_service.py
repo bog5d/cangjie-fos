@@ -33,6 +33,7 @@ from typing import Any
 
 from cangjie_fos.services import dd_v1_agent_result_service as ar
 from cangjie_fos.services import dd_v1_doc_type_service as dts
+from cangjie_fos.services import dd_v1_period_service as ps
 from cangjie_fos.services import dd_v1_requirement_service as rq
 
 SEMANTIC_PROMPT_VERSION = "fos71-wp04-p1"
@@ -146,7 +147,8 @@ def _doc_type_spans(seg: str) -> list[tuple[str, int, int]]:
     return [(k, st, en) for k, (st, en) in ordered]
 
 
-def split_item(item: dict[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def split_item(item: dict[str, str], *, period_anchor: dict[str, Any] | None = None
+               ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """返回 (原子义务列表, 拆分留痕列表)。纯规则，结果可复现。
 
     ★ **一段里出现多类材料不再整条丢弃**：按类拆成多条原子义务（每条一类，
@@ -156,6 +158,11 @@ def split_item(item: dict[str, str]) -> tuple[list[dict[str, Any]], list[dict[st
     ★ 期间的**唯一例外**：该类无年度口径（执照/章程）时取 ``CURRENT``，**不继承段年份**
       （段年份属于段内带年份的那一类）。若执照类义务继承段级 ``2024``，
       执照材料（期间 ``CURRENT``）就永远匹配不上 ⇒ 假缺口（更坏的方向）。
+
+    ★ R2-WP1：每条义务额外挂一份**期间语义四态** ``period_spec``
+      （``dd_v1_period_service`` 产出：EXPLICIT/RELATIVE/CURRENT/UNKNOWN ＋ 锚点 ＋ 理由）。
+      字符串 ``period`` **一字不改**（兼容既有消费方），四态判定一律以 ``period_spec`` 为准。
+      ``period_anchor`` 是**显式配置**的可验证锚点（相对期间用；不给则不擅自假定）。
     """
     text = item["text"]
     segments = [s.strip() for s in SPLIT_RE.split(PART_RE.sub(lambda m: m.group(0).replace("及", "+").replace("、", "+"), text)) if s.strip()]
@@ -190,6 +197,7 @@ def split_item(item: dict[str, str]) -> tuple[list[dict[str, Any]], list[dict[st
         for key, st, en in spans:
             oid = f"{item['item_id']}-O{len(obligations) + 1}"
             ids.append(oid)
+            chunk_start = prev_end
             chunk_m = YEAR_RE.search(seg[prev_end:st])
             type_year = chunk_m.group(1) if chunk_m else None
             prev_end = en
@@ -203,9 +211,16 @@ def split_item(item: dict[str, str]) -> tuple[list[dict[str, Any]], list[dict[st
             if key in rq.CURRENT_DOC_TYPES:
                 ob_period = "CURRENT"
             running_year = type_year or running_year
+            # ★ R2-WP1：期间语义**四态**（结构化口径）——字符串 ``period`` 一字不改，
+            #   另挂一份 ``period_spec``（EXPLICIT/RELATIVE/CURRENT/UNKNOWN ＋ 锚点 ＋ 理由）。
+            #   本类认领的片段 = 上一个类型结束处 → 本类型结束处（含前置年份）。
+            local_text = seg[chunk_start:en]
+            period_spec = _period_spec_for(seg, key, type_year, running_year, period,
+                                            ob_period, local_text, period_anchor)
             obligations.append({
                 "item_id": item["item_id"], "obligation_id": oid,
-                "text": seg, "entity": item["entity"], "period": ob_period, "doc_type": key,
+                "text": seg, "entity": item["entity"], "period": ob_period, "period_spec": period_spec,
+                "doc_type": key,
                 "doc_type_label": seg[st:en],
                 "doc_type_terms": rq.doc_type_search_terms(key),
                 "required_parts": required,
@@ -228,14 +243,81 @@ def split_item(item: dict[str, str]) -> tuple[list[dict[str, Any]], list[dict[st
     return obligations, flags
 
 
-def split_items(items: list[dict[str, str]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def split_items(items: list[dict[str, str]], *, period_anchor: dict[str, Any] | None = None
+                ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     obs: list[dict[str, Any]] = []
     flags: list[dict[str, Any]] = []
     for it in items:
-        o, f = split_item(it)
+        o, f = split_item(it, period_anchor=period_anchor)
         obs += o
         flags += f
     return obs, flags
+
+
+# ---------------------------------------------------------------- 1b. 期间语义四态
+
+def _period_spec_for(seg: str, key: str, type_year: str | None, running_year: str | None,
+                      seg_period: str, ob_period: str, local_text: str,
+                      period_anchor: dict[str, Any] | None) -> dict[str, Any]:
+    """给一条原子义务算**期间语义四态**（结构化口径）。
+
+    判定顺序（先具体后笼统）：
+    ① 该类无年度口径（执照/章程）⇒ CURRENT（**不继承**段落年份，R1 口径）；
+    ② 本类自己认领到年份 ⇒ EXPLICIT；
+    ③ 本类片段里自带**相对期间**（近三年、上一年度、最近十二个月等）⇒ RELATIVE
+       （比段落年份更贴近本类：「2024年度审计报告与近三年财务报表」里的财务报表是近三年）；
+    ④ 段落年份（继承来的）⇒ EXPLICIT；
+    ⑤ 都没有 ⇒ UNKNOWN（该维度不构成门槛，**不猜**）。
+
+    ★ 字符串 ``period`` 的口径一字未改；四态判定以本函数产出的 ``period_spec`` 为准。
+    """
+    if key in rq.CURRENT_DOC_TYPES:
+        return ps.parse_period_spec("", current_doc_type=True)
+    eff = type_year or running_year
+    if eff:
+        return ps.parse_period_spec("%s年度" % eff)
+    local_spec = ps.build_period_spec(local_text, config_anchor=period_anchor)
+    if local_spec["kind"] == "RELATIVE":
+        # ★ 截止日期声明在**段级**（「（报告期截至2024-06-30）」常写在类型词之后）
+        #   ⇒ 本类片段里没写，就回段级取（不猜、只认原文写着的）。
+        if not local_spec.get("declared_anchor"):
+            decl = ps.parse_anchor_declaration(seg)
+            if decl:
+                local_spec["declared_anchor"] = decl
+                local_spec = ps.apply_anchor(local_spec, decl)
+        return local_spec
+    if seg_period and str(seg_period).isdigit():
+        return ps.parse_period_spec("%s年度" % seg_period)
+    return local_spec
+
+
+def _obligation_period_spec(ob: dict[str, Any], *, period_anchor: dict[str, Any] | None = None,
+                            material_years: list[Any] | None = None
+                            ) -> dict[str, Any]:
+    """取一条义务的**期间语义四态**口径（带锚点解析）。
+
+    ★ 四态的**退化入口唯一**（``dd_v1_period_service.spec_from_obligation``）⇒
+      语义层与 R4 校验层口径不分叉。
+    """
+    spec = ps.spec_from_obligation(ob)
+    return _resolve_spec_with_anchor(spec, period_anchor=period_anchor,
+                                     material_years=material_years or [])
+
+
+def _resolve_spec_with_anchor(spec: dict[str, Any], *, period_anchor: dict[str, Any] | None = None,
+                              material_years: list[Any] | None = None) -> dict[str, Any]:
+    """相对期间口径：按**可验证**锚点展开（显式配置 > 原文声明 > 材料自身年度）。
+
+    ★ **没有可验证锚点 ⇒ 保持未锚定**（不得拿当前系统时间当隐式基准）。
+    """
+    if spec.get("kind") != "RELATIVE" or spec.get("resolved"):
+        return spec
+    anchor = ps.resolve_anchor(config_anchor=period_anchor,
+                                declared_anchor=spec.get("declared_anchor"),
+                                material_years=material_years or [])
+    if not anchor:
+        return spec
+    return ps.apply_anchor(spec, anchor)
 
 
 # ---------------------------------------------------------------- 2. 只读最小证据检索
@@ -251,7 +333,7 @@ def _read_only(snapshot_dir: Path, rel: str) -> bytes:
 
 def _excerpt(text: str, ob: dict[str, Any], meta: dict[str, str]) -> tuple[str, str]:
     lines = text.splitlines()
-    # WP-A1（G1 桥接）：义务 doc_type 是英文 key（audit_report…），
+    # WP-A1（G1 桥接）：义务 doc_type 是英文 key（audit_report 等英文 key），
     # 而材料正文是中文 ⇒ 只拿 key 去搜必然落空、退化成「取前 3 行」。
     # `doc_type_terms` 由桥接侧用 requirement service 的 `_DOC_TYPE_RULES` 翻出的中文词
     # （`rq.doc_type_search_terms`），与召回侧同一张表，不另抄一份正则。
@@ -318,7 +400,9 @@ def _access_blocked(m: dict[str, Any]) -> bool:
 
 def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, str]],
                                        ob: dict[str, Any], *, snap: dict[str, Any] | None = None,
-                                       text_root: Path | None = None) -> dict[str, Any]:
+                                       text_root: Path | None = None,
+                                       period_anchor: dict[str, Any] | None = None
+                                       ) -> dict[str, Any]:
     """同主体 + 同文档类型才进入证据；别的主体、别的文档类型（包括注入文件）模型看不到。
 
     ★ **两侧 doc_type 都先归一**（``dts.normalize_doc_type``）再比较：
@@ -332,7 +416,15 @@ def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, 
       （该档在原因枚举的**域外**，由 ``candidate_status`` 表达）；
     - ``candidate_status``：候选侧状态（``CANDIDATE_STATUSES`` 四态）；
     - ``diagnostics``：候选计数与各类过滤计数（年度 / 版本 / 附件 / 权限 / 截断），
-      **空结果不得掩盖这些过滤**。
+      **空结果不得掩盖这些过滤**；另附**期间维度**的四态结论
+      （``period_status`` ＋ ``period_abstain_reason`` ＋ ``period_spec`` ＋ ``period_anchor``）。
+
+    ★ R2-WP1：期间按**语义四态**判（``dd_v1_period_service``），不再拿字符串比字符串：
+      期间**依据不足**（材料自身无年度标注 / 相对期间缺可验证锚点）⇒ 候选**保留**、
+      计入 ``period_unverifiable``、并在 ``period_status`` 记 UNVERIFIABLE
+      ⇒ 上层据此产 UNCERTAIN（**不得**升格 MATCHED，也**不得**判成「不满足/缺失」）。
+    ★ 期间**已知且冲突**（明确年度 vs 别的年份）⇒ 仍计入 ``rejected_by_period``
+      （**期间检查没有被取消，也没有被弱化**）。
     """
     snap = snap if snap is not None else ar.load_snapshot(snapshot_dir, meta)
     ob_dt = dts.normalize_doc_type(ob.get("doc_type"))
@@ -347,9 +439,10 @@ def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, 
         "rejected_by_entity": 0,
         "rejected_by_doc_type": 0,
         "rejected_by_permission": 0,
-        "rejected_by_period": 0,
+        "rejected_by_period": 0,        # 期间**已知且冲突**（MISMATCH）的条数
         "rejected_by_version": 0,
         "rejected_by_attachment": 0,
+        "period_unverifiable": 0,       # 期间**依据不足**（UNVERIFIABLE）的条数
         "read_errors": 0,
     }
     pool: list[dict[str, Any]] = []
@@ -369,8 +462,18 @@ def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, 
             continue
         pool.append(m)
     diagnostics["candidates_total"] = len(pool)
-    # 排序：期间一致、有效版本优先；稳定排序保证可复现
-    pool.sort(key=lambda m: (m["period"] != ob_period, m.get("version_status") != EFFECTIVE, m["file_id"]))
+    # ★ R2-WP1：期间语义四态 —— 义务口径（含锚点解析）＋ 每份材料的兼容判定。
+    #   锚点来源：显式配置 > 原文声明 > **材料自身年度**（可验证来源；**禁**系统时间）。
+    ob_spec = _obligation_period_spec(ob, period_anchor=period_anchor,
+                                       material_years=[str(m.get("period") or "") for m in pool])
+    pool_periods = [str(m.get("period") or "") for m in pool]
+    diagnostics["period_spec"] = ob_spec
+    diagnostics["period_anchor"] = ob_spec.get("anchor")
+    # 排序：期间**对得上**的优先、其次依据不足的、再次已知冲突的；有效版本优先；稳定排序
+    _rank = {"MATCH": 0, "NOT_A_CONSTRAINT": 1, "UNVERIFIABLE": 2, "MISMATCH": 3}
+    pool.sort(key=lambda m: (_rank[ps.compatibility(ob_spec, m.get("period"),
+                                                    pool_periods=pool_periods)["status"]],
+                             m.get("version_status") != EFFECTIVE, m["file_id"]))
     window = pool[:MAX_FILES_PER_OBLIGATION]
     diagnostics["candidates_used"] = len(window)
     diagnostics["truncated_candidate_count"] = max(0, len(pool) - MAX_FILES_PER_OBLIGATION)
@@ -384,6 +487,7 @@ def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, 
             diagnostics["read_errors"] += 1
             continue
         loc, body = _excerpt(text, ob, m) if text is not None else ("UNKNOWN", NO_TEXT)
+        compat = ps.compatibility(ob_spec, m.get("period"), pool_periods=pool_periods)
         out.append({
             "file_id": m["file_id"], "relative_path": m["relative_path"], "sha256": snap[m["file_id"]].sha256,
             "entity": m["entity"], "period": m["period"],
@@ -394,18 +498,25 @@ def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, 
             "doc_type_raw": m.get("doc_type", ""),
             "part": m.get("part", "UNKNOWN"), "version_status": m.get("version_status", "UNKNOWN"),
             "locator": loc, "untrusted_excerpt": body,
+            # ★ R2-WP1：这条证据与义务期间口径的**兼容判定**（四态）+ 理由（留痕，不丢信息）
+            "period_status": compat["status"], "period_reason": compat["reason"],
         })
     # 过滤计数（**不删证据**：近邻材料仍要给模型看，供 OUTDATED 判定）
     need_parts = set(ob.get("required_parts") or [])
     for e in out:
-        if e["period"] != ob_period:
+        if e["period_status"] == "MISMATCH":
             diagnostics["rejected_by_period"] += 1
+        elif e["period_status"] == "UNVERIFIABLE":
+            diagnostics["period_unverifiable"] += 1
         if e["version_status"] != EFFECTIVE:
             diagnostics["rejected_by_version"] += 1
         if need_parts and e["part"] not in need_parts:
             diagnostics["rejected_by_attachment"] += 1
-    # 「可用候选」：期间一致 + 现行有效（与 rule_hint 的 same 口径一致）
-    usable = [e for e in out if e["period"] == ob_period and e["version_status"] == EFFECTIVE]
+    # 「可用候选」：期间**未被证明不可用**（对得上 / 不构成门槛 / 依据不足）＋ 现行有效。
+    # ★ 依据不足（UNVERIFIABLE）的候选**保留**在证据里：不得因「读不出」而当成「没有」。
+    usable = [e for e in out
+              if e["period_status"] in ("MATCH", "NOT_A_CONSTRAINT", "UNVERIFIABLE")
+              and e["version_status"] == EFFECTIVE]
     reason: str | None = None
     if not usable:
         if not ob_dt:
@@ -439,34 +550,112 @@ def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, 
         candidate_status = "PERIOD_OR_VERSION_MISMATCH"   # 候选存在、期间/版本不可用
     else:
         candidate_status = "NO_CANDIDATE"        # 候选为空 ⇒ 原因见 no_candidate_reason
+    # ★ 期间维度的**义务级**结论（域外情形由 diagnostics 承载，不扩枚举）
+    diagnostics["period_status"] = _obligation_period_status(ob_spec, out)
+    diagnostics["period_abstain_reason"] = _obligation_abstain_reason(ob_spec, out)
+    # ★ 把**解析后**的口径回写到义务上（就地富化）：下游（规则提示 / R4 校验 / 模型可见的
+    #   packet）必须用**同一个**已锚定口径 ⇒ 避免「检索层已锚定、校验层还没锚定」的错位。
+    try:
+        ob["period_spec"] = ob_spec
+    except TypeError:      # 不可变的映射类型 ⇒ 跳过（不影响判定）
+        pass
     return {"evidence": out, "no_candidate_reason": reason,
-            "candidate_status": candidate_status, "diagnostics": diagnostics}
+            "candidate_status": candidate_status, "diagnostics": diagnostics,
+            "period_spec": ob_spec}
+
+
+def _obligation_period_status(spec: dict[str, Any], evidence: list[dict[str, Any]]) -> str:
+    """义务级**期间维度**结论（四态）：MATCH / MISMATCH / UNVERIFIABLE / NOT_A_CONSTRAINT。
+
+    ★ 依据不足 ⇒ UNVERIFIABLE（**不得**升格 MATCHED，也**不得**判成「不满足/缺失」）。
+    """
+    if not evidence:
+        return "NOT_A_CONSTRAINT" if spec.get("kind") == "UNKNOWN" else "MISMATCH"
+    statuses = {e.get("period_status") for e in evidence}
+    if "MATCH" in statuses or "NOT_A_CONSTRAINT" in statuses:
+        return "MATCH" if "MATCH" in statuses else "NOT_A_CONSTRAINT"
+    if "UNVERIFIABLE" in statuses:
+        return "UNVERIFIABLE"
+    return "MISMATCH"
+
+
+def _obligation_abstain_reason(spec: dict[str, Any], evidence: list[dict[str, Any]]) -> str | None:
+    """依据不足时的**弃答理由**（写进 abstain_reason；依据充足时为 None）。"""
+    if _obligation_period_status(spec, evidence) != "UNVERIFIABLE":
+        return None
+    for e in evidence:
+        if e.get("period_status") == "UNVERIFIABLE":
+            return e.get("period_reason") or "期间依据不足，无法判定是否符合"
+    return "期间依据不足，无法判定是否符合"
 
 
 def retrieve_minimal_evidence(snapshot_dir: Path, meta: list[dict[str, str]],
                               ob: dict[str, Any], *, snap: dict[str, Any] | None = None,
-                              text_root: Path | None = None) -> list[dict[str, Any]]:
+                              text_root: Path | None = None,
+                              period_anchor: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """同主体 + 同文档类型才进入证据；别的主体、别的文档类型（包括注入文件）模型看不到。
 
     （只想拿证据列表时用这个；要拿「为什么没有候选」用
     ``retrieve_minimal_evidence_detailed``。）
     """
-    return retrieve_minimal_evidence_detailed(snapshot_dir, meta, ob, snap=snap, text_root=text_root)["evidence"]
+    return retrieve_minimal_evidence_detailed(snapshot_dir, meta, ob, snap=snap, text_root=text_root,
+                                               period_anchor=period_anchor)["evidence"]
 
 
 def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]],
-              no_candidate_reason: str | None = None) -> dict[str, Any]:
-    """纯元数据的规则提示（不是 Gold，不能用来评分）。"""
-    same = [e for e in evidence if e["period"] == ob["period"] and e["version_status"] == EFFECTIVE]
+              no_candidate_reason: str | None = None,
+              period_spec: dict[str, Any] | None = None) -> dict[str, Any]:
+    """纯元数据的规则提示（不是 Gold，不能用来评分）。
+
+    ★ R2-WP1：期间按**语义四态**判（不再拿字符串比字符串）：
+    - 期间**对得上**（MATCH）或**不构成门槛**（NOT_A_CONSTRAINT）⇒ 与既有口径一致；
+    - 期间**依据不足**（UNVERIFIABLE）⇒ **UNCERTAIN** ＋ 候选证据 ＋ ``abstain_reason``
+      （**不得**升格 MATCH，也**不得**判成 MISSING/「不满足」）；
+    - 期间**已知且冲突**（MISMATCH）⇒ 旧年份归 OUTDATED（更近的年份不叫过期）。
+
+    ★ 判定优先用**证据上已算好的** ``period_status``（检索层已按锚定后的口径算过），
+      没有该字段的旧证据才回退到现场计算 ⇒ 检索层与提示层口径**同一个**。
+    """
+    spec = period_spec or _obligation_period_spec(ob)
+    pool_periods = [str(e.get("period") or "") for e in evidence]
+    same: list[dict[str, Any]] = []
+    unver: list[dict[str, Any]] = []
+    stale_same: list[dict[str, Any]] = []
+    stale_older: list[dict[str, Any]] = []
+    for e in evidence:
+        status = e.get("period_status")
+        if not status:
+            compat = ps.compatibility(spec, e.get("period"), pool_periods=pool_periods)
+            status = compat["status"]
+        if status in ("MATCH", "NOT_A_CONSTRAINT"):
+            # 期间对得上：现行有效的算「可用候选」，非现行有效的（草稿/被取代）归 stale
+            if e.get("version_status") == EFFECTIVE:
+                same.append(e)
+            stale_same.append(e)
+        elif status == "UNVERIFIABLE":
+            unver.append(e)
+        else:
+            if _period_is_older(e.get("period"), spec):
+                stale_older.append(e)
     if same:
         need = set(ob.get("required_parts") or [])
         have = {e["part"] for e in same}
         if need - have:
-            return {"verdict": "PARTIAL", "files": sorted(e["file_id"] for e in same), "missing_parts": sorted(need - have)}
+            return {"verdict": "PARTIAL", "files": sorted(e["file_id"] for e in same),
+                    "missing_parts": sorted(need - have)}
         use = [e for e in same if not need or e["part"] in need]
         return {"verdict": "MATCH", "files": sorted(e["file_id"] for e in use)}
-    stale = [e for e in evidence if e["period"] == ob["period"]] or (
-        [e for e in evidence if e["period"] < ob["period"]] if ob["period"].isdigit() else [])
+    if unver:
+        # ★ 依据不足 ⇒ 有候选但无法确定是否符合 ⇒ UNCERTAIN（**保留候选证据** ＋ 弃答理由）
+        reason = ""
+        for e in unver:
+            compat = ps.compatibility(spec, e.get("period"), pool_periods=pool_periods)
+            if compat.get("abstain_reason"):
+                reason = str(compat["abstain_reason"])
+                break
+        return {"verdict": "UNCERTAIN", "files": sorted(e["file_id"] for e in unver),
+                "abstain_reason": reason or "期间依据不足，无法判定是否符合"}
+    stale = stale_same or stale_older
     if stale:
         return {"verdict": "OUTDATED", "files": sorted(e["file_id"] for e in stale)}
     hint: dict[str, Any] = {"verdict": "MISSING", "files": [],
@@ -475,6 +664,15 @@ def rule_hint(ob: dict[str, Any], evidence: list[dict[str, Any]],
         # 证据为空 ⇒ 必须说清**为什么**没有候选（不得统一伪装成「没有材料」）
         hint["no_candidate_reason"] = no_candidate_reason
     return hint
+
+
+def _period_is_older(material_period: Any, spec: dict[str, Any]) -> bool:
+    """材料的年度是否**早于**义务要求的年度（更近的年份不叫过期）。"""
+    mp = ps.normalize_material_period(material_period)
+    years = [int(y) for y in (spec.get("years") or [])]
+    if mp["kind"] != "YEAR" or not years:
+        return False
+    return int(mp["year"]) < min(years)
 
 
 def redact_for_output(obligations: list[dict[str, Any]],
@@ -507,8 +705,12 @@ def redact_for_output(obligations: list[dict[str, Any]],
 def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
                           raw_items: list[dict[str, str]], *,
                           obligations: list[dict[str, Any]] | None = None,
-                          text_root: Path | None = None) -> dict[str, Any]:
-    """obligations：操作员预先拆好的义务（真实清单字典外条目多时用），给了就不再规则拆分。"""
+                          text_root: Path | None = None,
+                          period_anchor: dict[str, Any] | None = None) -> dict[str, Any]:
+    """obligations：操作员预先拆好的义务（真实清单字典外条目多时用），给了就不再规则拆分。
+
+    ``period_anchor``：**显式配置**的可验证锚点（相对期间用；不给则不擅自假定）。
+    """
     # WP-A1（G5 位置 1）：出模型前的 PII 拒识——义务文本与摘录进 prompt 前必须脱敏。
     # 纯规则、确定性；拒识统计留痕进包（pii_redactions），原 raw_items 不得被就地改写。
     from cangjie_fos.services import dd_v1_pii_service as pii
@@ -525,20 +727,22 @@ def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
     if ob_views is not None:
         obs, flags = ob_views, []
     else:
-        obs, flags = split_items(raw_items)
+        obs, flags = split_items(raw_items, period_anchor=period_anchor)
         obs = [_ob_view(o) for o in obs]
         # ★ 输出面脱敏：旗标里的 segment / unparsed_segments / text 同样可能带明文 PII
         #   （义务文本已由 _ob_view 脱敏）⇒ 旗标必须走同一层，否则明文会经
         #   packet.json → PROMPT.txt → run_record.json 落盘。
         _, flags = redact_for_output([], flags)
     detail = {o["obligation_id"]: retrieve_minimal_evidence_detailed(snapshot_dir, meta, o,
-                                                                   snap=snap, text_root=text_root)
+                                                                   snap=snap, text_root=text_root,
+                                                                   period_anchor=period_anchor)
               for o in obs}
     evidence = {oid: d["evidence"] for oid, d in detail.items()}
     # 「为什么没有候选」结构化留痕（**不得**统一伪装成 MISSING / 没有材料）
     evidence_status = {
         oid: {"no_candidate_reason": d["no_candidate_reason"],
               "candidate_status": d["candidate_status"],
+              "period_spec": d.get("period_spec"),
               "diagnostics": d["diagnostics"]}
         for oid, d in detail.items()
     }
@@ -569,7 +773,7 @@ def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
         "pii_redactions": {
             "applied": True,
             "count": redaction_count["count"],
-            "note": "出模型前 PII 拒识（dd_v1_pii_service，纯规则）；占位符：[身份证]/[账号]/[手机]/[统一社会信用代码] 等",
+            "note": "出模型前 PII 拒识（dd_v1_pii_service，纯规则）；脱敏记号：[身份证]/[账号]/[手机]/[统一社会信用代码] 等",
         },
     }
 
@@ -652,11 +856,13 @@ def validate_semantic(raw: str | None, snapshot_dir: Path, meta: list[dict[str, 
 
 def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], raw_items: list[dict[str, str]],
                  budget: Any = None, workdir: Path | None = None, *,
-                 obligations: list[dict[str, Any]] | None = None, text_root: Path | None = None) -> dict[str, Any]:
+                 obligations: list[dict[str, Any]] | None = None, text_root: Path | None = None,
+                 period_anchor: dict[str, Any] | None = None) -> dict[str, Any]:
     """建语义包 → Adapter（WP03）→ R4 校验 → 语义校验。run_record 里两层结果都留着。"""
     from cangjie_fos.services import dd_v1_agent_adapters as ad
 
-    packet = build_semantic_packet(snapshot_dir, meta, raw_items, obligations=obligations, text_root=text_root)
+    packet = build_semantic_packet(snapshot_dir, meta, raw_items, obligations=obligations,
+                                   text_root=text_root, period_anchor=period_anchor)
     non_eff = frozenset(m["file_id"] for m in meta if m.get("version_status", EFFECTIVE) != EFFECTIVE)
     # #77 复核中：两层用同一份 non_effective，结论不会互相矛盾；下游只认 authoritative_validation
     rec = ad.run_agent(adapter, snapshot_dir, meta, packet["obligations"], budget,
@@ -673,7 +879,8 @@ def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], r
     status = packet.get("evidence_status") or {}
     rec["rule_hints"] = {o["obligation_id"]: rule_hint(
                             o, packet["evidence"][o["obligation_id"]],
-                            (status.get(o["obligation_id"]) or {}).get("no_candidate_reason"))
+                            (status.get(o["obligation_id"]) or {}).get("no_candidate_reason"),
+                            (status.get(o["obligation_id"]) or {}).get("period_spec"))
                          for o in packet["obligations"]}
     rec["rule_hints_note"] = "规则提示不是 Gold，不能用于评分"
     wd = Path(a["workdir"]) if a.get("workdir") else workdir
@@ -705,7 +912,7 @@ def local_material_snapshot(material_root: Path, meta: list[dict[str, str]], *, 
 
 
 def load_real_material(*_: Any, **__: Any) -> None:
-    """保留旧入口：不带 opt-in 一律拒绝。请用 local_material_snapshot(..., allow_real=True)。"""
+    """保留旧入口：不带 opt-in 一律拒绝。请用 local_material_snapshot(material_root, meta, allow_real=True)。"""
     raise Blocked("BLOCKED: OQ-3 默认不允许真实材料；本机操作员请用 --allow-real-material")
 
 
@@ -727,7 +934,7 @@ def score_against_gold(run_records: list[dict[str, Any]] | None = None, gold: li
                        *, min_obligations: int = 30, high_conf: float = HIGH_CONFIDENCE) -> dict[str, Any]:
     """按 Gold 评分。没有 Gold → NOT_SCORABLE（不伪造）。
 
-    Gold 每条：{obligation_id, expected_verdict, expected_files:[file_id...]}；只用 file_id，不含路径/正文。
+    Gold 每条：{obligation_id, expected_verdict, expected_files:file_id 列表}；只用 file_id，不含路径/正文。
     结果只读 run_record 的 authoritative 层（semantic_validation.accepted），被拒/缺失算 NO_ANSWER。
     同时给规则提示（RULE_ONLY 基线）打分，便于对照。
     """
