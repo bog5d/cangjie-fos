@@ -190,21 +190,66 @@ def _adapter(a):
     return ad.ADAPTERS[a.adapter]()
 
 
+# gm-fix-minor4-fixture-gate: exemption-by-original-material-root-only
+def _fixture_exempt(orig_material_root: Path) -> bool:
+    """合成 fixture 豁免：**只看原始材料根**（输入是什么），不看输出落在哪。
+
+    ★ 唯一判据口径（监工第 38 条①）：原始材料根在仓内 backend/tests/fixtures 下 ⇒ 豁免；
+      否则一律视为真实材料，必须 --allow-real-material。
+    ★ 本函数**只吃一个参数** ⇒ 输出路径（盲化目录 / 冻结目录）在结构上**无法**影响豁免。
+    """
+    return sem._inside(orig_material_root, ROOT / "backend" / "tests" / "fixtures")
+
+
+# gm-fix-minor4-write-guard: refuse-writing-outside-material-into-repo
+def _guard_material_output_not_in_repo(a, orig_material_root: Path) -> str | None:
+    """仓外材料**不得**把副本写进仓库目录（公开仓泄漏面）。
+
+    闸口（fixture 豁免）只拦「处理」，拦不住「写副本」：
+    `_prepare_material` 在闸口**之前**就把盲化/冻结副本写到 `--blind-material-out` /
+    `--snapshot-freeze-dir` ⇒ 即使随后 exit 3，仓外材料的副本**已经**落进仓库树
+    （实测：只按原始根判的 B' 案同样被污染）。
+    ⇒ 这里在**任何写入之前**先拦：源材料不在仓内 fixture 下时，
+      盲化 / 冻结 / 评估目标一律不得落在仓库树内（仓内合成 fixture 源不受此限）。
+    """
+    if sem._inside(orig_material_root, ROOT / "backend" / "tests" / "fixtures"):
+        return None  # 仓内合成 fixture ⇒ 允许在仓内落副本
+    for attr in ("blind_material_out", "snapshot_freeze_dir", "snapshot_evaluate_dir"):
+        val = getattr(a, attr, None)
+        if not val:
+            continue
+        p = Path(val).resolve()
+        if sem._inside(p, ROOT):
+            return (f"BLOCKED: 仓外材料不得写入仓库目录（--{attr}={p}）；"
+                    f"请把盲化/冻结目标指向仓库外的目录")
+    return None
+
+
 # GM:A4A:CLI:RUN-HEAD
 def cmd_run(a) -> int:
     meta = _json(Path(a.meta))
     orig_material_root = Path(a.material_root).resolve()
+    # gm-fix-minor4-write-guard: refuse-writing-outside-material-into-repo
+    blocked = _guard_material_output_not_in_repo(a, orig_material_root)
+    if blocked:
+        print(f"拒绝：{blocked}", file=sys.stderr)
+        return 3
     material_root, meta = _prepare_material(a, orig_material_root, meta)
-    # gm-fix-a4a-minor4: fixture-exemption-on-original-material-root
-    # ★ 合成 fixture 豁免必须按**原始**材料根判定。
-    #   `_prepare_material` 会把材料搬到 `--blind-material-out` / `--snapshot-freeze-dir`，
-    #   若按**冻结后**路径判：冻结到仓外（/tmp）⇒ 豁免**不可达** ⇒ 合法合成材料
-    #   被误判为真实材料而 Blocked（exit 3）。原实现被交付测试「把冻结目标指回仓内」
-    #   这一巧合盖住 ⇒ 一直没人发现。
-    #   修法：原始材料根 **或** 冻结后材料根，任一落在仓内 backend/tests/fixtures 下即豁免。
+    # gm-fix-minor4-fixture-gate: exemption-by-original-material-root-only
+    # gm-fix-a4a-minor4: fixture-exemption-on-original-material-root（前序标记：当时口径写错，见下）
+    # ★ 合成 fixture 豁免**只按原始材料根**判定（看**输入**是什么，不看输出落在哪）。
+    #   `_prepare_material` 会把材料搬到 `--blind-material-out` / `--snapshot-freeze-dir`；
+    #   若把**盲化后/冻结后**路径也算进豁免：输出落在仓内 backend/tests/fixtures 下
+    #   ⇒ 任意仓外材料都自动获得豁免 ⇒ 真实材料闸口形同虚设（可被放行），
+    #   且仓外材料的副本被写进仓内（公开仓泄漏面）。
+    #   ★ 对照实验（会话工作区探针 v2，四组 A/B/B'/C；被测代码 sha256 前缀 15282351088537ee）：
+    #       A 仓内合成 fixture         ⇒ 放行（rc 0）
+    #       C 仓外材料 + 不盲化        ⇒ 拒绝（rc 3，BLOCKED: 真实材料）
+    #       B 仓外材料 + 输出落仓内    ⇒ 旧实现**未触发** BLOCKED（闸口被绕过）
+    #       B' 同 B 但只按原始材料根    ⇒ 拒绝（rc 3）⇒ 绕过确由 `or` 那一半引入
+    #   修法：豁免只看 `orig_material_root`（**输入**是不是仓内合成 fixture）。
     #   ★ 不放宽真实材料：原始材料根在仓外时仍必须 --allow-real-material。
-    fixture = (sem._inside(orig_material_root, ROOT / "backend" / "tests" / "fixtures")
-               or sem._inside(material_root, ROOT / "backend" / "tests" / "fixtures"))
+    fixture = _fixture_exempt(orig_material_root)
     try:  # 仓库内合成 fixture 免开关；其他任何目录都视为真实材料，必须 --allow-real-material
         snap_dir = sem.local_material_snapshot(material_root, meta,
                                                allow_real=fixture or a.allow_real_material)
