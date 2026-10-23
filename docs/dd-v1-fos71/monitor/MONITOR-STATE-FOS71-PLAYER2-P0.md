@@ -7134,3 +7134,58 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 
 ■ 9 本节自身读数（当刻事实，会变）
 · 本节号按执行点现读枚举取（见 ■0 顺延登记）；★**本节只追加**；★**正文不写本节号**（引用本节一律写「见本节标题」）⇒ 避免并发推进改写正文。
+### 一百二十九、2026-10-23T15:3xZ 续办轮 · ★T2 已落地（#81 tip 前进）＋ CI 读数时刻差更正 ＋ 合流判据三档补答 ＋「OBS-1 标记」判据落点待定位
+
+■ 一、★我方上一轮「#84 的 440+ 仍未收尾」已被取代（读数时刻差，不是事实冲突）
+· #84 head ＝ 笔 G `32af192c62818f599418bb06311b09dce5b7848e`（本轮现读未变）。
+· 三条 check-run 终态全 completed/success：`Backend Tests (440+ required)` run id `120471394027` 14:32:07Z → 15:04:03Z（31 分 56 秒）｜`Frontend Build Check` id `120471393959` 14:32:07Z → 14:32:24Z｜`Backend Tests (228 required)` id `120471393479` 14:32:07Z → 14:36:23Z。
+· ⇒ 与司仓席 15:07Z 现读**逐位一致（同 head、同 run id、同收尾时刻）** ⇒ 我方那句在其读数时刻（15:04 之前）为真、现被取代 ⇒ **读数时刻差，不是事实冲突**。
+· ★固化：判 CI 状态必须带**「head 全串 ＋ run id ＋ 起止时刻」三件一体**；同名 check 在不同 head／不同触发事件上**不可互读**。
+
+■ 二、★T2 已落地：#81 tip 前进（重大新事实）
+· 新 tip `1baeb89c00b42d69f2c86af35ee52223a3245073`（author＝committer＝`Player2 T2 Executor`，2026-10-23T15:23:22Z，父 `16e18b21f261fb97e22352a64cc64ebb289c74ea`）。
+· commit message **自报**跑批（本席未复跑）：基座 24 文件 353 collected / 0 failures / 0 errors / 0 skipped / exit 0；本笔 25 文件 364 collected / 0 failures / 0 errors / 0 skipped / exit 0；用例 ID 集合删除 0、新增 11（全为 G5 新增）⇒ 零退化；失败 ID 全集＝空；**未跑全量**（全量由独立复核席在终态合并面执行）。
+· **T2 笔自身变更面**（父 → 新 tip，树对树按 type 分桶）：**A0 ／ D3 ／ M(blob) 6 ／ 派生 tree 7**；M 6 件＝`AGENTS.md`／`CHANGELOG.md`／`dd_v1_card_service.py`／`dd_v1_doc_type_service.py`／`dd_v1_match_service.py`／`dd_v1_policy_service.py`。
+· ★**四服务文件 blob 与 G5 分支 tip 逐位相同**（`9c7b042853a6f93b27fd443bdd5dfb42d5d57253`／`e2847ad6d58b9a7914092f5fab1daa498a92aaea`／`8246cfcf70f8c7c058e3c80ad680ca9fb77c18e9`／`f3ab71e19a9af2f974d5ee0a7699b9498a0d34ae`）⇒ **G5 四服务文件内容确已原样并入 #81**。
+· ★**该 commit 的 check-run 6 条 ＝ 两类事件各 3 条**（push 与 pull_request 各一套 ⇒ **同一 head 上同名 check 会有两个不同 id**）：`Frontend Build Check` 两条 completed/success（→15:24:52Z）｜**`Backend Tests (440+ required)` 两条 in_progress**（id `120497600563` 15:24:36Z 起、id `120497623444` 15:24:39Z 起，**未收尾 ⇒ 禁记红禁记绿**）｜`Backend Tests (228 required)` 两条 in_progress。
+· ⇒ 司仓席要的「T2 落地后新 #81 tip 全串 ＋ 该 commit 的 check-run 起止」＝ 上两段（**440+ 两条均未收尾**，起止 15:24:36Z 与 15:24:39Z）。
+
+■ 三、★合流判据三档（司仓席要我方补的那条已有答案）＋ 第四档（我方新增）
+· ① **#81 head 是否前进：成立**（`16e18b21f261fb97e22352a64cc64ebb289c74ea` → `1baeb89c00b42d69f2c86af35ee52223a3245073`）。
+· ② **G5 四服务文件是否与 merge base `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 逐位不同：成立**（四件全不同）。
+· ③ ★**R2 线测试资产是否已并入 #81：不成立** —— `backend/tests/test_dd_v1_period_service.py`（C-1 回归锁所在文件，blob `0ae978ed6922d5ed521dad786c795cbb2fb1d0dd`）在 #81 新 tip 树里 **ABSENT**，仍只在 R2 线上 ⇒ **C-1 回归锁测试未随 T2 并入 #81** ⇒ 合流仍不完整。（旁证：`backend/tests/test_dd_v1_fos71_player2_p0.py` 两面 blob 逐位相同 `4ef15e1aac72d96027cab5320ca293d8f5f4c885` ⇒ 该件已在 #81 上。）
+· ④ ★**我方新增第四档：#81 面 ≠ 终态合并面** —— `tools/dd_v1_local_run.py` 在三个面上是**三份互不相同的字节**：#81 新 tip `9c0412cea06b00902b3be39b1e215c8bcf8508da`｜G5 分支 `bb1f8e5eb2b1f0e3d4596d764f7dceed4cbf83a6`｜R2 笔 G `3981543733ca643b0caaab255de77729ff8a964b` ⇒ **终态合并面必须同时含 #81 面的四服务文件 ＋ R2 面的 local_run ⇒ 合并面不是任何单一分支的 tip**。
+  ★**这与「真冲突 0 条」不矛盾**：真冲突＝同一文件两侧都改且内容不同（此处无）；此处是**不同文件各带各的改动** ⇒ 合流面必须由两侧合成，不由任一侧 tip 代表。
+
+■ 四、★「终态 head 声明」动作取消（司仓席 §一百二十六）⇒ 我方上一节 §6 第一条作废
+· 等的对象改为 **T3′ 独立复核席的 VERDICT**，唯一落点 ＝ PR #84 的一条 comment（复核席自投）。
+· 本轮现读 #84 comments **恰 1 条**（旧 `6364959808`，`VERDICT: FAIL`，2026-10-23T12:32:59Z，锚旧 head）⇒ **T3′ VERDICT 尚未到达**。
+· ⇒ 我方下一轮核点：#84 是否出现新 comment，且出具者＝复核席、锚＝终态合并面 tree sha ＋ 逐路径 blob 清单 ＋ 合并面全量跑批五元组 ＋ 失败 ID 全集 ＋ doctor 单跑 ＋ 五项合并放行硬判据 ＋ 耗时断言两次读数的失败 ID 全集 ＋ T4 覆盖清单 ＋ merge 树 vs head 树 .py 差异逐条。
+
+■ 五、★「OBS-1 两枚标记」判据的落点在我方核过的面上定位不到（探针面未尽 ⇒ 既不判成立、也不判不成立）
+· 我方一手现读：`tools/dd_v1_local_run.py` 内「OBS-1」**0 处**、「OBS」大写 **0 处** —— 分别在 #81 新 tip、G5 分支、R2 笔 G 三份上各测一次。
+· 另在 #81 新 tip 的 6 个相关 blob（local_run、G5 四服务、team_channel、semantic_retrieval）内扫「OBS」大写：**各 0 处**。
+· GitHub code search（master 面）「OBS-1」全仓**恰 1 处** ＝ `docs/dd-v1-fos71/wp05-real-integration/A4-BLIND-EXAM.md`（**文档，非代码**）。
+· ⇒ ★**「两枚 OBS-1 标记各 ≥1」这条判据的落点（哪个文件）或字面形态（大小写／连字符／中文编号）须由司仓席与 T3′ 席指认**；我方**未做 #81 全体 blob 的穷举** ⇒ **禁下否定结论**。
+· ⇒ ★对 T3′ 的要求：该判据的**可复算读数**必须随 VERDICT 给出「量的是哪个文件的哪个字面、多少处」；否则下一棒无法复算。
+
+■ 六、★兄弟席 15:04Z 席「六态未贯通到 DSH 薄入口」：本席独立复核三条核心机械证（均成立），穷举面引用不代认领
+· 实现面：`backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py`（blob `8a7fb6986cc5898d3021321d1b9de30a1c30bedc`）内 `NO_CANDIDATE_REASONS` 2 处／`candidate_status` 14 处／`evidence_status` 6 处／`no_candidate_reason` 15 处 ⇒ 实现面成立。
+· 桥接面：`backend/src/cangjie_fos/services/dd_v1_bridge_service.py`（blob `c23d62c160a94bb64d4f30313c0a86e754f10842`）内 `rule_hint` 调用 调用**只传 2 参**（`ob, ev`）⇒ 第三参在桥接边界丢失 ⇒ 桥接面成立。
+· 薄入口面：`tools/dd_team_channel.py` 在 #81 新 tip 与基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 上 blob 逐位相同（`8f08d560a4c4a147efca4e43c6f727114662af34`）⇒ 薄入口面成立。
+· ★**「无任何生产入口读这三键」这一条**（兄弟席全仓 380 个 .py 扫描、`truncated=False`、总条目 879）**本席未独立复算该穷举面** ⇒ 引用不代认领。
+
+■ 七、台账链 · 取号 · 重号组
+· 链：`76f47a534b48a774bb55563a95b4747bdd84852c`（§一百二十三，兄弟席）→ `9bc9787f03a1dac5c218cdecf97c82b74f403735`（§一百二十四，**本席**）→ `5319592506026027f917bfeda61f24e3b43307ea`（§一百二十五，兄弟席，**父＝本席 §一百二十四**）→ `752e79bf5f301b2573bddd79fca02f90ac435704`（§一百二十六，司仓席，15:25:02Z）→ `32b6353f7889f48d944037a3f33a6e4aa7cdfabf`（§一百二十七，11:40Z 席）→ `f44fe24fd5bcfdbf00d7d34192b1e6ad85c197f4`（§一百二十八，11:40Z 席，15:32:04Z）⇒ **链连续、无分叉、本席 §一百二十四 字节在位**（台账现读 1,570,418 B，"A4 定性更正" 与 "C-1 归因" 均在位）。
+· 顶层节号 used 101、max 126；**重号组仍 6 组**（45／62／71／74／111／112）**未增未减**。
+· ★**下一空闲自 §一百三十 起**（执行点现读枚举，禁预告）。
+· ★**取号避让（两轮顺延，0 撞号 0 残留）**：起草拟用 §一百二十七 ⇒ 执行点现读已被 11:40Z 席占（§一百二十七 与 §一百二十八 连落两节）⇒ 顺延取 §一百二十九。
+· ★**标题形态跨席不统一**（本席用「### 一百二十四、」；兄弟席／司仓席另用一种形态）⇒ 检索键不能只认一种形态。
+
+■ 八、两账 ±0 · 状态 · 边界
+· 工程 **4/6**（数字未变；本轮改的是合流判据与 CI 读数，**不改分子**）。
+· 效果 **0/100 REAL_PASS**（T2 笔自陈「本笔不代表效果已验证」；远端唯一盲考成绩仍为 8 义务**合成自检**，agent 0.125 ＜ RULE_ONLY 控制组 0.25 ⇒ 不折算）。
+· R2-WP1 **0/1**（#84 上仍只有旧 FAIL 裁定，锚旧 head）。
+· 硬门槛 0 PASS / 0 FAIL / 9 UNKNOWN｜活跃 PRODUCTIVE｜**该踢吗 NO**。
+· **0 出波总卡**（本轮为已登记读数的时刻差更正 ＋ 合流判据补项，非新待人类裁决项）。
+· 边界 0：0 写产品码｜0 合并任何分支｜0 关 PR｜0 代写 VERDICT｜0 改 AC・尺子・名册｜0 写施工方工作树｜0 改写他人已落字节｜0 amend｜0 force｜0 唤醒｜0 spawn｜0 输出明文 token。
