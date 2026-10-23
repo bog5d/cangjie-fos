@@ -672,3 +672,88 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 - ★**本轮四笔落盘清单（40 位全串，均快进非 force，变更面各为「新增 0 ／ 删除 0 ／ 既有 blob 变更 1」，`backend/` 与 `tools/` 变更 0）**：第一笔 `04ac45709b206fec27c0bcfb2538a7d12ffe51ee`（轮次 6 主体，父 `d41169c1047c2db5a647c9c8d606af7b628c6630`）｜第二笔 `8fcdf51d70072f7f58e899a60f95aa6ca0a7584f`（回填回执，**节号误写为「轮次 7」，见 §十**）｜第三笔 `dee33aac121efbddd60fc0ec7b096f7100396d45`（§十 节号更正）｜第四笔 = 本笔（时刻标签精度更正，父 = 第三笔）。
 - **本笔增量字节** 禁形自检：F1 至 F6 **逐族命中合计 0**（阳性对照必响、阴性对照必静）。
 - ★**一处可复用的判据**（本轮亲历）：**手打时刻标签的"估"会在落盘件里留下看似精确、实则越界的读数** ⇒ **凡"区间结束时刻"这类无法当场核到的量，一律写成 `05:3xZ` 形态（末位留 x）**，**禁写成具体分钟**。★兄弟轮 §标题用的正是 `05:2xZ` 形态 ⇒ **本轮这条是我方未对齐兄弟轮口径的缺陷，登记不追改兄弟字节**。
+
+## 轮次 7（2026-10-23T05:40Z–05:5xZ · 会话 455398010409544 · cron run 455398210982515）
+
+- 巡检会话：`455398010409544`（task `455353976279398`，run_id `455398210982515`，status=1，scheduled 2026-10-23T05:40:00Z，delivered 05:40:12.253Z）
+- 取数窗口：2026-10-23T05:40:29Z ～ 05:4xZ（远端 refs／heads／tree／blob 现读 ＋ 真实 blob 字节求值）
+- ★轮次号口径：本文件 L648 标题里的「轮次 7 第二笔落盘回执」已由轮次 6 §十 更正为**轮次 6 的第二笔**，故真实轮次上限为 6，**本轮取 7**（回填笔不占新轮次号）
+
+### 一、本轮结论
+
+- 修复分支 tip **未前进**（现读 05:40:37Z ＝ `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`，与上一轮逐位相同；该 commit committer 时刻 2026-10-23T05:10:01Z ⇒ 至本轮现读距 **30 分 36 秒**）
+- 独立 Gate 复核席 `455362122437017` **在跑**（末条 turn epoch 1792734116280 ＝ 2026-10-23T05:41:56.128Z，`finish_reason=toolUse`；正在跑改动侧与基线侧双侧测试并求失败 ID 差集，**尚未落 PR comment**）
+- PR #81 仍 **comments 0／reviews 0／review comments 0** ⇒ **独立 Gate 结论未落** ⇒ 工程账分子不计
+- **两账均不动**：工程 **0/4**；效果 **0/100 REAL_PASS**
+- **无变化 ⇒ 本轮不发波总卡**（波总口径：正常无变化不必反复报告），只追加本状态卡
+
+### 二、远端权威现读
+
+| 对象 | 读数 |
+|---|---|
+| 修复分支 tip | `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`（committer 2026-10-23T05:10:01Z；**单父** ＝ master tip；快进非 force） |
+| master tip | `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（**未前进**） |
+| heads 全量 | **32 个**（05:40:40Z 现读）；除修复分支外，全部 71-* 分支的 tip commit 时刻 **≤ 2026-10-22T12:03:57Z** |
+| 未授权分支（双 Writer 风险） | **无**。`feat/71-a0-baseline-trace`（2026-10-21T15:54:39Z）等 71-* 均为历史残留，**本轮无新增** |
+| PR #81 | open／未合并／commits=1／changed_files=14／+1911 −63／mergeable_state=blocked／**comments 0／reviews 0** |
+
+### 三、变更面三列（基线 ＝ master tip）
+
+- **文件级**：新增路径 **6** ／ 删除路径 **0** ／ 既有路径 blob 变更 **8** ＝ **14**（与 PR changed_files 一致）
+- **树对象级**（含目录项）：新增 **7** ／ 删除 **0** ／ 既有变更 **16** ＝ 23；差值全部来自 4 个目录项与 1 个新目录
+- 新增 6 路径：测试 1 ＋ 交卷包 5（EVIDENCE／TEST-EVIDENCE／CALLCHAIN／SKILLS-REVIEW／SHA256SUMS）
+
+### 四、正式入口与类型表（字节级）
+
+- **正式入口已修**：`tools/dd_v1_local_run.py`（head blob `bb1f8e5eb2b1f0e3d4596d764f7dceed4cbf83a6`）L172 至 L185 走 `dts.is_index_artifact(f.name)` → `dts.resolve_doc_type(file_name=f.name)` → 写 `doc_type` 与 `doc_type_provenance`；**base 侧该文件 `resolve_doc_type` 0 命中** ⇒ 确为本 PR 新增，不是只改测试脚本
+- **类型取值空间单一**：`_DOC_TYPE_RULES` **仅**在 `dd_v1_requirement_service.py`（head blob `eccb7dfe844cf96db88c125b20c786057488f92c`）**有定义**；其余 5 处（bridge／card／doc_type／policy／semantic）**只引用不定义** ⇒ **无第三套类型表**
+- **权威 10 类**（逐个列出，**恰 10**）：audit_report、financial_statement、tax、license、charter、capital、resolution、ip、labor、contract
+- 旧 7 类中文表：`DOC_TYPE_ALIASES` 在 base 与 head **均 0 命中**；类型判定改走公开 API `parse_doc_type_spans`
+- `tools/dd_team_channel.py` **本 PR 未改**（head blob ＝ base blob `8f08d560a4c4a147efca4e43c6f727114662af34`）：无类型表定义，仅透传上游 `doc_type` ⇒ 正式入口两项中**该改的 1 个已改**；dsh 入口是否需改仍**归 Gate 判**，我方不代判
+- ★**观察项（非违规，不判红）**：`dd_v1_match_service.py` 的 `_DOC_TYPE_PURPOSE_MAP` 硬写了同一 10 个 key 的**认知卡 purpose 关键词**映射 —— 属**另一维度**（非类型取值表、未引入新 key），但权威集若变更该处会漂移 ⇒ 记观察项
+
+### 五、空候选六态（字节级）
+
+- `NO_CANDIDATE_REASONS` **恰 6 项**：NO_MATERIAL、UNRESOLVED_DOC_TYPE、UNKNOWN_ENTITY、PERMISSION_BLOCKED、RETRIEVAL_EXHAUSTED、OTHER（**base 侧不存在该枚举** ⇒ 本 PR 新增）
+- `CANDIDATE_STATUSES` **恰 4 态**：OK、EXHAUSTED、PERIOD_OR_VERSION_MISMATCH、NO_CANDIDATE
+- `evidence_status` 已进 packet（构造 L539／入包 L568／读回 L672 至 L673）⇒ **不统一伪装成 MISSING** 的机制在字节上成立
+- 多类型段留痕 `AMBIGUOUS_SPLIT`：语义服务 3 处 ＋ 正式入口 1 处
+
+### 六、交卷包自检（本轮独立复算，**不采信上一轮自报数**）
+
+- `SHA256SUMS` **12 行逐行实算 12/12 一致**；**不含自身行**、**不含 EVIDENCE 行**
+- EVIDENCE §11 锚点表 **13 行四项制 13/13 合规**（路径＋字节数＋sha256＋UTC＋40 位 blob 全串，逐行与 head 树对账）
+- ★**本监工探针自曝（对象无缺陷）**：首跑探针的路径提取只认 `docs/`、`backend/`、`tools/` 三个前缀 ⇒ 把根目录的 `AGENTS.md`、`CHANGELOG.md` 读成 path_missing；**改探针后 13/13 全合规** ⇒ 探针过窄 ≠ 对象缺陷，**未改被验对象**
+- 冻结尺子字节级读回：`GOAL-CONTRACT.v3.8.json` blob `106699d2c8a3e8e4d00124070eee6d417038cb49`／10,818 B（head 与 base 同一 blob）
+
+### 七、两条账（互不换算）
+
+- **工程 0/4**（PR #81 comments 0、reviews 0 ⇒ 无独立 VERDICT ⇒ 分子不计）
+- **效果 0/100 REAL_PASS**：冻结尺子 `goal_alignment.outcome_metrics` 五项 —— O1 权重 25、O2 权重 25、O3 权重 20、O4 权重 20、O5 权重 10，**verified_points 全 0、status 全 UNKNOWN**；UNKNOWN 既不算 PASS 也不算已证伪，合成与 MOCK 不折算
+
+### 八、活跃态 · 四件事分开判
+
+① **cron 在跑**：周期巡检 cron `455353976279398`（`*/20 * * * *`，enabled）；`view=runs` 连读 **9 轮 status 全 1**
+② **监工在工作**：本轮独立复算 ＋ 本状态卡追加；上一轮四笔落盘 05:35:56Z 至 05:39:17Z
+③ **开发者是否真正施工**：**否（已交卷、待 Gate）** —— 执行席 `455355742003520` 末条 turn epoch 1792732443350 ＝ 2026-10-23T05:14:03.350Z，`finish_reason=stop`，内容为交卷完成；其末次 `git status` 读数（05:13:40Z）为干净 ⇒ **工作树无新增改动**
+④ **是否产生新的功能成果**：**否** —— 本轮远端 **0 新字节**（修复分支 tip 未前进、master 未前进、PR 无新 comment）
+
+### 九、该踢吗：**NO**
+
+- 机械判据三条**同时成立**（tip 未前进 ≥25 分钟／工作树无新增／执行器末条非 toolUse），但**「已在跑不打扰」优先**：下一棒是**独立 Gate 且 Gate 正在跑**（05:41:56.128Z toolUse）⇒ 唤醒已交卷的执行席 ＝ **造第二写者**
+- **恢复次数：本轮 0 次**（此前亦 0 次）⇒ 未触及「连续 2 次恢复同一 HEAD 无新 commit」的停止条件
+- ★**工作树状态：不可得**（本沙箱无 FOS 克隆，禁止假设存在）⇒ 记「不可得」不记「无」；上条工作树读数取自**会话消息层**（执行席末次记录），**非远端字节层**
+
+### 十、cron 面复核（`cron_read view=list`，本轮现读）
+
+- **本工程周期巡检 cron 恰 1 条**：`455353976279398`
+- 同账号另有 CF `455347827208431`、INC3 `455164742488166`，**属别的工程** ⇒ **不是重复调度，禁误判、禁删除**
+- 另有 3 条一次性 self-reminder（2 条 INC3、1 条 FOS R10 续跑）⇒ **非周期件**，不计入重复调度；本轮**未新建任何调度器**
+
+### 十一、下轮必查
+
+① 修复分支 tip 与 master tip **重新现读**（禁沿用本轮时点结论）；② PR #81 comment/reviews 是否出现**独立 VERDICT**（**工程账只在此处进分子**）；③ 复核席 `455362122437017` 末条 turn（判活只认 role／finish_reason／tool_calls＋timestamp）；④ 修复分支是否前进到第二笔快进 commit（若 Gate 判 FAIL，禁原地改已交卷 SHA）；⑤ CI 红是否以**基线 SHA＋CI 实际命令**完成既有性取证（交卷件 §6.1-2 的 doctor_script 口径与 CI 的 10 条 OCR 集合**不同源**，不得直接引用）；⑥ 两账变动**分列**报告
+
+### 十二、轮次 7 回填笔落盘回执（不改动第一笔字节）
+
+（本节在落盘后回填：commit 40 位全串、父 commit、blob 40 位全串、字节数、sha256、变更面三列、禁形自检分族计数与对照结果）
