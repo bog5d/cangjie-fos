@@ -278,9 +278,22 @@ def evaluate_file(
         # 原实现只要 sensitivity 非空就放行 —— 填「secret」也能过，
         # 等于**填了等级比留空更危险**。现在由策略给出级别→可外发映射，
         # 未知等级按「不可判定」处理，一律不可外发。
+        #
+        # ★ G5（PR #81 登记缺口的修复面）：披露闸的输入是**材料自己的类型**，
+        #   不再是「整段的类型归属」（= 义务侧的 doc_type）。
+        #   过去：一条清单项若横跨多类材料（例：「营业执照与2024年度审计报告」），
+        #   整段只落**一个**类型 ⇒ 段内**可外发类**（执照）的材料被按另一类判定
+        #   ⇒ 被披露闸拦下 ⇒ 授权组包取不到它（G5 的成因环 + 后果环）。
+        #   现在：按材料自己命中的**全部**类型判定 ⇒ 可外发类材料不再被连坐；
+        #   反向也一并变严：段内**受限类**材料不再被段的「可外发类」类型放过
+        #   （它的等级由自己的类型派生，类型闸逐类判）。
+        #   材料自身类型认不出（UNKNOWN）⇒ 退回段的类型（沿用既有口径，
+        #   登记为遗留缺口 G5-bis，不在本次修复范围内）。
         pol = dpol.load_policy()
+        _own_types = cs.doc_types_key(card)
+        _gate_types = _own_types or [obligation.get("doc_type") or ""]
         dec = dpol.evaluate(pol, card.get("sensitivity") or "",
-                             doc_type=obligation.get("doc_type") or "",
+                             doc_type=_gate_types,
                              entity=card.get("entity") or "")
         disclosure = dec.to_dict()
         if not dec.externally_sendable:

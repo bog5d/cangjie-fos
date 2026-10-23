@@ -299,10 +299,15 @@ def load_policy(path: str | Path | None = None) -> DisclosurePolicy:
 
 
 def evaluate(policy: DisclosurePolicy, sensitivity: str,
-             doc_type: str = "", entity: str = "") -> PolicyDecision:
+             doc_type="", entity: str = "") -> PolicyDecision:
     """判定一份材料能否对外交付。
 
     **空等级不是「最宽松」而是「不可判定」**——按最严处理并说明原因。
+
+    ★ G5：``doc_type`` 可以是**多个**类型（``str`` / ``list``）——
+      材料自己命中的全部类型。类型闸按「**全部**类型都在清单内」判定
+      （含一类不在清单内 ⇒ 整份材料不可外发，fail-closed）；
+      规则按「命中任一类型即收紧」判定。单类型调用方的结论**逐位不变**。
     """
     # 1) 策略没生效 → 全部拒绝
     if not policy.loaded:
@@ -349,16 +354,25 @@ def evaluate(policy: DisclosurePolicy, sensitivity: str,
     # 与本模块「不认识 ≠ 更宽松，而是不可判定」的语义相反。
     # **放在规则之后** ⇒ 收紧原因与命中规则照样留痕（可追溯）。
     # 未声明该键的策略**完全不受影响**（向后兼容）。
+    #
+    # ★ G5：`doc_type` 可以是**多个**类型（材料自己命中的全部类型）。
+    #   判据是「**全部**类型都在清单内」⇒ 材料只要含有一类不在清单内的类型，
+    #   就**不得**外发（fail-closed：一份材料含受限内容 ⇒ 整份材料受限）。
+    #   单类型材料的结论与修复前**逐位一致**。
     if policy.sendable_doc_types is not None:
         allowed = {s.strip().lower() for s in policy.sendable_doc_types}
-        key = (doc_type or "").strip().lower()
-        if key not in allowed:
+        tokens = _doc_type_tokens(doc_type)
+        known = [t for t in tokens if t]
+        blocked_by = [t for t in known if t not in allowed]
+        if not known or blocked_by:
             final = policy.strictest(final, policy.default_level)
+            _shown = known[0] if len(known) == 1 else (known or [""])
             return PolicyDecision(
                 level=final,
                 externally_sendable=False, requires_review=True,
-                reason=(f"材料类型 {doc_type!r} 不在策略允许外发的类型清单 "
+                reason=(f"材料类型 {_shown!r} 不在策略允许外发的类型清单 "
                         f"{sorted(allowed)} 内"
+                        + (f"；其中 {blocked_by!r} 不在清单内" if blocked_by else "")
                         + (f"；规则已收紧为 {matched}" if matched else "")
                         + "；不可判定，按最严处理，不得外发"),
                 policy_version=policy.version, matched_rule=matched)
@@ -375,11 +389,37 @@ def evaluate(policy: DisclosurePolicy, sensitivity: str,
         matched_rule=matched)
 
 
-def _rule_hit(rule: dict, doc_type: str, entity: str) -> bool:
-    """规则命中：纯确定性匹配，**不做语义猜测**。"""
+def _doc_type_tokens(doc_type) -> list[str]:
+    """把 ``doc_type`` 参数归一成**类型 token 列表**（G5 · 多类型材料）。
+
+    - 字符串 ＝ 单值（逗号分隔的多个类型也接受）；
+    - 列表 / 元组 ＝ 多个类型；
+    - 空 / 认不出 ⇒ ``[""]``（**不是**空列表！）——
+      空列表会让「全部类型都在清单内」这条判据**空真** ⇒ 变成放行（fail-open），
+      与本模块「不认识 ≠ 更宽松」的语义相反。⇒ 空一律按**不可判定**处理。
+    """
+    if doc_type is None:
+        return [""]
+    if isinstance(doc_type, (list, tuple, set)):
+        raw = [str(x or "").strip() for x in doc_type]
+    else:
+        raw = [p.strip() for p in str(doc_type or "").split(",")]
+    out = [t for t in raw if t]
+    return out or [""]
+
+
+def _rule_hit(rule: dict, doc_type, entity: str) -> bool:
+    """规则命中：纯确定性匹配，**不做语义猜测**。
+
+    ★ G5：多类型材料时，规则只要命中**其中任一**类型即命中（收紧方向，
+      只会更严，不会更松）。单类型材料的结论**逐位不变**。
+    """
     rt = rule.get("doc_type")
-    if rt and doc_type and rt != doc_type:
-        return False
+    if rt:
+        tokens = _doc_type_tokens(doc_type)
+        known = [t for t in tokens if t]
+        if known and rt not in known:
+            return False
     re_ = rule.get("entity")
     if re_ and entity and re_ != entity:
         return False
