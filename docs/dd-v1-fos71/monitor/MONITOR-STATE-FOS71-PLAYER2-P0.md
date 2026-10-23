@@ -3987,3 +3987,52 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 · **十四、★下棒（12:00Z 槽位）必查**：① **CI 机制表述是否已被司仓收窄**（唯一载体 ＝ 本节判据一；判据：司仓下一节是否还留「base ＝ master／main ⇒ 用 merge 树 ci.yml」这半句）② **#83 的 head ci.yml OCR 步骤计数是否由 0 变正**（丙-2 的唯一可行动作）③ **#84 的三个 check-run 是否仍全 success** ④ **PR #84 的 comments 是否出现独立 Gate 裁定**（落 GitHub 面；**R2-WP1 仍 0/1 直到此**）⑤ **#82 是否被按「内容已被包含」关闭**（人类授权域，监工 0 关闭）⑥ **PR #81 是否获人类 master 合并授权**（按丙案，监工 0 合并）⑦ **独立 Gate 是否在最终 head 重锚** ⑧ **GM 名册 blockers 首条**（只读）⑨ **台账下一空闲号**（整数号六十一已被本席占 ⇒ 自 §六十二 起，执行点现读）⑩ **判别样本已耗尽**（勿再试图用 #83／#84 重测 head 树 vs merge 树）⑪ **丙-1 的授权面按 9 路径写**（不是 21 路径）⑫ **边界 0**。
 
 · 附：本节落盘走 git 协议（写前闸 ＝ payload 以基线字节开头 ＋ 尾部恰为插入块；写 ref 前最后一次现读 tip ＋ 幂等闸；单父快进非 force；写后回读远端字节、严格前缀、变更面、节标题唯一性、增量禁形与值闸复扫）。
+
+#### 六十二、轮次 21 follow-up 1（11:40Z 槽位席 `455484297785914` 续办 · 读数窗口 2026-10-23T11:44Z–12:1xZ）· ★★本席三项新登记：① **丙-1 已执行 ⇒ OBS-1 缺口闭合，「合流三处必保」自本笔起实到三处** ② **CI 触发源与 workflow 取用树的定案（含 #81 的 push ＋ pull_request 双跑证据）＋ 对两席表述的逐条裁定** ③ **#84 门禁转绿但合流结果字节不变** ＋ 两本账 ±0 ｜ 归属：11:40Z 槽位席 · 只追加、零覆写 · 取号执行点现读（整数号 六十二 标题行 0 处）
+
+#### 一、★★★本席唯一实质新事实：**丙-1 已执行**，`feat/71-player2-p0-fix-20261023` tip 现为 `16e18b21f261fb97e22352a64cc64ebb289c74ea`（2026-10-23T12:08:16Z，author ＝ Player2 Executor），commit message ＝「fix(#71) OBS-1 复刻：把源笔 `8ad3564ab4f481ef7efbf586ce16340f18c005a0` 的 9 条树变更复刻到 PR #81 分支」。
+
+- ★**变更面 ＝ 恰 9 路径（8 增 1 改）** ⇒ 与司仓 §六十 与 10:00Z 席 §六十一 两路读数**逐位一致**；8 条新增路径**逐路径 blob 与源笔同**（例：`backend/tests/test_dd_v1_minor4_fixture_gate.py` ＝ `ef576e7d9b7bdb7ee03f61c18b6111f7a9c19da6`、`docs/dd-v1-fos71/wp05-real-integration/MINOR4-FIXTURE-GATE-ERRATA.md` ＝ `7b0b8ff2a2cbc8fba956d4d6399a6a84dfd2f9ec`、`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/probe_minor4_fixture_gate.py` ＝ `a41465733317cdd3eaadbb5db09330e5c22e5745`）。
+- ★★**`tools/dd_v1_local_run.py` 在新 tip 上 ＝ 27,850 B，两道闸标记命中各 2 处**（合成 fixture 豁免标记／仓外材料副本写入门标记）⇒ ★★**「合流三处必保」自本笔起实到三处**（master／#81／#82／#83／#84 五条线上，**只有 #81 这一条现在带上了那两道闸**）。
+- ★**一条必须写明的判据修正（防下一棒假红）**：新 tip 的该文件**与 OBS-1 源笔版（25,523 B）不逐位相同**（本体 sha256 分别为 `d0e2a685519a2120086af6149a362a240129271643c5c7c3695e9b5ae0d7d055` 与 `e8d85b8327c9db3bcea99ba21e0467e29d94e2f569b41ea50ed5b4b0e0371ac2`）⇒ 成因 ＝ #81 分支该文件在源笔之后还有 P0 修复的增量（`cmd_scaffold` 的十类改造等）⇒ ★**判据应是「两标记在位 ＋ 8 条新增路径逐路径同 blob」，不是「整文件逐位相同」**（后者会假红）。
+- ★**PR #81 现读**：OPEN／merged=false／mergeable=true·unstable｜head ＝ `16e18b21f261fb97e22352a64cc64ebb289c74ea`（commits 6／changed_files 40）｜issue comments 2（05:51:17Z 独立复核裁定 ＋ 11:14:53Z 合并顺序落纸）｜formal reviews 0 ⇒ ★**独立 Gate 仍未在最终 head 重锚**，且**本笔新增的 9 条路径不在旧 Gate 的被验对象 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 覆盖范围内**（★**CI 绿 ≠ 独立裁定**）⇒ ★**工程账分子不回退也不外推**。
+
+#### 二、★★CI 触发源与 workflow 取用树：定案（本席一手三条机械证，不采信任何一方的表述）
+
+- ★**判据一（#84 历史窗口，feature 基座）：排除 merge 树。** 现读 #84 旧 head `a02c8dfd934384bd1ad51e32a92d3ccce59bdaf2` 的两条 failure run（Backend 440+ 于 11:17:34Z–11:21:04Z、Backend 228 于 11:17:35Z–11:20:47Z），其 annotation 的 `blob_href` **逐条指向 head 本身**（路径 `.github`）⇒ 该 run 的工作树 ＝ **head 树**；★**对照**：#84 merge ref 现读 `36620d3ded35a00fc21b416ad8f6a6491f4b61a9`（11:44:34Z，parents ＝ `78807393ca2ae914c82cafdf5677f1534bd7175c` ＋ `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`），其树 `ee869f616a0dd864fe5139a18b5ffa45e3867ecb` 的 ci.yml ＝ `fdf0e0cca7d8b25ef0ba2a0573e184f8e9aea382`，**tesseract 步 31 行**；★**而 head 树该文件 ＝ `9bf9a0b67bb046d21d22eb9a688d48e811e20abe`，tesseract 步 0 行** ⇒ ★**若用 merge 树的 workflow 必绿，而该窗口实测红** ⇒ **排除 merge 树成立**。
+- ★**判据二（#81，master 基座）：pull_request 触发确实产生。** 同一 head `78807393ca2ae914c82cafdf5677f1534bd7175c` 上有**两批** run：11:14:51Z 创建的一批（run `39944737488`，**event ＝ push**）＋ 11:14:54Z 创建的一批（run `39944744402`，**event ＝ pull_request**）⇒ ★**master 基座的 PR 会产生 pull_request 触发**（两批的 head_sha 同为 `78807393`）。
+- ★★**定案表述（合并两席）**：**required check 所用的 workflow 文件 ＝ 该次 run 实际 checkout 的那棵树里的那一份** —— pull_request 触发 ⇒ merge commit（`refs/pull/N/merge`）；push 触发 ⇒ head commit。⇒ **base 类型只决定「会不会产生 pull_request 触发」**（`ci.yml` 的 `on.pull_request.branches` 只含 master 与 main ⇒ feature 基座的 PR 不产生该事件，其 check 只能是 push 触发的 head 树 run）⇒ ★**feature 基座的 PR 要绿，只能把修复放进自己 head**（⇒ 丙-2 成立；★**合并 master 不能让 #83 变绿**）。
+- ★**对两席表述的逐条裁定（不投票、按对象归位）**：① 10:00Z 席 §六十一 判据一／判据二**成立**（feature 基座 ⇒ head 树 run）；② ★**但其「正确表述」中「required check 的 workflow 文件取自 PR 的 head commit」这一推广过强** —— master 基座那类 PR 的 pull_request run 跑的是 merge commit，取用树是 merge 树（本次 #81 的 head 与其 merge 树在 ci.yml 路径上同 blob ⇒ 该样本不具判别力，但触发事件与 checkout 语义由平台确定）；③ ★**司仓 §六十 第 3 节是「两分支条件句」，其前半句「base ＝ master／main ⇒ pull_request 触发 ⇒ 跑 merge commit」被单独摘出判「不成立」属误读**（把 A 情形的表述当成了通用规则）——★**判据二直接支持该前半句**。⇒ ★**两席的可执行结论一致**（#83 要绿须复刻进自己 head），**分歧只在表述与归因**，★**不涉任何工程结论反转**。
+- ★**判别样本已耗尽**（#84 现 head 与其 merge 树 ci.yml 同为 31 步、#83 head 与其陈旧 merge ref 同为 0 步）⇒ 后续只引历史窗口字节证据，**勿再试图重测**。
+
+#### 三、★#84 门禁转绿，但**合流结果字节不变**（对交付内容零贡献）
+
+★#84 head `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6` 的三个 check-run 全 success（Backend 440+ done 11:48:58Z｜Backend 228 done 11:48:38Z｜Frontend done 11:44:52Z）⇒ ★**但其 merge ref `36620d3ded35a00fc21b416ad8f6a6491f4b61a9` 的树仍 ＝ `ee869f616a0dd864fe5139a18b5ffa45e3867ecb`**，与 head 笔三前进前的 merge 树**逐位相同** ⇒ ★**R2 笔三只是把 base 侧已有的 ci.yml 搬到 head，合并结果字节不变** ⇒ 门禁转绿**不等于** master 内容变化，★**CI 门禁 ≠ 独立裁定 ⇒ 两本账仍 ±0**。
+
+#### 四、★PR #81 新 head 的门禁与两本账
+
+★新 head `16e18b21f261fb97e22352a64cc64ebb289c74ea` 的 check-run 现读：12:08:26Z 起 6 条，**5 条 success ＋ 1 条 Backend (440+ required) in_progress**（started 12:08:26Z）⇒ ★**mergeable_state ＝ unstable 的成因在此**（非冲突）。
+★两本账（互不换算）：**工程 ＝ 4/4 ＝ 100%**（★分子来源 ＝ 被验对象 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 上的旧独立 Gate PASS，★**覆盖范围维持在该对象上，既不回退也不外推**，★**本笔新增 9 条路径未被独立 Gate 复跑覆盖**）｜**效果 ＝ 0/100 REAL_PASS**（五项 outcome 权重 25／25／20／20／10，`verified_points` 全 0、`status` 全 UNKNOWN，★合成与 MOCK 不折算）｜★**A0–A5 ＝ 0/6**｜★**R2-WP1 ＝ 0/1**（PR #84 的 issue comments 0、formal reviews 0 ⇒ 独立 Gate 尚未落 GitHub 面）｜★**硬门槛 9 项 ＝ 0 PASS／0 FAIL／9 UNKNOWN**。
+
+#### 五、★活跃态四栏（分开判、分开报）＋ 该踢吗
+
+- ① **cron 是否运行 ＝ 是**（本席由本工程唯一那条周期 cron 拉起，最近 20 轮全部 status ＝ 1）｜② **监工是否工作 ＝ 是**（本席）｜③ **开发者是否真正施工 ＝ 是**（★施工侧 12:08:16Z 落 OBS-1 复刻笔，12:08–12:12 在跑 CI）｜④ **新的功能成果 ＝ 有**（★**合流三处必保自本笔起实到三处** —— 这是本轮最硬的进展）
+- ⇒ **活跃态 ＝ PRODUCTIVE**｜★**该踢吗 ＝ NO**（★远端 tip 距本席取数时刻不足 5 分钟 ⇒ 「未前进 ≥25 分钟」条件一不成立；★**独立 Gate 席已在飞（原地续任，非本席拉起）** ⇒ 0 唤醒／0 spawn／0 恢复执行器／0 新建第二执行器）
+
+#### 六、★GM live 名册（只读）
+
+★`W-DD-V1-2026` 现读：`current_state` ＝ BLOCKED／`current_wp` ＝ WP-R2／`waiting_for_chairman` ＝ true／`executor` ＝ hermes；★**`updated_at` 仍 ＝ 2026-10-19T19:45:00+08:00（距今 4 天）**、★**blockers 首条仍为「执行器全灭：cursor 额度耗尽／dsh 余额不足／hermes 假成功」** ⇒ 与当前字节（施工侧 12:08Z 仍在推笔）相悖 ⇒ ★**只登记，更正须由名册单写者落，本席 0 代改**。
+
+#### 七、★禁形自检（作用域 ＝ 本节新增字节）＋ 值闸 ＋ 写前闸
+
+★**禁形**：★**本节新增字节按台账既有族表整表重跑**（F1 ＝ UTF-8 替换符／F2 ＝ 单码点省略号／F3 ＝ ASCII 三点连写／F4 ＝ 长度恰 8 且含 a–f 的小写 hex／F5 ＝ 裸 URL／F6 ＝ 位长异常 hex 游程（41–63 或 ≥65）／F7 ＝ 截短 sha 形态（极大连续段、7–39 且含 a–f））⇒ ★**逐族命中 0**；★**阳性对照逐族可响、阴性对照（合法 40 位全串／合法 64 位 sha256／纯十进制 id）全静**；★**本席自曝一处**（★草稿首版把「合并结果树」写成了一个**截短前缀**、并带一处单码点省略号形态 ⇒ 被自家探针当场拦下 ⇒ 改写为 40 位全串与文字描述后才放行 ⇒ ★**闸门不是摆设**）。
+★**值闸**：★**本节引用的 40 位全串逐个现读存在性（FOS 仓域：commit／blob／tree 三端点）＝ 全命中**；★**阴性对照（故意错值）全落空** ⇒ 探针有效。
+★**写前闸**：★**payload ＝ 基线字节 ＋ 插入块**，字节域三项断言全过（新字节以基线字节开头／尾部 N 字节 ＝ 插入块／旧字节是严格前缀）＋★**节标题唯一**＋★**他席节标题仍在**（六十／六十一 各 1 处）⇒ ★**只追加、零覆写**。
+
+#### 八、★下轮（12:20Z 槽位）必查
+
+① ★**PR #81 新 head `16e18b21f261fb97e22352a64cc64ebb289c74ea` 的末条 check-run 是否转 success**（★12:08:26Z 起那条 Backend 440+ 在跑）② ★**独立 Gate 是否在最终 head 重锚并落 GitHub 面**（★现 issue comments 2／formal reviews 0；★**新增 9 路径须被复跑覆盖**才算）③ ★**R2-WP1 的独立裁定是否落 PR #84**（★comments 0／reviews 0）④ ★**PR #82 是否按「内容已被包含」关闭、PR #81 是否获人类 master 合并授权**（★人类授权域，本席 0 合并／0 关 PR）⑤ ★**PR #83 要绿是否已把 CI/OCR 修复复刻进它自己的 head**（★其 head ci.yml 仍 0 步 OCR；★**这是 #83 唯一的绿路径**）⑥ ★**GM 名册 `updated_at` 与 blockers 首条是否被名册单写者更正**（只读）⑦ ★**台账下一空闲整数号**（★本节取 六十二 ⇒ 下一棒自 六十三 起，仍须执行点现读：标题行字面 grep ＋ 在飞写者已声明，两条都要满足）⑧ ★**禁形闸以退出码为闸**（★本席本轮首版即因此被自家闸拦下 ⇒ 探针不返非零则「命中就在屏幕上」仍会落盘）⑨ 边界 0。
+
+#### 九、★边界（本席本轮全集）
+
+**0 合并**（含 master）｜**0 关 PR**｜**0 改已落纸的合并顺序**｜**0 代写独立 Reviewer 的 VERDICT**｜**0 改 Issue #71 的 AC 判定**｜**0 改尺子口径**｜**0 改 GM live 名册**｜**0 写产品代码**｜**0 写被验面**｜**0 触碰施工方工作树**｜**0 唤醒**｜**0 spawn**｜**0 恢复执行器**｜**0 新建分支／第二执行器／第二套监工／第二调度器**｜**0 新建 PR**｜**0 amend**｜**0 force push**｜**0 改写他人已落字节**｜**0 回退他人已落节**｜**0 复刻禁形字面**｜**0 输出明文 Token**｜**0 外发客户材料／个人信息**｜**0 写「合流三处必保」的最终裁定**（★该口径属人类授权域）。
