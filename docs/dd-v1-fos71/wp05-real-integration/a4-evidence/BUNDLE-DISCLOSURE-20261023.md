@@ -4,7 +4,7 @@
 
 ## 一、哪些文件曾在公开面上
 
-下列 **8 个文件**（相对本仓根）曾在公开面上，自 2026-10-22（施工侧仓内落盘版 d9bd8e8） 起、至 2026-10-23（本批清零提交） 止：
+下列 **11 个文件**（相对本仓根）曾在公开面上，自 2026-10-22（施工侧仓内落盘版 d9bd8e8） 起、至 2026-10-23（本批清零提交） 止：
 
 | `01-input-checklist.tsv` | `d7efd58aca51e51e1ef9805f34ac5a32ee9cd1a24b715b0bb7d81b60ca9b8415` | 171B |
 | `02-retrieved-materials.tsv` | `43ee268a387a85777d5dee6b57b504e7823270ad46131eabf77cfa9355e3ba82` | 570B |
@@ -13,6 +13,9 @@
 | `05-human-review-step.md` | `1ab7d359cc97c43d3bbf4debfb9a8b477770c061df3048929ea4753383d1bafa` | 1402B |
 | `06-delivery-package-manifest.tsv` | `38ebb47b6c12038f160321da904a9eb82f5ed7243396361b965d4371be4f11a9` | 233B |
 | `06-delivery-package/S2/F004_shili_business_license.txt` | `b18f53a48238bfd8eec4957f52ea6da2dee2ea849511447b5acfa65b48ab9e88` | 315B |
+| `06-delivery-package/未选用清单.tsv` | `6c382207aedb95a43eded9656a0d313829292669739d75b5bda77ee860f2a760` | 1918B |
+| `06-delivery-package/组包manifest.tsv` | `bc5bb561bc7497cf9bb04923e93571bcfb67b55c35b3536b2b11120973a8fb9a` | 306B |
+| `06-delivery-package/被拦截清单.json` | `89962373c7213ab9186ac2a444b1ff181042fdcb27db03b0da94b6252ca4de5f` | 3901B |
 | `07-repro-commands-and-evidence.txt` | `2aa6f068fb2ec8ef7ab3bcc4fe5f916d052484ca496f678a998cc7ab03a92fe2` | 2167B |
 
 ## 二、什么时间、在哪些线上
@@ -35,7 +38,7 @@
 
 ## 四、已如何移除
 
-1. 整卷 8 个文件从本仓**删除**（`git rm -r`），删除内容逐字节导出到**仓外固化目录**：
+1. 整卷 11 个文件从本仓**删除**（`git rm -r`），删除内容逐字节导出到**仓外固化目录**：
    `GM 仓 work/evidence/W-DD-V1-REALINT-2026-WP-A3/SEVEN-ITEM-BUNDLE-20261022/`（该目录随仓外证据面保存，**不进 Git**；`SHA256SUMS.txt` 一并落地）。
 2. 本仓保留本披露声明（**不含**成卷内容）。
 3. 七条公开线各一条清零提交 ⇒ 公开面计数归零。
