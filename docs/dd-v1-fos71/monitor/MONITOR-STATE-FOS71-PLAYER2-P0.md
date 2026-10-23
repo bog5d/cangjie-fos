@@ -3888,3 +3888,61 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 ★**与兄弟席 §五十五 第六节的关系**：该节记「#84 的红 ＝ 在未装 OCR 工具链的树上真跑出来」，并建议「把 CI/OCR 修复复刻进 G5 分支与 R2 分支，否则这两条 PR 的 check 不会变绿」⇒ ★**该建议在 R2 分支已见执行结果**（`0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`，11:41:52Z）⇒ ★**其 head 的 ci.yml blob ＝ `fdf0e0cca7d8b25ef0ba2a0573e184f8e9aea382`（OCR 步骤在位）⇒ #84 的 check 已转绿**；★**G5 分支（#83）未见复刻，其 head 的 ci.yml 仍 ＝ `9bf9a0b67bb046d21d22eb9a688d48e811e20abe` ⇒ #83 的红维持**。
 ★**仍然不改变任何分子**：★**CI 门禁 ≠ 独立 Reviewer 裁定** ⇒ ★**工程账 4/4 不外推、R2-WP1 仍 0/1、效果仍 0/100**；★**PR #84 的 issue comments ＝ 0、reviews ＝ 0**（★**独立 Gate 仍未在交卷 SHA 上开跑**）。
 ★**落盘纪律**：★**本追记同样走「写 ref 前现读 tip ＋ 重取基座重做」路径**（★禁 force push、禁抢号、禁改写他人已落字节、禁复刻禁形字面）。
+
+#### 六十、R21 巡检轮（司仓）· ★OBS-1 缺口字节层独立复核闭合 ＋ CI 门禁判据更正 ＋ 合并口径重出为丙案
+
+■ 0 读数时刻与通道
+· git 协议：ls-remote 现读分支 tip ＋ cat-file blob 取字节；GraphQL（独立限额池）查 PR 状态、headRefName 到 PR 的映射、check-run 终态。
+· ★时刻锚只用 GitHub 侧 commit cI／check-run 起止／PR createdAt 与 updatedAt；跨席消息头部的时刻标签不作时间锚（我席本轮早前发给兄弟席的消息头写了标签式时刻，自曝作废）。
+
+■ 1 ★★机械核一：OBS-1 是否落在待合入 master 的合并面内 —— 结论：不在（独立复核成立）
+· 同一路径 tools/dd_v1_local_run.py 四点现读：
+　基线 d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2 → blob 8d51c05c93354268ea3e02eb2df6a86758937101（22761 B）
+　master 3781311c4b1157c68a0f891506b7c33ab327f7c4 → blob 8d51c05c93354268ea3e02eb2df6a86758937101（22761 B，与基线同一 blob）
+　PR #81 head 78807393ca2ae914c82cafdf5677f1534bd7175c → blob bb1f8e5eb2b1f0e3d4596d764f7dceed4cbf83a6（25088 B）
+　OBS-1 分支 tip 4ee1f4786fc98a2e28b7374b47670fd750c307c7 → blob 55d78deb37721c52e70dc635b677a52697bca0f0（25523 B）
+· 字节层 token 计数（合成 fixture 豁免标记 ／ 仓外材料副本写入门标记）：基线 0／0、master 0／0、PR #81 head 0／0、OBS-1 分支 2／2。
+· ⇒ ★合流三处实到两处：fail-closed 写入门不在 master、不在 PR #81 head、也不在 PR #82 head（两 head 树逐位相同，见 §四）。
+· ★OBS-1 源笔 8ad3564ab4f481ef7efbf586ce16340f18c005a0 的真实变更面 ＝ 9 条路径（1 改 ＋ 8 增）：改 tools/dd_v1_local_run.py；增 backend/tests/test_dd_v1_minor4_fixture_gate.py ＋ docs 侧 7 件（勘误 1 件 ＋ minor4-fixture-gate 目录 6 件）。
+· ★该分支的公开面清零两笔只删 seven-item-bundle 目录下 7 件，★不碰 minor4-fixture-gate 目录 ⇒ 复刻这 8 条新增不违清零口径（禁把已清零件重新塞回仓内）。
+
+■ 2 ★★机械核二：OBS-1 复刻到 PR #81 分支当前 tip 的可行性 —— 零冲突
+· 本席本地三方预演（独立 scratch worktree，不推送、不写远端）：以 PR #81 head 为 ours、OBS-1 分支 tip 为 theirs，自动合并退出码 0、★无冲突路径；合并结果变更面恰为上述 9 条路径；合并后该文件字节长度 25088 与 25523 两侧均大（27,850 B 量级），★OBS-1 两处标记计数 2／2 ⇒ 两侧改动同时保住，★不需人工解冲突。
+· ★该预演产生的树与提交对象为本地计算产物、★未落远端 ⇒ 按台账纪律不写其标识符，只登记结论。
+
+■ 3 ★★机械核三：CI 门禁判据更正（本席 R19 原表述作废）
+· 形态：required check 实际使用的 workflow 随 PR 的 base 类型分流。base ＝ master／main ⇒ pull_request 事件跑 merge commit、用 merge 树 ci.yml；base ＝ feature 分支 ⇒ ci.yml 的 pull_request 触发不覆盖该 base，实际只有 push 触发的 head 树 run、用 head 树 ci.yml。
+· 证据（两路独立）：① 兄弟席读 ci.yml 的触发段：push 触发分支含 feat 与 fix 两族前缀、pull_request 触发分支只有 master 与 main，而 PR #83 与 PR #84 的 base 都是 feature 分支；② 施工席实测：PR #84 在其第三笔（把带 OCR 步骤的 ci.yml 复刻进本 PR 自己的 head）前 2 红、该笔后 3 条全 success。
+· 推论：★修复必须进该 PR 自己的 head；★base 前进不会重建 feature-base PR 的 check；★故波总落纸的先合 #82 再合 #81 再合 #83 顺序，其两条前提已被 P1 落地（11:14:08Z）改变。
+· ★本席 R19 原表述「PR 的 required check 使用 PR merge commit 里的 workflow 文件」作废（原字节保留，由本节更正，不静默改写）。
+
+■ 4 ★★合并口径重出：甲／乙两案不再单独执行，改为丙案（司仓 0 合并、0 关 PR、0 代选）
+· 丙-1 先把 OBS-1 复刻进 PR #81 分支当前 tip 之上（授权施工侧新建一笔；§二 已证零冲突）。
+· 丙-2 PR #83 要转绿须把 CI／OCR 修复复刻进 #83 自己的 head；该分支写者身份未确认 ⇒ 司仓 0 代写他人分支 ⇒ 待波总指派。
+· 丙-3 独立 Reviewer 裁定须在最终 head（OBS-1 补齐后的 PR #81 tip）重锚；波总落纸 comment 自陈「独立 Reviewer 裁定落盘后方可合并」。
+· 丙-4 一次授权范围 ＝ OBS-1 ＋ 考生2 P0 ＋ P1 CI 修复 ＋ G5 ＋ R2 全部入 master；顺序 ＝ 先并 #84 与 #83 入 PR #81 分支，再合 PR #81 分支入 master，PR #82 以「内容已含」关闭。
+· 合并预演（本席本地 scratch，不推送）：并入 R2（PR #84 head）与并入 G5（PR #83 head）到 PR #81 分支 tip 的三方合并退出码均为 0、★无冲突路径。
+· ★master 合并与关闭 PR 仍属人类授权项，司仓 0 合并、0 关 PR、0 改已落纸顺序。
+
+■ 5 PR #84（交卷）已开、门禁已绿；PR #81 head 全绿
+· PR #84 OPEN｜base ＝ feat/71-player2-p0-fix-20261023｜base 现读 tip ＝ 78807393ca2ae914c82cafdf5677f1534bd7175c（开 PR 前现读，符合 R19 裁定的 base 口径）｜head ＝ 0351386f1d18dde3c4bc7f4d1d9b7009676c76a6｜created 11:32:54Z。
+· R2 分支三笔：笔1 cb00df987816351bc66ff70357a3ae7564accf14（C-1 ＋ F-1 修复）→ 笔2 a02c8dfd934384bd1ad51e32a92d3ccce59bdaf2（段2 功能：相对期间四态接线 ＋ 候选侧接线 ＋ R4 闸）→ 笔3 0351386f1d18dde3c4bc7f4d1d9b7009676c76a6（CI／OCR 环境面复刻）；★笔3 属环境面，不承载被验结论。
+· PR #81 head 的 6 个 check-run 终态：5 条于 11:19:17Z 前收齐，尾条于 11:37:30Z 收齐 ⇒ ★6／6 全 success 成立（此前「全绿不成立」到此闭合）；★CI 门禁转绿不等于独立 Reviewer 裁定 ⇒ 工程账分子不进位。
+· 独立 Gate 已派：Verifier 席原地续任（0 spawn），在交卷 SHA 0351386f1d18dde3c4bc7f4d1d9b7009676c76a6 上以带 .git 的独立 checkout 复跑并落 PR #84 的 GitHub Gate ⇒ R2-WP1 仍 0／1。
+
+■ 6 取号与让号（★含一处我席声明被占的更正）
+· 执行点现读远端载体（773,936 B）得整数号标题行计数：五十五 1、五十六 1、五十七 1、五十八 1、五十九 1、六十 0 ⇒ 本节取 六十。
+· ★五十九为 11:40Z 槽位席所落（含同席追记五十九.1）⇒ 本席让号，改取 六十。
+· ★更正本席早前发给兄弟席的一条声明（当时写「本席本轮落五十九」）：该号在声明发出前已被兄弟席占用 ⇒ 由本节登记更正；★不改写兄弟席任何字节。
+
+■ 7 本席自曝（本轮三处）
+① 发给兄弟席的一条消息里，master 标识符被打成 56 位（位长异常）⇒ 该串作废并已单独发更正条（正确值由 ls-remote 程序化取回）⇒ ★成因＝标识符手打而非程序化复制，违反既有纪律。
+② 本席给兄弟席的消息头部写了标签式时刻 ⇒ 按跨席时刻纪律作废，★时间锚改用 GitHub 侧 cI 与 check-run 起止。
+③ 本席清理脚本时用的进程匹配模式串匹配到了本席自己的命令行，致自杀式中断一次（无远端写入、无污染）⇒ ★清理动作须把被清理对象的命令行与自身区分开。
+
+■ 8 两本账（±0，互不换算）
+· 工程 4／4（分子仍是被验对象 d1ebe3392fb20f04c2d0ecb00bbe639804187ac2 上的旧独立 Gate PASS，最终 head 未重锚前不回退也不外推）｜效果 0／100 REAL_PASS｜A0–A5 0／6｜R2-WP1 0／1｜硬门槛 0 PASS／0 FAIL／9 UNKNOWN。
+· 活跃态 PRODUCTIVE｜该踢吗 NO｜0 唤醒｜0 spawn。
+
+■ 9 边界（本席本轮全集）
+0 合并 master｜0 关 PR｜0 改 PR 正文或已落纸顺序｜0 代写他人分支（OBS-1 缺口只做授权与预演）｜0 改 AC／尺子／合同／GM 名册｜0 改他人已落字节｜0 force｜0 amend｜0 新建分支｜0 新建第二执行器｜0 新建调度器或第二套监工｜0 输出明文 token｜0 写产品代码。
