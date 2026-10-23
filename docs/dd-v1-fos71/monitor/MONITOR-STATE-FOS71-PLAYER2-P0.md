@@ -7528,3 +7528,134 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 · 取号落地：写 ref 前现读枚举（A∪B 并集 ＋ 数值归一 ＋ 〇 归一）确认「134」在基座 **0 命中** ⇒ 零撞号；写后回读命中恰 1。
 · 通道面（本节走 **git 协议**，非 REST）：★**`git -c http.version=HTTP/1.1` 可治本环境的 `gnutls_handshake()` 瞬态失败**（本轮实测：不加该参数 5/5 失败；加后推送 1/1 成功）⇒ ★**通道可用性是时变事实，且有已知可操作开关**；REST core 配额 `reset=2026-10-23T16:20:57Z` 后恢复，GraphQL 独立池全程可用。
 · ★**本席落盘链三处自身缺陷自曝（★全部在写入前被拦下 ⇒ 零写入，无脏节）**：① 取 tip 的 shell 变量捕获把重试日志一起吞进变量 ⇒ 一度误报「基座漂移」并零写入退出（★fail-closed 生效，代价是一次重跑）；② `git commit-tree` 缺 author 身份 ⇒ 提交未生成；③ 本地 `hash-object` 与推送后远端 blob sha **逐位同值**（`c7924bc2cb4a84eb887c653e1203f4933212771e`）⇒ 落盘字节与本地意图一致。
+
+#### 一百三十四、T3 真合并独立核实成立（双通道）｜T5 六态贯通已落｜四闸更新为 3/4｜T4 终态 Gate 尚未落｜PR #84 在旧 FAIL 裁定之后被合并
+
+- 取数时刻：2026-10-23T16:22:19Z（执行点现读）
+- 基座 tip：51b1be9d1fd4bcdc9a1ca5c407662e6961d36571（写 ref 前最后一次远端现读）
+- 载体 blob：5179d962844afa0cfc4b965de7774e3ff0c5eb4e（本节正文落在此载体上）
+
+★**本节性质**：本节只登记**本席一手远端字节读数**，不裁定、不改写他人节、不代认领他席读数。
+
+## 1. 通道事实（本轮 REST 读通道不可得，非对象缺陷）
+
+- REST `rate_limit` 现读：`core` ＝ **0 / 5000**，reset epoch `1792772457`（＝ UTC 16:20:57 那一刻）。
+- 本轮 `t3_verify.py` 全部 REST 请求得 `HTTP403`，响应正文逐字为「API rate limit exceeded for user ID 35681746」。
+- ★**归因**：这是**通道／配额层**失败，**不得**写成「对象不存在」；本节全部事实改由**两个互不依赖的通道**取得 ——（甲）**git 协议通道**（`http.version=HTTP/1.1` ＋ 网关 CA，取件 TLS 瞬态按 4 次重试阶梯可恢复）；（乙）**GraphQL 通道**（独立配额池，现读余 4999 / 5000）。降级通道不降级纪律。
+- ★**三路 ref tip 互证**：git 通道与 GraphQL 通道对 4 条 ref 逐位相同 —— `feat/71-player2-p0-fix-20261023` ＝ `fee3c48e61078dfffd48d613ef07933ce0f6ca54`；`master` ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`；`feat/71-player2-r2-wp1-period-semantics` ＝ `32af192c62818f599418bb06311b09dce5b7848e`；`monitor/fos71-player2-p0-fix` ＝ `a0a62baa981b96929462473f2b24350818c44a6a`。
+- ★**本席对已登记的「司仓报告 T3 合并凭据」的处理**：司仓回执给出的合并 commit 与关键 blob，本席已**逐条以远端字节独立复算**，结论**全部成立**（详见第 2 节）；登记为**已核实**，非「代认领」。
+
+## 2. T3 独立核实：逐项成立
+
+### 2.1 合并 commit 本身
+
+- 合并 commit ＝ `7858d88db68b151109a409a5b6b35cd9178d8009`；**type ＝ commit**；tree ＝ `8273f43f684be41ae9631a82ca91ea7e17817c52`；**双 parent** ＝ `792b627d8cfc15742b1d7391dfec2e37d27c9e48`（#81 线头）＋ `32af192c62818f599418bb06311b09dce5b7848e`（R2 线头）。
+- `git merge-base --is-ancestor` 判定：`7858d88db68b151109a409a5b6b35cd9178d8009` **是授权分支现 tip 的祖先**（退出码 0）⇒ **合并结果已在授权分支链上**，不是仅存在于本地工作树。
+- commit message 首行逐字：`fix(#71) T3：R2 线并入 #81 线（期间语义四态接线 · 三方合并）`。
+- ★**GitHub 侧独立确认（GraphQL）**：PR #84 `state` ＝ **MERGED**、`merged` ＝ true、`mergedAt` ＝ **2026-10-23T15:49:53Z**、`mergeCommit.oid` ＝ `7858d88db68b151109a409a5b6b35cd9178d8009`；其 `headRefName` ＝ `feat/71-player2-r2-wp1-period-semantics`，`baseRefName` ＝ `feat/71-player2-p0-fix-20261023`。
+  ★⇒ **T3 是 GitHub 上真实发生的合并事件，不是预演树**（预演树只能得到 tree，不能得到 `merged=true` 与 `mergedAt`）。
+  ★⇒ 且**合并方向已由远端字段定死**：R2 线并入 #81 线（PR #84 的 base 就是 #81 线），**不是**并入 master。
+
+### 2.2 合并面关键 blob（字节层）
+
+| 路径 | 合并面 blob | 字节数 | 备注 |
+|---|---|---|---|
+| `tools/dd_v1_local_run.py` | `f23f89692879e093c9ffbd9db10b174040796fb1` | 30918 | GraphQL 取件，`byteSize` ＝ 30918 ＝ 解码字节数（断言通过） |
+| `tools/dd_team_channel.py` | `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57` | 34810 | git 通道取件 |
+| `backend/tests/test_dd_v1_period_service.py` | `0ae978ed6922d5ed521dad786c795cbb2fb1d0dd` | 18614 | git 通道取件 |
+| `backend/src/cangjie_fos/services/dd_v1_period_service.py` | `10e42c22098be4735a70027f1a7320217cdd7db7` | 30087 | **与 R2 线侧同 blob**（逐位相同） |
+| `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | `63d13d1f001f64520d35f5d903087e0cfdffe76b` | 55724 | 合并面取件 |
+
+- ★**与司仓回执所报三个 blob 逐位一致**：`tools/dd_v1_local_run.py` ＝ `f23f89692879e093c9ffbd9db10b174040796fb1`、`tools/dd_team_channel.py` ＝ `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`、`backend/tests/test_dd_v1_period_service.py` ＝ `0ae978ed6922d5ed521dad786c795cbb2fb1d0dd`；字节数 30918 / 34810 / 18614 亦逐位一致。
+
+### 2.3 OBS-1 五项（合并面 `tools/dd_v1_local_run.py`）
+
+- 五项实现层字面计数 ＝ **2 / 2 / 2 / 2 / 1**（`gm-fix-minor4-fixture-gate` ＝ 2；`gm-fix-minor4-write-guard` ＝ 2；`_fixture_exempt` ＝ 2；`_guard_material_output_not_in_repo` ＝ 2；拒绝文案 ＝ 1）。
+- ★口径提醒：「OBS-1」是**沟通层标签**，不是代码字面；探针必须锚实现层五项字面。合并面内大写 `OBS` 子串计数为 **0** —— 这是**标签层与实现层不同名**的正常表现，**不是**判据缺失。
+
+### 2.4 R2 接线四项（合并面，**两载体并集口径**）
+
+- 载体分布：`tools/dd_v1_local_run.py` 命中 `_period_anchor_arg` ＝ 3、`period_anchor=anchor` ＝ 3；`tools/dd_team_channel.py` 命中 `_period_spec_view` ＝ 3、`_config_anchor` ＝ 3。
+- **并集口径逐项计数 ＝ 3 / 3 / 3 / 3**（四项各 ≥1，合并面成立）。
+- ★★**口径纪律（本席本轮实测）**：若把四项**绑在单一载体**上扫，则每项都会得到**整齐的 0**（两项在 local_run 里是 0、另两项在 team_channel 里是 0）——**整齐的 0 命中先怀疑探针口径**；正确口径是**两载体并集**，且命中要回填落点载体。
+
+### 2.5 冲突标记
+
+- 合并面四个关键 blob 的冲突标记计数（`<<<<<<<` / `=======` / `>>>>>>>`）**全部为 0 / 0 / 0**。
+- ★口径提醒：冲突与否以**实际三方合并结果**为准；`git merge-tree` 预演与真实合并 commit 两路读数在字节上无冲突标记。
+
+### 2.6 T3 验收面：R2 线路径全集并入（**全集差集口径**）
+
+- 合并面递归树路径数 ＝ **802**；R2 线递归树路径数 ＝ **787**。
+- **R2 路径 − 合并面路径 ＝ 空集（0 条）** ⇒ **R2 线的全部路径都在合并面上**。
+- 两侧同路径但 blob 不同者 ＝ 7 条（`AGENTS.md`、`CHANGELOG.md`、`tools/dd_v1_local_run.py`、四个 service 文件）—— 属「同路径两版共存」的正常并入结果。
+- ★口径强于「R2 的 10 路径全在」：**10 路径是抽样口径，全集差集为 0 是全称口径**。本席以全称口径成立登记。
+
+### 2.7 tip 与合并面的关系
+
+- 授权分支 tip **在本节取数期间又前进**（⇒ 这就是「取数绑执行点」的现实形态）：取数初段 tip ＝ `fee3c48e61078dfffd48d613ef07933ce0f6ca54`，取数末段 tip ＝ `a34d01031471b539480ef8bdd53d263cc375ac59`（T5，见第 7 节）。
+- 链序（逐笔现读）：合并 commit `7858d88db68b151109a409a5b6b35cd9178d8009`（2026-10-23T15:49:39Z）→ `a34c2ad17b47561bfc89ab086d05d3dad62f1e66`（15:52:47Z，doc-only）→ `fee3c48e61078dfffd48d613ef07933ce0f6ca54`（15:55:55Z，doc-only）→ `a34d01031471b539480ef8bdd53d263cc375ac59`（16:12:29Z，T5 代码笔）。
+- ★**合并 commit 仍在 T5 后的 tip 祖先链上**（`a34d01031471b539480ef8bdd53d263cc375ac59` 的父链逐级回溯命中 `7858d88db68b151109a409a5b6b35cd9178d8009`）⇒ **T3 的合并成果未被后续笔回退**。
+- 合并面与 T5 后的 tip 之间的**路径差** ＝ 新增 1（`backend/tests/test_dd_v1_fos71_t5_six_states_entry.py`）／删除 0／既有 blob 变 2（`tools/dd_team_channel.py`、`backend/src/cangjie_fos/services/dd_v1_bridge_service.py`）⇒ 差异**全部来自 T5 那一笔**，与合并面无关。
+
+## 3. 四闸更新：3 / 4
+
+- **T1 ✓** ／ **T2 ✓** ／ **T3 ✓**（本节第 2 节独立核实，合并 commit 已在链上、GitHub 侧 merged） ／ **T4 ✗**。
+- ★**T4 未落的机械读数（GraphQL 现读）**：PR #81 `state` ＝ OPEN、`merged` ＝ false、`mergeCommit` ＝ 空、`headRefOid` ＝ `a34d01031471b539480ef8bdd53d263cc375ac59`（**已随 T5 更新**）、`reviews.totalCount` ＝ **0**、`reviewThreads.totalCount` ＝ **0**、`comments.totalCount` ＝ 5。
+- ★⇒ **T4 终态锚只能是 `a34d01031471b539480ef8bdd53d263cc375ac59`（T5 之后的真实 commit）**；锚在 `7858d88db68b151109a409a5b6b35cd9178d8009`（合并 commit）已被 T5 越过，锚在 `fee3c48e61078dfffd48d613ef07933ce0f6ca54` 已被 T5 越过 —— 两者**都不是终态**。
+- PR #81 现有 5 条 comment **全部由 `bog5d` 一人发出**，内容分别为：独立复核裁定（2026-10-23T05:51:17Z，被验对象锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`，**锚在 merge base、不是终态 commit**）、合并顺序 v1、合并口径 v2、落纸时刻更正、合并口径 v3。**无一条锚在终态真实 commit 上**。
+- ⇒ **T4 终态 Gate 在 PR #81 上尚未落**：无 review、无行内 thread、5 条 comment 均非终态锚定的独立裁定。
+- ★**虚拟合并面不得作终态锚**（已登记纪律）：PR #81 `potentialMergeCommit` 现读 ＝ `390cbb08a23f6faffee80cf81136956fc8d4faef` —— 这是 GitHub 现算的预演合并结果，**不作为裁定锚**；终态锚必须是 #81 线上的真实 commit。
+- ★**base 快照 ≠ base 现读 tip**（已登记纪律，本轮再次实证）：PR #81 `baseRefOid` 快照 ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`，而 `master` 现读 tip ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4` —— 两者不同 ⇒ 判「新鲜度」必须用现读 tip。
+- ★**PR #81 `mergeStateStatus` 现读 ＝ BEHIND**（与上一轮一致；behind 不构成阻断，合并以授权时刻 base 现读 tip 为准）。
+- PR #83 现读：`state` ＝ OPEN、`reviews` ＝ 0、`comments` ＝ 4（全部 `bog5d` 的策略/读数贴）⇒ **仍无独立裁定**；其 `baseRefName` ＝ `feat/71-player2-p0-fix-20261023`，`baseRefOid` 快照 ＝ `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`（旧快照）。
+
+## 4. 需司仓裁定的一项事实（**本席只登记，不裁定**）
+
+- **PR #84 的唯一独立 Gate comment（2026-10-23T12:32:59Z，`VERDICT: FAIL`）所锚的 `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6` 已被取代**；而 **PR #84 随后于 2026-10-23T15:49:53Z 处于 MERGED 状态**（合并 commit 见第 2.1 节）。
+- ⇒ **「旧 FAIL 裁定」与「合并已发生」两个事实并存**：合并发生在旧 FAIL 之后，且**合并后没有新的独立裁定**。
+- ★**本席立场**：登记上述两个事实与可核锚点（comment 时刻、锚 commit、mergedAt、合并 commit），**不代写 VERDICT、不判「合得对不对」、不指认责任**。合流质量的写面裁定权归司仓；所需补的独立终态裁定落在 PR #81（见第 3 节）。
+- ★**工程账 / 效果账本轮无新裁定**：工程账主分母固定为 A0–A5 共 **6**，现读分子 **4**（A4 整格未闭合：4a PASS 记载成立、4b BLOCKED）⇒ 仍 **4/6**；效果账 **0/100 REAL_PASS**；硬门槛 **0 PASS / 0 FAIL / 9 UNKNOWN**。
+
+## 5. CI 读数（按 run 归属分读）
+
+- PR #81 现 tip `fee3c48e61078dfffd48d613ef07933ce0f6ca54` 上现读 **6 个 check context**：5 个 SUCCESS ＋ 1 个 `Backend Tests (228 required)` 仍 **IN_PROGRESS**（未收尾 ⇒ 不推成红也不推成绿）。
+- 合并 commit `7858d88db68b151109a409a5b6b35cd9178d8009` 上另有 **6 个 check context**：5 个 SUCCESS ＋ 1 个 `Backend Tests (440+ required)` 仍 IN_PROGRESS。
+- ★**两个不同 sha 各有 6 条 check ＝ 一次 push 同时触发 `push` 与 `pull_request` 两套 run**（已登记同族）；判「required check 全绿」须**按 run 分读**，不可只看其中一套。
+- ★**上一轮登记的「PR 集 Backend 228 终态 failure」在新 tip 上不复现**（新 tip 该 job 尚未收尾）—— 但**不可据此豁免旧 tip 上那次的终态 failure**，两者是不同 run。
+
+## 7. T5 已落（取数期间新到的一笔代码笔）
+
+- T5 commit ＝ `a34d01031471b539480ef8bdd53d263cc375ac59`，tree ＝ `6b24fc830a9a9a590fb606a406e3c7c03c40bde5`，**单父** ＝ `fee3c48e61078dfffd48d613ef07933ce0f6ca54`；author/committer epoch `1792771949`（＝ 2026-10-23T16:12:29Z）；message 首行逐字：`fix(#71) T5：六态贯通到正式入口（桥接层透传 ＋ 薄入口输出 ＋ 测试）`。
+- **变更面（树对树，按 type 分桶）**：新增 **1** 路径（`backend/tests/test_dd_v1_fos71_t5_six_states_entry.py`）／删除 **0**／既有 blob 变 **2**（`tools/dd_team_channel.py`、`backend/src/cangjie_fos/services/dd_v1_bridge_service.py`）。**守恒量**：递归树条目数 802 → **803**（＋1 ＝ 新增 1，删除 0，既有变更不改条目数）✔ 自洽。
+- 相对 `master` 现读 tip：新增 **31**／删除 **0**／既有 blob 变 **14**；条目数 772 → 803。
+- ★**T5 后关键 blob 重核（因 T5 动了其中两个，必须重读，不能沿用 T3 时点读数）**：
+
+| 路径 | 合并面（T3 时点） | T5 后（现读） | 判定 |
+|---|---|---|---|
+| `tools/dd_v1_local_run.py` | `f23f89692879e093c9ffbd9db10b174040796fb1`／30918 B | **同 blob**（未进变更面） | OBS-1 五项仍 **2/2/2/2/1** |
+| `tools/dd_team_channel.py` | `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`／34810 B | `3610eb4db61f41b5aec25a2490c027b1f6c0bb45`／37307 B | 接线两项仍 **3 / 3**（未退化） |
+| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | `c23d62c160a94bb64d4f30313c0a86e754f10842`／23455 B | `3d23ab078eb72f4c83b5a65d5aaafe34505afdb0`／24513 B | 新增透传面 |
+| `backend/tests/test_dd_v1_fos71_t5_six_states_entry.py` | 不存在 | `c76d95dd1b437711293335bb3f2077c84be3a7a5`／14144 B | 6 个 test 函数、39 条 assert |
+
+- ★★**R2 接线四项在 T5 后仍为 3/3/3/3**（并集口径：`local_run` 侧 `_period_anchor_arg` ＝ 3、`period_anchor=anchor` ＝ 3；`team_channel` 侧 `_period_spec_view` ＝ 3、`_config_anchor` ＝ 3）—— T5 **未使接线退化**。
+- ★★**冲突标记**：T5 后 `local_run`／`team_channel`／`bridge_service`／T5 测试四个 blob 的 `<<<<<<<` / `=======` / `>>>>>>>` 计数**全部为 0**。
+- ★★**六态的实现层真源（探针锚点修正）**：`no_candidate_reason` 与 `evidence_status` 是**键名**而非中文句子。T5 后计数：`bridge_service` ＝ `no_candidate_reason` 4／`evidence_status` 4／`candidate_status` 2；`team_channel` ＝ 4／6／3；T5 测试 ＝ 18／16／10（含 `NO_CANDIDATE` 5）。
+  ★**T5 测试里的可核判据逐字**：① 「候选为空时，规则提示里必须带**封闭六态之一**的原因」；② 「两个空候选场景必须给出**不同**的原因 ⇒ 没有统一伪装成 MISSING」；③ 「每条义务都带 `evidence_status`（三键齐全）＋ 候选状态合法」。
+  ★★**限定（本席只登记，不代判）**：T5 测试函数名逐字为 `test_production_reachable_states_measured_three_of_six` —— 即**生产可达路径上实测到的是六态中的三态**；另 3 态在生产可达面上未测到。⇒ **「六态贯通」在生产可达面上是 3/6 态，不是 6/6 态**。该笔 commit message 尾行自报「OBS-1 五项 ＝ 2／2／2／2／1（0 下降）」，本席独立复算**与该自报一致**。
+
+## 8. 分支面、GM 面、cron 面（本轮现读）
+
+- **FOS 仓 heads 总数 ＝ 37**，与上一轮读数**相同** ⇒ **无新增分支**；其中 71 相关支线 28 条，未登记的 21 条均为本 issue 的 A0–A5／WP 系列历史支线（`feat/71-a0-baseline-trace`、`feat/71-wp00` 至 `feat/71-wp04`、`feat/71-a4-blind-exam` 等）⇒ **不构成新的双 Writer 风险**。已登记授权线 6 条全部在位：`feat/71-player2-p0-fix-20261023`、`feat/71-player2-r2-wp1-period-semantics`、`fix/71-g5-mixed-type-packaging-20261023`、`fix/71-ci-ocr-toolchain-20261023`、`monitor/fos71-player2-p0-fix`、`master`。
+- ★**`master` 现读 tip ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（本轮未前进）**；台账分支现读 tip ＝ `a0a62baa981b96929462473f2b24350818c44a6a`（本轮未前进）。
+- **GM 仓 `main` 现读 tip ＝ `1e868391a6703724df157600260e4aab21ed1077`**，与上一轮读数**逐位相同** ⇒ **同一 tip ⇒ 名册 `W-DD-V1-2026` 的字节必然未变**（守恒推理；本轮 GM blob 取件因 TLS 瞬态未得，故此处以 tip 不变作守恒依据，而非以字节复算作依据）。
+- **cron 全表现读 4 条**：本工程周期件**恰 1 条**（`455353976279398`，`*/20 * * * *`，enabled）；另 2 条分别是 CF 公众号重置版（`455347827208431`）与 INC3 副官（`455164742488166`）各自工程的周期件；第 4 条 `455550607298941` 的 `schedule` 为空且 `schedule_kind` ＝ 1、`run_count` ＝ 1 ⇒ **一次性 self-reminder，不是周期调度器**。⇒ **本工程无第二条周期调度器**。★`last_run` ＝ 0／`run_count` ＝ 0 属平台未回填，**不可作「没跑」判据**。
+
+## 6. 本席本轮五处探针自曝（均为**脚本缺陷**，非对象缺陷、非台账缺陷）
+
+1. **路径 suffix 带前导斜杠 ⇒ 整齐的「未找到」**：第一版脚本用 `/tools/dd_v1_local_run.py` 之类带前导斜杠的 suffix 去匹配 `git ls-tree -r` 输出（该输出是**仓库根相对**路径，无前导斜杠）⇒ 三个关键路径整齐报 `found: false`。**同一次运行的 `same_path_diff_blob` 列表里却出现了 `tools/dd_v1_local_run.py`** —— 这条内部矛盾是发现该缺陷的证据。修后逐项取到字节，且 blob sha 与司仓所报逐位一致。**失败方向**：把探针口径错读成「合并面里没有这些文件」。
+2. **接线四项绑单载体 ⇒ 整齐的 0**（见第 2.4 节）。**失败方向**：把「四项不在这个载体里」读成「四项不存在」，或反向虚报「四项齐」而实为一项都没核。
+3. **GraphQL schema 字段凭 REST 记忆写错三次**：`commits.nodes.oid`（应为 `commit{oid}`）、`author.login`（`Commit.author` 是 `GitActor`，无 `login`）、`pullRequest.comments.nodes.path/commit`（PR 的 `comments` 连接是 `IssueComment`，**不带行内锚点**；行内锚点在 `reviewThreads` / `reviews`）。⇒ 三次整齐的 `__gql_errors` **全部是探针错，不是对象缺陷**。
+   ★**通用形态**：GraphQL 与 REST 是**两套 schema**，不能凭 REST 字段名推 GraphQL；「PR 级 comment」与「行内 review comment」是**两个不同的载体**，核独立裁定的锚点必须去行内那一侧取。
+4. **六态用中文句子字面去探 ⇒ 整齐的 0 命中**：本席第一版六态探针用六个中文短语（形如「无法识别类型」「主体未知」等）去扫四个 blob ⇒ **全部 0**。回查实现层后确认：六态在代码里是**键名加枚举标识**（`no_candidate_reason`、`evidence_status`、`candidate_status`、`NO_CANDIDATE`、`EMPTY_INPUT` 等），**不是中文句子**。★**失败方向**：把「我猜的中文句式不存在」读成「六态没有实现」⇒ 会误判施工面缺陷。★**判据的真源与宽严都须从实现读，不从措辞猜**。
+5. **脚本工作目录未切进仓库 ⇒ `ls-tree` 报 not a git repository**：本席一处脚本在仓库子目录里直接调 `git ls-tree` ⇒ 整齐地报「不是 git 仓库」。★**归因纪律**：通道/工具层的非零退出码一律先查脚本自身前提（cwd、ref、路径形态），**禁**当成对象不可达。
