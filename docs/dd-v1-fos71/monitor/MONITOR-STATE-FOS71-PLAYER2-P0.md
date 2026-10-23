@@ -8698,3 +8698,61 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 
 ■ 4 下轮（17:40Z 槽位）必查
 · ① ★**落盘器改造是否已落地：message 自检改为同函数内硬断言（raise 即中止），且每个事实 token 回载荷 grep 命中数必须相等**（★**这是本席 §一百五十六／§一百五十七 两节共同挂出的 Owner 可派事项，本席 0 代改施工面**）｜② Owner 是否授权合并 PR #81（H1）｜③ 授权后 master tip 是否前进 ⇒ 本节全部锚点立即过期｜④ 台账下一空闲节号（★执行点现读；本节写下一节 ＝ 一百五十八）｜⑤ 真重号组数是否增加｜⑥ 本工程 cron 是否仍恰 1 条
+
+#### 一百五十八（号 158）、17:3xZ–17:4xZ 槽位独立监工席 · 本席 `455559928467912` · ★**只追加，不改写任何已落字节；0 删、0 回填、0 重排** · ★**本节四件事：① T4 独立 Gate 已落纸（我方一手现读）＋ 账目后果分列；② CI 计数分歧的机制事实（CI 日志进度行被折叠）＋ 我席一处通道描述自更正 ＋ 司仓回执两处转述更正；③ 六态双入口字节级现读 ＋「未覆盖」措辞更正；④ 兄弟席读数时刻差（不改他人字节）**
+
+■ 0 锚点与取号（★执行点现读，★禁硬编码）
+· 基座 ＝ 落盘执行点最后一次现读的台账 tip `8b4987e7b4754cd75a9635f5d3804bd650b90ab2`｜基座载体 blob `e84c7ec1fe05fd5a5a1632addb98b16cc9c55376`／**1911172** B
+· ★**取号**：v4 口径现读（标题首个中文数字 token ＋「（号 ＋ 数字）」字面并集）⇒ 顶层节号占用 **132** 个、域 max ＝ **157**、域 26–**157** 连续 0 空洞 ⇒ **本节取 一百五十八**
+· ★**锚点现读时刻 2026-10-23T17:44:04Z**（★master／#81 tip／merge ref 两父／PR 评论面／六态四文件 blob 均取自该刻）
+
+■ 1 ★★T4 独立 Gate 已落纸（我方一手现读；★★本槽位头号新事实）
+· **载体**：PR #81 的 issue comment id **6370738997**，created_at **2026-10-23T17:25:18Z**，正文 **19,100** 字节，首行逐字「**VERDICT: PASS**（限本裁定书列明的被验范围与口径）」，出具人自称独立复核席 `455539551396187`，文内自述「本席为唯一出具裁定人；全部读数为本席自跑，未采信任何他席自报数字」
+· **被验锚（我方独立现读，与裁定书自述逐位一致）**：首选锚 ＝ PR #81 的 merge ref commit `ef94af4c9a6d640b5f412e352cbfb53ad906b5a8`；我方 GraphQL 现读其两父 ＝ 现读 master tip `3781311c4b1157c68a0f891506b7c33ab327f7c4` ＋ 现读 #81 tip `a34d01031471b539480ef8bdd53d263cc375ac59`（master 自 11:01:06Z、#81 自 16:12:29Z 均未前进）⇒ **两父新鲜度成立、锚未过期**（★锚是执行点函数，tip 再前进即过期）
+· **PR #81 面（我方一手现读）**：head `a34d01031471b539480ef8bdd53d263cc375ac59`｜base `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`｜state OPEN｜merged false｜mergeable MERGEABLE｜mergeStateStatus CLEAN｜**reviews 0／review comments 0／reviewThreads 0／issue comments 6**（末条＝本次裁定）⇒ ★**裁定以 issue comment 承载，平台 review 面仍 0**（★读数口径：reviews／reviewThreads 两面另读，不与 comments 面混用）
+· ⇒ **账目后果（三处分列，互不换算）**：
+  ① ★**丙案 v3 四道技术闸 3/4 → 4/4**（★T4 的既定定义就是「T5 后的终态独立 Gate」，本裁定即该闸；四闸现读 ＝ T1／T2／T3／T4 全成立）
+  ② ★**R2-WP1 0/1 → 1/1**（★本台账原记「R2-WP1 ＝ 0/1（T4 独立 Gate 未落）」⇒ 现已落 ⇒ 进位）
+  ③ ★**工程条 A0–A5 口径仍 4/6**（★分子单位 ＝ A 格：现读构成 ＝ A0 至 A3 各 1，来源 ＝ PR #80 回写面各自的独立 PASS 记载；★**T4 的被验范围 ＝ 本 P0 修复线的 R2 语义修复 ＋ T5 六态贯通，不覆盖 A4（刘江 Windows 授权后真实 42 题同库复跑，仍 BLOCKED）与 A5**）⇒ ★**本席 0 自行把修复线 PASS 折算进上级口径分子**（★跨口径折算 ＝ 自行改判）⇒ ★**列为需人类裁定项（见 §6）**
+· ★**效果条 0/100 REAL_PASS 不变**（O1 至 O5 全 UNKNOWN；★裁定书自陈六态生产路径可达数 ＝ 4/6，属工程／语义面，MOCK 与合成不折算）
+· ★**硬门槛 9 项 0 PASS／0 FAIL／9 UNKNOWN 不变**（★项目级口径；★裁定书只使**本修复线内部**的 INDEPENDENT_REVIEW 子项成立，★**不得被读成「项目级硬门槛已过」**）
+
+■ 2 ★★CI 计数分歧：本轮新增机制事实 ＋ 我席一处通道描述自更正 ＋ 司仓回执两处转述更正
+· ★★**机制事实（我方一手读 CI job log；★这是本节最硬的一条）**：两条 run（push 事件集 `39984863632`／PR 事件集 `39984871257`）各 3 个 job 的 log 里，**pytest 进度行被回车覆盖折叠** ⇒ 日志里**只留末段**（440+ job 的末段 ＝ **31 个点 ＋ [100%]**，★无 s／无 F）⇒ ★★**全量进度字符在 CI job log 里根本不存在**；★CI 侧**唯一可读数字**是末行 `Tests passed: 1826`（＝ junit 口径 t−f−e−k，脚本从 `/tmp/result.xml` 读 tests／failures／errors／skipped 四个属性算得）；★**junit XML 未上传为 artifact**（★与裁定书 §8 同向）⇒ ★★**CI 侧的 collected／skipped／failed 各自在当前平台面不可独立复现** ⇒ ⇒ **「差 1」不是口径差，而是证据面缺口**：CI 侧只剩 t−f−e−k ＝ 1826 这一个数
+· ★★**我席自更正（通道描述错，★可核）**：我 §一百五十一 写「CI 侧 '.' 1826 ＋ 's' 6 ＝ 逐位从 job log 的 pytest 进度字符抽」⇒ ★**该通道描述与日志实际形态不符**（★日志里那一行只有 31 个点）⇒ ★**该读数降级为「不可由 CI job log 复现」**；★连带：我 §151「差 1 的四数同向分解」中 **CI 侧三个数失去可复现出处** ⇒ 本节只保留「CI 侧 t−f−e−k ＝ 1826」这一条；★**已落字节不静默改写**（本节 ＝ 只追加更正）
+· ★**仍成立的两条（一手复算）**：① CI 命令逐字 `uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py`（★本轮在 4 个 backend job log 里逐字读到，★两 run 一致）｜② **doctor 文件在当前 head 上确为 2 个 test 函数**（blob `3b40c637765c70f721ccfa0b8cd892d6bbe3b78e`／1,013 B／函数 `test_doctor_script_exits_zero ＋ test_doctor_script_output_contains_python`，★我方本轮一手复算）⇒ ★**「CI 全集 ＝ t_CI ＋ 2」这条关系式成立**（★**t_CI 本身当前不可读 ⇒ 关系式成立但不可求值**）
+· ★**司仓回执两处转述更正（我方逐条字节核，★只更正陈述，0 改任何已落字节）**：① 回执写「passed 侧同值 1826」，而其自身引用的复核席进度字符是「'.' 1825」⇒ ★**两句自相矛盾**（1825 ≠ 1826）｜② 回执把那组读数标注为「同一 head 的 CI job log」⇒ ★**归属错标**：★CI job log 无可数进度字符（见上）⇒ 该组字符**只能来自复核席自己的本地跑批**；★且其「'F' 0」与同段的「f ＝ 1」互斥（★裁定书 §2 载本地跑批 failures ＝ 1）⇒ ★**我席 0 裁定谁对**：两读数一为「CI 侧不可复现」、一为「本地一手」；★**闭合路径**＝① CI 侧把 junit XML 上传为 artifact，或 ② 复核席把本地 junit 的 testcase 名字集合落盘并与 CI 侧对齐（★**当前两侧都不可得 ⇒ 归为证据面缺口，不记口径差**）
+
+■ 3 ★六态双入口字节级现读 ＋ 一处措辞更正（未覆盖 ≠ 未修复）
+· **裁定书 §4.4 实测**：**六态生产路径可达数 ＝ 4/6**（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／RETRIEVAL_EXHAUSTED 可达；PERMISSION_BLOCKED／OTHER 生产路径不可达，★只给了反事实可写证据 ⇒ 裁定书把该两项列入未覆盖项）⇒ ★**与我席先前登记的「自述 3/6 vs 实测 4/6」同向**
+· ★**我方本轮一手字节级现读（四个文件，★blob base64 解码 ＋ 断言「解码长度 ＝ 信封 size」全部通过）**：
+　· `tools/dd_team_channel.py` blob `3610eb4db61f41b5aec25a2490c027b1f6c0bb45`／37,307 B ⇒ no_candidate_reason 4／evidence_status 6／NO_CANDIDATE_REASONS 1／rule_hint 4／candidate_status 3／候选 19
+　· `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` blob `3d23ab078eb72f4c83b5a65d5aaafe34505afdb0`／24,513 B ⇒ no_candidate_reason 4／evidence_status 4／rule_hint 3／candidate_status 2／候选 9
+　· `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` blob `63d13d1f001f64520d35f5d903087e0cfdffe76b`／55,724 B ⇒ no_candidate_reason 15／evidence_status 6／NO_CANDIDATE_REASONS 2／rule_hint 8／candidate_status 14／CANDIDATE_STATUSES 2／候选 33；★六态枚举成员 ＝ 6 项（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER）＋ 正交四态 ＝ 4 项（OK／EXHAUSTED／PERIOD_OR_VERSION_MISMATCH／NO_CANDIDATE）
+　· ★`tools/dd_v1_local_run.py` blob `f23f89692879e093c9ffbd9db10b174040796fb1`／30,918 B ⇒ **七键全 0 命中**（no_candidate_reason／evidence_status／NO_CANDIDATE_REASONS／rule_hint／candidate_status／CANDIDATE_STATUSES／「候选」）
+· ⇒ ★**措辞更正**：local_run 侧七键 0 命中**这一读数仍成立**，但 **T5 变更面不含 local_run** ⇒ 它落在**独立 Gate 覆盖范围之外** ⇒ ★**正确措辞 ＝「未覆盖」，不是「未修复」**；★**不得据此写「正式入口未贯通」**（★仓内「正式入口」不止一个：入口 A ＝ `tools/dd_team_channel.py`（Team Channel 正式入口，★T5 已覆盖并经独立 Gate 确认），入口 B ＝ `tools/dd_v1_local_run.py`（★不在 T5 变更面内））
+
+■ 4 ★兄弟席 §一百五十四 的读数时刻差（★非事实错，0 改他人字节）
+· 兄弟席 §154（17:20Z 槽位）记「PR #81 issue comments 5（末条 12:49:58Z 司仓 v3）⇒ 当前 tip 上 0 独立裁定 ⇒ 工程分子不进位」⇒ ★**该评论读数落在 17:25:18Z 之前** ⇒ ★**属读数时刻差，不是事实错** ⇒ 本节只追加登记；★该节其余读数（授权分支 tip 未前进、local_run 七键 0 命中、类型表 0 个第三套、GM 名册面）**与我方本轮同向**
+
+■ 5 ★通道事实（我方本轮一手）
+· ★REST core **已回填**：core 3810／5000（reset 1792779665）（★司仓席 17:16Z 现读「5,000／5,000 用尽」是窗口态，现已过）；GraphQL graphql 4939／5000；search 28／30
+· ★**git 通道 promisor 取件仍 TLS 失效**（兄弟席现读 `gnutls_handshake() failed`）⇒ ★**本席落盘走 REST git-data**；★**大 blob 取件走 base64 解码 ＋ 断言「解码长度 ＝ 信封 size」**（★本轮一手取件（锚点现读时刻那版基座 1,911,172 B）断言通过 ⇒ 不是「信封当内容」）
+
+■ 6 ★需人类裁定的一项（★本轮新增决策项；★与既有两项不重复）
+· **T4 独立 PASS 是否折算进 A0–A5 上级口径分子**（★分子单位 ＝ A 格；T4 被验范围 ＝ 本修复线 R2 ＋ T5；A4 ＝ Windows 授权后真实 42 题同库复跑仍 BLOCKED、A5 ＝ 0）⇒ ★**本席 0 自行折算、0 改尺子、0 改合同、0 代写**；★裁定「折算」⇒ 工程条进位至 5/6；★裁定「不折算」⇒ 工程条仍 4/6、R2-WP1 仍 1/1（★**两读数都记，不混写**）
+
+■ 7 ★★★我席一处标识符错位自曝（★值闸当场判死；★家族 ＝「手抄标识符 ⇒ 假凭证方向」）
+· ★**形态**：我席记忆与交接文本里，§一百五十一 那笔 commit 的 sha 被写成 `e266a556852551bbf1522beb10bd07d2fa719b70`；★**远端值闸当场判死**：该串打 `/repos/bog5d/cangjie-fos/commits/<sha>` ＝ **HTTP 422**（★该串不解析为任何 commit）⇒ ★**它指向一个不存在的对象**
+· ★**真值** ＝ `e266a556852551bbf1522beb10db07d2fa719b70`（★HTTP 200；★其 commit message 首行逐字自述「docs(fos71-monitor): 16:4xZ-17:2xZ 槽位 · 一百五十一 - CI 侧测试数一手逐位复核(1832/1826/6/0/0) + 差 1 的四数同向分解 + 我席 §148 落盘器闸表两处自错更正 + 同名组 25/逐字节相同 9 + T4 在飞不踢 · 只追加」）⇒ ★**与台账字节同源**（★台账里该串 5 处，★无错位写法）
+· ⇒ ★**纪律**：★**标识符（commit／blob sha）一律回远端现读并过值闸（对象存在性）**，★**记忆层与交接文本不是标识符来源**；★**本节所有 sha ＝ 现读注入**（★构建脚本对台账基座与本节引用的 sha 各做一次存在性断言）
+· ★**边界**：该错位**只存在于我席记忆／交接文本**，★**未进任何已落字节**（★台账字节 5 处均正确）⇒ ★**0 改写他人字节、0 回填**
+
+■ 8 ★写后独立回读全过清单（我席 §一百五十二，★逐值取自台账字节，★本节只引用不改写）
+· ref tip ＝ 本笔 `51e2f51251572e2fb646d81b68f18c7a8c083625`｜★单父 ＝ 基座 `e266a556852551bbf1522beb10db07d2fa719b70`｜★blob size ＝ 解码长度 ＝ **1,869,939**（★断言相等）｜★sha256 与落盘器自报逐位相等｜★**字节域严格前缀 True**（增量 **7,773** B）｜★**author/committer ＝ 席位 id `455559928467912`**｜★变更面：**新增 0／删除 0／既有 blob 变 1** ＋ 派生 tree 变 **3**｜★**禁形 7 族在增量字节上全 0**（阳性对照逐族可响）｜★**落盘后本节自身的回读清单由下一节登记**（★禁在本节预写未发生的值）
+
+■ 9 边界 0
+· 0 合并任何分支（含 master）｜0 关 PR｜0 amend／0 force｜0 改写或删除他人字节｜0 删节｜0 回填｜0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue AC／尺子／合同／GM live 名册｜0 写产品代码｜0 新建调度器／第二套监工／第二执行器｜0 spawn｜0 唤醒｜0 恢复｜0 输出明文 token｜0 复刻禁形字面｜★**0 出波总卡**（★独立 Gate 落定这一触发项由司仓席首发；★本席只在窗口侧报事实与账目变化）
+
+■ 10 下一棒必查
+① ★T4 裁定是否被撤回或被新版取代（★裁定是时点性事实；★#81 tip 或 master tip 再前进 ⇒ 锚立即过期）｜② ★**「差 1」能否闭合**：CI 侧 junit XML 是否上传为 artifact，或复核席是否落盘 testcase 名字集合｜③ ★**T4 PASS 的 A 格归属裁定结果**（见 §6）｜④ master／#81 tip 是否再前进｜⑤ 下一空闲节号（★执行点现读；本节写下一节 ＝ 一百五十六）｜⑥ 台账同号真碰撞组数与标题逐字相同组数是否增加｜⑦ local_run 入口是否被纳入后续变更面（★当前属「未覆盖」）｜⑧ 本工程 cron 是否仍恰 1 条｜⑨ 平台限流是否解除
