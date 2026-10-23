@@ -4181,3 +4181,84 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 #### 十、★边界（本席本轮全集）
 
 **0 合并**（含 master）｜**0 关 PR**｜**0 改 PR 正文或已落纸顺序**｜**0 代写独立 Reviewer 的 VERDICT**｜**0 改 Issue #71 的 AC 判定**｜**0 改尺子口径**｜**0 改 GM live 名册**｜**0 写被验面（backend／tools）**｜**0 触碰施工方工作树**｜**0 代写他人分支**｜**0 唤醒**｜**0 spawn**｜**0 恢复执行器**｜**0 新建调度器**｜**0 新建第二套监工**｜**0 新建第二执行器**｜**0 amend**｜**0 force push**｜**0 改写他人已落字节**｜**0 输出明文 Token**｜**0 复刻禁形字面**｜**0 向波总重复投递同一事件的一屏卡**。
+
+#### 六十五、R21 续办轮二（司仓）· ★★节号碰撞登记（六十二 出现 2 处）＋ ★★★CI 机制的决定性机械证（pull_request 触发那套 checkout 逐字指向 merge ref）＋ 丙案 v2 落纸
+
+· **本节取数窗口**：2026-10-23T12:07Z–12:38Z（UTC，epoch 程序化换算）｜本席 ＝ 司仓（root 席）｜通道 ＝ GitHub REST（core 配额**本轮已重置**：remaining 3521／limit 5000、reset epoch 1792758050）＋ GraphQL（remaining 4966／5000）＋ git 协议（ls-remote／cat-file）＋ job 日志端点
+
+· **节号取法（执行点现读，写 ref 前最后一次现读）**：远端 tip 现读 ＝ `949d9590ee7f5516c889e89882e6619a5e4b5c57`｜载体 841,055 B／blob `25323d749d47564becc2ba4efa5e52c6fcf526b8`／sha256 `558a6a42a01a21c6ae53c748e128c7090491961ff0c270c445e3bd77243884f0`（解码长度＝信封 size ✔）｜**★该基座上「#### 六十二、」标题行出现 2 处（见第一节）、「#### 六十三、」1 处、「#### 六十四、」1 处 ⇒ 本节取 六十五**
+
+· **一、★★★头号新事实①：台账节号发生碰撞 —— 「六十二」被两个席同取**
+  · 现读载体里「#### 六十二、」标题行 **2 处**：① 轮次 21 follow-up 1（11:40Z 槽位席，commit `2cab6681f658f3426c269cb04e089cc6000ee7a9`，落笔时刻 2026-10-23T12:17:30Z，父 ＝ `c42a6407655f0ea4ccb35a31da967953dcfec580`）② 轮次 27（12:00Z 槽位席 `455490372092130`，commit `8d1a0192d44fca5796c24019b0c27ee6173ac5d4`，落笔时刻 2026-10-23T12:17:49Z，父 ＝ ①）
+  · **根因（机械可核）**：两席各自的取号判据「基座字节里该号字面未占」在**同一基座** `c42a6407655f0ea4ccb35a31da967953dcfec580` 上同时成立 ⇒ ★**「重取基座」与「重取号」是两件事**：12:00Z 席落盘前把基座从 `c42a6407655f0ea4ccb35a31da967953dcfec580` 重取到 ①（防撞写），但**没有重跑编号枚举** ⇒ 把已由 ① 占用的「六十二」又写了一次
+  · **处置**：★**0 代改**（不改写、不删除、不重排他人已落字节）⇒ 只追加登记本事实；★**下一空闲整数号 ＝ 六十五**（执行点现读：六十二 2 处、六十三 1 处、六十四 1 处均已占）；★**本节起，节号唯一性已破，凡引用台账节号者一律带节标题全文，不引用裸号**
+  · ★**影响面**：仅台账**节号索引**受损；两节正文内容互不覆盖（载体字节层两次追加，变更面各为 1 路径 M）⇒ **工程结论无一处需要回退**
+  · ★**闸门当场拦下一例撞号（本席自曝）**：本席首版取号取的是「六十三」，落盘前**写前闸（节标签字面未占断言）当场中止**（远端**零写入**）—— 拦下原因是该基座上「六十三」已被 12:00Z 席的更正节占用 ⇒ ★**这正是「重取基座 ≠ 重取号」的实证**：本席若不做写前闸断言，第三个「六十三」就会写进远端历史
+
+· **二、★★★头号新事实②：CI 机制的决定性机械证 —— pull_request 触发那套 **只 checkout merge ref****（本席一手 job 日志）**
+  · **取数**：`GET /repos/bog5d/cangjie-fos/actions/runs?head_sha=78807393ca2ae914c82cafdf5677f1534bd7175c` ⇒ 同一 head 上**两批 run**，event 字段不同：`39944737488`（event ＝ push，created 11:14:51Z）与 `39944744402`（event ＝ pull_request，created 11:14:54Z）
+  · **★判据（逐字引 job 日志）**：
+    · pull_request 触发（job `120384523160`，Backend Tests (440+ required)，11:14:57Z–11:37:30Z，success）的 checkout 命令逐字 ＝ `git checkout --progress --force refs/remotes/pull/81/merge`；紧随的 HEAD 行逐字 ＝ 「HEAD is now at 〈merge commit〉 Merge `78807393ca2ae914c82cafdf5677f1534bd7175c` into `3781311c4b1157c68a0f891506b7c33ab327f7c4`」⇒ ★**该 run 的工作树 ＝ merge 树（refs/pull/N/merge），不是 head 树**
+    · push 触发（job `120384499524`，同 head，11:14:53Z–11:19:14Z，success）的 checkout 命令逐字 ＝ `git checkout --progress --force -B feat/71-player2-p0-fix-20261023 refs/remotes/origin/feat/71-player2-p0-fix-20261023` ⇒ ★**该 run 的工作树 ＝ head 分支 tip**
+  · ★★**据此定案（平台行为层，不再是推断）**：**required check 所用的 workflow 文件 ＝ 该次 run 实际 checkout 的那棵树里的那一份**；`pull_request` 触发 ⇒ **merge 树**；`push` 触发 ⇒ **head 树**；**base 类型只决定「会不会产生 pull_request 触发」**（该仓 `ci.yml` 的 pull_request 触发分支只含 master 与 main）
+  · ★**对三席表述的逐条归位（不投票、按对象归位）**：① 10:00Z 席 §六十一 请求的收窄表述「workflow 文件取自 PR head commit」—— ★**被平台 checkout 行证伪**（pull_request 触发那套从未 checkout head 树）⇒ **本席不采纳该收窄**；② 11:40Z 席 §六十二 的定案表述（run 实际 checkout 的那棵树的那一份）—— ★**与本席机械证一致，成立**；③ 本席 §六十 第 3 节前半句「base ＝ master／main ⇒ pull_request 触发 ⇒ 跑 merge commit」—— ★**成立**；10:00Z 席把它单独摘出判「不成立」属**误读**（把条件句的一支当成通用规则）
+  · ★**残留的「不可判别」已收窄**：只有在「head 树与 merge 树该文件内容不同」的样本上才谈得上「用的是哪一份」；★**该仓此类样本已耗尽**（#84 现 head 与其 merge 树该文件同内容、#83 head 与其陈旧 merge ref 同内容）⇒ **该问题在本仓已无判别样本，但平台行为已由 checkout 行直接定案，不再依赖该样本**
+  · ★**该定案不改变任何可执行结论**：feature 基座的 #83 要绿**仍只能**把 OCR 步骤复刻进它自己的 head（丙-2）；★**把 CI 修复合进 master 不能让 #83 变绿**（#83 的 check 是 push 触发的 head 树 run）
+
+· **三、★OBS-1 复刻笔的字节层独立复核（本席一手，不采信自报）**
+  · 新笔 `16e18b21f261fb97e22352a64cc64ebb289c74ea`（父 `78807393ca2ae914c82cafdf5677f1534bd7175c` ＝ 授权面要求的「写 ref 前最后一次现读的 PR #81 分支 tip」✔；author／committer ＝ Player2 Executor；12:08:16Z）
+  · **8 条 A 路径：blob 与源笔 `8ad3564ab4f481ef7efbf586ce16340f18c005a0` 逐位一致（8／8）**：`ef576e7d9b7bdb7ee03f61c18b6111f7a9c19da6`（backend/tests/test_dd_v1_minor4_fixture_gate.py）｜`7b0b8ff2a2cbc8fba956d4d6399a6a84dfd2f9ec`（docs/dd-v1-fos71/wp05-real-integration/MINOR4-FIXTURE-GATE-ERRATA.md）｜`cf64dc4e95662ac28c96cfc76f9d120861cc18b8`（同目录 a4-evidence/minor4-fixture-gate/README.md）｜`f4315bf2c0bb617cd2ffb448269a27ab4aabadaa`（同目录 SHA256SUMS.txt）｜`ca8c8642917923cc88cbf0680c5681a452212a7f`（同目录 probe-result-after.json）｜`fb468c982ca290e98d7d69017225f3902752397e`（同目录 probe-result-before.json）｜`a41465733317cdd3eaadbb5db09330e5c22e5745`（同目录 probe_minor4_fixture_gate.py）｜`39d893b23544afc3b437fca8bb03859bc8505183`（同目录 regression-tests.txt）
+  · **M 路径 `tools/dd_v1_local_run.py`**：落盘 blob `9c0412cea06b00902b3be39b1e215c8bcf8508da`／27,850 B；源笔版 `55d78deb37721c52e70dc635b677a52697bca0f0`／25,523 B；PR #81 旧头版 `bb1f8e5eb2b1f0e3d4596d764f7dceed4cbf83a6`／25,088 B ⇒ **三者互不相同** ⇒ 真三方合并结果（**不是**逐位复制）
+  · **双侧标记计数（我席现读该 blob 正文）**：OBS-1 侧 ＝ 合成 fixture 豁免闸 2、仓外副本写入门 2、两个新增辅助函数各 2；考生2 P0 侧 ＝ 权威类型解析 1、索引件判定 1、当前类型集合 1、脱敏切分 1、类型溯源字段 1、未决类型字段 1、歧义切分 1 ⇒ **两侧同时在场、零覆盖**
+  · **清零口径保持**：新树递归 tree 879 条目（truncated=False）⇒ 路径含 `seven-item-bundle` **0 件**、路径含小写 `minor4-fixture-gate` **7 件**（6 文件 ＋ 1 目录项）⇒ 复刻未把成卷材料带回仓内
+  · **与本席 R21 预演一致**：预演预测合并后 27,850 B，实际落盘 27,850 B，逐位相等
+  · ★**合流三处仍为 2／3**：OBS-1 ✔（#81 tip）＋ 考生2 P0 的正式入口段 ✔（同树）＋ **G5 服务层四文件 ✘**（仍只在 PR #83 head `e2995cb99048978f64bf482715c3adc1492b5783`）⇒ **合并授权仍不能在缺口补齐前给出**
+  · ★**落盘质量登记（本席只登记，不代改他人已落字节）**：12:00Z 席与施工席两路独立登记该笔 9 条路径含禁形形态（单码点省略号 5 处、ASCII 三点 2 处、截短小写 hex 5 处，**全部继承自源笔**，复刻未新造）；★其中 `regression-tests.txt` 为非严格 UTF-8 ⇒ **该文件的禁形读数不可得（不是 0）**；★清零这些形态须另开授权（会破坏与源笔的 blob 等同性）
+
+· **四、★PR #83 失败 ID 全集闭合（本席一手 job 级日志 ＋ run 级交叉互证）**
+  · 路由：job 级 `GET /repos/bog5d/cangjie-fos/actions/jobs/{job_id}/logs`；job `120379511292`（Backend Tests (228 required)，日志 36,378 B）与 `120379511638`（Backend Tests (440+ required)，日志 36,512 B），**同属 run `39943232009`**；每 job 各 10 条 FAILED 行
+  · **10 条失败 ID 全集（全部落在 `tests/test_dd_v1_ocr.py`）**：test_local_ocr_toolchain_available｜test_all_four_orientations_are_tried｜test_recovers_rotated_chinese_scan[0]｜test_recovers_rotated_chinese_scan[90]｜test_recovers_rotated_chinese_scan[180]｜test_recovers_rotated_chinese_scan[270]｜test_parser_uses_ocr_for_image_without_text_layer｜test_ocr_failure_keeps_unreadable_and_no_text｜test_image_only_pdf_is_ocred｜test_parse_method_is_recorded_as_ocr
+  · 断言原文命中：「本机缺少 tesseract」6 处、「本机没有可用的中文字体」48 处
+  · **交叉互证**：施工席以 run 级路由 `GET /actions/runs/39943232009/logs`（zip 6 条目）取到**同一 10 条 ID** ⇒ 两条路由独立互证；★本席读数与 12:00Z 席登记**逐位一致**（三路互证）
+
+· **五、★19 条新增用例 ID 全集（本席独立复算，不采信自报）**：以两份 junit XML 做 testcase **集合差**（基线侧 1,770 → 改动侧 1,789，删 0；两侧 failures／errors 各 0、skipped 各 5）⇒ 新增恰 **19** 条：16 条在 `tests/test_dd_v1_fos71_r2_wp1_period.py`（test_candidate_status_ladder_is_unchanged｜test_legacy_obligation_without_spec_still_works｜test_material_without_year_is_uncertain_not_mismatch｜test_matrix_current_semantics｜test_matrix_explicit_year｜test_matrix_relative_period_with_verifiable_anchor｜test_matrix_relative_period_without_anchor_is_uncertain｜test_matrix_unknown_period_keeps_candidates｜test_obligation_carries_period_spec｜test_period_check_is_not_weakened｜test_period_spec_is_json_serializable_and_deterministic｜test_r4_accepts_match_when_period_matches｜test_r4_rejects_match_when_material_year_conflicts｜test_r4_rejects_match_when_period_basis_insufficient｜test_relative_period_anchor_never_uses_system_clock｜test_relative_period_uses_declaration_in_requirement_text）、3 条在 `tests/test_dd_v1_period_service.py`（test_c1_declared_anchor_expands_relative_period_with_year｜test_c1_relative_period_not_swallowed_by_single_year_explicit｜test_f1_guard_catches_package_level_import_form）⇒ **与施工席回执逐位一致**
+
+· **六、★PR 面现读（12:1xZ–12:3xZ）**
+  · **#81**：OPEN、merged=false｜head `16e18b21f261fb97e22352a64cc64ebb289c74ea`｜mergeable=MERGEABLE、mergeStateStatus=UNSTABLE｜**6 个 check-run ＝ 5 success ＋ 1 in_progress**（in_progress ＝ `120405428262`，Backend Tests (440+ required)，started 12:08:26Z；其余 5 条 completed_at 落在 12:08:43Z–12:12:52Z）｜merge ref 现读 `d458120c095a7e9562fb3336b524c8b8d6385650`（tree `522b8840888ca628247d59851e54d81efcee6e3a`，parents ＝ master `3781311c4b1157c68a0f891506b7c33ab327f7c4` ＋ head `16e18b21f261fb97e22352a64cc64ebb289c74ea`，作者 中本笨，12:08:24Z）｜master 与 head ＝ **diverged**（ahead_by 6、behind_by 2、merge_base `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`）
+  · **#82**：OPEN、**未关闭**、mergeStateStatus=CLEAN、head `bd4144641b260447abf0b57a199a5e301a58a414`、merge ref `68820e9d69608e8138a37401cd3a596b7a9836fc` ⇒ 「按内容已含关闭 #82」尚未发生（人类授权域，本席 0 关闭）
+  · **#83**：OPEN、UNSTABLE、head `e2995cb99048978f64bf482715c3adc1492b5783`、baseRefOid 快照 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`、**base 分支现读 tip 已到 `16e18b21f261fb97e22352a64cc64ebb289c74ea`**｜★**merge ref 现读 `5f1f376fbc95f1aac1fb5fa070bb97c6e3ee88a5`（tree `c9aebcb5c650318f3c688a5abf061a011fc1617c`，parents ＝ `57614120edf0ce9304ac1683f0ec3a46bbc682b2` ＋ `e2995cb99048978f64bf482715c3adc1492b5783`，11:02:00Z）⇒ 父侧仍是旧基座 ⇒ base 前进后 merge ref 未重建** ⇒ #83 仍 2 红（11:03:50Z–11:08:11Z 那批）
+  · **#84**：OPEN、CLEAN、head `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`、baseRefOid 快照 `78807393ca2ae914c82cafdf5677f1534bd7175c`、merge ref `36620d3ded35a00fc21b416ad8f6a6491f4b61a9`｜★**issue comments 0、formal reviews 0 ⇒ 独立 Gate 尚未落 GitHub 面 ⇒ R2-WP1 仍 0／1**
+  · ★**传输层重试记录**：#84 的 merge ref 连续两次 `ls-remote` 报传输层失败、第三次成功 ⇒ ★**读数须重试到收敛，单次失败不构成「对象不存在」**
+
+· **七、★独立 Gate 锚点已陈旧 ＋ 两本账**：唯一独立 Gate ＝ PR #81 comment `6358415604`（05:51:17Z，VERDICT: PASS，被验对象 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`）⇒ 当前 head 已到 `16e18b21f261fb97e22352a64cc64ebb289c74ea` 且 `tools/dd_v1_local_run.py` 已换 blob ⇒ **该 Gate 不覆盖当前 head**（★CI 绿 ≠ 独立裁定）｜两本账（互不换算，本轮 ±0）：**工程 4／4**（分子仍挂在旧被验对象上，★不回退也不外推）｜**效果 0／100 REAL_PASS**｜**A0–A5 0／6**｜**R2-WP1 0／1**｜硬门槛 0 PASS／0 FAIL／9 UNKNOWN｜**活跃态 PRODUCTIVE**｜**该踢吗 NO**
+
+· **八、★执行席与独立复核席判活（只认末条 assistant turn）**：执行席 `455452570214476` 末条 epoch 1792757549341 ＝ 2026-10-23T12:12:29.341Z、finish_reason ＝ toolUse ⇒ **仍在飞**（其回执已交，见其回执第 10 节列出的后续交办事项：新 tip 全量跑批三件套 ＋ doctor 脚本单独跑批）｜独立复核席 `455458672263345` 末条 epoch 1792757692416 ＝ 2026-10-23T12:14:52.416Z、finish_reason ＝ toolUse ⇒ **仍在飞**（独立 checkout 正在跑 head 套，进度 20%；变异台 HEAD ＝ `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`、工作树干净）｜★**两席均在飞 ⇒ 0 唤醒、0 spawn、0 恢复**
+
+· **九、GM live 名册（只读）**：GM main tip `1e868391a6703724df157600260e4aab21ed1077`（未前进）｜`data/work_items.json` blob `0e8c65074f85db2d32efd9b3e580020a625cdb76`／489,942 B（解码长度＝信封 size ✔）｜条目 42｜**blockers 首条（W-DD-V1-2026）仍为**「执行器全灭：cursor 额度耗尽 / dsh 余额不足 / hermes 假成功（两次声称完成、零文件产出）」⇒ **名册单写者尚未更正**，本席 0 代改
+
+· **十、cron 面 ＋ 配额 ＋ 后台任务面**：`cron_read view=list` 全量 3 条周期件 ⇒ **本工程周期件恰 1 条** `455353976279398`（每 20 分钟、enabled、agent 名带尾随空格、next_run 2026-10-23T12:20:00.000Z）；`view=runs` 最近 20 条 status 全 1，最新一条为 12:00:00Z 槽位（run `455491594997854`、session `455490372092130`）⇒ 非重复调度｜REST core 配额**已重置**（remaining 3521／limit 5000）｜★**上一轮三个后台任务的输出仍不可读**（`task_output` 一律 HTTP 404 Not Found）⇒ 本轮读数全部直接现读权威对象，**未引用任何后台任务输出**；★**「完成通知 ＝ succeeded」不等于「输出可核」**
+
+· **十一、★丙案 v2（版本化重出；11:14:5xZ 那条落纸的技术前提已过期；本条只追加，不改写、不删除已落 comment）**
+  · **v1 落纸（11:14:5xZ）的前提**：「#81／#83 的 head 不含 OCR 环境修复 ⇒ 自身 check 必然红 ⇒ 先合 #82」—— **已过期**：#81 head 现含 OCR 修复，新 head 6 个 check-run 已有 5 条 success
+  · **v2 前置条件清单（四道技术闸 ＋ 两项人类授权）**：
+    · T1（丙-2）**#83 自己的 head 补 OCR 安装步** ⇒ 写者归属待波总指派（本席 0 代写他人分支）
+    · T2 **G5 服务层四文件并入 #81 分支**（或按波总指定顺序直接入 master）⇒ 合流三处才齐
+    · T3 **R2 交卷线并入 #81 分支** ⇒ 终态 head ＝ #81 tip ＋ R2 交卷笔
+    · T4 **独立 Gate 在终态 head 上重锚**（现读复核席跑的是 #84 的 head `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`，其 comment 落库后仍需在终态 head 重锚；★旧 Gate 锚在 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 已陈旧）⇒ Gate 未落前 #81 不得合并
+    · H1 **master 合并**（人类授权项）｜H2 **关闭 #82**（人类授权项，理由 ＝ 内容已被含入 #81 线）
+  · **顺序建议（不代人类决定）**：T1 → T2 → T3 → T4 → H1 → H2
+  · **本席 0 合并、0 关 PR、0 代写他人分支、0 代写独立 Reviewer 裁定、0 改已落 comment**
+
+· **十二、★边界（本席本轮全集）**：0 合并｜0 关 PR｜0 改 PR 正文或已落 comment｜0 代写他人分支｜0 代写独立 Reviewer 裁定｜0 改 AC／尺子／合同／GM 名册｜0 写被验面｜0 改他人已落字节｜0 amend｜0 force push｜0 新建分支／调度器／第二套监工／第二执行器｜0 唤醒／0 spawn／0 恢复执行器｜0 复刻禁形字面｜0 输出明文 Token
+
+· **十三、★下棒（12:20Z 槽位）必查**：① **台账节号唯一性已破**：下一笔必须取 **六十五** 之后的号，且**落盘前在最新基座上重跑编号枚举**（★只重取基座不重取号 ＝ 必然撞号）② #81 新 head 剩余那条 in_progress check-run 的终态 ③ 丙案 v2 是否已落 PR #81 comment 面 ④ #83 的 head 是否被指派补 OCR 步骤（丙-2）⑤ 复核席在 #84 head 上的 Gate comment 是否落库、终态 head 重锚是否已派 ⑥ GM 名册 blockers 首条是否被名册单写者更正 ⑦ 复刻笔那 9 条路径的禁形命中是否另开授权处置
+
+· **十四、★本席本轮新纪律（跨项目，四条）**
+  ① **★「重取基座」与「重取号」是两件事，只做前者必然撞号**：并发只追加台账里，基座被他人推进后重取基座只防撞写，**不防同号双写** ⇒ 落盘前必须在**最新基座**上重跑编号枚举（实证：本轮两席同取「六十二」，标题行 2 处）。
+  ② **★平台行为的判定优先级：读 job 日志的 checkout 命令行 ＞ 席位互裁 ＞ 推断**：本轮用两批 run（event ＝ push／pull_request）的 checkout 逐字命令，把「workflow 文件取自 head 还是 merge 树」从三席互裁直接落到平台行为层（实证：pull_request 触发那套 checkout 逐字指向 refs/pull/N/merge）。
+  ③ **★「不可判别」是当前证据状态的描述，不是永久结论**：本席上一轮把 pull_request 场景判为「本仓不可判别」，本轮用 checkout 行把它判定了 ⇒ 判「不可判别」时必须写明**缺的是哪一类判别样本**，以便下轮有新证据时能被推翻而不是被当成定论。
+  ④ **★远端 commit message 里的逐条 blob 对照表要当「被验对象」读，不能当装饰**：复刻笔 message 载了 9 条 blob 对照表 ⇒ 逐条复核后，**「逐位一致」只对 8 条 A 路径成立，对 M 路径不成立**（M 路径落盘 blob 既不等于源笔也不等于旧头，是三方合并结果）⇒ 只读 message 的读者会误以为 M 路径也是逐位复制。
+
+· **十五、★值闸探针改动登记（改的是本地探针，不是尺子）**：本席值闸原用 `r20_valuegate.py`（只探 commits／git/blobs 两个端点）⇒ 本节引用的两枚 **tree** 标识符被判 MISS ⇒ ★**探针面缺维度，不是对象不存在**（实测两枚 tree 在 FOS 仓 `git/trees` 端点均 200、条目数 34、truncated=False）⇒ 新增本地探针 `r22_valuegate.py` ＝ 原探针 ＋ `git/trees` 维度（★**族定义、尺子、阴性对照一律未改**）⇒ 复跑结果：40 位串 32 个全命中、阴性对照 2 个全落空 ⇒ PASS
+
+· **十六、附**：落盘走 git 协议（写前闸 ＝ payload 以基线字节开头 ＋ 尾部恰为插入块；写 ref 前最后一次现读 tip；单父快进非 force；空 refspec 守卫；写后独立回读远端字节、严格前缀、变更面、节标题计数、增量禁形与值闸复扫）。
