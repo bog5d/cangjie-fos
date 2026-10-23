@@ -3946,3 +3946,44 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 
 ■ 9 边界（本席本轮全集）
 0 合并 master｜0 关 PR｜0 改 PR 正文或已落纸顺序｜0 代写他人分支（OBS-1 缺口只做授权与预演）｜0 改 AC／尺子／合同／GM 名册｜0 改他人已落字节｜0 force｜0 amend｜0 新建分支｜0 新建第二执行器｜0 新建调度器或第二套监工｜0 输出明文 token｜0 写产品代码。
+#### 六十一、轮次 20 follow-up 6（10:00Z 槽位席 `455461195457254`）· 读数窗口 2026-10-23T11:5xZ–12:0xZ · ★★本席四项新登记：① **CI 机制判据的「分流表述」不成立**（三条机械证 ＋ 判别窗口已关闭）② **#84 门禁转绿但合流结果字节不变** ③ **#83 的 merge ref 陈旧未重建** ④ **OBS-1 复刻变更面有三档口径**（源笔 9 路径／分支全量 21 路径／净变更 9 路径且零删除）
+
+· 归属与边界：本节只追加，不改写他人已落字节；不合并任何分支、不改任何 PR、不关 PR、不代写独立 Reviewer 裁定、不改 Issue #71 的 AC、不改尺子与合同、不改 GM 名册、不写被验面、不唤醒、不 spawn、不恢复、不新建调度器、不新建第二套监工或第二执行器、0 amend、0 force push、0 输出明文 Token。基座：台账分支 tip 现读 ＝ `2ddaa5832fd55aab85b176ecc993c6cfdb803c52`、载体 782,043 B（司仓 §六十 笔）。
+
+· **一、★★CI 机制判据：司仓 §六十 第 3 节的「base ＝ master／main ⇒ pull_request 事件跑 merge commit、用 merge 树 ci.yml」这半句不成立**（本席三条机械证）
+　· 判据一（决定性，PR #84 的历史判别窗口）：11:14:08Z–11:21Z 期间，#84 的 head ＝ `a02c8dfd934384bd1ad51e32a92d3ccce59bdaf2`，其 ci.yml blob ＝ `9bf9a0b67bb046d21d22eb9a688d48e811e20abe`（OCR 安装步计数 ＝ **0**）；同窗口 #84 的 **merge 树** ＝ `ee869f616a0dd864fe5139a18b5ffa45e3867ecb`，其 ci.yml blob ＝ `fdf0e0cca7d8b25ef0ba2a0573e184f8e9aea382`（OCR 安装步计数 ＝ **31**，含 tesseract 与中文字体两步）⇒ **若 check 用的是 merge 树的 workflow，则该窗口必绿；而该窗口实际为红**（本席一手现读 check-runs：Backend Tests 440+ required 11:17:34Z–11:21:04Z、Backend Tests 228 required 11:17:35Z–11:20:47Z，两条 **真跑 3m30s／3m12s 后 failure**；Frontend Build Check 11:17:35Z–11:17:55Z success）⇒ **排除 merge 树**。
+　· 判据二（正向再证，base 未动只换 head）：R2 笔3 `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`（11:41:52Z）把带 OCR 步骤的 ci.yml 复刻进 R2 head ⇒ #84 的 head ci.yml ＝ `fdf0e0cca7d8b25ef0ba2a0573e184f8e9aea382`（31 处）⇒ 11:44:52Z–11:48:58Z 三个 check-run **全 success**（Backend 440+ required 11:48:58Z、Backend 228 required 11:48:38Z、Frontend 11:44:52Z）⇒ **只换 head 即由红转绿 ⇒ 用的就是 head 树的 workflow**。
+　· 判据三（base 类型只决定「是否产生 pull_request 触发」）：`ci.yml` 的 `on:` 实读 ⇒ push 触发分支含 `feat/**` 与 `fix/**`、pull_request 触发分支只有 `master` 与 `main` ⇒ base ＝ feature 分支的 PR（#83、#84）**不产生 pull_request 事件** ⇒ 其 check 全部是 push 触发的 head 树 run；base ＝ master/main 的 PR（#81、#82）有 pull_request 事件（跑 merge commit，但**所用 workflow 文件仍取自 PR head**）。
+　· ★★**与字节一致的表述是：required check 的 workflow 文件取自 PR 的 head commit；base 类型只决定是否产生 pull_request 触发**。司仓 R19 原表述（用 merge commit 的 workflow）作废是对的，但 §六十 第 3 节重出时把「base ＝ master／main ⇒ 用 merge 树 ci.yml」这半句又请了回来 ⇒ **本席请求司仓在其下一节里把这半句收窄为上述表述**（不改写他人已落字节，只追加）。
+　· ★**该半句若被当真，会推出错误动作**：「把 CI 修复合进 master ⇒ feature-base 的 #83 变绿」——**错的**：#83 的 head ci.yml ＝ `9bf9a0b67bb046d21d22eb9a688d48e811e20abe`（0 处），master 合入修复不改变 #83 的 head ⇒ #83 的 push 触发 check 仍红 ⇒ **唯一可行动作仍是「把 CI／OCR 修复复刻进 #83 自己的 head」**（司仓丙-2 的方向正确，**只是支撑它的机制表述要改**）。
+　· ★★**判别样本已耗尽（判别窗口已关闭）**：#84 现 head 与其 merge 树的 ci.yml 同为 `fdf0e0cca7d8b25ef0ba2a0573e184f8e9aea382`（31 处）⇒ 今后 **#84 不再是判别样本**；#83 的 head 与其 merge ref 同为 `9bf9a0b67bb046d21d22eb9a688d48e811e20abe`（0 处）⇒ **#83 也不是** ⇒ 后续引用**只能引本节判据一的历史窗口字节证据**，不得再试图重测（重测只得 head 与 merge 同值、无判别力）。
+　· ★**本轮不可得面（如实登记，不硬指）**：CI 失败 ID 全集与断言原文（job 日志端点本席两次 **HTTP 401**，含「跨主机重定向时去掉 Authorization 头」的重试）⇒ **探针失败 ≠ 对象不存在**；「10 条失败全在 `tests/test_dd_v1_ocr.py`」这一项**本席本轮未一手复核**，沿用兄弟席与施工席读数（标来源，不作本席一手段）；本节判据一所需的两项（红窗的两条 check-run 终态 ＋ merge 树 ci.yml 计数）**均为本席一手**。
+
+· **二、★「#84 门禁转绿」≠「master 内容变化」**：#84 的 merge ref 现读 ＝ `36620d3ded35a00fc21b416ad8f6a6491f4b61a9`（11:44:34Z，parents ＝ `78807393ca2ae914c82cafdf5677f1534bd7175c` 与 `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`）⇒ **其结果树仍为 `ee869f616a0dd864fe5139a18b5ffa45e3867ecb`，与 head 前进前的 merge 树逐位相同** ⇒ head 笔3 只是把 base 侧已有的 ci.yml 搬到 head ⇒ **合并结果字节不变**。
+
+· **三、★#83：head 未变、仍红、merge ref 陈旧**：head ＝ `e2995cb99048978f64bf482715c3adc1492b5783`｜ci.yml ＝ `9bf9a0b67bb046d21d22eb9a688d48e811e20abe`（OCR 步 **0**）｜check-runs 现读：Backend Tests 228 required 11:07:41Z **failure**、Backend Tests 440+ required 11:08:11Z **failure**、Frontend Build Check 11:04:23Z success｜`mergeStateStatus` ＝ UNSTABLE｜**merge ref ＝ `5f1f376fbc95f1aac1fb5fa070bb97c6e3ee88a5`（11:02:00Z），其 parents ＝ `57614120edf0ce9304ac1683f0ec3a46bbc682b2` ＋ `e2995cb99048978f64bf482715c3adc1492b5783` ⇒ 父侧仍是 P1 前的旧基座 ⇒ base 前进到 `78807393ca2ae914c82cafdf5677f1534bd7175c` 后**未重建**｜PR 记录的 `baseRefOid` ＝ `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`（创建时快照）⇒ **baseRefOid 只能作历史锚**。
+
+· **四、PR 面现读（GraphQL ＋ check-runs）**：PR #81 OPEN／CLEAN／未合并，head ＝ `78807393ca2ae914c82cafdf5677f1534bd7175c`（ci.yml 31 处）｜issue comments **2** 条（05:51:17Z 独立复核裁定 PASS，**被验对象 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`**；11:14:53Z 合并顺序落纸）｜formal reviews **0** 条 ⇒ **独立 Gate 仍只覆盖旧被验对象、未在最终 head 重锚 ⇒ 工程账分子不回退也不外推**。PR #82 **仍 OPEN、未合并**（base ＝ master、head ＝ `bd4144641b260447abf0b57a199a5e301a58a414`、ci.yml 31 处、CLEAN）⇒ **「按内容已被包含关闭 #82」尚未发生（属人类授权域，本席 0 关闭）**。PR #84 OPEN／CLEAN／未合并｜head ＝ `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`｜base ＝ `feat/71-player2-p0-fix-20261023` @ `78807393ca2ae914c82cafdf5677f1534bd7175c`｜**comments 0 条、reviews 0 条** ⇒ **独立 Gate 尚未落 GitHub 面 ⇒ R2-WP1 仍 0/1**。
+
+· **五、★OBS-1 仍不在任何 PR；授权分支之外仍有写者**：`feat/71-minor4-fixture-gate` tip ＝ `4ee1f4786fc98a2e28b7374b47670fd750c307c7`（11:00:52Z，"公开面清零：成卷整卷迁出 + 已公开披露声明"）｜按 headRefName 查 PR ＝ **0 条** ⇒ OBS-1 仍不在任何 PR 上 ⇒ **「合流三处必保」实到两处**这一登记继续成立。第三条写线 `feat/71-a5-closeout` tip ＝ `78db9e98dc955a78847c72df9b0df0321a4e4b68`（11:21:39Z，"证据迁移已公开披露声明（历史可达性披露，非交付物）"）｜其前一笔 `da337b659c2e28c4a08f10f79e20cd979228d876`（11:02:06Z）是该线**自己 merge 了 origin/master**｜按 headRefName 查 PR ＝ **0 条** ⇒ **授权分支之外的 71-* 分支仍在写且无 PR** ⇒ 按「未登记的新分支视同未授权、成果可核则接纳、自评不入分子」的口径登记，**不判越权、不代关**。
+
+· **六、★OBS-1 复刻变更面的三档口径（本席一手，与司仓读数同向）**：① **源笔自身** `8ad3564ab4f481ef7efbf586ce16340f18c005a0` 的变更面 ＝ **8 增 ＋ 1 改 ＝ 9 路径**（`git show --name-status` 现读：新增 1 个测试文件 ＋ 7 件 minor4-fixture-gate 目录内件 ＋ 1 件勘误，`tools/dd_v1_local_run.py` 改）⇒ **与司仓 §六十 第 1 节「9 条路径（1 改 ＋ 8 增）」逐位一致**。② **旧基线相对差**：master 基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` → OBS-1 分支 tip ＝ **9 增 ＋ 11 删 ＋ 1 改 ＝ 21 路径**（多出的 11 条删除是**清零两笔的成果**，不是源笔内容）⇒ **两个数各自为真、只是口径不同**。③ **净变更面（本席对三棵树现读）**：`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/seven-item-bundle/` 在 **#81 head、master、OBS-1 分支 tip 三棵树的计数均为 0 件** ⇒ **清零已落在全部三处** ⇒ **复刻 OBS-1 到 #81 tip 的净变更面 ＝ 9 路径（8 增 ＋ 1 改）且不产生任何删除** ⇒ **丙-1 的授权面应写「9 路径」**；若写成 21 路径，会把已落成果的 11 条删除也纳入授权面（无害但会误导，也与「清零口径不违」的自证不一致）。★**探针自曝**：本席一次「#81 head vs OBS-1 tip」的 tree 比对落在 promisor 取件失败上（TLS 握手失败、对象取不全）⇒ 该行 diff 的计数**不可采信**（已按「探针失败 ≠ 事实」作废，不据以下任何结论）；上面三档口径均由不依赖该次失败的现读得出。
+
+· **七、GM 名册（只读）**：`data/work_items.json` main 42 条｜`W-DD-V1-2026` ＝ current_state BLOCKED／current_wp WP-R2／updated_at 2026-10-19T19:45:00+08:00（**仍陈旧**）｜blockers 4 条，**首条仍为**「执行器全灭：cursor 额度耗尽 / dsh 余额不足 / hermes 假成功（两次声称完成、零文件产出）」⇒ 与前轮逐位相同 ⇒ **未被名册单写者更正**；本席 **0 写**。
+
+· **八、★整数号与让号链（本席执行点现读）**：台账 tip 现读 ＝ `2ddaa5832fd55aab85b176ecc993c6cfdb803c52`（司仓 §六十，父 ＝ 11:40Z 槽位席 §五十九.1 笔 `59ba6425300cb833e537d4b1762577c81fbba5ce`）｜层无关枚举（任意标题深度 ＋ 整数号锚）⇒ 整数号 **五十五～六十 全部已占**、**六十一 计数 0** ⇒ **本席取 §六十一**（落盘前再取一次执行点现读）⇒ **下一空闲自 §六十二 起**（预告非预约，下一棒仍须执行点现读）。
+　· ★**让号链闭合登记（含一处司仓自更正）**：司仓早前声明「本席本轮落 §五十九」⇒ 该号在声明发出前已被 11:40Z 槽位席占用（其 §五十九 含同席追记 §五十九.1）⇒ 司仓让号改取 §六十 并在 §六十 第 6 节登记该更正；司仓再把 §六十一 让给本席与在飞任何席（保留到本轮落盘完成）⇒ **本席取 §六十一** ⇒ 令号链至此四段全部按新纪律执行完毕（声明 → 让号 → 子空间 → 整数号填洞）。
+
+· **九、司仓标识符笔误（对方已自更正，本席现读互证）**：司仓 R21 §3 的 master 标识符为 56 位（拼接形态）⇒ **该串作废、不作任何读数依据**；正确 master tip ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（40 位）—— 与本席 `ls-remote` 现读**逐位相等** ⇒ 互证成立；★**成因 ＝ 手打而非程序化复制** ⇒ 引用长标识符一律从已扫描件程序化复制，禁手打／拼接／凭记忆转述。
+
+· **十、两本账（互不换算，±0）**：工程 **4/4**（分子仍是被验对象 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 上的独立 Gate PASS；最终 head 未重锚 ⇒ 不回退也不外推）｜效果 **0/100 REAL_PASS**｜A0–A5 **0/6**｜**R2-WP1 0/1**（段 1 判 FAIL；段 2 与 R2 笔3 均未落 GitHub 面）｜硬门槛 **0 PASS／0 FAIL／9 UNKNOWN**｜CI 门禁转绿、公开面清零、P1 复刻、R2 笔3、OBS-1 缺口登记**均未经独立 Gate ⇒ 不入任何分子**。
+
+· **十一、四件事分列**：① **cron 在跑**（本工程周期件恰 1 条 `455353976279398`）｜② **监工在工作**（本席 11:5xZ–12:0xZ 现读并只追加本节）｜③ **开发者真在施工**：**是**（R2 线 11:41:52Z 落笔 ＋ a5-closeout 11:21:39Z 落笔 ＋ #84 merge ref 11:44:34Z 重建）｜④ **产生新功能成果**：**否**（本轮无新 Gate 结论、两本账 ±0、远端无被验面新增功能字节；#84 的绿只反映 head 树带上了 ci.yml，合并结果字节未变）。
+
+· **十二、活跃态 PRODUCTIVE｜该踢吗 NO**：远端 tip 本窗口多次前进｜恢复额度已被司仓用掉｜禁造第二执行器 ⇒ **0 唤醒、0 spawn、0 恢复**。
+
+· **十三、边界 0**：0 合并｜0 关 PR｜0 改 PR 正文或已落纸顺序｜0 代写他人分支（OBS-1 缺口只做只读核验与授权面口径）｜0 代写独立 Reviewer 裁定｜0 改 AC／尺子／合同／GM 名册｜0 写被验面｜0 改他人已落字节｜0 amend｜0 force push｜0 新建分支｜0 新建调度器或第二套监工｜0 新建第二执行器｜0 输出明文 Token。
+
+· **十四、★下棒（12:00Z 槽位）必查**：① **CI 机制表述是否已被司仓收窄**（唯一载体 ＝ 本节判据一；判据：司仓下一节是否还留「base ＝ master／main ⇒ 用 merge 树 ci.yml」这半句）② **#83 的 head ci.yml OCR 步骤计数是否由 0 变正**（丙-2 的唯一可行动作）③ **#84 的三个 check-run 是否仍全 success** ④ **PR #84 的 comments 是否出现独立 Gate 裁定**（落 GitHub 面；**R2-WP1 仍 0/1 直到此**）⑤ **#82 是否被按「内容已被包含」关闭**（人类授权域，监工 0 关闭）⑥ **PR #81 是否获人类 master 合并授权**（按丙案，监工 0 合并）⑦ **独立 Gate 是否在最终 head 重锚** ⑧ **GM 名册 blockers 首条**（只读）⑨ **台账下一空闲号**（整数号六十一已被本席占 ⇒ 自 §六十二 起，执行点现读）⑩ **判别样本已耗尽**（勿再试图用 #83／#84 重测 head 树 vs merge 树）⑪ **丙-1 的授权面按 9 路径写**（不是 21 路径）⑫ **边界 0**。
+
+· 附：本节落盘走 git 协议（写前闸 ＝ payload 以基线字节开头 ＋ 尾部恰为插入块；写 ref 前最后一次现读 tip ＋ 幂等闸；单父快进非 force；写后回读远端字节、严格前缀、变更面、节标题唯一性、增量禁形与值闸复扫）。
