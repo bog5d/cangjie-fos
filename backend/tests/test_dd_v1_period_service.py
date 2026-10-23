@@ -302,19 +302,57 @@ def test_anchor_sources_are_closed_and_exclude_system_time():
 # ═══════════════════════════════════════════════════════════════════════
 
 
+def _imported_module_names(src: str) -> set[str]:
+    """★ F-1 修复：AST 收口「导入名」——既收 ``node.module``，也收 ``node.names``。
+
+    旧实现只收 ``node.module`` ⇒ 包级写法
+    ``from cangjie_fos.services import dd_v1_requirement_service``
+    （module=cangjie_fos.services，名字挂在 ``node.names`` 上）整个逃逸 ⇒
+    守卫失守（复核席 mut_M2「46 例全绿（漏网）」的根因）。
+    """
+    import ast
+    tree = ast.parse(src)
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            names.add(str(node.module or ""))
+            names.update(a.name for a in node.names)
+    return names
+
+
+def test_f1_guard_catches_package_level_import_form():
+    """★ F-1 阳性对照：守卫必须能抓到「包级写法」的 requirement service 导入。
+
+    没有阳性对照的守卫可能本身就是 no-op ⇒ 那个「0 命中」只是探针坏了，不是对象干净。
+    """
+    sample = "from cangjie_fos.services import dd_v1_requirement_service\n"
+    names = _imported_module_names(sample)
+    assert [m for m in names if "requirement" in m], names
+
+
+def test_c1_relative_period_not_swallowed_by_single_year_explicit():
+    """★ C-1 回归：含四位年份的相对期间文本，不得被判成单年 EXPLICIT。"""
+    spec = ps.parse_period_spec("请提供近三年的审计报告（报告期截至2024-06-30）")
+    assert spec["kind"] == "RELATIVE", spec
+    assert spec["relative"]["span"] == 3, spec
+
+
+def test_c1_declared_anchor_expands_relative_period_with_year():
+    """★ C-1 回归：相对期间 + 原文声明锚点 ⇒ 可展开为年度窗口（不再被判否）。"""
+    spec = ps.build_period_spec("请提供近三年的审计报告（报告期截至2024-06-30）")
+    assert spec["kind"] == "RELATIVE", spec
+    assert spec["resolved"] is True, spec
+    assert spec["years"] == [2022, 2023, 2024], spec
+
+
 def test_module_has_no_second_doc_type_table():
     """★ 10 类材料类型唯一权威在 requirement service ⇒ 本模块不得抄一份。"""
-    import ast
     import re
     src = inspect.getsource(ps)
     assert "_DOC_TYPE_RULES" not in src
-    tree = ast.parse(src)
-    imported: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imported.update(a.name for a in node.names)
-        elif isinstance(node, ast.ImportFrom):
-            imported.add(str(node.module or ""))
+    imported = _imported_module_names(src)
     assert not [m for m in imported if "requirement" in m], imported
     canonical = ("audit_report", "financial_statement", "tax", "license", "charter",
                  "capital", "resolution", "ip", "labor", "contract")

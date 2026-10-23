@@ -67,6 +67,18 @@ _PREV_YEAR_RE = re.compile(r"(?:上一年度|上一会计年度|上年度|上一
 _CUR_YEAR_RE = re.compile(r"(?:本会计年度|本年度|今年|本年|当期|本报告期)")
 # 「期」为单位的相对期间（无法换算成年份）
 _PERIOD_UNIT_RE = re.compile(r"(?:最近|上一|上一个|本|本期)\s*(?:一|二|两|三|四|五|六|七|八|九|十|\d)*\s*期")
+
+# ── 相对期间字面存在性（C-1 修复用）────────────────────────────────────
+_REL_MARKER_RES = (_REL_YEARS_RE, _REL_MONTHS_RE, _PREV_YEAR_RE, _CUR_YEAR_RE,
+                   _PERIOD_UNIT_RE)
+
+
+def _has_relative_marker(text: str) -> bool:
+    """文本里是否出现相对期间字面（跨度 / 上一年度 / 本年度 / 期为单位）。
+
+    ★ C-1：相对期间语义不得被「单年 EXPLICIT」静默吞掉 —— 本函数是该判定的唯一入口。
+    """
+    return any(rx.search(text) for rx in _REL_MARKER_RES)
 # 「当前有效」字面
 _LATEST_RE = re.compile(r"(?:最新|现行有效|当前有效|目前有效|有效版本)")
 # 清单/需求文本里**自带的截止日期或报告期声明**（可验证来源之一）
@@ -252,10 +264,18 @@ def parse_period_spec(raw: str, *, current_doc_type: bool = False) -> dict[str, 
                     literal="、".join(str(y) for y in years), basis=INFERRED)
         spec["notes"].append("由文中散落年份推断区间")
         return spec
-    m = _YEAR_RE.search(text)
-    if m:
-        spec.update(kind="EXPLICIT", years=[int(m.group(1))], literal=m.group(0), basis=FACT)
-        return spec
+    # ★ C-1 修复：相对期间字面优先于「单年 EXPLICIT」。
+    # 旧序：单年分支在此直接 return ⇒ 文本同时含相对期间字面与四位年份时（例：
+    # 「请提供近三年的审计报告（报告期截至2024-06-30）」）被判成 EXPLICIT(2024)，
+    # 相对期间语义被静默丢弃 ⇒ build_period_spec 因 kind != RELATIVE 跳过锚点解析
+    # ⇒ 相对期间无锚点可展开 ⇒ 判否且不带 abstain_reason（自信地紧）。
+    # 新序：含相对期间字面时不在此判 EXPLICIT，交给下方相对期间分支（可被锚点展开）。
+    # 明确区间（_RANGE_RE）仍最优先：区间本身即已声明窗口。
+    if not _has_relative_marker(text):
+        m = _YEAR_RE.search(text)
+        if m:
+            spec.update(kind="EXPLICIT", years=[int(m.group(1))], literal=m.group(0), basis=FACT)
+            return spec
 
     # ② 相对期间（跨度）
     m = _REL_YEARS_RE.search(text)
