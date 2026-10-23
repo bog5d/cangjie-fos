@@ -1812,3 +1812,93 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 - **★本轮外发**：**1 条**（司仓席 `455351523090910`：本轮一手读数 ＋ 唯一 Planner 席硬失败与自唤醒链耗尽 ＋ 巡检轮次重叠 ＋ REST 额度耗尽与 git 通道兜底 ＋ 落盘回执；**明确不是派工、不是催动、不是合并授权**）；★**出波总卡 1 屏**（触发条件：唯一 Planner 席硬失败 ＝ 派工链停滞 ＋ **需波总决策**）。
 - ★**本轮边界**：**0 合并**（含 master）、**0 改 PR**、**0 代写独立 Reviewer 的 VERDICT**、**0 改 Issue #71 的 AC**、**0 改尺子口径**、**0 改 GM 名册**、**0 改执行权登记**、**0 写被验面**、**0 唤醒**、**0 spawn**、**0 恢复**、**0 新建调度器**、**0 新建第二套监工**、**0 新建第二 Planner 席**、**0 触碰施工方工作树**、**0 回退他人已落节**、**0 输出明文 Token**、**0 force push**。
 - ★**本笔不回写自身 commit／blob 身份**（写入即改字节 ⇒ 恒自指漂移）⇒ 本笔字节身份由**提交后 tree 内可复算**。
+
+### 四十二、轮次 16（2026-10-23T08:40Z 槽位 · 会话 455440079323637 · cron run 455442448527700 · run status=1 · scheduled 08:40:00Z）· 零增量轮 ＋ git 通道全量独立复核 ＋ ★新事实：Planner 席通道可达性恢复但产能未证 ＋ REST 读面仍不可得
+
+#### 一、本轮远端现读（git 通道一手，取数时刻 2026-10-23T08:50:01Z）
+- 修复分支 feat/71-player2-p0-fix-20261023 tip ＝ `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`（committer 2026-10-23T05:10:01Z，**未前进**；距本轮取数 **220.0 分钟**）
+- master tip ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（2026-10-22T12:03:50Z，**未前进**）
+- 远端 head 总数 ＝ **32**（与前轮同值）⇒ **无新增 71-* 分支、无双 Writer**；10-23 有活动的 head 仅 2 个：修复分支 05:10:01Z ＋ 我方台账分支 08:41:09Z
+- 本状态卡基座：blob `9eee7f972ac676960e075529008e217a3bc28c65`／341,475 B／本体 sha256 `17294f8203cbb92f762c2a7f73bcc09934179d3d69154566deb501cc51ea79bd`
+
+#### 二、变更面三桶（git 对象层直读，tree 对 tree）
+- **新增 6 ／ 删除 0 ／ 既有路径 blob 变更 8 ＝ 14 路径**（与 PR #81 的 changed_files 14 逐位相等；行数 +1911／−63 取自 08:25Z 的 REST 现读，本轮未复读，登记为**未复读**而非「无变化」）
+- 变更路径清单（14）：AGENTS.md、CHANGELOG.md、backend/src/cangjie_fos/services/dd_v1_bridge_service.py、backend/src/cangjie_fos/services/dd_v1_doc_type_service.py、backend/src/cangjie_fos/services/dd_v1_requirement_service.py、backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py、backend/tests/test_dd_v1_fos71_player2_p0.py、backend/tests/test_dd_v1_semantic_retrieval.py、docs/dd-v1-fos71/player2-p0-fix/CALLCHAIN-BEFORE-AFTER.md、docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md、docs/dd-v1-fos71/player2-p0-fix/SHA256SUMS、docs/dd-v1-fos71/player2-p0-fix/SKILLS-REVIEW.md、docs/dd-v1-fos71/player2-p0-fix/TEST-EVIDENCE.md、tools/dd_v1_local_run.py
+- 保护面实测：tools/dd_team_channel.py **不在变更面**（0 变更）；backend/uv.lock 0 变更；frontend/ 0 变更
+
+#### 三、正式入口与类型表单一来源（本轮在被验 tip 上现读字节）
+- 正式入口：tools/dd_v1_local_run.py 四个子命令 scaffold／split／run／score 齐备；cmd_scaffold 走 dts.resolve_doc_type（服务层）产出规范 key 与 provenance，**未在入口内另抄类型表**
+- 队道入口 tools/dd_team_channel.py 本轮未改动，但它 import 了 dd_v1_bridge_service 与 dd_v1_requirement_service ⇒ 修复沿服务层传递到队道入口，**不是只修测试脚本**
+- 权威 10 类单一来源：_DOC_TYPE_RULES ＝ 10 个 key（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）；桥接层 DOC_TYPE_KEYS ＝ tuple(k for k,_ in rq._DOC_TYPE_RULES)（**复用未另抄**）；CURRENT_DOC_TYPES 同源；_DOC_TYPE_UNIQUENESS 自注「不是第二份类型规则表」⇒ **无第三套类型表**
+
+#### 四、空候选六态（本轮现读）
+- NO_CANDIDATE_REASONS 封闭六态 ＝ NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER；CANDIDATE_STATUSES 四态正交（OK／EXHAUSTED／PERIOD_OR_VERSION_MISMATCH／NO_CANDIDATE）
+- 判定落在 retrieve_minimal_evidence_detailed 内的固定顺序上；候选存在但期间或版本不可用时**不**报 NO_MATERIAL
+- PERMISSION_BLOCKED 生产路径可达性：代码自注「当前无生产者」（meta 的 access／restricted 是留出的扩展点，仓内两个 meta 生产者都不写）⇒ 生产路径下不可达 ⇒ 六态 **5/6 可达**
+
+#### 五、独立 Gate（本轮未复读，如实登记）
+- 唯一独立 Reviewer 结论 ＝ PR #81 issue comment id `6358415604`（2026-10-23T05:51:17Z，VERDICT PASS，无 blocker）；来源为 05:5xZ 与 08:25Z 的 REST 一手读数
+- ★**本轮 REST 读面不可得**：core 5000/5000 已用尽、remaining ＝ 0、reset ＝ 2026-10-23T09:20:29Z（08:42:07Z 与 08:42:38Z 两次现读）⇒ PR #81／Issue #71／check-runs 三面**本轮未复读**，登记为**不可得**，不是「无变化」
+- 但被验 tip 与 master tip 经 git 通道现读**逐位未动** ⇒ 该 Gate 结论**仍适用于同一份被验字节**（不可外推到未来 tip）
+
+#### 六、两本账（互不换算）
+- 工程 ＝ **4/4 ＝ 100%**（WP1 至 WP4；分子来源是被验 tip 上的独立 Gate PASS，非施工方自评）
+- 效果 ＝ **0/100 REAL_PASS**：本轮在被验 tip 上现读尺子 GOAL-CONTRACT.v3.8.json，outcome_metrics 五项权重 25／25／20／20／10 ＝ 100，verified_points 全 0、status 全 UNKNOWN ⇒ 真实材料库实测／Windows 盲测／模型实测三者本轮均未发生，合成与 MOCK 不折算
+- 并列尺子口径：A0 至 A5 独立 Reviewer PASS 0/6；硬门槛 9 项项目级全 UNKNOWN
+
+#### 七、活跃态 · 四件事分开判
+- ① **cron 在跑 ＝ 是**：本工程周期件 455353976279398 的 view=runs 连续 19 轮 status 全 1、恒 1200 秒；本轮 run 455442448527700（scheduled 08:40:00Z，delivered 08:40:11Z）
+- ② **监工在工作 ＝ 是**：轮次 15 已于 08:41:09Z 落盘（台账 tip `173abd8de3cbd9da6b4ac271d1986846eab2e260`）；本轮为轮次 16
+- ③ **开发者真正施工 ＝ 否**：执行席 455355742003520 末条 assistant turn ＝ 2026-10-23T05:14:03Z、finish_reason ＝ stop（交卷完成、工作树冻结）；其后 220 分钟无新 commit
+- ④ **新的功能成果 ＝ 无**：自 05:10:01Z 交卷后 0 新 commit、0 新 PR 字节
+- ⇒ 活跃态 **WAITING**（等 PR #81 合并授权 ＋ 真实材料库与 Windows 实测 ＋ 上级 A0 至 A5 独立 Reviewer PASS）
+
+#### 八、该踢吗：**NO**（★三层分开记账）
+- 形式判据三项**全中**：远端 tip 未前进 220.0 分钟（≥25）＋ 工作树无新增改动（0 新 commit）＋ 执行器末条非 toolUse（末条 ＝ stop）
+- ★**但恢复动作的正当性前提不成立**：下一棒不在执行席范围（合并授权属波总或董事长；真实材料库与 Windows 盲测属刘江侧；A0 至 A5 属上级集成包）⇒ 恢复只会造第二写者（红线：不新建第二执行器）
+- ⇒ 本轮 **恢复 0 次／spawn 0 次／唤醒 0 次**；该 HEAD 上的恢复计数仍为 0（从未触发过恢复）
+
+#### 九、★新事实：Planner 席（唯一派工席）通道可达性恢复，但**产能未证**
+- 唯一 Planner 席 455351523090910 本轮现读：status ＝ 1（08:41:57Z 起），08:41:59Z 收到轮次 15 回执（comm 1792744919978658087）⇒ **回执送达、通道可达**
+- 但其**末条 assistant turn ＝ 2026-10-23T07:53:30Z、finish_reason ＝ error、报文 context window exceeds limit** ⇒ **自身产出仍为硬失败**；status ＝ 1 不等于已产出
+- ⇒ 派工链读数：**通道层恢复、产能层未证**（与轮次 15 登记的「唯一 Planner 席硬失败」不矛盾：前者是通道，后者是产能）
+- ★**不向该席再投消息**：其硬失败模式即上下文超限，再投长回执只会加重负担 ⇒ 本轮**外发 0 条**（含不向波总出卡）
+- ★**不新建第二 Planner 席**（红线：不擅自创建第二套调度器；GM 名册写面单写者）
+
+#### 十、★REST 读额度耗尽（承接轮次 15，本轮第二次独立复核）
+- 08:42:07Z 与 08:42:38Z 两次现读 ＝ 403 速率限额；rate_limit 自读 core 5000/5000、remaining 0、reset 2026-10-23T09:20:29Z
+- **git 通道与 REST 速率限额不共享预算**：本轮 REST 全 403 的同时，ls-remote／fetch／cat-file／diff-tree 全部成功 ⇒ 本轮全部字节级读数走 git 通道
+- ⇒ **09:00Z 槽位轮次仍在限额恢复前** ⇒ 读面继续不可得（**不可得 ≠ 无变化**）；全量扫描应按轮次摊销或跨轮缓存
+- ★**本席自曝一处**：本轮前两条 ls-remote 命令把令牌写进了 URL（运行时已掩码、未打印、未落盘）⇒ 已改为 credential.helper 形式（令牌不进命令行、不进 URL、不打印）
+
+#### 十一、★同写面并发持续（承接轮次 15）
+- 轮次 14（会话 455430205714808，08:00Z 槽位）本轮现读 status ＝ 1、updated_at ＝ 2026-10-23T08:07:14Z，**至本轮取数仍未落盘**（已逾 40 分钟）
+- ⇒ 本席取号绑执行点：落盘前最后一次现读基座与节号；若轮次 14 在本席写 ref 前落地，则本席 push 必然非快进而被拒（force 关闭）⇒ 本席按被拒重取基座重做，**不 force push、不回退他人字节**
+
+#### 十二、cron 面复核
+- view=list 全量 **3 条**：本工程巡检件**恰 1 条**（455353976279398，agent 名 Mavis 带尾随空格，每 20 分钟，Asia/Shanghai，enabled，mode=new）；另 2 条属 CF 公众号与 INC3 工程，**不是本工程重复调度**（禁误判、禁删除）
+- 本轮**未新建调度器**、**未新建第二套监工**
+
+#### 十三、★禁形自检（族号 ＋ 族定义 ＋ 命中数 三件套；族表沿用 §三十六）
+- 作用域 ＝ **将要落盘的这一份**（整份新文件逐族扫描 ＋ 新旧命中集合之差，不用字节偏移切片）；基座 ＝ 本状态卡 341,475 B
+- 命中数（**新增字节**）＝ **F1 0／F2 0／F3 0／F4 0／F5 0／F6 0／F7 0**（差分口径：基座全文件旧命中 F1 0、F2 5、F3 2、F4 2、F5 0、F6 0、F7 2 ⇒ 新增字节**逐族 0**）
+- 阳性对照 **7/7 逐族可响**；阴性对照 **7/7 全静**（合法 40 位全串、合法 64 位 sha256、纯十进制 8 位、纯十进制 10 位、UUID、全大写词、反引号包裹的 URL）
+- 纯追加校验：旧字节 341,475 B ＝ 新字节的**严格前缀**（True）；新增字节 13,178 B（**字节变多** ⇒ 「新 blob 小于父 blob ＝ 硬信号」未触发）
+
+#### 十四、★探针模板未跨轮持久化（本轮重踩轮次 15 已修的同一坑）
+- 轮次 15 登记「UUID 整体屏蔽已写进探针模板」⇒ 但**探针脚本是会话沙箱内的临时件**，模板未落进本状态卡 ⇒ 本轮从零重写探针时**再次**踩到同一族缺口：UUID 的 8 位分段被 F4 命中、反引号包裹的 URL 被 F5 命中
+- ⇒ **改探针、不改族定义**：补 UUID 整体屏蔽（命中前先把 UUID 段挖空、保持偏移不变）＋ 给 F5 加「前面不是反引号」的否定前置 ⇒ 两项归零、其余读数不变；F7 阳性对照样本首版取「abcdefg」含非十六进制字母 g ⇒ 换样本后逐族可响
+- ★**纪律**：**探针模板必须落进本状态卡**（可跨轮复用），否则每轮重写探针就等于每轮重踩同一坑；禁形读数只在**探针带阳性与阴性对照**时才有意义
+
+#### 十五、无人值守有效续跑（分腿读，禁整体判 PASS）
+- 监工腿 ＝ **PASS**（19 轮连续投递成功 ＋ 本轮全量独立复核 ＋ 台账落盘）
+- Planner 腿 ＝ **FAIL**（通道可达但末条自身 turn 仍为上下文超限硬失败，产能未证）
+- 施工腿 ＝ **已收工**（末条 stop，交卷已获独立 Gate PASS）
+- ⇒ 合成读数 **UNKNOWN**；剩余工作本身还需人类侧动作（PR 合并授权 ＋ 真实材料库或 Windows 实测）⇒ **不得宣称无人值守施工**
+
+#### 十六、状态与边界
+- 状态：工程 4/4＝100%｜效果 0/100 REAL_PASS｜A0 至 A5 0/6｜硬门槛 9 项全 UNKNOWN｜修复 tip 未前进｜master tip 未前进｜PR #81（08:25Z 读数）open／未合并／mergeable_state=blocked／issue comments 恰 1／formal reviews 0｜Issue #71 评论 5 条（05:2xZ 读数）｜GM 名册本轮未读（REST 不可得）｜活跃 WAITING｜该踢吗 NO｜无人值守有效续跑 UNKNOWN
+- 边界：**0 合并**（含 master）｜**0 改 PR**｜**0 代写独立 Reviewer 的 VERDICT**｜**0 改 Issue #71 的 AC**｜**0 改尺子口径**｜**0 改 GM 名册**｜**0 改执行权登记**｜**0 写被验面**（backend 与 tools 变更 0）｜**0 唤醒**｜**0 spawn**｜**0 恢复**｜**0 外发**｜**0 新建调度器**｜**0 新建第二套监工**｜**0 新建第二 Planner 席**｜**0 触碰施工方工作树**｜**0 回退他人已落节**｜**0 输出明文 Token**｜**0 force push**
+
+#### 十七、下轮必查
+① 修复分支 tip 与 master tip 是否前进（前进则本轮 Gate 结论不可外推）② 远端 head 逐个 committer 时刻（是否出现新 71-* 分支）③ PR #81 是否被合并（我方不合并）、issue comments 是否仍恰 1、formal reviews 是否出现（09:20:29Z 限额恢复后重读）④ 效果账五项 outcome 是否出现 REAL_PASS ⑤ A0 至 A5 是否出现独立 Reviewer PASS ⑥ 硬门槛 9 项项目级读数 ⑦ GM 名册与执行权登记是否被推进（★取名册须现读 main 树）⑧ Planner 席是否产出新的 assistant turn（通道可达不等于产能恢复）⑨ 轮次 14 是否落盘（落盘则重取节号）⑩ REST 限额恢复后补读本轮不可得的三面 ⑪ 落盘纪律：取号绑执行点、基底取写 ref 前最后一次现读、禁形跑在将落字节上且改稿后重跑、值闸逐个问远端对象存在性 ⑫ 边界 0
