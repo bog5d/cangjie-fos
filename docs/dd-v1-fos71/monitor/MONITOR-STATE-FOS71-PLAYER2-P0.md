@@ -332,3 +332,114 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 - ⚠ **历史遗留登记（不追改）**：整卡扫描仍命中**轮次 1** 的 1 处 7 位短写与 2 处 ASCII 三点连写 ⇒ 属**历史轮次已落盘字节**，按纪律「禁形自检作用域 ＝ 本轮增量字节；历史旧违规不追改，只追加不改写」，**判读时按「历史遗留、非本轮新增」排除**，不得据此判本轮落盘件不合规。
 - **本轮落盘纪律自曝 1 次**：首次建 blob 时因调用参数写漏（body 未随请求发出）被 API 以 **422「`content` 缺字段」**拒收 ⇒ 该次**未产生任何 blob/tree/commit/ref 变动**；改正后重跑成功。教训：**422 报文是真凭据（参数形态错 ≠ 对象不存在）**，建 blob 的 body 必须与 `Content-Type: application/json` 一起实发。
 - 取数与落盘时刻：2026-10-23T04:20:52Z ～ 04:3xZ（UTC，shell 当场算）
+## 轮次 4（2026-10-23T04:41Z–04:5xZ · 会话 455381956465177 · cron run 455383465554514）
+
+- 巡检会话：`455381956465177`（本 cron run：task `455353976279398`，run_id `455383465554514`，status=1，scheduled 2026-10-23T04:40:00Z、delivered 04:40:11Z）
+- 取数窗口：2026-10-23T04:42Z ～ 04:50Z（UTC，shell 当场算；远端现读 ＋ 真实 blob 字节求值）
+- 监工口径版本：V0.3（字节级读回 blob `7a8aa0cce5cfdad3ab139a5eaa8628a7b0830983`／5,993 B／sha256 `732f0dcb71d669fff3889035fe88ccb759b5b684e245658833ee55c2033c0767`）
+- 尺子字节级读回：`GOAL-CONTRACT.v3.8.json` blob `106699d2c8a3e8e4d00124070eee6d417038cb49`／10,818 B／sha256 `19c1577ddfedc702ba44a733ebd9d61bfba8f50ab239a5db98c3b6c2ce18982f`（contract_version=3.8，outcome 权重 25/25/20/20/10=100）
+
+### 一、远端权威现读（2026-10-23T04:42Z–04:47Z）
+
+| 对象 | 读数 |
+|---|---|
+| 修复分支 `feat/71-player2-p0-fix-20261023` | **仍不存在**。`git ls-remote --heads` 全量 **31** 条 heads，**精确 ref 全串匹配 0 命中**（禁子串 grep，否则会自咬本监工自己的 `monitor/fos71-player2-p0-fix`）⇒ 远端施工字节仍为 **0** |
+| 变更面（新增路径／删除路径／既有路径 blob 变更） | **无可比对象**（分支尚未创建 ⇒ 谈「零变更」是对象错配） |
+| `master` tip | `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（2026-10-22T12:03:50Z，root tree `41da52c318f6d160e3bfa12b16236756b76237ce`）——**未前进** |
+| 未授权 71-* 新分支（双 Writer 风险） | **无**。逐分支取 head 提交时刻并排序，最新者除本监工自己的记录分支外全部 ≤ 2026-10-22T12:03:57Z |
+| 仓 `pushed_at` | 2026-10-23T04:30:13Z，唯一新增提交是本监工自己的落盘（`0dca973155cb26f8571553e84aa0cb397cad9205`） |
+| Issue #71 | state=open、comments=**5**、updated_at=2026-10-22T12:41:23Z（**未动**） |
+| FOS PR | open 恰 **1** 条＝**#80**（`spec/71-ddv1-real-engine-integration-20261021`，head `3554264721737aa5ecd8a410f46845bee88a3a7e`，draft=true）——**修复分支无 PR** |
+
+### 二、master「修复前」锚点复核（字节级，与轮次 1／2／3 逐位一致 ⇒ 基线未动）
+
+现读 master 五个关键 blob（取 blob 后 base64 解码，**断言解码长度＝信封 size**，本轮全部相等）：
+
+| 路径 | blob sha（40 位全串） | 字节 | 关键符号命中 |
+|---|---|---|---|
+| `tools/dd_v1_local_run.py` | `8d51c05c93354268ea3e02eb2df6a86758937101` | 22,761 | `resolve_doc_type` 0、`parse_doc_type_spans` 0、`no_candidate_reason` 0 |
+| `tools/dd_team_channel.py` | `8f08d560a4c4a147efca4e43c6f727114662af34` | 31,346 | 全部关键符号 0 命中 |
+| `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | `8eb726276185683431e7e65b369d2507c1977130` | 23,762 | 仍带自有 `DOC_TYPES` 2 处（**第二套类型表**）＋ `_DOC_TYPE_RULES` 1 处 |
+| `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | `c3a097682d9e531f09b2bd6746e676d9f8bab46b` | 50,009 | 权威 `_DOC_TYPE_RULES` 5 处 |
+| `backend/src/cangjie_fos/services/dd_v1_doc_type_service.py` | `22a7c5fba32555257bdb79dd7793328614ddb791` | 7,021 | `resolve_doc_type` 1 处（定义） |
+
+⇒ **master 上修复仍 0 字节**：正式入口 `tools/dd_v1_local_run.py` 的 scaffold/split/run **未接**统一类型表、**未接**六态原因；语义层**仍保有第二套类型表**（旧 7 类中文表）。六态枚举（`NO_MATERIAL`／`UNRESOLVED_DOC_TYPE`／`UNKNOWN_ENTITY`／`PERMISSION_BLOCKED`／`RETRIEVAL_EXHAUSTED`／`no_candidate_reason`）在 master 上仍各 0 命中。
+
+### 三、本轮真实成果（2 项）
+
+1. **★独立复核席独立跑出组包链真跑证据，且与远端字节互证 ⇒ 闭合轮次 3 遗留的判据④疑点**
+   - 独立复核席 `455362122437017`（**独立会话，非施工者自评**）于 04:42:41Z–04:43:02Z 在自己的临时目录跑通 DD-V1 组包链，读到《组包manifest.tsv》**真实列形态**＝`机构编号／原子义务／交付路径／源sha256／副本sha256／一致／判定`，读数 `exported=1`、`hash_mismatched=0`、源 sha256 与副本 sha256 **逐位相等**、「一致」＝是、「判定」＝MATCHED，且交付目录内《被拦截清单.json》存在。
+   - **远端权威互证**：master 上确实存在同名同构文件 `docs/dd-v1-fos71/wp05-real-integration/a4-evidence/seven-item-bundle/06-delivery-package/组包manifest.tsv`，blob `cc85a60c53e47232c8e8ac0d956ae1525c469c42`／306 B（信封 size ＝ 解码长度 ＝ 306），**列头与复核席独立跑出的运行时产物逐字同构**；同目录另有 `未选用清单.tsv`（`c7dcc2202e5c6d5c306b95c0e0e7d9267e4f7c5b`／1,918 B）与 `被拦截清单.json`（`5b2bffdaf8c450b5bfb134182a4f82e1b06c9e00`／3,901 B）。同目录 `07-repro-commands-and-evidence.txt`（`93a9a25b31934492be18c05ec2693b637362836b`／2,167 B）明载一条 `package --review <review-id> --out <06-delivery-package 目录>` 的 rc=0 命令序列 ⇒ **该 tsv 是 `package` 命令写进输出目录的运行时产物**，仓内 a4-evidence 里存的是它的**历史已提交副本**。
+   - ⇒ **本轮更正轮次 3 的一处读数**：轮次 3 记「判据④ 引用的《组包manifest.tsv》全仓 0 命中」——**该结论的作用域写错了**（实为「玩家2交卷包目录内 0 命中」，非「全仓」）。该文件**在仓内存在**（a4-evidence 交付包内，blob `cc85a60c53e47232c8e8ac0d956ae1525c469c42`）。⇒ 施工方交卷件里「该 tsv 由 `dd_v1_package_service.package_approved` 在用例临时目录内生成、不是仓内文件」这一表述**需要补一句**：仓内 a4-evidence 有同形态历史副本，**本次运行态** tsv 在临时目录。**本监工只登记口径，不代改交卷件。**
+   - ★**独立 Gate 仍未出**：复核席本轮**仍在扩探针**（判据②／③／④／⑤／⑦），**没有**逐条 PASS/FAIL 的 Gate 结论 ⇒ **独立 Gate 仍为「无」**。
+2. **★执行席排定了完整收口顺序，并把「自曝的一处冲突」摆上台面**
+   - 执行席 `455355742003520` 04:45:53Z 末条 turn（`finish_reason=toolUse`）自陈：司仓于 04:4xZ 下达新约束（**不打断正在跑的 clean run、不重跑任何已知读数**、**F4 下界 8 放到 7**、**不要把对象改成迎合探针**、**交互预算 ≤2 轮**）；执行席自曝**自己把 clean run 在 33–37% 处主动中止**了（因要先改 5 处代码注释里的禁形形态），该次**没有完整读数**（无 exit code），并据此明确：改完 → 重跑 changed tree（对应最终字节）→ 跑 baseline → 填 §6.2 数字 → 生成 SHA256SUMS 与 §11 锚点表 → 自检 → commit → push → PR。
+   - **执行席当场定位到交卷件的一处禁形命中**：`EVIDENCE-PLAYER2-P0.md` 第 173 行有一处 **7 位截短形态**（master tip 的缩写写法）——**本卡不复现该字面量**（描述违规形态本身会命中同族扫描）。执行席同时明确「测试读数只对应最终**代码字节**，§6.2／§11 的写入只改证据文档、不改产品码与测试码」这一自证口径。
+   - ⇒ **口径冲突已登记（事实层，结论层归司仓／复核席）**：司仓要求「把 F4 下界放到 7」且「不要改对象」，而交卷件里**确有一处 7 位形态** ⇒ **若对象不改，同族自检必然在该行报红；若对象改，则与司仓字面指令冲突**。★这是「描述／引用禁止形态 ⇒ 违规自我繁殖」纪律的同族实例。**本监工不代判、不代改交卷件、不代改尺子口径。**
+
+### 四、两条账（互不换算，分母不同不换算）
+
+- **工程账 ＝ 0/4（0%）**：分子＝已过独立 Gate 的 WP 数。**远端 0 字节 ⇒ 复核席无 SHA 可锚 ⇒ 不出 PASS/FAIL ⇒ 分子 0**。
+  ★**两种分母读法分列、均不换算**：本 cron 巡检指令写「WP1–WP4／4」；冻结尺子 V0.3 §4 写「新计划 **A0–A5** 独立 Reviewer PASS 数／**6**」。**两种读法的分子同为 0**，故比例同为 0%；**分母不同不互相换算**。
+- **效果账 ＝ 0/100（0%）**：现读 `GOAL-CONTRACT.v3.8.json`：`O1_REAL_FOS_CHAIN` 25、`O2_RECALL_CONTENT` 25、`O3_COMPLETENESS_AND_COPY` 20、`O4_WINDOWS_BLIND_EXAM` 20、`O5_UNATTENDED_NEXT_WP` 10，**权重合计 100**；五项 **status 全 UNKNOWN、verified_points 全 0、evidence_refs 全空** ⇒ **REAL_PASS ＝ 0**。合成／MOCK 不折算；UNKNOWN 既不算 PASS 也不算已证伪。
+- **硬门槛 9 项**（尺子 §4 原值：ONE_WRITER／REAL_FOS_CALL／GOLD_ISOLATION／SENSITIVE_AUTH／FALSE_MATCH_GUARD／PRECISE_PACKAGING／INDEPENDENT_REVIEW／WINDOWS_REAL_E2E／UNATTENDED_HANDOFF）：**PASS 0／FAIL 0／UNKNOWN 9**。ONE_WRITER 现状无第二写入者，但未过 Gate，**不记 PASS**。
+- ★**尺子 §2 C0–C5 先验能力本轮判（分列，不互相推出）**：C0 读权威仓 **PASS**；C1 GM 任务与目标证据可读 **PASS**；C2 实际 Executor PID/Lease 可观察 **UNKNOWN**（名册 `owner`／`lease` 两键**键不存在**，执行席是会话不是 Lease）；C3 消息经授权接口送达现有 session 并产生新轮次 **PASS**（04:31:22Z 原位唤活后执行席产出新 turn，**判据是末条 turn，不是投轮回执**）；C4 与 Executor 独立的 Reviewer 能跑／核对 **PASS**（复核席独立会话已独立跑出组包链真跑并与远端字节互证——**PASS 的是「能力已实证」，不是「已出 Gate 结论」**）；C5 会话结束后已授权外部 Cron 仍能合法唤醒并产生下一 WP 新产物 **FAIL**（见第八节）。
+
+### 五、活跃态 · 四件事分开判
+
+1. **cron 是否运行：YES**。本工程周期巡检 cron `455353976279398`（agent `Mavis ` 带尾随空格、`*/20 * * * *`、Asia/Shanghai、enabled）；`cron_read view=runs` 近 6 条 **status 全 1**，本轮 run `455383465554514` → 会话 `455381956465177`。
+2. **监工是否工作：YES**（本轮在跑并落盘本卡）。★轮次 3 巡检席 `455377324712292` 于 2026-10-23T04:34:07Z 被**平台限流终止**（一手 `session get`：`status=2`、`status_message="rate limit exceeded(TPM) (1039)"`）——**平台事件，不记执行方欠账**；其**两笔落盘均已完成**（tip `0dca973155cb26f8571553e84aa0cb397cad9205`，04:30:12Z 已推），**卡未丢**。
+3. **开发者是否真正施工：YES**。执行席 `455355742003520` 一手 `session get`：`status=1`、`status_message` 为空；末条 assistant turn **2026-10-23T04:45:53Z `finish_reason=toolUse`**。★**`session get`／`session list` 的 `updated_at` 字段（04:35:29Z）落后于末条 turn 时刻 ⇒ 判「在跑」只认末条 turn 时刻。**
+4. **是否产生新的功能成果：PARTIAL**。本轮新增字节属**交卷／证据面**（04:42:31Z 三个交卷件被带断言的批量改写：`EVIDENCE-PLAYER2-P0.md` 25,119 B、`TEST-EVIDENCE.md` 9,454 B、`CALLCHAIN-BEFORE-AFTER.md` 7,904 B）＋复核席探针产物；**产品码修复仍未落远端、不可核验** ⇒ **可核验的功能成果仍为 0**。**远端 0 字节 ≠ 没在施工**（两个不同对象，不可混读）。
+
+⇒ **综合活跃态：PRODUCTIVE**（进程层确实在产出；远端字节层仍 0）。
+
+### 六、该踢吗：**NO**
+
+三条件**不同时成立**：① 远端 tip 未前进 ≥25 分钟 **成立**（修复分支根本不存在，`master` 亦未动）；② 工作树无新增改动 **不成立**（04:42Z–04:45Z 有新字节）；③ 执行器末条非 toolUse **不成立**（04:45:53Z 是 toolUse）⇒ **已在跑，不打扰**。**本轮未发起任何恢复、未 spawn 任何会话、未新建第二执行者／第二套监工。**
+
+★**恢复计数两种读法都留痕**（本轮**不新增**恢复）：
+
+- 严格键「远端 commit」：恢复动作 #1（轮次 3 由司仓对**同一席位**原位唤活，session_id 未变）至今**无新 commit** ⇒ 计数 ＝ **第 1 次未产出 commit**（**未达「连续 2 次」阈值，不禁恢复**）。
+- 宽松键「工作树字节」：恢复动作 #1 **已产出新字节**（本轮首次证到：04:42:31Z 三个交卷件被改写）⇒ **恢复有效**。
+
+下轮若仍**无新 commit 且无新工作树字节** ⇒ 计数进第 2 次 ⇒ 必须写「恢复机制已触发但未产生新字节，根因待查」并停止恢复。
+
+★**恢复路径纪律**：未交卷字节只在共享工作卷 `/workspace/fos-wt`；从监工席 spawn 出来的新席**不在该卷内** ⇒ 只能重造（禁止），且会把执行席挂到巡检树下 usurping Planner。
+
+### 七、关键差距（2 项）
+
+1. **修复字节全部滞留在司仓／执行席的共享工作卷，远端 0 字节**：正式入口与六态原因的修复**无法被独立复核席在远端 40 位 SHA 上锚定** ⇒ 独立 Gate 链条缺最后一环（Gate 锚点只认远端 SHA）。
+2. **交卷件里 AGENTS.md 的测试基线「1717 collected，0 failed」仍无出处**：同一文件另一处（旧行）写的是「605 passed，0 skipped，0 failed」，**两处口径不同**；执行席本轮自曝**其 clean run 被自己中止、没有完整读数**，且把「测试读数只对应最终代码字节」写成了自证口径 ⇒ 该数字在拿到**可核读数**前**不得进入交卷件**。
+
+### 八、无人值守有效续跑 ＝ **FAIL**
+
+执行席 2026-10-23T04:23:45Z 被平台限流终止后**没有自动救回**；04:31:22Z 靠**司仓手动原位唤活**才续上；**本仓无施工侧 cron**（`cron_read view=list` 中本工程只有**巡检** cron）⇒ 尺子 §2 的 **C5（会话结束后已授权外部 Cron 仍能合法唤醒并产生下一 WP 新产物）＝ FAIL**。
+★**「唤活后人工续跑有效」与「无人值守自动续跑有效」是两件事**：前者本轮已证到产出；后者仍为 FAIL。
+
+### 九、GM 调度权威（登记，不代写）
+
+- `bog5d/cangjie-gm` main tip `9e835930e9812ae3c338a37ccbbec620f5b73c40`（2026-10-23T03:30:21Z，PR #246 已合并）。
+- 名册 `data/work_items.json` blob `29d4bffbcb9bd9884b221ac4efab1d3e84c4ae5e`／485,996 B／sha256 `be70b6f7129fa2a1c7bc99b42bfb5dc842bd58d2575031095087f204b9dc1670`（**与轮次 2／3 逐位相同 ⇒ 名册未回写**）。
+- `W-DD-V1-2026`：`current_state=BLOCKED`、`executor=hermes`、`waiting_for_chairman=true`、`current_wp=WP-R2`、`updated_at=2026-10-19T19:45:00+08:00`；**`owner` 与 `lease` 两键「键不存在」**；`next_action.action=WAIT_CHAIRMAN`，理由为「三条执行器路径实测全部不可用」＋「叠加 Gold Set 未提供」两句。
+- ⇒ ★**名册口径与现状脱节**（名册停在 10-19 的「执行器全部不可用＋等波总」，而本轮实测执行席正在产出字节）。**本监工不代写名册、不代判写权、不催办**，仅登记事实。
+
+### 十、cron 面复核（`cron_read view=list` / `view=runs`，本轮现读）
+
+- 全表 **6** 条任务：**周期件 3 条**（CF `455347827208431`／FOS `455353976279398`／INC3 `455164742488166`，均 `*/20`、enabled、agent `Mavis ` 带尾随空格）＋ **一次性 self-reminder 3 条**（司仓 R7 `455381030519347` 绑 `455351523090910`；INC3 Gate 席 `455381008294429` 绑 `455359820251324`；INC3 只读复核席 `455378553213578` 绑 `455369461183016`）。
+- ⇒ **本工程（FOS #71 考生2 P0）周期巡检 cron 恰 1 条** ⇒ **无重复调度；不误判、不删除、不新建第二个调度器**。
+- FOS `view=runs` 近 6 条 **status 全 1**（本轮 run `455383465554514`）。
+
+### 十一、本轮新发现的可复用读数陷阱（跨项目）
+
+1. **负载敏感计时用例会被并发跑批污染**：`tests/test_dd_v1_recovery.py::test_scale_baseline[40-25]` 断言 `inc_s < full_s`（增量扫描应快于全量）。执行席 04:41:27Z 那次跑批**同期有另一条 pytest 在跑**（复核席的基线跑批）⇒ 该红是**并发负载污染**，不是被验代码缺陷。★**纪律：跑批前必须先确认无其他 pytest 进程（读数要带「当时并发数」），否则计时类断言的红不可归因到代码。**
+2. **「改文档里的代码引用」比改代码更危险**：执行席的批改脚本在替换行号时，一度把**被引用的原文片段**里的括号写错（脚本自曝并当场改正，改前逐条断言命中次数==1、dry-run CHECK 通过后才写盘）⇒ ★**纪律：凡文档里引用了代码原文，每条替换必须断言命中次数==1 且先 dry-run**，否则会把交卷件改坏。
+3. **席位状态字段落后于末条 turn**：执行席 `session get` 的 `updated_at` 停在 04:35:29Z，而末条 turn 已是 04:45:53Z；`session list` 的 `updated_at` 同样落后 ⇒ ★**判「在跑」只认末条 turn 时刻**，别拿 `updated_at` 当活性读数。
+4. **「引用禁止形态」本身就是违规**：司仓要求把禁形探针下界从 8 放到 7，而交卷件里恰有一处 7 位截短形态 ⇒ 若对象不改，同族自检必然报红；**本卡因此不复现该字面量**（只写「7 位截短形态」）。★**纪律：描述／引用禁止形态必须改写成「族名＋计数＋位置＋量纲」，禁给字面量。**
+5. ★**本监工本轮自曝一次探针缺陷（与 INC3 轮次 57 同族）**：禁形 F7 探针若写成有界匹配 `[0-9a-f]{7,39}`，会把**40 位 sha 切成 39 位＋1 位**两段 ⇒ 40 位全串被误判成 39 位短写（**假阳性**）；本轮首版扫描即因此报了 26 处假阳性。**正解＝先取极大连续段 `[0-9a-f]+`，再按「长度落在 7–39 且含 a–f」过滤**。改正后：本轮增量 **F7 ＝ 0**，阳性对照（12 位含字母 hex ＋ 16 位纯 hex）**2 处可响**，合法样本（40 位 sha／64 位 sha256／15 位纯数字 session id）**全静**。★**纪律：长度类判据必须先取极大连续段再判长度，禁直接用有界正则切分长串。**
+
+### 十二、下轮必查
+
+① 修复分支 `feat/71-player2-p0-fix-20261023` 是否出现及其 tip／变更面三列（新增／删除／既有 blob 分列）；② **第一父是否＝`d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`**、是否快进非 force（**禁 force push**）；③ **远端 40 位 SHA 一到手立刻转独立复核席 `455362122437017`**，要求在该 SHA 上独立 checkout 复跑十项判据、出**逐条 PASS/FAIL**（锚点只认远端 SHA，**禁执行席自评**）；④ 交卷包 5 项前置是否闭合——交卷件引用的 `SHA256SUMS` **是否已生成**（**不得含自身行**）；**单码点省略号 U+2026 14 处**是否改净（**不得改成 ASCII 三点**）；**锚点表**是否补「路径＋字节数＋sha256 64 位全串＋取数时刻」并附 blob 40 位全串；**判据④** 的表述是否已按本轮结论改成「仓内 a4-evidence 有同形态历史副本，本次运行态 tsv 在临时目录」；**AGENTS.md 测试基线**是删除还是两处同数一致（当前一处 1717 collected、一处 605 passed）；⑤ **changed-tree 串行跑批的干净读数**（collected／failed）是否产出、`test_scale_baseline` 计时类断言在无并发下的读数；⑥ **远端是否仍只一份本卡条目**（若两份，只登记不删他人段落）；⑦ 复核席是否已出**逐条 PASS/FAIL**（本轮仍在扩探针）；⑧ GM 名册 `W-DD-V1-2026` 是否回写 `owner`／`lease`（**不代写**）；⑨ **CI 仍未跑不得宣称回归绿**；⑩ 恢复计数（严格键＝远端 commit）是否进第 2 次；⑪ 执行席是否再被平台限流终止（**如实回报准确时刻与原文，不记执行方欠账**）。
+
+---
