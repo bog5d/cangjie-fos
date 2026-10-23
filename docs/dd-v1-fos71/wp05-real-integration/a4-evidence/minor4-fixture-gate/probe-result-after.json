@@ -1,0 +1,51 @@
+{
+  "fingerprints": {
+    "tree": "<REPO_FIX>",
+    "tree_head": "d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2",
+    "source_local_run_sha256": "e8d85b8327c9db3bcea99ba21e0467e29d94e2f569b41ea50ed5b4b0e0371ac2",
+    "work_dir": "<WORKSPACE>/_minor4_probe_after",
+    "python": "<PYTHON>"
+  },
+  "results": {
+    "A_inside_fixture": {
+      "rc": 0,
+      "gate_blocked": false,
+      "write_blocked": false,
+      "refused": false,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_after/A_inside/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_after/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/material --meta <WORKSPACE>/_minor4_probe_after/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/material/meta.json --items <WORKSPACE>/_minor4_probe_after/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/raw_items.json --out <WORKSPACE>/_minor4_probe_after/A_inside/out --adapter manual --synthetic-replies <WORKSPACE>/_minor4_probe_after/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/replies --blind-leak-words Q-2024-07,案例甲机构,案例乙机构,星海项目 --blind-material-out <WORKSPACE>/_minor4_probe_after/A_inside/blind --blind-mapping-out <WORKSPACE>/_minor4_probe_after/A_inside/map.json",
+      "err_tail": ": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n{\"group\": \"R6\", \"adapter_status\": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n{\"group\": \"R7\", \"adapter_status\": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n{\"group\": \"R8\", \"adapter_status\": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n"
+    },
+    "_A_repo_pollution": [],
+    "C_outside_plain": {
+      "rc": 3,
+      "gate_blocked": true,
+      "write_blocked": false,
+      "refused": true,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_after/C_outside/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_after/C_outside/materials/materials --meta <WORKSPACE>/_minor4_probe_after/C_outside/materials/materials/meta.json --items <WORKSPACE>/_minor4_probe_after/C_outside/materials/items.json --out <WORKSPACE>/_minor4_probe_after/C_outside/out",
+      "err_tail": "拒绝：BLOCKED: 真实材料需要操作员在本机显式 --allow-real-material；默认只允许合成 fixture\n"
+    },
+    "_C_repo_pollution": [],
+    "B_outside_blind_into_repo": {
+      "rc": 3,
+      "gate_blocked": false,
+      "write_blocked": true,
+      "refused": true,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/materials/materials --meta <WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/materials/materials/meta.json --items <WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/materials/items.json --out <WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/out --blind-material-out <WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/repo/backend/tests/fixtures/probe-evilcase/blind --blind-leak-words 某外部机构 --blind-mapping-out <WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/map.json",
+      "err_tail": "拒绝：BLOCKED: 仓外材料不得写入仓库目录（--blind_material_out=<WORKSPACE>/_minor4_probe_after/B_outside_blind_into_repo/repo/backend/tests/fixtures/probe-evilcase/blind）；请把盲化/冻结目标指向仓库外的目录\n"
+    },
+    "_B_repo_pollution": [],
+    "Bprime_original_only": {
+      "rc": 3,
+      "gate_blocked": false,
+      "write_blocked": true,
+      "refused": true,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_after/Bprime_original_only/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_after/Bprime_original_only/materials/materials --meta <WORKSPACE>/_minor4_probe_after/Bprime_original_only/materials/materials/meta.json --items <WORKSPACE>/_minor4_probe_after/Bprime_original_only/materials/items.json --out <WORKSPACE>/_minor4_probe_after/Bprime_original_only/out --blind-material-out <WORKSPACE>/_minor4_probe_after/Bprime_original_only/repo/backend/tests/fixtures/probe-evilcase/blind --blind-leak-words 某外部机构 --blind-mapping-out <WORKSPACE>/_minor4_probe_after/Bprime_original_only/map.json",
+      "err_tail": "拒绝：BLOCKED: 仓外材料不得写入仓库目录（--blind_material_out=<WORKSPACE>/_minor4_probe_after/Bprime_original_only/repo/backend/tests/fixtures/probe-evilcase/blind）；请把盲化/冻结目标指向仓库外的目录\n",
+      "patched_to_original_only": false,
+      "note": "修后树：旧文本不存在 ⇒ B' 补丁不适用 ⇒ 本组与 B 同源（修后 B 与 B' 都必须被拒绝）"
+    },
+    "_Bprime_repo_pollution": []
+  },
+  "verdict": "FIXED",
+  "criteria_all_pass": true
+}
