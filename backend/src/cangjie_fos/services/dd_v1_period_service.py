@@ -274,8 +274,8 @@ def parse_period_spec(raw: str, *, current_doc_type: bool = False) -> dict[str, 
         spec["notes"].append("由文中散落年份推断区间")
         return spec
     # ★ C-1 修复：相对期间字面优先于「单年 EXPLICIT」。
-    # 旧序：单年分支在此直接 return ⇒ 文本同时含相对期间字面与四位年份时（例：
-    # 「请提供近三年的审计报告（报告期截至2024-06-30）」）被判成 EXPLICIT(2024)，
+    # 旧序：单年分支在此直接 return ⇒ 文本同时含相对期间字面与「年」字年份时（例：
+    # 「请提供近三年的审计报告（报告期截至2024年6月30日）」）被判成 EXPLICIT(2024)，
     # 相对期间语义被静默丢弃 ⇒ build_period_spec 因 kind != RELATIVE 跳过锚点解析
     # ⇒ 相对期间无锚点可展开 ⇒ 判否且不带 abstain_reason（自信地紧）。
     # 新序：含相对期间字面时不在此判 EXPLICIT，交给下方相对期间分支（可被锚点展开）。
