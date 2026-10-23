@@ -333,18 +333,58 @@ def test_f1_guard_catches_package_level_import_form():
 
 
 def test_c1_relative_period_not_swallowed_by_single_year_explicit():
-    """★ C-1 回归：含四位年份的相对期间文本，不得被判成单年 EXPLICIT。"""
-    spec = ps.parse_period_spec("请提供近三年的审计报告（报告期截至2024-06-30）")
+    """★ C-1 回归：含四位年份的相对期间文本，不得被判成单年 EXPLICIT。
+
+    ★★ 输入写法的**可达性**要求（这正是本条一度是空锁的原因）：
+      判单年 EXPLICIT 的分支用 `_YEAR_RE`（年份后须紧跟「年」）⇒ 输入必须出现
+      「2024年」这类写法；「2024-06-30」这类破折号写法**永远走不到该分支**
+      （`_YEAR_SCAN_RE` 在该写法下只扫到 1 个年份 ⇒ 不足 2 ⇒ 也不构成区间推断）
+      ⇒ 断言的只是默认的相对期间分支 ⇒ 哪怕把「相对期间优先」这条判定反向打破，
+      本用例照样绿。故此处必须用带「年」的写法，让输入**真的进入**被修的那条分支。
+    """
+    spec = ps.parse_period_spec("请提供近三年的审计报告（报告期截至2024年6月30日）")
     assert spec["kind"] == "RELATIVE", spec
     assert spec["relative"]["span"] == 3, spec
+    # 命中的是相对期间字面本身，而不是单年字面
+    assert spec["literal"] == "近三年", spec
 
 
 def test_c1_declared_anchor_expands_relative_period_with_year():
-    """★ C-1 回归：相对期间 + 原文声明锚点 ⇒ 可展开为年度窗口（不再被判否）。"""
-    spec = ps.build_period_spec("请提供近三年的审计报告（报告期截至2024-06-30）")
+    """★ C-1 回归：相对期间 + 原文声明锚点 ⇒ 可展开为年度窗口（不再被判否）。
+
+    ★★ 输入同样必须用带「年」的写法（可达性要求见上一条的说明）⇒ 断言才真的压在
+      「相对期间不得被单年 EXPLICIT 抢走」这条规则上（反向打破该判定 ⇒ 本条转红）。
+    """
+    spec = ps.build_period_spec("请提供近三年的审计报告（报告期截至2024年6月30日）")
     assert spec["kind"] == "RELATIVE", spec
     assert spec["resolved"] is True, spec
     assert spec["years"] == [2022, 2023, 2024], spec
+
+
+def test_c1_date_writing_variants_agree():
+    """★ C-1 写法不变性：同一语义 × 3 种日期写法 ⇒ kind/years/resolved 全等。
+
+    ★ 这条锁的是「写法差异不得改变期间判定」：任一写法被单年 EXPLICIT 抢走时，
+      各写法的 kind/years 就会分叉 ⇒ 本条转红（与具体是哪一种写法被改坏无关）。
+      破折号 / 年 / 斜杠三种写法都必须给出同一个相对期间窗口。
+    """
+    variants = [
+        "请提供近三年的审计报告（报告期截至2024-06-30）",
+        "请提供近三年的审计报告（报告期截至2024年6月30日）",
+        "请提供近三年的审计报告（报告期截止2024/06/30）",
+    ]
+    kinds, spans, years, resolved = set(), set(), set(), set()
+    for text in variants:
+        parsed = ps.parse_period_spec(text)
+        built = ps.build_period_spec(text)
+        kinds.add(parsed["kind"])
+        spans.add((parsed.get("relative") or {}).get("span"))
+        years.add(tuple(built["years"]))
+        resolved.add(built["resolved"])
+    assert kinds == {"RELATIVE"}, kinds
+    assert spans == {3}, spans
+    assert years == {(2022, 2023, 2024)}, years
+    assert resolved == {True}, resolved
 
 
 def test_module_has_no_second_doc_type_table():
