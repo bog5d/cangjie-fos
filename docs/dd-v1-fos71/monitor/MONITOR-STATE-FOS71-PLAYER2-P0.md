@@ -8001,3 +8001,59 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 ■ 13 cron 面复核（★防重复调度）
 · `cron_read view=list` 现读：本账号下共 **3 条**巡检 cron ——「FOS #71 考生2 P0 修复 · 独立监工巡检 · 每20分钟」（`455353976279398`）｜「CF 公众号重置版 V1.0 独立监工巡检 · 每20分钟」（`455347827208431`）｜「副官 INC3 独立监工巡检 · 每20分钟」（`455164742488166`）。
 · ⇒ ★**本工程恰 1 条**，另两条属别的工程 ⇒ ★**不构成重复调度，禁误判、禁删除**。
+#### 一百四十二、15:40Z 槽位独立监工席（★本席 `455544196833508` · 取数窗口 2026-10-23T15:41:36Z–16:2xZ UTC）· ★★**本轮头号事件：T3 合并笔在本席取数窗口内落远端（R2 线并入 #81，授权分支 tip 前进一档）** ＋ ★★**台账节号重号连续第三次坐实（根因＝节号标题带括号注记 ⇒ 严格枚举漏检 ⇒ 下一席 max＋1 必撞号）** ＋ ★**六态入口缺口在 T3 合并后仍然成立（两个正式入口三键各 0 命中），而「期间语义四态」同一笔已贯通** ＋ 两账 ±0
+
+■ 0 读数时刻与基座
+· 取数窗口 2026-10-23T15:41:36Z–16:2xZ UTC｜★**通道 ＝ REST git-data ＋ raw.githubusercontent**；★**本轮 REST core 配额被本席的全仓逐件扫描一次抽干（5000/5000，16:20:57Z 重置）⇒ 取数与落盘分两段走（配额恢复后重取基座）**｜基座 tip ＝ `7f38c347cc1b8ffc170b42117d05b171e605960e`（执行点现读）｜载体 blob `9e4a38929390793199a8b5d0bc3ed43f7cd06726`／1,756,688 B／sha256 `ed6a05a25d9508f24d490fecf36e383f71836897e5ae8bcb605f6fe727f4cb38`
+· ★**取号（宽口径，两查）**：顶层节号标题按「四井号标题行首个中文数字 token（token 后允许注记括号）」枚举 428 条（distinct 100／max 141）⇒ 本节取 **一百四十二**（号 142，★**字面层再查命中 0**）｜★**域内顶层重号（≥100 段）**：§一百十一 ×2／§一百十二 ×2／§一百三十 ×2／§一百三十一 ×2／§一百三十二 ×2／§一百三十四 ×4
+· ★**口径（按远端真实形态）**：顶层节号 ＝ 四井号标题行首个中文数字 token ＋ 顿号；子空间 ＝ ＋ 点；★**token 与分隔符之间允许插入注记括号（如「（号 131）」）⇒ 窄口径枚举会漏检该节**（★本轮已三次坐实，见 ■3）
+
+■ 1 ★★本席独立增量一：**T3 合并笔落远端**（★上轮记的「T3 未落地」到此终结）
+· 授权分支 tip 现读 ＝ `7858d88db68b151109a409a5b6b35cd9178d8009`（commit 时刻 2026-10-23T15:49:39Z，首行「fix(#71) T3：R2 线并入 #81 线（期间语义四态接线 · 三方合并）」）｜★**本席本轮取数窗口内落远端**（15:43Z 快照仍是 `792b627d8cfc15742b1d7391dfec2e37d27c9e48`）⇒ ★**两个时刻两个值，禁并成一行**
+· 变更面（blob 口径，★起点声明）：自上一 tip `792b627d8cfc15742b1d7391dfec2e37d27c9e48` 起 ＝ **新增 9／删除 0／既有 blob 变 4**（793→802 条）｜自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 起 ＝ 新增 31／删除 11／既有 blob 变 14（782→802 条）｜自 master 现读 tip `3781311c4b1157c68a0f891506b7c33ab327f7c4` 起 ＝ 新增 30／删除 0／既有 blob 变 14（772→802 条）｜★**三桶分列；删除数随起点不同而不同**（master 那 2 笔「公开面清零」已删掉 11 条 seven-item-bundle ⇒ 基线口径的删除 11 在 master 口径下归零）｜★**三口径的树均 truncated=False，范围完整**
+· 新增 9 路径 ＝ `backend/src/cangjie_fos/services/dd_v1_period_service.py` ＋ 3 个测试 ＋ `docs/dd-v1-fos71/player2-r2-wp1/` 下 5 个交卷文档｜既有 blob 变 4 ＝ `dd_v1_agent_result_service.py`／`dd_v1_semantic_retrieval_service.py`／**`tools/dd_team_channel.py`**／**`tools/dd_v1_local_run.py`**
+· ★**PR 面**：#81 现读 head ＝ 新 tip／state ＝ open／**mergeable_state ＝ behind**（base 快照落后 master）｜★**PR #84 现读 state ＝ closed**（15:49:53Z，R2 线并入后关闭；其 base ＝ 授权分支）｜#81 comments 5 条／reviews 0 条
+· ★**本席不判冲突性质**（司仓已把「双侧都改过同一路径」降级为「筛查」，冲突与否以 git 实际合并结果为准）⇒ 本席只登记变更面与 blob 身份
+
+■ 2 ★★本席独立增量二：★★**六态入口缺口在 T3 合并后仍然成立**；★而「期间语义四态」**同一笔已经**贯通到两个正式入口
+· 合并后两个正式入口的字节（锚点 ＝ 新 tip）：`tools/dd_v1_local_run.py` ＝ `f23f89692879e093c9ffbd9db10b174040796fb1`／30,918 B｜`tools/dd_team_channel.py` ＝ `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`／34,810 B
+· ★**三键在两个入口各 0 命中**：`no_candidate_reason` 0／`candidate_status` 0／`evidence_status` 0（local_run）｜0／0／0（team_channel）｜★**薄入口在候选为空时仍只有一处无差别渲染「候选材料：（无）」（L563，全文 1 处）** ⇒ ★**六种原因在正式入口不可见**
+· 实现面：`dd_v1_semantic_retrieval_service.py` ＝ `63d13d1f001f64520d35f5d903087e0cfdffe76b`／55,724 B，三键 15／14／6，`NO_CANDIDATE_REASONS` 封闭六态在位（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER）
+· ★**消费面复算（本席一手全取，非抽样）**：产品层（backend/src ＋ tools）共 199 个 .py 全部逐件取字节（取到 199 件）⇒ 读这三键的文件＝**生产模块自身**（dd_v1_semantic_retrieval_service.py：15／14／6）＋ 工具层 0 ⇒ ★**两个正式入口（local_run／team_channel）与全部产品层模块均不读这三键**
+· ★★**同笔合并里的对照（比「都缺」更锐利）**：期间语义四态**确实进了入口** —— `_period_anchor_arg` 3 处（`tools/dd_v1_local_run.py`）｜`period_anchor` 8 处（local_run）＋ 30 处（语义层）｜`_period_spec_view` 3 处（`tools/dd_team_channel.py`）｜`_config_anchor` 3 处（team_channel）⇒ ★**「期间四态」通、「空候选六态」不通 ⇒ 合并完成 ≠ 验收项完成**
+· ★**类型表单一性复核（合并后）**：权威定义仍**只有 1 处**（`dd_v1_requirement_service.py` L144 的 `_DOC_TYPE_RULES`，blob `eccb7dfe844cf96db88c125b20c786057488f92c`）＋ 同文件 L168 的 `_DOC_TYPE_UNIQUENESS`；★**新增的 period_service／agent_result_service 与两个正式入口对类型表字面各 0 命中** ⇒ ★**材料类型表唯一性复核（合并后 tip）**：`_DOC_TYPE_RULES`（权威 10 类）的**定义处只有 1 个** —— `dd_v1_requirement_service.py` L144（blob `eccb7dfe844cf96db88c125b20c786057488f92c`）；★**合并后新增／改动的 4 个产品字节（period_service／agent_result_service／team_channel／local_run）对 `_DOC_TYPE_RULES`／`_DOC_TYPE_UNIQUENESS`／`_DOC_TYPE_PURPOSE_MAP`／`_TYPE_MAP` 四类类型表字面各 0 命中** ⇒ ★**无第三套材料类型表** ✔（★另两张**不同维度**的表 —— `_DOC_TYPE_UNIQUENESS` 唯一性口径（requirement_service L168，其源码注释自述「不是第二份类型规则表：键必须取自上面那 10 个 key」）与 `_DOC_TYPE_PURPOSE_MAP` purpose 维度（match_service）—— 键均取自那 10 个 key）
+
+■ 3 ★★本席独立增量三：台账节号重号**连续第三次**坐实，根因可机械复现
+· 本轮在基座上枚举：顶层节号 428 条／distinct 100／max 141；★**≥100 段的重号**：§一百十一 ×2／§一百十二 ×2／§一百三十 ×2／§一百三十一 ×2／§一百三十二 ×2／§一百三十四 ×4
+· ★**根因（三次同款）**：兄弟席节号标题在数字 token 后带括号注记（如「（号 131）」）⇒ ★**任何「token 后紧跟分隔符 `、`／`．`」的严格枚举正则都会漏检该节** ⇒ 下一席读到的 max 偏小 ⇒ max＋1 取号直接撞号
+· ★**130×2 的两处坐标**：轮次 37 的「一百三十（号 130）、」与巡检轮次 27 的「一百三十、」⇒ ★**后者取号时写「基座内该字面计数 0」—— 那个 0 是窄口径的自证，与枚举同时失效 ⇒ 双重失效**
+· ★**可机检闸（写给下一席）**：落盘前必须用**宽口径**枚举，且★**枚举与「字面计数」两处必须同口径**；★**禁用手写临时探针**（口径纪律须内建进脚本或复用已验证实现）｜★**取号绑执行点现读**（★本节取号时基座已被兄弟席推进，max 随之上移 ⇒ 「下一空闲」型指针当刻即自我失效）
+
+■ 4 CI 面（★只写本轮新增，不重复既有登记）
+· 新 tip 6 条 check-run：2 条 Frontend Build Check ＝ completed／success（15:49:56Z→15:50:13Z、15:50:00Z→15:50:16Z）；★**4 条 Backend Tests ＝ in_progress**（起于 15:49:56Z／15:50:00Z／15:50:01Z，`completed_at` 为空）⇒ ★**未收尾 ⇒ 不记红也不记绿**
+· ★**旧 tip 的 6 条终态（push 绿／PR 事件红）已由 §一百三十二 登记 ⇒ 本节不重复投递**
+· ★**独立 Gate 现状**：★**现有两枚独立裁定均锚旧 head**（PR #81 的独立复核裁定锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`；PR #84 的 FAIL 裁定锚 `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`）⇒ ★**新 tip 尚无独立 Gate 裁定** ⇒ ★**工程分子不因并入进位**
+
+■ 5 本轮两本账、活跃态四栏与该踢吗（★只写增量）
+· 工程账 **4/6**（A0–A5 口径；A4a 独立 Reviewer ROUND1／ROUND2 的 PASS 记载可达、A4b 段 BLOCKED ⇒ 整格未闭合；A5 未闭合）｜效果账 **0/100 REAL_PASS**（五项 outcome 权重 O1 25／O2 25／O3 20／O4 20／O5 10，status 全 UNKNOWN、verified_points 全 0）⇒ ★**本轮分子 ±0**
+· ★**T3 落地不进位**：★**「已并入」与「已过独立 Gate」是两个命题**（工程分子只认独立 Gate 裁定）⇒ ★**不因合并完成而把工程分子从 4/6 抬到 5/6**
+· 活跃态四栏（分开判、分开报）：① cron 在跑 ✔（本工程**恰 1 条** `455353976279398`，schedule `*/20 * * * *`，enabled ＝ true；另 3 条分属 CF `455347827208431`／INC3 `455164742488166`／Coder 一次性 self-reminder `455540756472443` ⇒ ★**非重复调度器，0 删除**）② 监工在工作 ✔（本席本轮独立现读 ＋ 落盘）③ 开发者真正施工 ✔（T2 施工席 `455536575127975` 末条 turn 2026-10-23T15:49:13Z，finish_reason ＝ toolUse，末条内含 T3 合并子集跑批 343 collected／0 failures／0 errors／0 skipped／exit 0）④ 有新的功能成果 ✔（T3 合并笔落远端）
+· ⇒ 活跃态 **PRODUCTIVE**｜★**该踢吗 ＝ NO**（三要件全不成立：tip 距取数时刻 <25 min／工作树有未落改动／执行器末条 toolUse）⇒ **0 唤醒／0 spawn／0 恢复**
+· 无人值守有效续跑 **PASS**（cron 在跑 ＋ 本轮被 cron 拉起并完成独立巡检 ＋ 施工席在无人干预下自主产出 T3 合并笔）
+· GM 名册：`W-DD-V1-2026` current_state ＝ BLOCKED／current_wp ＝ WP-R2／executor ＝ hermes／waiting_for_chairman ＝ true／updated_at 2026-10-19T19:45:00+08:00／名册 42 条 ⇒ ★**与前轮逐位一致，0 代改、0 催办**
+· 未授权分支面：★**本轮现读 cangjie-fos 全部 heads（37 条）**；71 相关分支最新 commit 时刻分别为授权分支 15:49:39Z、R2 线 14:31:56Z、#82 源 11:01:43Z、#83 源 13:16:15Z ⇒ ★**15:00Z 之后无新建 71-* 分支 ⇒ 0 双写者风险**（★R2 线内容已并入授权分支，其分支本身未删）
+
+■ 6 本席四处探针自曝（★均为本席读法缺陷，被验对象未动）
+· ① ★**节号枚举第一版口径过窄**（把「token 后紧跟分隔符」当硬条件）⇒ 漏检带注记的 3 节；★**若沿用该口径，本席会取 130 并第三次撞号** ⇒ 改宽口径后 max ＝ 141 ⇒ 取 一百四十二
+· ② ★**`_DOC_TYPE_RULES` 首版提取返回整齐 0**（本席把常量形态假设成 dict，真实形态是 tuple of tuple，且定义行**带缩进**而本席首版正则以行首锚定）⇒ ★**整齐 0 命中先怀疑探针**；改按字节定位后取到 10 个规范 key（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）
+· ③ ★**R2 接线四项第一遍只查了 local_run** ⇒ `_period_spec_view`／`_config_anchor` 各 0 命中，**一度疑为自报造假**；★**全仓定位后确认二者在 team_channel 各 3 处 ⇒ 自报数成立** ⇒ ★**教训：探针面窄 ⇒ 假红；先定位再判**
+· ④ ★**PR #84 状态两个时刻两个值**：15:43Z 快照 ＝ open；★**T3 落远端后 15:49:53Z ＝ closed** ⇒ 禁并成一行
+· ⑤ ★**通道层**：本轮 REST core 配额被**全仓逐件扫描**一次抽干（5000/5000）⇒ ★**取证与落盘被迫分两段（等配额恢复后重取基座）**；★**可机检替代：blob-oid ＝ sha1("blob "+size+"\0"+content) ⇒ 取到字节即可自算 40 位 blob sha，不必消耗 REST 配额**（本轮已用该法与 GraphQL／REST 给出的 oid 逐位互证）
+· ★**边界**：0 写产品代码｜0 合并任何分支｜0 关 PR｜0 amend／0 force｜0 改写他人已落字节｜0 改 Issue #71 的 AC｜0 改尺子口径｜0 改 GM 名册｜0 改施工方工作树｜0 代写独立 Reviewer 的 VERDICT｜0 新建调度器／0 新建第二套监工｜0 spawn／0 唤醒／0 恢复｜0 输出明文 token｜0 复刻禁形字面｜0 跑全量测试
+
+■ 7 下轮（16:20Z 槽位）必查
+· ① 新 tip 的 Backend 门禁终态（★同一 head 上同名 check 会有两个 id ⇒ 必须带 run id 与 event 标签读）
+· ② 独立 Gate 是否在**合并后 tip** 上落裁定（T3′ 复核席锚的是 R2 tip `32af192c62818f599418bb06311b09dce5b7848e` ⇒ 合并后需重锚；★**在飞不进位**）
+· ③ 六态是否贯通到两个入口（可机检：三键在 local_run／team_channel 各 ≥1 命中，且薄入口不再只有「候选材料：（无）」一处空候选渲染）
+· ④ 台账下一空闲节号（★执行点现读，禁沿用本节预告）
+· ⑤ 未授权分支面再扫（★新增 71-* 即双写者风险，须报告）
