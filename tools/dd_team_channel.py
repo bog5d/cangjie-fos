@@ -492,6 +492,12 @@ def _bridge_json(bridge, *, config_anchor: dict | None = None) -> dict:
                 "period_spec": _period_spec_view(o, config_anchor=config_anchor),
                 "evidence_count": o["evidence_count"],
                 "rule_hint": o["rule_hint"],
+                # ★ 追加式：候选为空时的**六态原因**与诊断随正式入口一起出去。
+                #   口径全部来自语义层（桥接层只透传）⇒ 不在入口另造一套原因表。
+                "evidence_status": o.get("evidence_status") or {},
+                "candidate_status": (o.get("evidence_status") or {}).get("candidate_status"),
+                "no_candidate_reason": (o.get("evidence_status") or {}).get("no_candidate_reason"),
+                "diagnostics": (o.get("evidence_status") or {}).get("diagnostics") or {},
                 "candidates": [
                     {"file_id": e["file_id"], "sha256": e["sha256"],
                      "locator": e["locator"], "relative_path": e["relative_path"],
@@ -603,6 +609,33 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
                               f"，定位 `{e['locator']}`"
                               f"，版本 {e['version_status']}）")
             lines2.append("")
+        # ★ 追加式新增段：候选为空的义务在上面的既有段落里**一行都不出**（被 continue 跳过）
+        #   ⇒ 这里单独补一段「为什么没有候选」：封闭六态原因 ＋ 候选状态 ＋ 过滤诊断。
+        #   ★ 既有段落结构与既有输出行**一字不改**；本段全部是**新增**输出行。
+        _empty = [ob for ob in b["obligations"] if not ob["evidence_count"]]
+        if _empty:
+            from cangjie_fos.services import dd_v1_semantic_retrieval_service as _sem
+            _six = "、".join(_sem.NO_CANDIDATE_REASONS)
+            lines2.append("### 候选为空的义务（为什么没有候选）")
+            lines2.append("")
+            lines2.append("> 下面每条都**没有**候选材料。原因**分六类**，"
+                          "不合并成一个笼统的「缺材料」；"
+                          f"取值域（语义层封闭枚举）：`{_six}`。"
+                          "本段只透传语义层算出的结论，入口不另造一套原因表。")
+            lines2.append("")
+            for ob in _empty:
+                _st = ob.get("evidence_status") or {}
+                _dg = _st.get("diagnostics") or {}
+                _hint = ob.get("rule_hint") or {}
+                lines2.append(f"- {ob['text']}")
+                lines2.append(f"    - 候选状态：`{_st.get('candidate_status') or '—'}`"
+                              f"｜没有候选的原因：`{_st.get('no_candidate_reason') or '—'}`"
+                              f"｜规则提示：{_hint.get('verdict', '—')}"
+                              f"｜规则提示里带的原因：{_hint.get('no_candidate_reason') or '—'}")
+                if _dg:
+                    _bits = "｜".join(f"{k}={v}" for k, v in sorted(_dg.items()))
+                    lines2.append(f"    - 过滤诊断：{_bits}")
+                lines2.append("")
         lines += lines2
 
     md.write_text("\n".join(lines), encoding="utf-8")

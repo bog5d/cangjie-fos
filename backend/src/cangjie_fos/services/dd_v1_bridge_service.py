@@ -386,9 +386,13 @@ def bridge_library(
             mode = "RULE_ONLY"
 
     evidence = packet.get("evidence") or {}
+    # ★「为什么没有候选」的结构化状态（语义层已算好，六态封闭枚举 + 过滤诊断）。
+    #   桥接层**只透传、不另算**（不新造第二套原因表）⇒ 薄入口拿到的口径与语义层同一个。
+    evidence_status = packet.get("evidence_status") or {}
     obligations_out: list[dict[str, Any]] = []
     for ob in obl_out:
         ev = evidence.get(ob["obligation_id"]) or []
+        st = evidence_status.get(ob["obligation_id"]) or {}
         # 主体是否**权威核验过**：只有 AUTHORITY 档才算。
         # 非权威档（目录名线索 / 无线索）时，证据里的材料**归属哪一家法人没被确认**，
         # 逐条标注，别让人把「候选」当成「这一家的材料」。
@@ -416,7 +420,16 @@ def bridge_library(
                 "version_status": e.get("version_status"),
                 "part": e.get("part"),
             } for e in ev],
-            "rule_hint": sem.rule_hint(ob, ev),
+            # ★ 候选为空时**必须说清为什么**：第三实参 ＝ 语义层算好的 no_candidate_reason
+            #   （封闭六态）⇒ 规则提示里不再只剩一个笼统的 MISSING。
+            #   候选**不为空**时该实参为 None ⇒ rule_hint 的既有行为逐字不变。
+            "rule_hint": sem.rule_hint(ob, ev, st.get("no_candidate_reason")),
+            # ★ 追加式：把结构化状态整体带出来（薄入口据此输出六态 ＋ 诊断）。
+            "evidence_status": {
+                "no_candidate_reason": st.get("no_candidate_reason"),
+                "candidate_status": st.get("candidate_status"),
+                "diagnostics": st.get("diagnostics") or {},
+            },
             "advisory_only": True,
             "review_required": True,
             "hard_verdict_touched": False,
