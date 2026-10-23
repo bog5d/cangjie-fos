@@ -189,3 +189,14 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 - 本轮（轮次 2）落盘 commit：**见分支 `monitor/fos71-player2-p0-fix` 的 tip**（父 ＝ 轮次 1 末笔 `683a25977025e299918bfdcf9b267b0c4d67f247`，快进非 force）
 - 落盘后变更面核验（对基线 master tree，三者分列）：**新增路径 1**（`docs/dd-v1-fos71/monitor/MONITOR-STATE-FOS71-PLAYER2-P0.md`）／**删除路径 0**／**既有路径 blob 变更 0**；路径总数 782 → 783。另有既有目录 tree 对象连带改 sha 2 个（`docs`、`docs/dd-v1-fos71`）＋ 新增目录 tree 1 个（`docs/dd-v1-fos71/monitor`）——**目录 tree 变化是派生变化，不是第二个 blob 变更**
 - 取数与落盘时刻：2026-10-23T04:05Z ～ 04:2xZ（UTC，shell 当场算）
+
+### 十一、轮次 2 落盘回执（回填首笔）+ 遗留禁形登记
+
+- **首笔落盘 commit**：`e354398d5597817106a73a755285ba3840a777cf`（父 `683a25977025e299918bfdcf9b267b0c4d67f247` ＝ 轮次 1 末笔；**快进非 force**；push 回执为 `git push` 的 fast-forward 两点式显示（两端为短显示形式，**回执以本卡 40 位全串为准**））
+- **首笔落盘 root tree**：`f6c31fbbb34c5ace485eb29dab7ddbf537eb7386`
+- **状态卡 blob**：`7e112aede657a9d4c28aca7665089351683f7224da56055d21e95767d6a1f507`／**29,731 B**／sha256 `7e112aede657a9d4c28aca7665089351683f7224da56055d21e95767d6a1f507`
+- **回读断言**：从远端 `refs/heads/monitor/fos71-player2-p0-fix` 现读该 blob ⇒ **29,731 B，与本地逐位相同**（sha256 一致）；U+FFFD 计数 0、U+2026 计数 0
+- **变更面（对基线 master tree，blob 口径三列）**：**新增路径 1**（`docs/dd-v1-fos71/monitor/MONITOR-STATE-FOS71-PLAYER2-P0.md`）／**删除路径 0**／**既有路径 blob 变更 0**；路径总数 782 → 783
+- **派生对象（用 `git ls-tree -r -t` 逐路径比对 tree sha，**不用 diff 条目数**——diff 结构上不列 tree，恒为 0）**：既有目录 tree 连带改 sha **2** 个（`docs`、`docs/dd-v1-fos71`）＋ **新增目录 tree 1** 个（`docs/dd-v1-fos71/monitor`）。⇒ 按 `ls-tree -r -t` 计「新增路径」为 2 条（1 tree ＋ 1 blob），按 **blob 口径**为 **1** 条。**两口径分列，不互相替换**；目录 tree 变化是派生变化，**不是第二个 blob 变更**。
+- **禁形自检作用域** ＝ **本轮新增字节**（本轮新增 15,575 B）：F1（U+FFFD）**0**、F2（单码点省略号）**0**、F7（7–39 位小写 hex 截短 sha）**0**；阳性对照（注入 40 位 sha）**必响**。
+- ⚠ **遗留禁形登记（**历史轮次**，本轮不追改——依纪律「禁形自检作用域＝本轮增量字节；历史旧违规不追改，只追加不改写」）**：状态卡**轮次 1** 正文含 1 处 F7 截短 sha（7 位小写 hex，记作「轮次 1 旧基线短写」）（在描述 GM 执行权登记 v2 旧基线的句子里）。**该处属轮次 1 已落盘字节，本轮不重写**；后续任何整卡扫描会命中它，**判读时按「历史遗留、非本轮新增」排除**，不得据此判本轮落盘件不合规。
