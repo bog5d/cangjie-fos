@@ -8177,3 +8177,64 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 · ③ T5 后 tip 的 2 条 Backend 门禁终态
 · ④ 独立 Gate 是否在 `a34d01031471b539480ef8bdd53d263cc375ac59` 上落裁定（★**在飞不进位**）
 · ⑤ 台账下一空闲节号（★执行点现读）＋ 未授权分支面再扫（★新增 71-* 即双写者风险）
+
+#### 一百四十六（号 146）、16:40Z–16:5xZ 槽位独立监工席 · 本席 `455559928467912` · ★**只追加，不改写任何已落字节；0 重复登记兄弟席 §一百四十五 已登记的 T5 结论** · ★**本节只登本席一手现读 ＋ 字节级独立复核 ＋ 三条新登记**
+
+■ 0 锚点与取数时刻
+· 授权分支 tip 现读 `a34d01031471b539480ef8bdd53d263cc375ac59`（commit 时刻 2026-10-23T16:12:29Z；父 `fee3c48e61078dfffd48d613ef07933ce0f6ca54`）｜master tip 现读 `3781311c4b1157c68a0f891506b7c33ab327f7c4`（在基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 之后 2 笔：公开面清零 ＋ 其补正）｜本节基座 ＝ 台账分支 tip 现读 `0ac199b5c1396ee6fad080bc81cec61b830c0921`（★执行点现读，★禁硬编码）
+· ★**取数时刻一律用服务器 Date 头当场取**（本轮 16:40:39Z／16:43:17Z 两次现读）｜★**committer date 只作参考**（兄弟席已登记其超前真实时刻约 6 分钟的先例）
+· ★**节号域口径（本席 v4 同口径）**：顶层节号占用 **120** 个（form A「、」形态、TOP_MIN ＝ 26、去重计数）｜域 **26–145 连续、0 空洞**｜域 max ＝ **145** ⇒ 本节取 **一百四十六**（号 146，★form A／form B 两形态在基座内均 0 命中）
+
+■ 1 ★变更面（本席独立复算；★与 T5 单笔变更面**分属两个口径**，勿混读）
+· **自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 起的累计变更面（blob 口径三列分列）**：新增路径 **32**／删除路径 **11**／既有路径 blob 变更 **14**；★另有目录 tree 对象连带变（新增 5／删除 3／变更 12）⇒ 树条目口径合计 新增 37／删除 14／变更 26（★tree 变更是派生变化，**不是**第二个 blob 变更）
+· **T5 单笔（`a34d01031471b539480ef8bdd53d263cc375ac59`）变更面 ＝ 3 条路径**（改 2 ＋ 增 1）——★与上条**不是同一分母**：前者是「分支 vs 基线」的累计面，后者是「一笔 vs 其父」的单笔面
+
+■ 2 ★★材料类型 10 类：权威单源已字节级坐实（★未见第三套类型表）
+· 权威表 `dd_v1_requirement_service._DOC_TYPE_RULES`（blob `eccb7dfe844cf96db88c125b20c786057488f92c`／52,618 B）＝ **10 个英文 key**：audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract
+· 桥接层 `dd_v1_bridge_service.py`（blob `3d23ab078eb72f4c83b5a65d5aaafe34505afdb0`）第 75 行**复用**该表（`DOC_TYPE_KEYS` 由 `rq._DOC_TYPE_RULES` 派生）＋ 第 480 行自述「复用，未另抄」；语义层 `dd_v1_semantic_retrieval_service.py`（blob `63d13d1f001f64520d35f5d903087e0cfdffe76b`）第 5 至 7 行明写「本模块**不抄**任何类型表」；`dd_v1_doc_type_service.py`（blob `e2847ad6d58b9a7914092f5fab1daa498a92aaea`）第 21 行只**引用**该表名
+· ★**本席对 6 个变更源文件做「单行含 3 个以上规范 key」扫描 ⇒ 命中 0 行 ⇒ 未见第三套类型表**（命中行只有 docstring 里的 10 类枚举说明与语义层第 7 行的历史问题注记，**非**另定义的表）
+· ★**语义层第 7 行留有一条历史问题注记**：旧 7 类中文表缺 resolution／ip／contract ⇒ 与桥接层英文 key 空间分叉 ⇒ 证据池恒空；★**该注记在当前 tip 的代码里仍逐字存在**（本席只登记，**不代裁**它是否已失效）
+
+■ 3 ★★空候选六态：封闭枚举在实现层成立，★但**正式入口只通了一半**
+· 六态封闭枚举 `NO_CANDIDATE_REASONS`（语义层第 66 至 73 行）＝ NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER（**恰 6，与本轮判据的六种原因逐项对齐**）｜另有正交四态 `candidate_status` ＝ OK／EXHAUSTED／PERIOD_OR_VERSION_MISMATCH／NO_CANDIDATE（第 75 至 80 行，判定顺序写死）
+· **桥接层**（第 426 至 432 行）：第三实参透传 `no_candidate_reason` ＋ 追加 `evidence_status` 三键｜**薄入口 `tools/dd_team_channel.py`**（blob `3610eb4db61f41b5aec25a2490c027b1f6c0bb45`／37,307 B）第 497 至 500 行输出四键 ＋ 第 612 至 638 行输出人读「候选为空的义务（为什么没有候选）」段，且第 618 行**直接 import 语义层的枚举**（★入口未另抄原因表）
+· ★★**`tools/dd_v1_local_run.py`（blob `f23f89692879e093c9ffbd9db10b174040796fb1`／30,918 B）本席一手核：全文 `no_candidate_reason`／`evidence_status`／`NO_CANDIDATE_REASONS`／`rule_hint`／「候选」均 **0 命中**；其第 401 行只写 `uncovered` ＋ `degrade_reason` ⇒ ★**候选为空在 local_run 侧仍折叠为「未覆盖义务」这一粗标签，六态未透出**
+· ★**两处口径边界（与兄弟席 §一百四十五 同结论，本席独立复现）**：① 薄入口第 569 行仍有「候选材料：（无）」无差别标签（全文 1 处）⇒ 报告里同时存在「一行无差别标签」＋「六态专段」⇒ 判「禁止统一伪装成 MISSING」取决于判据读法，★**本席不代裁**；② local_run 与 team_channel **无 import 关系**（`team_channel` 字面在 local_run 内 0 命中）⇒ 两个正式入口不在同一进程串接
+· ★**「MISSING」字面在 6 个变更源文件里的实况**：桥接层 1 处（**注释**）｜语义层 9 处（其中第 661 行为 `hint.verdict` 兜底，其余为注释与错误分类）｜local_run **0 处**｜team_channel 1 处（`V_MISSING` 枚举）｜requirement_service 1 处（注释）｜doc_type_service 0 处 ⇒ ★**入口输出面无「统一伪装成 MISSING」的实码命中**
+
+■ 4 ★独立 Gate：**当前 tip 上无独立 Reviewer 裁定**
+· PR #81 现读：state open／merged false／head `a34d01031471b539480ef8bdd53d263cc375ac59`／base ref master（PR 记录内 base.sha ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` ＝ 创建时快照，已过期）｜GraphQL `reviewThreads` **0**、`reviews` **0**、`comments` **5**（全部为 owner 账号 bog5d：05:51:17Z 那条「独立复核裁定」★其被验对象是**旧 head** `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`；另四条均为司仓「合并口径」类）⇒ ★**在 `a34d01031471b539480ef8bdd53d263cc375ac59` 上无任何独立裁定 ⇒ 工程分子不进位**
+· ★**PR #84 现读**：state closed／**merged true**／merged_at 2026-10-23T15:49:53Z／merge_commit `7858d88db68b151109a409a5b6b35cd9178d8009`／base ＝ 授权分支（★落 P0 线，**非** master）⇒ ★**T3 合并面坐实**
+· ★**未授权分支面**：现读 37 个 heads 全量提交时刻，**除授权分支外无新增 71 开头分支**（最近的三个非授权分支：`feat/71-player2-r2-wp1-period-semantics` 14:31:56Z／`fix/71-g5-mixed-type-packaging-20261023` 13:16:15Z／`fix/71-ci-ocr-toolchain-20261023` 11:01:39Z）⇒ ★**本轮无双写者分支风险**
+
+■ 5 CI 读数（按 run id ＋ 事件分列；★两套 checkout 的树不同，**不可合并成一个结论**）
+· `pull_request` 集 run **39984871257**（head `a34d01031471b539480ef8bdd53d263cc375ac59`）＝ run completed／**success**（updated 16:17:03Z）｜3 个 job 全 success：Frontend 16:12:45Z 至 16:13:03Z｜Backend 440+ 16:12:45Z 至 16:16:55Z｜Backend 228 16:12:45Z 至 16:17:03Z（★该集 checkout ＝ merge 树 `ef94af4c9a6d640b5f412e352cbfb53ad906b5a8`，双亲 ＝ master 现读 tip ＋ head）
+· `push` 集 run **39984863632**（同 head）＝ run **in_progress**｜Frontend 已 success（16:12:42Z 至 16:13:01Z）｜**2 个 Backend job 仍 in_progress**（16:12:42Z 起；截至 16:43:17Z 已历时 30 分 35 秒，卡在第 6 步「Install OCR toolchain」）
+· ★**判读**：同分支已终态同类 job 的历史时长区间 ＝ 228 job 253 至 1847 秒、440+ job 250 至 2052 秒 ⇒ 本轮两条仍在**已观测区间内**（最长者推算约 16:46:54Z 收尾）⇒ 按「未收尾 ≠ 红」记为慢或排队形态，★**不记红也不记绿**；★该 job 的日志 blob 尚未发布（`BlobNotFound`）⇒ 断言原文**不可得**，不猜
+
+■ 6 GM 名册面（现读，只登记，**不代写名册**）
+· `bog5d/cangjie-gm` 的 `data/work_items.json`（blob `0e8c65074f85db2d32efd9b3e580020a625cdb76`／489,942 B）里 `W-DD-V1-2026` 现读：current_state **BLOCKED**｜current_wp **WP-R2**｜executor **hermes**｜waiting_for_chairman **true**｜next_action ＝ WAIT_CHAIRMAN｜updated_at 2026-10-19T19:45:00+08:00
+· ★**名册面仍停在 10-19**，而远端施工面已推进到 T5（10-23 16:12:29Z）⇒ ★**名册与实况的时差是已登记的刻意选择**（避免写 live 名册触发生产派工造成双主），★**本席不代改、不代合、不代写**
+
+■ 7 ★★平台面（本轮新登记）：**全账号多席正在被 TPM 限流**
+· 司仓席 `455351523090910` 末条 assistant turn **finish_reason ＝ error**，正文 `50150:rate limit exceeded(TPM) (1039)`（16:41:36Z）；其前数条为 toolUse（正写台账正文 ＋ 跑本项目禁形闸，闸读数 F1 至 F7 全过、7 阳性与 7 阴性对照全过）⇒ ★**该席是在写台账正文中被限流打断，不是空转**
+· 多个巡检席（`455544196833508`／`455539555533283`／`455160073810109`／`455550608712408` 等）现读 status_message 同为 `rate limit exceeded(TPM) (1039)`
+· ★**失败方向（可复用）**：★**TPM 限流会把「席层在飞」读成「停摆」** —— 判「该踢吗」时若只看末条 finish_reason ＝ error，会在**平台正被限流**的时刻误踢；⇒ **纪律：判「该踢吗」前必须先读「该席末次 error 的正文」：若正文是平台限流或配额类（不是业务失败），则本轮判「已在跑、不打扰」并如实登记限流，不做恢复动作**
+
+■ 8 ★四件事分开判 ＋ 该踢吗
+· ① **cron 是否运行**：是（本工程巡检 cron `455353976279398`，每 20 分钟；★`view=list` 的 `last_run` 仍显示 0 ⇒ 字段回填滞后**不等于**没跑**；★同账号下 CF 与 INC3 各自另有自己的 cron，**非重复调度**，本工程**恰 1 条**巡检 cron）
+· ② **监工是否工作**：是（本席本轮完成远端字节级独立复核 ＋ 落盘）
+· ③ **开发者是否真正施工**：席层**是**（司仓席 16:41:50Z 仍在收件，16:41:36Z 前数轮为 toolUse）；远端层**本轮 0 新 commit**（tip 停在 16:12:29Z）
+· ④ **是否产生新的功能成果**：**无**（本轮远端 0 commit／0 PR／0 Gate 裁定；★兄弟席 §一百四十五 已登记的 T5 结论**本席不重复登记**）
+· ⇒ 活跃态 **WAITING**（★口径：远端面自 16:12:29Z 起 0 新字节 ＋ 平台限流中 ＋ 司仓席仍在飞 ⇒ **不是 STALLED**：STALLED 要求「无合理等待原因」，而此处有两条：CI 未收尾 ＋ 平台限流）
+· ★**该踢吗 ＝ NO**（三条判据逐条判）：① 远端 tip 自 16:12:29Z 起未前进（约 32 分钟，达到 25 分钟线 ⇒ **此条成立**）② 施工工作树新增改动 **不可得**（本沙箱无 clone，席内工作树不在远端）⇒ **此条不可判**，★**不把「不可得」记成「无」** ③ 执行器末条非 toolUse（末条是限流 error）⇒ **此条成立**；★**但三条未同时成立**（第 ② 条不可判），且第 ① 条的对照事实是「CI 两条 job 仍在该 tip 上跑」＝ 远端面有在飞工作 ⇒ **按「已在跑不打扰」处理，本轮 0 恢复、0 spawn**
+· ★**「恢复能力」如实登记**：本会话 **communicate spawn 工具可用**（★**未调用**——不满足踢的条件，禁无谓制造第二执行席）；★**不得记成「恢复能力不可用」**；★**限制**：若后续需恢复，只可**重开同一执行器席位**，禁新建第二执行器或第二套监工；★**同一 HEAD 连续 2 次恢复无新 commit ⇒ 停止恢复并如实上报「恢复机制已触发但未产生新字节，根因待查」**
+
+■ 9 ★两账（互不换算，分子 **±0**）＋ 边界
+· **工程条 ＝ 4/6**（★口径：尺子 MINIMAX-INDEPENDENT-SUPERVISOR.md V0.3 第 4 节 ＋ GOAL-CONTRACT v3.8 的 A0 至 A5 六个 WP；分子只认**独立 Reviewer PASS**：A4a PASS 记载成立、A4b（刘江 Windows 授权后真实 42 题同库复跑）**未发生** ⇒ 整格不进位；★**T5 落远端不使分子进位**——分子只认裁定，裁定只认当前 tip 上的独立 Reviewer）｜★并列登记：本 P0 修复线自身的 WP1 至 WP4 口径 **0/4**（★**分母不同、不互相换算**）
+· **效果条 ＝ 0/100 REAL_PASS**（O1 25／O2 25／O3 20／O4 20／O5 10，五项 `verified_points` 全 0、status 全 UNKNOWN）｜★**修复字节不产生任何效果分**（无 REAL_PASS 证据；MOCK 与合成不折算；UNKNOWN 既不算 PASS 也不算已证伪）
+· **硬门槛 9 项**：0 PASS／0 FAIL／9 UNKNOWN（尺子原值，本轮 ±0）
+· 边界 0：0 合并任何分支（含 master）｜0 关 PR｜0 amend｜0 force｜0 改写他人已落字节｜0 回填｜0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue AC／尺子／合同／GM 名册｜0 写产品代码｜0 新建调度器或第二套监工或第二执行器｜0 spawn｜0 唤醒｜0 输出明文 token｜0 出波总卡（★**本轮无触发外发条件**）
+
+■ 10 下一棒（17:00Z 槽位）必查
+① T4 独立 Gate 是否在 `a34d01031471b539480ef8bdd53d263cc375ac59` 上落裁定（PR #81 的 comments／reviews／reviewThreads 现读）｜② push 集 39984863632 的 2 条 Backend job 终态（★收尾后才可记绿）｜③ local_run 侧的六态透传是否补齐（★若「正式入口」判据含 local_run，则该半边仍缺）｜④ 「候选材料：（无）」无差别标签的处置结论（司仓或人类授权域）｜⑤ 平台 TPM 限流是否解除（★解除前不做恢复动作）｜⑥ 授权分支 tip 或 master tip 再前进 ⇒ 本节全部锚点立即过期（★锚是执行点函数）｜⑦ 台账下一空闲节号（★执行点现读）
