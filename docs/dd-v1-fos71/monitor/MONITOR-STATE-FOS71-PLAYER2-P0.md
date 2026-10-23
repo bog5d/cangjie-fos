@@ -4036,3 +4036,45 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 #### 九、★边界（本席本轮全集）
 
 **0 合并**（含 master）｜**0 关 PR**｜**0 改已落纸的合并顺序**｜**0 代写独立 Reviewer 的 VERDICT**｜**0 改 Issue #71 的 AC 判定**｜**0 改尺子口径**｜**0 改 GM live 名册**｜**0 写产品代码**｜**0 写被验面**｜**0 触碰施工方工作树**｜**0 唤醒**｜**0 spawn**｜**0 恢复执行器**｜**0 新建分支／第二执行器／第二套监工／第二调度器**｜**0 新建 PR**｜**0 amend**｜**0 force push**｜**0 改写他人已落字节**｜**0 回退他人已落节**｜**0 复刻禁形字面**｜**0 输出明文 Token**｜**0 外发客户材料／个人信息**｜**0 写「合流三处必保」的最终裁定**（★该口径属人类授权域）。
+
+#### 六十二、轮次 27（12:00Z 槽位席 · 本席 `455490372092130` · cron run `455491594997854`）· ★★**本席五项新登记**：① **12:08:16Z OBS-1 复刻已落 PR #81 分支**（台账首登记）② ★**本轮新增字节禁形自检 ＝ FAIL**（探针 rc ＝ 1）③ **独立 Gate 锚点已陈旧**（head 已前进、产品码已换 blob）④ **合流三处仍缺 G5** ⑤ **GM 名册仍陈旧 4 天**
+
+· **一、★头号事件（台账首登记）：12:08:16Z OBS-1 复刻落 PR #81 分支**
+  授权修复分支 tip 现读 ＝ `16e18b21f261fb97e22352a64cc64ebb289c74ea`（作者/提交者 ＝ Player2 Executor，**单父** ＝ `78807393ca2ae914c82cafdf5677f1534bd7175c`，tree `522b8840888ca628247d59851e54d81efcee6e3a`）＝ 复刻源笔 `8ad3564ab4f481ef7efbf586ce16340f18c005a0` 的 **9 条路径**（8 增 ＋ 1 改）。
+  ★**本席字节层一手复核**：8 件 A 路径 blob 与源笔**逐位相同（8/8）**；`tools/dd_v1_local_run.py` ＝ **三方合并结果** blob `9c0412cea06b00902b3be39b1e215c8bcf8508da`（27,850 B，≠ 源笔 `55d78deb37721c52e70dc635b677a52697bca0f0`、≠ Gate 笔版本 `bb1f8e5eb2b1f0e3d4596d764f7dceed4cbf83a6`）⇒ **两侧改动同时保住**；该文件内 OBS-1 侧标记 `gm-fix-minor4-fixture-gate` 2／`gm-fix-minor4-write-guard` 2，P0 侧标记 `dts.resolve_doc_type`／`dts.is_index_artifact`／`rq.CURRENT_DOC_TYPES`／`sem.redact_for_output` 各 1，`doc_type_provenance`／`doc_type_uniqueness`／`ambiguous_splits` 各 1 ⇒ **合流三处由 2/3 变 2/3 仍缺 G5**（G5 服务层四文件仍只在 PR #83 head `e2995cb99048978f64bf482715c3adc1492b5783`）。★**清零口径保持**：新树 `seven-item-bundle` 件数 ＝ **0**；`minor4-fixture-gate` 件数 ＝ 7。
+
+· **二、★变更面三桶（自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 起，共 40 路径）**：**新增 20 ／删除 11 ／既有路径 blob 变更 9**；★其中**产品码 5 条**（4 件 backend/src 服务 ＋ `tools/dd_v1_local_run.py`）。
+  ★**自 Gate 笔 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 之后：27 路径 ＝ 增 14 ／删 11 ／改 2**（`ci.yml` ＋ `tools/dd_v1_local_run.py`）⇒ ★**Gate 锚点之后产品码被改过 1 处**（本节第四节据此判 Gate 陈旧）。
+
+· **三、★★禁形自检（作用域 ＝ 本轮新增字节 ＝ `16e18b21f261fb97e22352a64cc64ebb289c74ea` 的 9 条路径）＝ FAIL（探针 rc ＝ 1）**
+  探针 ＝ 仓内自带 `docs/dd-v1-fos71/player2-r2-wp1/shape_probe.py`（自 R2 分支取字节，★**本席不另造探针、不改族定义**）。
+  ★**族号按探针自带族表书写**（★台账现存多处族号↔族定义口径不一致，故此处一律用「族号 ＋ 族定义 ＋ 命中数」三件套）：
+  · **F2 ＝ 单码点省略号（U+2026）＝ 5 处**（3 个文件）
+  · **F3 ＝ ASCII 三点连写 ＝ 2 处**（1 个文件）
+  · **F4 ＝ 截短小写 hex（7 至 39 位且含 a–f）＝ 5 处**（3 个文件）
+  · **F1 ＝ UTF-8 替换符 ／ F5 ＝ 位长异常裸 hex ／ F6 ＝ 标记族 ／ F7 ＝ secretish ＝ 逐族 0**
+  ★**探针有效性**：每个被检文件、每一族 **阳性对照必响、阴性对照必静**（阳性对照失效 0 处、阴性对照误报 0 处）⇒ ★**命中为真，不是探针失效**。
+  ★**1 件文件未被扫描**：`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/regression-tests.txt`（3,346 B）为 **UTF-16 编码** ⇒ 探针严格 UTF-8 解码失败 ⇒ ★**该文件禁形读数不可得（不是 0）**。
+  ★**归属**：8 件 A 路径 blob 与源笔 `8ad3564ab4f481ef7efbf586ce16340f18c005a0` 逐位相同 ⇒ ★**命中系自源笔继承**，不是复刻笔新造；★**F3 属已知过宽形态**（同一批 11:14:08Z 字节里 `ci.yml` 的命令替换写法亦被判 F3 命中）⇒ 本席对 F3 **只登记、不单独定红线**；★**F2 与 F4 不属该形态**，按落盘质量缺口登记。★**本席 0 代改他人已落字节**。
+  ★**既有登记互证**：同一 11:14:08Z 批次的 F1／F2 命中已由 10:00Z 席在 §五十八.1 登记为低 severity 落盘质量缺陷 ⇒ 本席不重复主张；★**F4 族在该载体上属反复出现的形态**（台账另已登记 master 侧披露声明 F4 命中 3 处）。
+
+· **四、★独立 Gate 面（★锚点未前进）**：PR #81 issue comment `6358415604`（2026-10-23T05:51:17Z，author bog5d）＝ **独立复核裁定 VERDICT: PASS**（十项判据全成立、无 blocker；复核方式 ＝ 独立 checkout 带 `.git` 串行单进程复跑，★**执行席不参与**；被验对象 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`）。
+  ★★**该 Gate 锚在 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`；当前 head 已到 `16e18b21f261fb97e22352a64cc64ebb289c74ea` 且 `tools/dd_v1_local_run.py` 已换 blob（`bb1f8e5eb2b1f0e3d4596d764f7dceed4cbf83a6` → `9c0412cea06b00902b3be39b1e215c8bcf8508da`）⇒ Gate 对当前 head 已陈旧** ⇒ 「独立 Reviewer 裁定须在最终 head 重锚」**仍成立、尚未落**。
+  ★PR #84 comments **0** 条／reviews **0** 条 ⇒ **R2-WP1 独立 Gate 未落 GitHub 面**。
+
+· **五、★PR 面与 CI 现读（取数 12:12Z）**：#81 OPEN／**未合并**／head `16e18b21f261fb97e22352a64cc64ebb289c74ea`／6 个 check-run ＝ 2 个 Frontend success（12:08:26Z–12:08:49Z）＋ ★**4 个 Backend 仍 in_progress**（12:08:26Z 起未收）⇒ **CI 未定论**；#82 OPEN／6 个 check-run 全 success／未合并／head `bd4144641b260447abf0b57a199a5e301a58a414`；#83 OPEN／★**2 个 Backend failure**（11:03:50Z–11:08:11Z）／base 快照 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`；#84 OPEN／3 个 check-run 全 success（11:44:35Z–11:48:58Z）／head `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`／base 快照 `78807393ca2ae914c82cafdf5677f1534bd7175c`（已落后当前 tip）。
+  ★**未授权 71-* 分支面（本席现读）**：本仓 71-* 分支共 **29** 条；**2026-10-23 11:00:52Z–12:09:20Z 窗口内有 9 条各落笔** ＝ 授权修复分支 1 ＋ 监工台账载体 `monitor/fos71-player2-p0-fix` 1 ＋ ★**授权分支之外的 71-* 写线 7 条**（其中 4 条有 PR：#80／#82／#83／#84；3 条无 PR：`feat/71-a4-blind-exam`／`feat/71-a5-closeout`／`feat/71-minor4-fixture-gate`）⇒ ★**ONE_WRITER 敞口仍开**（本席只登记，不代关、不代写他人分支）。
+
+· **六、GM 名册（只读，不代写）**：`data/work_items.json`（main）→ `W-DD-V1-2026` ＝ current_state **BLOCKED**／current_wp **WP-R2**／waiting_for_chairman **true**／executor **hermes**／updated_at **2026-10-19T19:45:00+08:00** ⇒ ★**名册仍陈旧 4 天**，与远端实际（12:08:16Z 仍有新笔）脱节；其 WP 列表 ＝ WP-R0／WP-R1 COMPLETED、WP-R2 至 WP-R5 BLOCKED（6 个）⇒ ★**名册口径（6 个 WP）、冻结尺子口径（A0–A5，6 个）、PR #81 自述口径（4 个 WP）三套枚举并存**，本席**不合并、不换算、不改尺子**。
+
+· **七、★两本账（互不换算，本轮 ±0）**：工程 **4/4**（考生2 P0 包 WP1 至 WP4；分子 ＝ 独立 Gate PASS，锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`；★**head 已前进 ⇒ 不回退、不外推**）｜效果 **0/100 REAL_PASS**（五项 outcome_metrics 全 UNKNOWN、verified_points 0；★Gate 自陈不构成业务效果终局认定，真实材料库实测／Windows 复测／模型实际表现均未验证）｜A0–A5 **0/6**｜★**R2-WP1 0/1**｜硬门槛 **0 PASS ／ 0 FAIL ／ 9 UNKNOWN**。
+
+· **八、★活跃态四栏（分开判、分开报）＋ 该踢吗**：① **cron 在跑 ＝ PASS**（本工程周期件恰 **1** 条 `455353976279398`、`*/20`；本席本轮 ＝ cron run `455491594997854`／scheduled 12:00:00Z／delivered 12:00:25Z）｜② **监工在工作 ＝ PASS**（本席 12:07Z–12:2xZ 一手现读并**只追加**本节；台账 tip 由 `2ddaa5832fd55aab85b176ecc993c6cfdb803c52` 推进到 `c42a6407655f0ea4ccb35a31da967953dcfec580`）｜③ **开发者真在施工 ＝ YES**（12:08:16Z 落 `16e18b21f261fb97e22352a64cc64ebb289c74ea`；执行席末条 finish_reason ＝ toolUse）｜④ **产生新的功能成果 ＝ YES**（OBS-1 已复刻进 PR #81 分支）。
+  ★**该踢吗 ＝ NO**：远端 tip 12:08:16Z 前进（距本席取数 12:12Z 仅约 4 分钟）＋ 执行席末条 toolUse 在飞 ＝ **已在跑不打扰** ⇒ **0 唤醒、0 spawn、0 恢复**。
+  ★**无人值守有效续跑 ＝ PASS（四腿全 PASS）**，附一条：**部分巡检轮次被平台 TPM 限流中止**（11:40Z 轮 status_message ＝ rate limit exceeded (TPM) (1039)）⇒ ★**cron 在跑 ≠ 每轮都产出**。
+
+· **九、★下棒（12:20Z 槽位）必查**：① `16e18b21f261fb97e22352a64cc64ebb289c74ea` 的 4 个 Backend check-run 是否收齐且全绿；② 禁形 F2／F4 命中是否由施工侧处置（只追加更正节或重出一笔；★**本席 0 代改**）；③ `regression-tests.txt` 的 UTF-16 编码是否被登记（禁形读数不可得面）；④ 独立 Reviewer 是否在 `16e18b21f261fb97e22352a64cc64ebb289c74ea` 上重锚 Gate；⑤ PR #83 自身 head 的 ci.yml OCR 步骤计数是否由 0 变正（丙-2 唯一可行动作）；⑥ GM 名册是否回写（监工 0 代写）。
+
+· **十、★边界（本席本轮全集）**：**0** 合并（含 master）｜**0** 关 PR｜**0** 改 PR 正文｜**0** 代写独立 Reviewer 裁定｜**0** 改 Issue #71 的 AC 判定｜**0** 改尺子口径｜**0** 改合同｜**0** 改 GM live 名册｜**0** 写被验面｜**0** 触碰施工方工作树｜**0** 改他人已落字节｜**0** amend｜**0** force push｜**0** 新建分支｜**0** 新建调度器／第二套监工／第二执行器｜**0** 唤醒／**0** spawn／**0** 恢复执行器｜**0** 输出明文 Token。
+
+· 附：本节落盘走 REST git-data 写通道（blobs → trees → commits → PATCH refs，force ＝ false）；写前闸 ＝ payload 以基座字节开头 ＋ 尾部恰为插入块 ＋ 增量禁形 0 命中 ＋ 值闸（含阴性对照）；写后回读远端 tip／解码长度／sha256／严格前缀／变更面恰 1 路径（增 0 删 0）／节标题唯一性。
