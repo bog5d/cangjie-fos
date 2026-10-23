@@ -8360,3 +8360,65 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 
 ■ 5 ★下一棒必查
 ① T4 独立 Gate 是否落在 T5 那笔 head 上（★PR #81 的 reviews／review comments／comments 现读）｜② **master 或 #81 tip 再前进 ⇒ T4 锚立即过期**（★锚是执行点函数）｜③ 同内容副本是否续发（★重点看 17:2xZ 槽位那笔是否再成对）｜④ 台账下一空闲节号（★执行点现读）｜⑤ local_run 侧六态是否补齐（★该入口至今三键 0 命中，★属 T5 之后的独立面）｜⑥ ★**Owner 是否就「台账重复落盘是否整体整理」给裁定**（★本席 0 代裁）。
+
+#### 一百五十（号 150）、17:00Z 槽位独立监工席 · 本席 `455565351166027` · ★**只追加，不改写任何已落字节；0 删、0 回填、0 重排** · ★**本槽位远端 0 新字节（授权分支 tip 自 16:12:29Z 未前进）；本节＝一手字节级复核 ＋ 承接项复核 ＋ 台账按号检索层健康度实测**
+
+■ 0 锚点与取数时刻（执行点现读，★禁硬编码；★取号绑执行点）
+· 授权分支 tip 现读 `a34d01031471b539480ef8bdd53d263cc375ac59`（落盘 16:12:29Z，★**本槽位未前进**）｜master tip 现读 `3781311c4b1157c68a0f891506b7c33ab327f7c4`（11:01:06Z）
+· compare master...授权分支 ＝ **diverged**｜ahead **24**／behind **2**｜merge_base ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（＝ 本线基线）⇒ ★**master 已前进 2 笔（docs「公开面清零」类），PR #81 的 base 记录仍停在基线**
+· PR #81 现读（REST ＋ GraphQL 双读）：state **open**／merged **false**／mergeable **MERGEABLE**／mergeable_state **clean**／head ＝ 授权分支 tip／baseRefOid ＝ 基线／reviews **0**／review comments **0**／reviewThreads **0**／issue comments **5**（末条 12:49:58Z ＝ 司仓「合并口径 v3」，★**非独立裁定**）
+· 台账分支 tip 现读 `846e4f08aa4ac2f2054e48a92e73af87b627e37d`（★执行点现读）｜载体 blob `2bd6489acd22f2cf9ec3b82b507cc56c542529b7`／**1838765 B**（★两项均程序化注入，0 手打）
+· ★**取号**：v4 口径（form A ＝ 标题首个中文数字 token、token 后可接注记括号、TOP_MIN 26；form B ＝「（号 N）」并集）现读 ⇒ 顶层节号占用 **124** 个、已占顶层号域 max ＝ **149**、域 26–149 连续 0 空洞 ⇒ 本节取 **一百五十**（号 150）（★form A 字面与 form B 括注两形态在基座内均 0 命中）
+· ★**执行点插号事实（★本席起草期间被兄弟席插号 ⇒ 取号顺延）**：本席 17:1xZ 起草时读到的基座是 §一百四十八 那笔；★**兄弟席于 17:10:46Z 落了司仓节「一百四十九」** ⇒ ★**本席执行点重枚举后取号顺延到 150**（★若沿用起草时的号 ⇒ 撞号）
+· ★**本席解析器交叉验证**：同一解析器在父基座（§一百四十八 的基座，blob `16c59cc0d4b292200a9f1618b74a8e59f896b9f9`／1,821,869 B）上现读得占用 **122**／域 max **147** ⇒ 与兄弟席 §一百四十八 自述读数**逐位相等** ⇒ ★**本节与兄弟席同口径**（差 1 ＝ 那一节自身引入，★自解释）
+
+■ 1 变更面三桶（自基线起，compare API，57 条路径）＋ 本槽位增量
+· **新增 32**／**删除 11**／**既有路径 blob 变更 14**（★三者分列；只看新增集合会把改写型落盘读成 0 变更）
+· 删除 11 条全部落在 `docs/dd-v1-fos71/wp05-real-integration/a4-evidence/seven-item-bundle/`（★成卷迁出仓内，★已随公开面清零披露，★非误删）
+· ★**本槽位授权分支 0 新 commit ⇒ 本轮新增字节 0** ⇒ 禁形自检作用域＝**本轮新增字节 ＝ 空集**（★记「不可扫」而非「0 命中」）
+
+■ 2 ★★正式入口六态（本席一手字节级复核，取数 17:0xZ，★口径＝全文字符计数）
+· `tools/dd_team_channel.py`（37,307 B）＝ **no_candidate_reason 4／evidence_status 6／NO_CANDIDATE_REASONS 1／rule_hint 4／「候选」19** ⇒ ★**六态在薄入口可见**
+· `tools/dd_v1_local_run.py`（30,918 B）＝ ★**三键（no_candidate_reason／evidence_status／NO_CANDIDATE_REASONS）＋ rule_hint ＋「候选」全 0 命中** ⇒ ★**local_run 侧六态仍不可见（承接 §一百四十八 第 ⑧ 段 ③ 项，本槽位未闭合）**
+· 桥接层 `dd_v1_bridge_service.py`（24,513 B）＝ no_candidate_reason 4／evidence_status 4／rule_hint 3 ⇒ 透传链在
+· 语义层 `dd_v1_semantic_retrieval_service.py`：`NO_CANDIDATE_REASONS` **恰 6 项**（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER）＋ 正交四态 `CANDIDATE_STATUSES`（OK → EXHAUSTED → PERIOD_OR_VERSION_MISMATCH → NO_CANDIDATE，★判定顺序写死）⇒ ★**六态枚举本身成立且未被伪装成 MISSING；缺口只在 local_run 入口的呈现侧（★不是语义层缺陷）**
+
+■ 3 ★★材料类型 10 类单源（本席一手复核，扫描面＝PR 变更的 10 个 .py 文件）
+· 唯一权威定义 ＝ `dd_v1_requirement_service._DOC_TYPE_RULES`（10 key：audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）
+· 类型表定义式命中 **4 处**，全为**同源派生**：`requirement_service._DOC_TYPE_RULES`（权威）、同文件 `CURRENT_DOC_TYPES`（子集）、同文件 `_DOC_TYPE_UNIQUENESS`（唯一性维度，★注释明写「不是第二份类型规则表」）、`match_service._DOC_TYPE_PURPOSE_MAP`（purpose 维度映射）⇒ ★**0 个第三套类型表**（★与 PR 独立复核 05:51Z 裁定 A-1 同向）
+
+■ 4 独立 Gate 状态
+· PR #81 现读 reviews 0／review comments 0／reviewThreads 0／issue comments 5；★**唯一一条「独立复核裁定」comment 的被验对象是旧 head `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`（05:10Z 落）** ⇒ ★**当前 tip `a34d01031471…` 上无任何独立裁定 ⇒ 工程分子不进位**（★CI 全绿属平台级门禁，≠ 独立 Gate 裁定）
+
+■ 5 未授权分支面（双 Writer 风险）
+· 现读 **37 个 heads** 全量：授权分支之外**无新增 71-* 分支**；最近的三个非授权分支提交时刻 ＝ 14:31:56Z（`feat/71-player2-r2-wp1-period-semantics`）／13:16:15Z（`fix/71-g5-mixed-type-packaging-20261023`）／11:01:43Z（`fix/71-ci-ocr-toolchain-20261023`）⇒ ★**本槽位 0 新增未授权分支**
+
+■ 6 GM 名册面（现读，只登记，**0 代写**）
+· `bog5d/cangjie-gm` `data/work_items.json` 里 `W-DD-V1-2026` 现读：current_state **BLOCKED**｜current_wp **WP-R2**｜executor **hermes**｜waiting_for_chairman **true**｜next_action **WAIT_CHAIRMAN**｜updated_at 2026-10-19T19:45:00+08:00 ⇒ ★**名册面仍停在 10-19**（与 §一百四十八 同读数），★**名册陈旧是已登记的刻意选择**（避免写 live 名册触发生产派工造成双主）⇒ **0 代改／0 代合**
+
+■ 7 ★四件事分开判 ＋ 该踢吗
+· ① **cron 是否运行**：是（本工程周期件恰 1 条 `455353976279398`，`*/20`，enabled；★`view=list` 的 `last_run` 仍显示 0 ⇒ 字段回填滞后，**不等于没跑**；★同账号另 2 条分属 CF／INC3，**非重复调度** ⇒ 0 删除）
+· ② **监工是否工作**：是（本席本轮完成远端字节级独立复核 ＋ 落盘）
+· ③ **开发者是否真正施工**：**席层是**（施工/司仓席 `455351523090910` 现读 status ＝ 运行中，★末条 turn 17:04:26Z 为 bash toolUse，在跑台账复核；★其前一轮曾被平台限流打断，**此刻已在飞**）｜**远端层本槽位 0 新 commit**（tip 16:12:29Z 起未前进约 60 分钟）
+· ④ **是否产生新的功能成果**：**无**（0 新 commit／0 新 PR／0 独立裁定；★CI 绿非独立 Gate）
+· ⇒ 活跃态 **WAITING**（★口径：远端面 0 新字节 ＋ T4 独立 Gate 未落 ＋ PR 待 Owner 授权合并 ＋ 席层在飞 ⇒ **不是 STALLED**：STALLED 要求「无合理等待原因」）
+· ★**该踢吗 ＝ NO**（判据逐条）：① 远端 tip 未前进 ≥25 分钟 **成立**（约 60 分钟）｜② 施工工作树新增改动 **不可得**（本沙箱无 clone，★**禁记成「无」**）｜③ 执行器末条非 toolUse **不成立**（★末条 17:04:26Z **是** toolUse）⇒ ★**三条未同时成立** ⇒ 不打扰；★**「限流期 ≠ 恢复期」**
+· ★**恢复能力如实登记**：本会话 **communicate spawn 工具可用**（★**未调用**——不满足踢的条件，禁无谓制造第二执行席）⇒ ★**不得记成「恢复能力不可用」**；若后续需恢复，只可**重开同一执行器席位**
+
+■ 8 ★两账（互不换算，分子 ±0）＋ 硬门槛
+· **工程条 ＝ 4/6**（尺子 MINIMAX-INDEPENDENT-SUPERVISOR.md V0.3 第 4 节 ＋ GOAL-CONTRACT v3.8 的 A0 至 A5；★分子只认**独立 Reviewer PASS**，★T5 落远端不使分子进位）｜★并列登记：本 P0 修复线自身 **WP1–WP4 口径 0/4**（★**分母不同、不互相换算**）
+· **效果条 ＝ 0/100 REAL_PASS**（O1 25／O2 25／O3 20／O4 20／O5 10，五项 verified_points 全 0、status 全 UNKNOWN；★MOCK 与合成不折算）
+· **硬门槛 9 项**：0 PASS／0 FAIL／9 UNKNOWN（★尺子原值）｜**R2-WP1 ＝ 0/1**（T4 独立 Gate 未落）
+
+■ 9 ★台账按号检索层健康度实测（本席一手，★本槽位新增读数；★与兄弟席 §一百四十九 的「同内容落两节」登记是**不同维度**）
+· 顶层**同号真碰撞**组（★**排除「主节 ＋ .N 追记子节」既有约定口径**）＝ **12** 组：45／50／62／71／74／111／112／130／131／132／134／137
+· 其中**标题逐字相同**的对 ＝ 号 45（L2044 与 L2086）；号 111（L6166 与 L6200）
+· 其中**块内容逐字节相同**的对 ＝ 号 45（L2044 与 L2086，块长 175 B）；号 111（L6166 与 L6200，块长 9843 B）
+· ★**口径差提示**：form A（标题首个中文数字 token）会把「四十八.1」类追记子节与「四十八」主节**计为同号** ⇒ ★**「占用 124／域 max 149」在两种口径下都成立，但「同号组数」必须声明是否排除 .N 子节**（★本节已声明）
+· 处置：**0 删／0 改写／0 回填／0 重排** ⇒ **只追加本节登记**；★**同号组的归因与是否整体整理属 Owner 裁定，本席 0 代裁**（★与兄弟席 §一百四十九 的 Owner 决策项同向，★不重复投递）
+
+■ 10 边界 0
+· 0 合并任何分支（含 master）｜0 关 PR｜0 amend／0 force｜0 改写他人已落字节｜0 删节｜0 回填｜0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue AC／尺子／合同／GM live 名册｜0 写产品代码｜0 新建调度器／第二套监工／第二执行器｜0 spawn｜0 唤醒｜0 恢复｜0 输出明文 token｜★**0 出波总卡**（本槽位无外发触发条件：0 新字节／0 新 PR／0 独立裁定／待授权项 H1／H2 未变）
+
+■ 11 下轮（17:2xZ 槽位）必查
+① T4 独立 Gate 是否落在 `a34d01031471…`（reviews／reviewThreads／comments 现读）｜② local_run 侧六态是否补齐（★该入口至今三键 0 命中）｜③ 授权分支 tip 或 master tip 再前进 ⇒ 本节全部锚点立即过期（★锚是执行点函数）｜④ 台账下一空闲节号（★执行点现读；本节写下一节 ＝ 一百五十一）｜⑤ 同号真碰撞组数是否增加｜⑥ 平台限流是否解除｜⑦ ★**Owner 是否就「台账重复落盘是否整体整理」给裁定**
