@@ -7665,3 +7665,46 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 · ★**追加式更正（对象：§134.1 正文「通道面（本节走 git 协议，非 REST）」一句）** —— 该句描述的**通道归属与实际不符**：§134 **主节**走 git 协议推送（非 force）；★**§134.1 本节实际走 REST git-data**（`POST /git/blobs` → 自底向上 4 层 `POST /git/trees` → `POST /git/commits` → `PATCH /git/refs`，`force=false`）⇒ 本更正只改「哪一节走哪条通道」这一事实陈述，★**不改写已落字节、不回填**。
 · ★**本席落盘器第三处自身缺陷自曝（写入前拦下，零写入）**：`git fetch --depth=1` 之后本地仓库转为浅克隆并被剪枝 ⇒ 随后 `git cat-file <commit>:<path>` 报 **「path does not exist」**（★**误导性错误文案**）⇒ 处置：**落盘后的路径解析一律改走 REST git-data**（`GET /git/trees/<sha>?recursive=1` ＋ `GET /git/blobs/<sha>`），不依赖本地 git 对象；★**通用形态：「对象不存在」的错误文案可能来自「本地副本被剪枝」，不来自远端事实 ⇒ 换通道复现一次才可下「缺失」结论**。
 · ★**本席本轮落盘链四处自身缺陷汇总（★全部零写入，无脏节）**：① shell 变量捕获吞掉重试日志 ⇒ 误报「基座漂移」并 fail-closed 退出；② `git commit-tree` 缺 author 身份 ⇒ 提交未生成；③ 浅取剪枝 ⇒ 路径解析误报缺失（见上）；④ 禁形闸拦下我方自造字节 **5 处 U+2026 ＋ 3 处截短 sha**（改写为 40 位全串后复扫全 0）⇒ ★**禁形闸必须在落盘前对「将要写入的字节」跑，而不是对草稿跑**。
+
+### 一百三十五、巡检轮次 39 追记（16:06Z–16:3xZ 槽位独立监工席 · 本席 `455549606961628`）· ★**§134 已覆盖本轮主面 ⇒ 本节只记「独立复现 ＋ §134 未覆盖的增量 ＋ 两处自曝」，0 重复登记他人成果**
+
+■ 0 本节定位（★**不重复投递**）
+· 载体上 §一百三十四（号 134）已于 **16:19:40Z** 落远端（commit `32586cfbe6e4a1e18d1aca466203dc85904e2757`，父 `a0a62baa981b96929462473f2b24350818c44a6a`，单父快进非 force，变更面 **0 新增／0 删除／1 既有 blob 变** ＋ 3 派生 tree 变）⇒ ★**该节已覆盖本轮主面**（T3 合并已落／T5 未落／CI 分 run／PR #81 无终态 Gate／跨席 §132 重号）。
+· ★本节因此**只追加三类内容**：① 本席**独立复现** §134 关键读数的逐条读数（并列记录，不作为新成果、不代认领 §134 的结论）；② §134 **未覆盖**的增量（本席本轮新增的 3 项，附读数口径）；③ **两处自曝**（落盘者身份异常、禁形闸基线口径）。
+· ★本节 0 改写他人已落字节、0 代写独立 Reviewer 的 VERDICT、0 改 AC／尺子／合同、0 合并任何分支、0 产品代码。
+
+■ 1 本席独立复现（16:2xZ–16:3xZ · GraphQL 独立池，★与 §134 结论一致，登记为互证而非新成果）
+· 修复分支 tip ＝ `fee3c48e61078dfffd48d613ef07933ce0f6ca54`（15:55:55Z）｜master 现读 tip ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（11:01:06Z）
+· PR #81 现读：`state=OPEN`、`mergeable=MERGEABLE`、head ＝ `fee3c48e61078dfffd48d613ef07933ce0f6ca54`；★**本席独立读到 merge ref commit `390cbb08a23f6faffee80cf81136956fc8d4faef`，两父 ＝ master 现读 tip ＋ #81 现读 tip ⇒ 新鲜度两父机检通过**，与 §134 一致
+· ★**CI（GraphQL `statusCheckRollup` 独立读数）**：rollup ＝ PENDING；6 条 check-run ＝ `Backend Tests (440+ required)` COMPLETED/SUCCESS ×2 ＋ `Backend Tests (228 required)` COMPLETED/SUCCESS ×1 ＋ `Backend Tests (228 required)` **IN_PROGRESS**（conclusion ＝ null）×1 ＋ `Frontend Build Check` COMPLETED/SUCCESS ×2 ⇒ **5 SUCCESS ＋ 1 未收尾**（★未收尾既不记红也不记绿；★同一 sha 上 push 集与 pull_request 集并存 ⇒ 禁写「CI 全绿」）——★**与 §134 第 3 节读数逐位一致**
+· ★**T5 未落（读实现字节）**：head 上 `tools/dd_team_channel.py`（`ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`）与 `dd_v1_bridge_service.py`（`c23d62c160a94bb64d4f30313c0a86e754f10842`）对三键 `no_candidate_reason` / `candidate_status` / `diagnostics` **各 0 命中**；★而 `dd_v1_semantic_retrieval_service.py`（`63d13d1f001f64520d35f5d903087e0cfdffe76b`）**确有**该三键的定义与落点 ⇒ **六态在语义层已实现、桥接透传与薄入口输出这一半未落**（★判「未完成项」，不判回归）——与 §134 第 4 节一致
+· ★**PR #81 终态独立 Gate 未落**：#81 comment 末条 ＝ 12:49:58Z 的「合并口径 v3」，其后 head 前进到 `fee3c48e61078dfffd48d613ef07933ce0f6ca54`（15:55:55Z）⇒ 终态被验面上 0 条独立 Gate 结论；PR #84 上唯一独立 Gate ＝ 12:32:59Z 的 **VERDICT: FAIL**（锚旧 head `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`）⇒ **R2-WP1 工程分子仍 0/1，不进位**
+
+■ 2 §134 未覆盖的增量（本席本轮新增的 3 项）
+· **① 变更面三桶（自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` → tip，★口径＝「路径集合差分」，非「几个关键 blob 是否变」）**：**新增 31 路径／删除 11 路径／既有路径 blob 变更 14 路径**（基座 782 路径 → tip 802 路径）。
+  ★**正式入口双双在改（不是只修测试脚本）**：`tools/dd_v1_local_run.py`（`8d51c05c93354268ea3e02eb2df6a86758937101` → `f23f89692879e093c9ffbd9db10b174040796fb1`）、`tools/dd_team_channel.py`（`8f08d560a4c4a147efca4e43c6f727114662af34` → `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`）——★**只看新增集合会把改写型落盘读成 0 变更**，故三桶必须分列。
+  ★11 条删除全在 `docs/dd-v1-fos71/wp05-real-integration/a4-evidence/seven-item-bundle/`（公开面清零的证据迁移）⇒ **0 代码删除**。
+· **② 10 类规范 key 的唯一真源（读实现字节，★本节逐条可复算）**：权威表 ＝ `dd_v1_requirement_service.py`（`eccb7dfe844cf96db88c125b20c786057488f92c`）第 144 行 `_DOC_TYPE_RULES` ＝ **10 个英文 key**（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）。
+  ★复用证据（逐字节）：`dd_v1_bridge_service.py` 第 75 行「DOC_TYPE_KEYS = tuple(k for k, _ in rq._DOC_TYPE_RULES)」、第 467 行「source: dd_v1_requirement_service._DOC_TYPE_RULES（复用，未另抄）」；`dd_v1_doc_type_service.py`（`e2847ad6d58b9a7914092f5fab1daa498a92aaea`）第 21 行「dd_v1_requirement_service._DOC_TYPE_RULES 的 10 个英文 key」；同服务第 158 行注释「★ 与 `_DOC_TYPE_RULES` 同源 —— 任何一侧都**不得**另抄一份类型子集」。
+  ★正式入口侧：`tools/dd_v1_local_run.py` 的 `cmd_scaffold` 走 `dts.resolve_doc_type(file_name=f.name)`（**只看文件名**、产出**英文 key** ＋ provenance），且索引/目录/清单件被显式判为「不是材料」⇒ **类型统一落在正式入口，不是只落在测试脚本**。
+  ★同服务另有 `_DOC_TYPE_UNIQUENESS`，注释逐字写明「**不是第二份类型规则表**：键必须取自上面那 10 个 key」⇒ **本席读到的 8 个服务文件面内 0 第三套类型表**。
+· **③ cron 唯一性（本席 `cron_read view=list` 一手读数）**：FOS 账号下共 4 条 task —— ① 周期巡检 cron（**本工程唯一一条**，`*/20 * * * *`，enabled，next_run 16:20:00Z）；② CF 公众号重置版（另一工程）；③ 副官 INC3（另一工程）；④ 一次性 self-reminder（`schedule_kind=1`、sessionId 模式、非周期调度器）⇒ **本工程 0 重复调度，0 误判他人工程**。
+
+■ 3 ★自曝 ①：§134 的落盘者自述与字节来源不一致（★登记待查，0 代认领、0 改写他人字节）
+· §134 正文头部自述「本席 `455549606961628`」；★**该 session 号 ＝ 本席本轮 session 号**，但**该节字节不是本席写的**（本席本轮首个远端写动作 ＝ 本节；本节之前的任何落盘都不含该号，载体上该号恰出现 1 次，即 §134 头部那一处）。
+· ⇒ 事实层登记：commit `32586cfbe6e4a1e18d1aca466203dc85904e2757`，author/committer ＝ 中本笨，committedDate 16:19:40Z，父 `a0a62baa981b96929462473f2b24350818c44a6a`，变更面 0 增／0 删／1 blob 变（＋3 派生 tree 变）——**该笔写面纪律合规**；★但**落盘者自述的席位身份与字节来源不一致** ⇒ 登记为待查项，**本席不代认领其结论、也不改写其字节**。
+· ★通用形态：**「落盘者自述」与「字节来源」是两个对象**；前者可被模板/转述填错，后者只由 commit 事实决定 ⇒ 台账读者**以 commit 为准、以自述为辅**。
+
+■ 4 ★自曝 ②：禁形闸的基线口径要与载体既有实践对齐（★不是把口径改松，也不是把既有命中当缺陷）
+· 本席本轮初版禁形闸用「**零命中**」口径；★**现读载体自身（1,660,930 B）的禁形族基线** ＝ 15 位数字游程 **586** 处（席位/任务号形态）／11 位 **42** 处／12 位 **86** 处／13 位 **23** 处／18 位 **1** 处／19 位 **1** 处；hex 8–39 位游程 ＝ 8 位 **111**／10 位 **137**／11 位 **42**／12 位 **86**／13 位 **23**／15 位 **586**／18 位 **1**／19 位 **1**；U+2026 单点 **13** 处 ⇒ ★**载体既有实践本来就不是「零命中」**。
+· ⇒ 处置：★**把闸改成「新增值闸」**（本轮新增字节的命中**值**必须已存在于载体同族命中集内；新值即失败）——**既不放松口径、也不把既有命中当缺陷**。本节引用的全部 15 位号均已存在于载体（0 新值）。
+· ★通用形态：**闸的「零命中」假设必须先现读被检载体的既有基线**；★载体不干净时，正确处置是「新增值闸」，不是「改松口径」也不是「把旧命中算成新缺陷」。
+
+■ 5 两本账（±0，互不换算）与边界
+· 工程 **4/6**（A0–A3 各 1；★A4b 仍 BLOCKED ⇒ 整格未闭合，分子不进位）｜效果 **0/100 REAL_PASS**（五项 outcome 全 UNKNOWN）｜R2-WP1 **0/1**｜硬门槛 **0 PASS／0 FAIL／9 UNKNOWN**
+· 活跃 **PRODUCTIVE**（施工面本轮 1 笔 doc-only 前进；T5 施工席本地已完成、待配额复位后推远端）｜该踢吗 **NO**（tip 前进 < 25 分钟；施工席与独立复核席末条 turn 均 ＝ `toolUse`，在飞不打扰）｜★**0 出波总卡**（无重大进展／无新 Gate 结果／未停滞／无需波总决策 ⇒ 按巡检口径不外发）
+· 边界：0 合并 master｜0 关 PR｜0 amend｜0 force｜0 改他人已落字节｜0 写他人写面｜0 代写独立 Reviewer 的 VERDICT｜0 改 AC／尺子／合同｜0 改 GM 名册｜0 新建第二调度器｜0 写产品代码｜0 输出明文凭据。
+
+■ 6 下一空闲节号与换算器
+· 本节号 ＝ **一百三十五**（落盘时刻现读枚举）★本席换算器按 §134 纪律 ④ **补入 U+3007 `〇`**（载体上有 6 处 `〇`，初版字符集漏它会把它误判成非节号标题 ⇒ 又一条「整齐 0 命中先怀疑探针」）
+· 本席换算器**内建自检**（300+ 值往返 ＋ 定点对照）**0 失败**；节号枚举用**三道形态异源防线**（形态 A∪B 并集／A、B 字面分别查／纯阿拉伯数字反查）＋「数值归一按同值合并」⇒ 0 缺号误报。
