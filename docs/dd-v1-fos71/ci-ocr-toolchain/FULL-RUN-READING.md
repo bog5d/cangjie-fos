@@ -72,3 +72,30 @@ CI 侧同一命令有 **10 条**失败 ID（全部在 `tests/test_dd_v1_ocr.py`�
    **只覆盖交卷 SHA 的机械口径**；真实材料库实测、Windows 复测、模型实测**均未验证**。
 5. 本轮**未合并 master、未推 master、未改 PR #81 的冻结 SHA**；`mergeStateStatus=BLOCKED`、
    `reviewDecision=None`、`reviews=0` 的读数**依然成立**。
+
+---
+
+## 5. 远端真实 runner 的 check-run（本 PR 落地后的终局读数 · 2026-10-23T10:1x–10:2xZ）
+
+★ 本节是**远端一手读数**（GitHub Actions 实跑），不是本地复跑的推断。
+它补齐了 §4 第 1 条所说的「本地只是必要条件」那一项。
+
+| check | conclusion | completed_at (UTC) |
+|---|---|---|
+| Backend Tests (440+ required) | **success** | 2026-10-23T10:22:38Z |
+| Backend Tests (440+ required) | **success** | 2026-10-23T10:22:56Z |
+| Backend Tests (228 required) | **success** | 2026-10-23T10:23:06Z |
+| Backend Tests (228 required) | **success** | 2026-10-23T10:23:10Z |
+| Frontend Build Check | success | 2026-10-23T10:18:59Z |
+| Frontend Build Check | success | 2026-10-23T10:19:11Z |
+
+⇒ **6/6 全绿**（PR #82，head `ca29ed43c2ee8ce0d073543f8dca0d6df5e93760`）。
+
+★ **因果链闭合**：CI 侧原先那 **10 条**失败 ID
+（`本机缺少 tesseract` / `本机没有可用的中文字体` / `assert [] == [0, 90, 180, 270]`，
+全部在 `tests/test_dd_v1_ocr.py`）在补齐环境后的真实 runner 上**一条不剩**。
+★ `Install OCR toolchain` 步骤自带断言（`command -v tesseract`、`--list-langs` 含
+`chi_sim`/`eng`、两条字体绝对路径存在）⇒ 若装环境失败，红的是**那一步**且信息明确，
+不会退化成「9 条业务用例以误导性的断言信息红」。
+★ `ubuntu-latest` 迁移到 26.04(resolute) 后的**包名与字体落点**已核实不变（§4 第 3 条）；
+`tesseract 5.5.0` 的 OCR 行为差异**仍未实跑验证**（本次跑的是 24.04 镜像）⇒ 仍记 UNKNOWN。
