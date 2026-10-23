@@ -9238,3 +9238,66 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 
 ■ 7 下一棒必查
 ① ★**H1（合并 master ＋ PR #81）／H2（关闭 PR #82）是否已获波总明确授权**｜② 授权分支或 master 是否再前进 ⇒ **T4 终态锚立即过期**｜③ PR #81 issue comments 是否再增（现 7）／reviews 面是否仍 0｜④ ★**CI 侧 junit artifact 是否补传**（现两个 run 均 0 个 artifact）｜⑤ Owner 对 A0–A5 折算的裁定｜⑥ Owner 对「重复落盘检索层是否整体整理」的裁定｜⑦ `tools/dd_v1_local_run.py` 六态透传是否补齐（★现为「未覆盖」）｜⑧ ★**下一空闲节号（★执行点现算，★禁沿用本节任何指针）**｜⑨ ★**本席落盘器的双向可 grep 断言是否已在后续各笔生效**（★本节起内建）
+
+#### 一百六十六（号 166）、18:40Z 槽位独立监工席 · 本席 `455588691865701` · ★**只追加，不改写任何已落字节；0 删、0 回填、0 重排、0 amend、0 force** · ★**本节＝无新字节轮次的状态卡 ＋ 三项一手复核（全仓 388 个 .py blob 的 10 类类型表唯一性扫描／六态生产路径可达数 4/6 的独立来源／执行席末条 finish_reason 翻转）**
+
+■ 0 锚点与取数时刻（★执行点现读，★禁硬编码）
+· 授权分支 `feat/71-player2-p0-fix-20261023` tip 现读 `a34d01031471b539480ef8bdd53d263cc375ac59`（committer date 2026-10-23T16:12:29Z）⇒ **本轮未前进**（取数时刻 2026-10-23T18:47:39Z，距其落盘约 2 小时 35 分）｜master tip 现读 `3781311c4b1157c68a0f891506b7c33ab327f7c4`（2026-10-23T11:01:06Z）⇒ 本轮未前进
+· ★**树级互证（本轮新增）**：授权分支 head 的 tree 现读 `6b24fc830a9a9a590fb606a406e3c7c03c40bde5`，与 T4 裁定书 §1 记录的终态 tree **逐位相同** ⇒ ★**T4 PASS 覆盖的字节与当前 tip 的字节是同一批**（锚新鲜，两父亦未前进）
+· PR #81 现读：state `open`／merged `false`／mergeable `TRUE`／mergeable_state `clean`／head ＝ 授权分支 tip／`merge_commit_sha` `ef94af4c9a6d640b5f412e352cbfb53ad906b5a8`／**issue comments 7**／**reviews 0**／review threads 0｜PR #80 `open`（mergeable_state `behind`）｜PR #82 `open`（`clean`）｜PR #83 `open`（`clean`）｜PR #84 `closed` ＋ `merged`
+· ★**评论面双端点＋全仓级**（★核验面写明端点全路径）：`/repos/bog5d/cangjie-fos/issues/81/comments` 现读 **7** 条（第 2 页 0 条）、`/repos/bog5d/cangjie-fos/issues/comments`（仓级）现读 **37** 条、`/repos/bog5d/cangjie-fos/issues/71/comments` 现读 **5** 条 ⇒ ★**三面最新一条同为 2026-10-23T18:12:14Z（comment `6371627381`）⇒ 仓内无任何新于该时刻的评论**（含 PR 评审面 0 条）
+· GM live 名册 `data/work_items.json`（blob `0e8c65074f85db2d32efd9b3e580020a625cdb76`／489,942 B／解码长度 ＝ size ✔）条目 `W-DD-V1-2026` 现读：`current_state` BLOCKED｜`current_wp` WP-R2｜`waiting_for_chairman` true｜`executor` hermes｜`next_action.action` WAIT_CHAIRMAN｜`updated_at` 2026-10-19T19:45:00+08:00 ⇒ ★**名册停更约 5 天且执行者字段与本轮实际执行面不一致**（★只登记，0 代改）
+· 台账分支 tip（★落盘执行点现读）＝ `2409809a1f28de6eab68dcd1b998fe7aa6c3d2a6`｜载体 blob `2a7350cd5ed60898da8d37fc0ca73336a64f63dd`／**2,041,523 B**／sha256 `8bd4772a2fdf6441c53be5ba35309b7ca6211520aa3bfce259f2fffb1591aee0`
+· ★**取号（强口径 ＝ form A 标题首个中文数字 token ∪ form B「（号 ＋ 数字）」字面，门槛 26）**：现读 ⇒ formA 占用 165 个、formB 占用 31 个、**并集 165 个、域 max ＝ 165、域 26–165 连续 0 空洞** ⇒ **本节取 一百六十六（号 166）**；★**全层 token 差集**：中文 token「一百六十六」精确命中 **0** 次、阿拉伯 token「166」在「不邻接数字／字母／逗号／点」的严格边界下命中 **0** 次、★**指针上下文（下一空闲／下一节／取号／预告占号）命中 0 处** ⇒ **无争用**；★**本节不写任何「下一空闲号」指针**（★指针字面本身占号）
+
+■ 1 变更面（自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 起，★树对树按 type 分桶）
+· ★**新增 32 个 blob／删除 11 个 blob／既有路径 blob 变更 14 个**（type 变更 0；派生目录 tree 变 3／3／12，★不计入变更路径）
+· ★**本节与上轮读数逐位相同 ⇒ 修复面本轮 0 新字节**（★授权分支 tip 未前进、master 未前进 ⇒ 两面同向）
+· 分支清单现读 **37** 条，`71-` 相关分支集合与上轮相同 ⇒ ★**0 新未授权分支、0 双 Writer 迹象**（★`feat/71-player2-p0-fix-20261023` 之外的 71-* 分支均为上轮已存在的历史分支）
+
+■ 2 ★一手复核：10 类材料类型表的唯一性（★全仓 388 个 .py blob 全量扫描，★非沿用上轮）
+· `_DOC_TYPE_RULES` 在全仓 **恰 1 处定义**（`backend/src/cangjie_fos/services/dd_v1_requirement_service.py` 第 144 行，blob `eccb7dfe844cf96db88c125b20c786057488f92c`／52,618 B／sha256 `82e6217613a1fce08f00d52284030cbde8aa8e3d373b57dd6ed6583cda23515b`），**10 个 key 齐**（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）｜其余 24 处命中全是**引用**（桥接层第 75 行 `DOC_TYPE_KEYS` 由 `rq._DOC_TYPE_RULES` 派生，★不是副本）
+· `CURRENT_DOC_TYPES`（2 元组，源码自述「与 `_DOC_TYPE_RULES` 同源、任何一侧不得另抄类型子集」）与 `_DOC_TYPE_UNIQUENESS`（唯一性维度，源码自述「不是第二份类型规则表」）★**均不构成第二套分类表**
+· ★**候选枚举（名字含 TYPE／MATERIAL／CATEGORY／KIND／CLASS 且赋值为 tuple／dict／list／set）全仓仅 4 个**：`ALIAS_KINDS`（entity_service，别名维度）｜`CURRENT_DOC_TYPES`（同源子集）｜`PERIOD_KINDS`（period_service，期间维度）｜`MATERIALS`（`docs/dd-v1-fos71/player2-r2-wp1/before_after_period.py`）⇒ ★**`MATERIALS` 经打开原文核验 ＝ 合成样例文件内容字典（路径 → 文本），不是类型表**（★候选必须打开原文，不能凭名字定性）
+· ⇒ ★**0 第三套类型表**（★本轮为一手全量扫描结论，**不写「沿用上轮」**）
+
+■ 3 正式入口核对（★修复是否落在正式入口，而非只修测试脚本）
+· `tools/dd_v1_local_run.py`（blob `f23f89692879e093c9ffbd9db10b174040796fb1`／30,918 B／★本席重算 sha256 `bd4f5c10ab0e14a865de9bd4b9b4fc81da9f2ae3c0bc1888aef0d09d3b1a27aa`，与 T4 裁定书 §4.1 记录**逐位相同**）：第 34／36 行 import `dd_v1_requirement_service`（rq）与 `dd_v1_semantic_retrieval_service`（sem），第 393 行走 `sem.run_semantic`；第 161 行注释「类型取值空间只有一处」⇒ ★**正式入口确实走权威类型与语义链，非只修测试**
+· `tools/dd_team_channel.py`（blob `3610eb4db61f41b5aec25a2490c027b1f6c0bb45`／37,307 B／sha256 `697cd5749d30a4ba6fbe4348fe1e27ff74dd01139003f49d7f6c3a0ea8159001`）：第 497–500 行摘要面透出 `evidence_status`／`candidate_status`／`no_candidate_reason`／`diagnostics`，第 627–634 行文本面同 ⇒ ★**摘要面六态已贯通**
+· ★**薄入口摘要面六态键仍 0 命中**（`tools/dd_v1_local_run.py` 七键全 0）⇒ ★措辞仍为「**未覆盖**」不是「未修复」（★T5 变更面不含 local_run）——与上轮一致，本轮无变化
+
+■ 4 ★六态：区分成立，但**生产路径可达数 ＝ 4/6**（★本轮拿到独立来源，登记项闭环）
+· 语义层 `NO_CANDIDATE_REASONS` **恰 6 项**（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER）且在 `dd_v1_semantic_retrieval_service.py` 第 523–544 行**各有赋值点**（blob `63d13d1f001f64520d35f5d903087e0cfdffe76b`／55,724 B／sha256 `020d2aec4b1529bbfe8e263b6ef65f7026440e16726ffc2889812c8e2e4e11ea`）⇒ ★**六态不是只有枚举**
+· ★**未统一伪装成 MISSING**：同文件第 741 行明写「为什么没有候选」结构化留痕（**不得**统一伪装成 MISSING／没有材料）⇒ ★**属「区分六态且不无差别伪装」**；★**但 MISSING 作为 `verdict` 仍存在（第 661 行）⇒ 禁读成「MISSING 已彻底消失」
+· ★**独立来源（上轮登记的「另两态是否真实可达」由此闭环）**：T4 裁定书 §4.4 以生产入口探针实测 **N/6 ＝ 4** —— NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／RETRIEVAL_EXHAUSTED **可达**；**PERMISSION_BLOCKED 与 OTHER 生产路径不可达**（前者仓内两个 meta 生产者都不写 `access`／`restricted` 键；后者材料缺失在快照闸口抛 `FileNotFoundError` 而非产出 OTHER），★**两者反事实可写 ⇒ 可写 ≠ 可达**
+
+■ 5 独立 Gate 结论与锚新鲜度
+· T4 独立 Gate 裁定 comment `6370738997`（2026-10-23T17:25:18Z）**本席重算 sha256 `5528b678b5c14b357b08f1ab4e291942158950824e57e0674fdf492a28e7e951`、正文 28,244 B、`updated_at` 仍 17:25:18Z ⇒ 字节未动**；追加更正件 `6371627381`（18:12:14Z）与原裁定并存（★引用用「id ＋ created_at ＋ sha256」三件）
+· 裁定书 §5.1 覆盖清单逐路径在位：period_service／agent_result_service／semantic_retrieval_service／bridge_service／local_run／team_channel ＋ 对应测试与文档；★**`dd_v1_requirement_service` 与 `_DOC_TYPE_RULES` 在裁定书全文各 0 命中** ⇒ ★**WP1 落点无独立裁定**
+
+■ 6 两账（★互不换算、★0 代裁）
+· ★**工程（P0 线 WP1–WP4）本席严格读数 ＝ 3/4**：WP2／WP3／WP4 的落点路径在 T4 覆盖清单内 ⇒ 进位；★**WP1 落点无独立裁定，其唯一独立 Gate 锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 相对当前 head 已陈旧** ⇒ 按「不回退、不外推」记 **UNKNOWN**（★UNKNOWN 既不算 PASS 也不算已证伪）｜★**另两读数并列登记（分母标签集不同源 ⇒ 0 投票、0 择一、0 代裁）**：§一百六十 **1/4**｜§一百五十七 **4/4**｜★**分母标签集沿用台账已登记口径（WP1 统一材料类型／WP2 正式入口／WP3 主体与证据过滤／WP4 全链路合成回归），本轮未复查其权威字节位置 ⇒ 记「沿用」，不记「本轮一手」**
+· ★**A0–A5 ＝ 4/6**（★T4 是否折算进 A 格分子**待人类裁定**；本席 0 自行折算）
+· ★**效果 ＝ 0/100 REAL_PASS**（尺子现读 `docs/dd-v1-fos71/wp05-real-integration/GOAL-CONTRACT.v3.8.json`，blob `106699d2c8a3e8e4d00124070eee6d417038cb49`／10,818 B：5 项 outcome_metrics 权重 25、25、20、20、10 合计 100，`verified_points` 全 0、`status` 全 UNKNOWN）⇒ ★**MOCK／合成不折算**
+· ★**硬门槛 9 项 ＝ 0 PASS／0 FAIL／9 UNKNOWN**（ONE_WRITER／REAL_FOS_CALL／GOLD_ISOLATION／SENSITIVE_AUTH／FALSE_MATCH_GUARD／PRECISE_PACKAGING／INDEPENDENT_REVIEW／WINDOWS_REAL_E2E／UNATTENDED_HANDOFF）
+
+■ 7 ★四件事分列 ＋ 活跃态 ＋ 该踢吗
+· ① cron **是**：本工程**恰 1 条** `455353976279398`（`*/20`／enabled／本轮 `updated_at` 2026-10-23T18:40:04Z、`next_run` 19:00Z）；另 2 条分属 CF `455347827208431` 与 INC3 `455164742488166` ⇒ 非重复调度；★`last_run` ＝ 0 属平台未回填，**不作「没跑」判据**
+· ② 监工 **是**（★本席完成 9 项远端权威件现读、全仓 388 个 .py blob 扫描、两账重算与本段落盘）
+· ③ 开发者真施工 **否**（★以远端字节为准：授权分支 2 小时 35 分 0 新字节、master 0 新字节；★**施工工作树改动对本席不可得 ⇒ 记「不可得」，禁记成「无」**；★**不把「远端 tip 未前进」直接读成「没在施工」**——两者是不同对象）
+· ④ 本窗口新功能成果 **否**（0 新 commit／0 新 PR／0 新独立裁定／0 新评论）
+· ★**执行席末条 finish_reason 翻转（本轮新事实）**：司仓／执行席 `455351523090910` 的**末条** assistant turn `finish_reason` ＝ **`error`**（错误字面：`context window exceeds limit`），时刻 2026-10-23T18:39:51Z（★该席 18:35:53Z 收到兄弟席回执后应答即爆上下文）⇒ ★**该席已退出**；★**上一轮 §一百六十五 记「末条 toolUse、在飞」这一判断已被本轮事实取代**（★锚是执行点函数，上一轮的读数不外推）
+· ★**活跃态 WAITING**（★下一棒主体是波总授权项：H1 合并 master ＋ PR #81、H2 关闭 PR #82；★WP1 缺的是**独立 Gate** ＝ 复核席职能，禁由执行席自评；★A4／A5 属 Windows 与人类侧；★GM 名册回写属 GM 写面）
+· ★**该踢吗 NO**（理由分列）：① 远端 tip 未前进 ≥25 分钟 **成立**（2 小时 35 分）｜② 施工工作树无新增改动 **不可得**（★禁记成「无」）｜③ 执行席末条非 toolUse **成立**（`error`）⇒ ★**形式上第三条已翻转，但第二条不可得 ⇒ 三条未能同时成立为真**；★**且恢复正当性前提不成立**：本轮**没有「已有合法下一 WP」**（下一棒在人类授权侧与复核席职能侧）⇒ 恢复＝造第二写者；★**该席硬失败模式＝上下文超限**（★先例：再投消息加重负担）⇒ ★**0 唤醒／0 spawn／0 催办**；★**恢复能力可用**（本会话 `communicate` 的 spawn 通道在位）**但本轮不满足调用条件**（★禁宣称「恢复能力不可用」，也禁宣称「无人值守施工」）
+
+■ 8 写前闸 A–I ＋ 写后闸（本节落盘自检）
+· 写前：A 节号自洽｜B 域 max 自洽｜C 占用自洽（★强口径 ＋ 全层 token 差集 ＋ 指针上下文 0 命中）｜D 编号指针解析｜E 同内容未落｜F 值闸（★本节引用的每个 40 位标识符均回远端现读并过存在性；★64 位 sha256 为本地重算或已验 comment 字节重算）｜G 禁形 7 族 ＋ 阳性对照逐族可响｜H 模板变量残留闸｜I 双向可 grep 断言（★message 每个事实 token 必须在正文命中；★正文关键断言必须在 message 命中 ⇒ 落盘前硬失败）
+· 写后：ref tip ＝ 本笔｜单父 ＝ 基座｜decoded_len ＝ size｜★**字节域严格前缀**｜本节标题行首恰 1｜变更面（树对树按 type 分桶）＝ 既有 blob 变 1／新增 0／删除 0｜增量禁形 7 族逐族 0 ＋ 阳性对照逐族可响
+· ★**本席本轮一处探针自曝（探针层，★错在探针不在本节字节）**：首版 F7 探针写成「hex 字符类 ＋ 长度 7 到 39」的**定长窗口**匹配 ⇒ 40 位全串被截成 39 位窗口后误判命中（报 26 处）⇒ ★**改正为「极大游程」判据**（前后不邻接 hex 字符的极大游程 ＋ 长度落在 7–39 区间 ＋ 游程本身含 a–f）⇒ 命中 **0**；★**结论不变、但首版读数作废**（★游程级判据必须对「该游程」判，不得对「命中位置起的定长窗口」判）｜★另注：正文中 8 位游程 2 处均为分支名里的日期串（纯十进制、不含 a–f）⇒ 不属该族
+
+■ 9 边界 0
+· 0 合并任何分支（含 master）｜0 关 PR｜0 amend／0 force｜0 改写或删除他人已落字节｜0 删节｜0 回填｜0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue #71 的 AC／尺子口径／合同／GM live 名册｜0 写产品代码｜0 改施工方工作树｜0 新建调度器／第二套监工／第二执行器｜0 spawn｜0 唤醒｜0 催办｜0 输出明文 token｜0 复刻禁形字面｜0 出波总卡（★见本节 §10 的外发判据说明）
+
+■ 10 ★外发判据（本轮为何不出波总卡）
+· 三条触发逐条核：① 重大进展 **无**（0 新字节）② 新独立 Gate **无**（T4 PASS 已在 18:0xZ 报过，追加更正件不构成新 Gate）③ 需波总新决策 **无**（H1／H2 状态未变且已在上一卡列明）⇒ ★**0 出卡**；★**「执行席已退出」是执行面状态，不改老板的决策输入（账目／Gate／授权项）** ⇒ 按 cron prompt「无变化时只更新落盘状态卡」处置
+· ★下一棒必查：① ★**H1／H2 是否获波总明确授权**（★0 自行执行）② 授权分支或 master 是否再前进 ⇒ T4 终态锚立即过期（★锚是执行点函数）③ PR #81 issue comments 是否再增（现 7）／reviews 面是否仍 0 ④ CI 侧 junit artifact 是否补传（现两个 run 均 0 个 artifact）⑤ Owner 对 A0–A5 折算的裁定 ⑥ Owner 对 WP1–WP4 口径的裁定（★裁定前对外按 3/4 并注 WP1 ＝ UNKNOWN）⑦ `tools/dd_v1_local_run.py` 六态透传是否补齐（★现为「未覆盖」）⑧ ★**执行席 18:39:51Z 退出后是否被重开、是否产生新字节**（★连续 2 次恢复同一 HEAD 无新 commit ⇒ 停止恢复并如实上报「恢复机制已触发但未产生新字节，根因待查」）⑨ GM live 名册 `W-DD-V1-2026` 的 `executor`／`updated_at`／`next_action` 是否回写 ⑩ 本工程 cron 是否仍恰 1 条
