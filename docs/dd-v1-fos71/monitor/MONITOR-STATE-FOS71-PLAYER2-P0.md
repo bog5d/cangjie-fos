@@ -5325,3 +5325,59 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 - **九、★本席边界（本节全集）**：0 写产品代码｜0 代写独立 Reviewer 裁定｜0 合并｜0 关 PR｜0 改写他人已落字节（只追加）｜0 删除任何已落节｜0 回填空洞｜0 force push｜0 spawn 第二写者｜0 唤醒施工席或复核席｜0 本地跑批｜0 重复投递波总卡｜0 改 AC／尺子／合同／GM 名册。
 
 - **十、★下棒必查**：① 施工席是否收工并给出**终态 head 的 40 位全串**（**T4 重锚落点的唯一来源**；现 tip `b09ed7b6598c3cd94181215cd9e678b0191c09f9` 仍可能再动）② #84 现 head 的两条 Backend check（13:53:31Z 起）是否收尾及其 conclusion ③ 司仓是否已按「终态 head 声明」派 T3-prime Gate（须核其正文被验 sha）④ #81 是否前进（G5 是否并入 ⇒ T2）与 T2／T3 净变更面（以 merge base 计）⑤ master 是否再前进 ⑥ GM 名册 `W-DD-V1-2026` 是否回写（现读 2026-10-19T19:45:00+08:00，陈旧）⑦ ★**下一空闲整数号按执行点现读枚举取号，禁沿用任何一方的预告值**。
+
+#### 九十、轮次 32（13:40Z 槽位独立监工席 · 本席 455514453164311 · 取数窗口 2026-10-23T13:41:22Z–2026-10-23T14:06Z 现读）· ★★★**「笔 D」已落远端（本轮唯一的真实功能成果）** ＋ ★★★**本席独立定位「笔 D 树 sha 不一致」的根因＝建树条目的 mode 字段（纯远端字节证明）** ＋ ★★**#81 独立 Gate PASS 的「判据对象」逐项字节同一性（把「锚陈旧」细化为「未过 Gate 的产品增量恰 1 文件 1 函数段」）** ＋ ★**GM 名册 4 天陈旧面** ＋ ★**cron SINGLE_MONITOR 复证** ＋ 两本账 ±0
+
+- **一、★★★本轮最高优先事实：R2 线自 `909195e6f04773d0226b220a7794a5323a5771fc` 起前进 3 笔；「笔 D」把期间语义四态接进两个正式入口**（施工席 `455452570214476`，agent ＝ Coder，parent ＝ 司仓席 `455351523090910`）：
+
+  | 笔 | commit（40 位全串） | cI (UTC) | 内容 |
+  |---|---|---|---|
+  | 笔 D | `7c57f928674ec8bb1014f105be498d978cfd2836` | 2026-10-23T13:40:50Z | 把期间语义四态接进 `tools/dd_v1_local_run.py` ＋ `tools/dd_team_channel.py`（两个正式入口），新增 `backend/tests/test_dd_v1_fos71_r2_wp1_entry_wiring.py`（19 例接线测试） |
+  | 笔 E | `b09ed7b6598c3cd94181215cd9e678b0191c09f9` | 2026-10-23T13:53:04Z | 限定 C-1 闸的注释表述 ＋ 就地登记「散落年份轴」已知残留（仅注释字节变化） |
+  | 笔 F | `fb0e42f3ac8d28a10360b5440204afadb98b797c` | 2026-10-23T14:00:16Z | 把 C-1 残留登记口径统一为三处逐字同一句（仅注释字节变化） |
+
+  ⇒ ★**R2 分支现 tip ＝ `fb0e42f3ac8d28a10360b5440204afadb98b797c`（14:00:16Z）**；★**T4 的重锚落点因此再移**：先前登记的 `909195e6f04773d0226b220a7794a5323a5771fc` 已是**中间锚**，终态被验对象应落在本节的 `fb0e42f3ac8d28a10360b5440204afadb98b797c`（★仍以施工席宣布「无后续笔」为准）。
+
+- **二、★★★本席对「笔 D 树 sha 不一致」的根因定位（纯远端字节证明，零本地推断）**：施工席 13:4xZ 改走 GitHub Git Data API 建树后，拿到的根树 sha 与其本地树不一致（此前 5 次 `git push` 全败于 TLS 的 `gnutls_handshake`）。本席现读两棵**远端**树的逐路径差分（`GET /git/trees/{sha}?recursive=1`，872／873 条目，`truncated=false`）：
+
+  - 基座树 `909195e6f04773d0226b220a7794a5323a5771fc`：`tools/dd_team_channel.py` 的 mode ＝ **100755**（本仓既有可执行位）。
+  - 施工席 API 建出的孤儿树 `546594aa35df5777f3b615a941c30f472d3b10e9`：同一路径的 mode ＝ **100644**。
+  - 两树逐路径差分 ＝ **ADDED 1 ／ REMOVED 0 ／ CHANGED 5**；CHANGED 的 5 条 ＝ 3 条派生目录 tree（`backend`／`backend/tests`／`tools`，其内容即 tree sha 变化，属预期）＋ `tools/dd_team_channel.py`（★**mode 100755→100644** ＋ 内容变更）＋ `tools/dd_v1_local_run.py`（内容变更，mode 100644 未变）。
+  - ⇒ ★**纯 mode 差异的路径恰 1 条，且正是 `tools/dd_team_channel.py`**；git 树对象把 mode 逐条目编码 ⇒ **单这一字段即可致根树 sha 不同** ⇒ 建树条目把该路径写成 100644 即可解释全部差异（**不需推断、不需本地重算**）。
+  - ⇒ ★★**修复后已由远端坐实**：落远端的笔 D commit `7c57f928674ec8bb1014f105be498d978cfd2836` 的 tree ＝ `9c72a36b1e25497f77bae194f78ffce4ebbaa24a`，**与施工席本地树逐位相同**；该 commit 的 sha 亦与施工席本地 commit **逐位相同**（作者／时间同为 `Player2 Executor <player2-executor@local>`、2026-10-23T13:40:50Z）⇒ ★**API 通道交付的字节与施工席本地对象完全等同**（sha 相等是最强证明）。
+  - ⇒ ★**三个 blob 亦逐位相同**（远端 blob 端点现读）：`tools/dd_v1_local_run.py` ＝ `3981543733ca643b0caaab255de77729ff8a964b`（28,156 B）、`tools/dd_team_channel.py` ＝ `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`（34,810 B）、`backend/tests/test_dd_v1_fos71_r2_wp1_entry_wiring.py` ＝ `b95b4edc640c521e59f65c241d2221ecffedb0d4`（8,730 B）。
+  - ⇒ ★**笔 D 净变更面（相对 `909195e6f04773d0226b220a7794a5323a5771fc`）**：ADDED 1 ／ DELETED 0 ／ MODIFIED 9 ＝ **产品 3**（两个入口文件 ＋ `dd_v1_period_service.py`，后者来自笔 E／F 的注释笔）＋ **测试 1** ＋ **派生目录 tree 4**。★**落盘后 `tools/dd_team_channel.py` 的 mode 仍为 100755（与基座同）**。
+
+- **三、★★#81 独立 Gate PASS 的「判据对象」逐项字节同一性（本席本轮新增的细化结论）**：唯一独立 Gate ＝ PR #81 issue comment `6358415604`（2026-10-23T05:51:17Z，**VERDICT: PASS**，十项判据全数成立、**无 blocker**，被验对象 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`）。本席现读「Gate 锚 → #81 现 head `16e18b21f261fb97e22352a64cc64ebb289c74ea`」的逐路径差分：**ADDED 14**（13 文档 ＋ 1 测试 `backend/tests/test_dd_v1_minor4_fixture_gate.py`）／ **DELETED 11**（全部在 `a4-evidence/seven-item-bundle/`）／ **MODIFIED 2** ＝ `.github/workflows/ci.yml`（5,468→11,620 B，CI 配置）＋ `tools/dd_v1_local_run.py`（25,088→27,850 B，**产品**）。
+
+  - ★**唯一的 Gate 后产品增量落在 `cmd_run` 段**：该文件 diff 共 **4 个 hunk**，行号区间 226–285；而基座版函数边界为 `cmd_scaffold` ＝ 153–195 行、`cmd_split` ＝ 196–209 行、`cmd_run` ＝ 227–308 行 ⇒ ★**`cmd_scaffold`（判据 A-4「正式入口走 `resolve_doc_type`」的被验处）与 `cmd_split` 逐位未动**；改的是 `cmd_run` 的 fixture 豁免判据 ＋ 新增 `_guard_material_output_not_in_repo`（仓外材料不得把副本写进仓库树）。
+  - ⇒ ★**十项判据的被验对象文件（`dd_v1_requirement_service.py`／`dd_v1_doc_type_service.py`／`dd_v1_semantic_retrieval_service.py`）逐位未动**。
+  - ⇒ ★★**本席不判该 Gate 是否仍成立（独立 Reviewer 职权，本席 0 代写裁定）**；本席只登记机械事实：**未过独立 Gate 的产品增量恰 1 个文件、1 个函数段（`cmd_run`）** ⇒ 这就是 T4 重锚时**必须重跑**的那一小块，其余判据的**可引用性由复核席自行判断**。
+
+- **四、★GM 名册 `W-DD-V1-2026` 现读（4 天陈旧面）**：仓 `bog5d/cangjie-gm`、分支 `main`、`data/work_items.json`（489,942 B）内该条目现读 ＝ `current_state=BLOCKED`、`current_wp=WP-R2`、`waiting_for_chairman=true`、`executor=hermes`、`priority=P0`、`risk_level=high`、**`updated_at=2026-10-19T11:45:00Z`（4 天前）**；`next_action.action=WAIT_CHAIRMAN`，其 reason 仍写「三条执行器路径实测全部不可用（cursor 额度耗尽／dsh 余额不足／hermes 假成功）＋ Gold Set 未提供」。⇒ ★**该名册面与今日实际不同步**（今日云端 MiniMax 作 Executor；R2 线今日推进 3 笔；PR #81 六条 check 全 success）⇒ ★**登记为陈旧面；本席 0 代改名册、0 改 `next_action`、0 改 `current_state`**（名册属司仓写面）。
+
+- **五、★cron 面复证（`cron_read` view=list，14:0xZ）**：全表 **4** 条，**本工程恰 1 条** ＝ `455353976279398`（`[cron] FOS #71 考生2 P0 修复 · 独立监工巡检 · 每20分钟`，`*/20 * * * *`，timezone `Asia/Shanghai`，`enabled=true`，session mode ＝ new）⇒ ★**SINGLE_MONITOR 成立**。另 3 条分属别处：CF 工程 `455347827208431`、INC3 工程 `455164742488166`、以及一条绑定 CF 席 `455494066127155` 的 self-reminder `455513804681664` ⇒ ★**禁误判为重复调度、禁删除**。★注：cron 任务元数据 `last_run=0`／`run_count=0` 属平台侧未回填，**不得据此判「cron 没跑」**（本席本轮即 14:00Z 槽位的一次实际运行）。
+
+- **六、★★四件事分列（必须分开判、分开报）**：
+
+  - ① **cron 是否在运行** ＝ **PASS**（本席即 14:00Z 槽位这一次实际运行；元数据 `last_run` 字段不可作判据）。
+  - ② **监工是否在工作** ＝ **PASS**（本席 `455514453164311` 在飞；司仓席 `455351523090910` 末条 turn 13:41:24Z `finish_reason=toolUse`，并于 13:45:28Z 收到兄弟席只读回执；兄弟席 `455494100381925` 13:44:18Z 已落 §八十六）。
+  - ③ **开发者是否真正施工** ＝ **PRODUCTIVE**（施工席 `455452570214476` 末条 turn 13:50:28Z `finish_reason=toolUse`；**14:00:16Z 已产出新 commit** ＝ 笔 F）。
+  - ④ **是否产生新的功能成果** ＝ **有**（笔 D：期间语义四态接进两个正式入口 ＋ 19 例接线测试，13:40:50Z 落远端）。
+  - ⇒ ★**「tip 未前进」与「没在施工」是两个对象**：#81 分支 tip 虽已 115 分钟未前进（现读 `16e18b21f261fb97e22352a64cc64ebb289c74ea`，cI 12:08:16Z），但**施工在 R2 线仍在推进**（R2 tip 14:00:16Z）⇒ **不得据此判「没在施工」**。
+
+- **七、★★CI 与分支面现读**：PR #84 现 head ＝ `fb0e42f3ac8d28a10360b5440204afadb98b797c`（`updated_at` 2026-10-23T14:00:23Z），其 3 条 check-run ＝ `Frontend Build Check` **completed/success**（14:00:27Z→14:00:48Z）＋ `Backend Tests (228 required)` **in_progress**（14:00:26Z 起）＋ `Backend Tests (440+ required)` **in_progress**（14:00:27Z 起）⇒ ★**两条「未收尾」既不记绿也不记红**（须以各自最终 `completed_at` 定性）。另现读：#81 head `16e18b21f261fb97e22352a64cc64ebb289c74ea` 6 条 **全 success**；#83 head `6afe3ee06b918970d1e25d8d31af88724b694c30` 3 条 **全 success**；master tip `3781311c4b1157c68a0f891506b7c33ab327f7c4`（cI 11:01:06Z，182 分钟未前进）⇒ ★**#81 与 master 仍分叉（compare：ahead 6／behind 2）**。
+  - ⇒ ★**「71-*」分支扫描与双写者判据**：本轮存在 `feat/71-player2-p0-fix-20261023`（授权分支）、`feat/71-player2-r2-wp1-period-semantics`（R2 线，PR #84）、`fix/71-g5-mixed-type-packaging-20261023`（PR #83）、`fix/71-ci-ocr-toolchain-20261023`（PR #82），另有 A0–A5／spec 血脉分支（`feat/71-a4-blind-exam`、`feat/71-a5-closeout`、`feat/71-minor4-fixture-gate`、`spec/71-ddv1-real-engine-integration-20261021` 等）⇒ ★**多分支并存本身不等于双写者**；判据是「同一分支有第二个写者」。本席现读各 tip 提交者：#81 线／R2 线／#83 线三线 tip 均为 `Player2 Executor <player2-executor@local>`，#82 线与 master tip 均为 `Mavis-Cloud-Exec <mavis@local>` ⇒ ★**每条分支均为单一提交者，本轮未发现双写者**。
+
+- **八、★★两本账（互不换算，本轮 ±0）**：
+
+  - **工程 ＝ 4/4**（考生2 P0 的 WP1–WP4：分子挂在 05:51:17Z 的独立 Gate PASS 上，锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`）⇒ ★**不回退**（该 Gate 仍成立）**也不外推**（未过 Gate 的产品增量 1 文件 1 函数段照实登记，见第三节）。
+  - **效果 ＝ 0/100 REAL_PASS**（O1 25／O2 25／O3 20／O4 20／O5 10，五项**全 UNKNOWN**；★**本轮笔 D 为仓内合成接线测试，不折算**；★**MOCK／合成不折算**；★**Windows 真实考试未发生 ⇒ O4 仍 UNKNOWN**）。
+  - **A0–A5 ＝ 0/6**（独立 Reviewer PASS 数 0）；**R2-WP1 ＝ 0/1**（唯一裁定 `6364959808` ＝ **FAIL**，锚 `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6` 已被笔 A／B／D／E／F 取代 ⇒ 修后独立 Gate 仍缺）。
+  - **硬门槛 0 PASS ／ 0 FAIL ／ 9 UNKNOWN**（冻结尺子 `GOAL-CONTRACT.v3.8.json` 现读仍全 UNKNOWN；本席 0 改尺子）。
+
+- **九、★该踢吗 ＝ NO**（三条同时成立）：① **远端 tip 已前进**（R2 线 14:00:16Z 落笔 F）⇒ **不满足「未前进 ≥25 分钟」**；② 施工席与司仓**末条均为 `finish_reason=toolUse`**（施工席 13:50:28Z、司仓 13:41:24Z）⇒ 不满足「执行器末条非 toolUse」；③ **本轮 0 次恢复**（每轮最多 1 次；本席 **0 spawn、0 唤醒**）。
+
+- **十、★本席边界（本节全集）**：0 写产品代码｜0 代写独立 Reviewer 裁定｜0 合并任何分支（含 master）｜0 改写他人已落字节（**只追加**）｜0 删除任何已落节｜0 回填空洞｜0 force push｜0 spawn 第二写者｜0 唤醒施工席／复核席｜0 本地跑批｜0 改 AC／尺子／合同／GM 名册｜0 重复投递波总卡（首发权在司仓）｜0 接触或输出明文 Token。
+
+- **十一、★下棒必查**：① 「笔 D」之后的**终态 head 40 位全串**是否再动（现 `fb0e42f3ac8d28a10360b5440204afadb98b797c`）—— **T4 重锚落点必须落在终态头上**，不能定在中间锚 ② #84 新 head 那 2 条 in_progress 是否收齐 ③ 独立复核席 `455458672263345`（13:11:22.991Z 被平台限流打死）是否已被**原位**唤活，且**唤活前派发方已写明重锚落点** ④ #81 侧 `cmd_run` 写副本闸（Gate 后唯一未过 Gate 的产品增量）是否需一并进 Gate ⑤ GM 名册 `W-DD-V1-2026` 陈旧面由司仓侧更新（本席 0 代改）。
