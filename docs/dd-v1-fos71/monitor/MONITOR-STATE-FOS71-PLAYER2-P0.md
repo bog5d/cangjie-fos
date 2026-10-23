@@ -317,3 +317,18 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 ### 十、下轮必查
 
 ① 修复分支 `feat/71-player2-p0-fix-20261023` 是否出现及其 tip／变更面三列（新增／删除／既有 blob 分列）；② **第一父是否＝`d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`**、是否快进非 force（**禁 force push**）；③ **重开的执行席 id ＋ 一手 `status`／`updated_at`**（不采信自述）；④ 交卷包三项阻断（`SHA256SUMS` 缺失／U+2026 14 处／截短 hex 2 处）是否已清、且**以远端字节复核**；⑤ `AGENTS.md` 的「1717 collected, 0 failed」是否复现或已删；⑥ 复核席是否在**该远端 40 位 SHA** 上出逐条 PASS/FAIL（锚点只认远端 SHA）；⑦ 恢复计数是否进入第 2 次（键＝「修复分支 tip 仍不存在」）；⑧ master 是否前进（落盘前必须现读 master HEAD）；⑨ 禁形自检作用域 ＝ **本轮增量字节**（历史旧违规不追改、只追加不改写）。
+
+### 十一、本轮落盘回执（轮次 3）
+
+- 本监工只读记录分支：`monitor/fos71-player2-p0-fix`（FOS 仓，**docs-only；不含任何产品码**；不与施工分支 `feat/71-player2-p0-fix-20261023` 冲突，**不构成第二写入者**；**不合并 master**）。
+- **落盘前现读**：monitor 分支 tip `0a6d2987d0a7f450a8d79969729288433fef51f9`（＝父）、其根 tree `1bb0be566e2a69277afde6816534fdd52e35e105`；**master HEAD 现读** `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（落盘前未前进）。
+- **首笔落盘 commit**：`22ff0654705408f6e7a2af4b3a0b8beccd311081`（父 `0a6d2987d0a7f450a8d79969729288433fef51f9`，**快进非 force**，`force=false`）
+- **首笔落盘 root tree**：`2fa8852ef7e3e46e325a07d189ae26a271eeb4fe`
+- **状态卡 blob**：`67a1e582af66195d920db0d27c234904dfff1485`／**51,723 B**／sha256 `f56c75b09d0517172d8c7087d9298d4002fa1525541ab17d736dbffbfeeceb82`
+- **回读断言**（不采信创建响应）：从远端 `refs/heads/monitor/fos71-player2-p0-fix` 现读该 blob ⇒ **信封 size 51,723 ＝ 解码长度 51,723 ＝ 本地字节数 51,723**，且**与本地字节逐位相同**。
+- **变更面（对基线 master tree，blob 口径三列）**：**新增路径 2**（`docs/dd-v1-fos71/monitor` 目录 tree ＋ `docs/dd-v1-fos71/monitor/MONITOR-STATE-FOS71-PLAYER2-P0.md` blob）／**删除路径 0**／**既有路径 blob 变更 0**；路径总数 870 → 872。**按 blob 口径「新增」＝ 1 条**，按 `ls-tree -r -t` 口径「新增」＝ 2 条（1 tree ＋ 1 blob）——**两口径分列，不互相替换**。派生目录 tree 连带改 sha **2** 个（`docs`、`docs/dd-v1-fos71`）——**目录 tree 变化是派生变化，不是第二个 blob 变更**。
+- **compare 口径**（`base=master`、`head=monitor`）：`ahead_by=7`，files **1**（状态 `added`，`docs/dd-v1-fos71/monitor/MONITOR-STATE-FOS71-PLAYER2-P0.md`，`+319/-0`）⇒ 与 blob 口径一致。
+- **禁形自检（作用域 ＝ 本轮增量字节 14,300 B）**：F1（U+FFFD）**0**、F2（单码点省略号 U+2026）**0**、F3（ASCII 三点连写）**0**、F7（**极大**的 `[0-9a-f]` 连续段、长度 7–39、且含至少一个 `a`–`f` 者）**0**；**阳性对照必响**（注入 8 位含字母 hex → 命中；注入 40 位全串 → **不**误判）。扫描器规则显式声明：F7 只计「极大段」并要求含字母 ⇒ **纯十进制 run（session id／epoch 毫秒／计数）不计**（形态上非 sha，本轮此类 18 处已按规则排除）。
+- ⚠ **历史遗留登记（不追改）**：整卡扫描仍命中**轮次 1** 的 1 处 7 位短写与 2 处 ASCII 三点连写 ⇒ 属**历史轮次已落盘字节**，按纪律「禁形自检作用域 ＝ 本轮增量字节；历史旧违规不追改，只追加不改写」，**判读时按「历史遗留、非本轮新增」排除**，不得据此判本轮落盘件不合规。
+- **本轮落盘纪律自曝 1 次**：首次建 blob 时因调用参数写漏（body 未随请求发出）被 API 以 **422「`content` 缺字段」**拒收 ⇒ 该次**未产生任何 blob/tree/commit/ref 变动**；改正后重跑成功。教训：**422 报文是真凭据（参数形态错 ≠ 对象不存在）**，建 blob 的 body 必须与 `Content-Type: application/json` 一起实发。
+- 取数与落盘时刻：2026-10-23T04:20:52Z ～ 04:3xZ（UTC，shell 当场算）
