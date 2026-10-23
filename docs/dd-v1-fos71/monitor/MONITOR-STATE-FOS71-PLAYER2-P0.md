@@ -4969,3 +4969,66 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 · **九、★台账面**：★**本节号由落盘器在执行点现读枚举后取**（★**人工稿件内不写死节号**——★**预告值会被越过**）。★**已知同号（★起草窗口 13:0xZ 现读；★**落盘时以最新基座现读为准**）**：「六十二」2、「七十一」2、「七十四」2 ⇒ ★**本席 0 代改、0 重排、只登记**。★**本席 §六十八 里的「下一空闲候选」指针已被连续越过**（★**指针型字段会过期 ⇒ 读者请以现读枚举为准**）。
 
 · **十、★下一轮（13:00Z 槽位）必查**：① **独立 Gate 是否在 `4fb83b67602612ea1cc21c8167fc8cd9da2c0fb2` 上重锚并落 GitHub 面**（★**且其正文写的被验 sha 必须是这个新 sha**）② **#84 新 head 的两条 Backend check 是否收齐**（现 1 success／2 in_progress）③ **#81 的 5 条 issue comments 中是否新增独立裁定**（★**须核其被验 sha ＝ 哪个 head**）④ **丙-2／T1：#83 head 的 `ci.yml` OCR 步计数是否由 0 变正**（现读 0）⑤ **T2 是否被指派并落进 #81 分支**（★**真冲突面 1 条 ＝ BUNDLE-DISCLOSURE 路径**）⑥ **master tip 是否前进**（现读 `3781311c4b1157c68a0f891506b7c33ab327f7c4`、11:01:06Z）⑦ **#82 是否被关闭**（现 OPEN）⑧ **GM 名册 `W-DD-V1-2026` 的 `updated_at` 是否回写**（现 2026-10-19T19:45:00+08:00）＋ **GM main tip 是否前进**（现 `1e868391a6703724df157600260e4aab21ed1077`、06:41:43Z）⑨ **台账三处同号是否被追加更正** ⑩ **下一空闲整数号（执行点现读）** ⑪ **边界 0**。
+
+#### 八十二、轮次 30（13:20Z 槽位独立监工席 · 本席 455501794185583 · 取数窗口 2026-10-23T13:06:32Z–2026-10-23T13:24:29Z 现读）· ★★**T1 已落并解环境型红（PR #83 自身 head 补 OCR 步，CI 3/3 全绿、mergeable 由 unstable 转 clean）** ＋ ★**笔 B 的 CI 现读＝2 success ＋ 1 in_progress（禁以笔 A 的绿外推）** ＋ ★**修后独立 Gate 仍缺** ＋ ★**本席自曝：自写中文整数换算器整体 +1 偏移**
+
+- **一、★★T1 已落：PR #83 自己 head 的 OCR 工具链安装步已补上，环境型红解除（本席 13:1xZ–13:2xZ 一手现读）**
+  - PR #83 现读：head ＝ `6afe3ee06b918970d1e25d8d31af88724b694c30`（commit cI 2026-10-23T13:16:15Z，message「fix(#71) #83：把 OCR 工具链安装步复刻进本分支自己的 head」）；`state=open`、`mergeable_state=clean`（前一轮现读为 `unstable`）、`updated_at` 2026-10-23T13:16:28Z、`comments` 4 条（最新一条为 11:14:51Z 的合并顺序落纸）、`review_comments` 0。
+  - ★**机械证（本席一手 blob 比对）**：PR #83 新 head 的 `.github/workflows/ci.yml` blob ＝ `fdf0e0cca7d8b25ef0ba2a0573e184f8e9aea382`，与 PR #84 head 的 ci.yml blob、修复分支 tip 的 ci.yml blob **三者逐位相同** ⇒ ★**T1 的目标（把 OCR 安装步复刻进本分支自己的 head）已在字节层达成**。
+  - ★**该 head 的 3 条 check-run 现读全部 completed/success**：Frontend Build Check 13:16:32Z→13:16:50Z｜Backend Tests (440+ required) 13:16:31Z→13:20:50Z｜Backend Tests (228 required) 13:16:31Z→13:20:31Z ⇒ ★**PR #83 首次出现「自身 head 的 check 全绿」**（此前为基座缺 OCR 造成的环境型红）。
+  - ★**对账**：司仓 §七十七 第二节表格记 T1「待 G5 线写者施工」；兄弟席 §七十八／七十九 第九节下棒必查第 ⑤ 项亦记「T1 是否已落」为待查 ⇒ **本节给出该问的现读答案：已落，落于 13:16:15Z**。
+
+- **二、★★笔 B（`909195e6f04773d0226b220a7794a5323a5771fc`）的 CI 结论：现读 ＝ 2 success ＋ 1 in_progress ⇒ 禁记「全绿」**
+  - 现读 3 条：Frontend Build Check completed/success 13:13:09Z→13:13:29Z｜Backend Tests (228 required) completed/success 13:13:08Z→13:13:37Z｜★**Backend Tests (440+ required) ＝ `in_progress`（started 2026-10-23T13:13:09Z，`completed_at` 为空）**。
+  - ★**取数时刻**＝2026-10-23T13:24:29Z；★**锚点时刻**＝该 job `started_at` ＝ 2026-10-23T13:13:09Z（epoch 1792761189）；★**差值**＝已跑 11 分钟（UTC-aware 差值计算，锚点与取数时刻同源）⇒ ★**按既有纪律「未收尾的 job 必须以它最终的 completed_at 为准定性」** ⇒ **本节只记「未收尾」，不推成红、也不推成绿**。
+  - ★**禁止外推**（兄弟席 §七十八 第五之二节已立此口径）：★**不得以笔 A 的 `4fb83b67602612ea1cc21c8167fc8cd9da2c0fb2` 三条全绿外推笔 B 全绿**；二者是不同对象。
+  - ★**PR #84 的 `mergeable_state` 现读 ＝ `unstable`**（与该 job 未收尾一致，非代码红）｜`updated_at` 2026-10-23T13:13:05Z。
+
+- **三、★★修后独立 Gate 仍缺（本席 13:2xZ 现读，两路）**
+  - PR #84 issue-comments **恰 1 条**（＝ 12:32:59Z 那条 `VERDICT: FAIL` 回执，其被验对象是已被取代的 `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`）｜`reviews` 0｜`review_comments` 0 ⇒ ★**笔 A ＋ 笔 B 之后的新 head 上尚无任何独立裁定**。
+  - ⇒ ★**R2-WP1 的独立 Gate 分子维持「已落 1/1，方向 FAIL」；PASS 仍缺**；★**T4 重锚的被验对象应是笔 B 之后的 `909195e6f04773d0226b220a7794a5323a5771fc`（不是笔 A、不是旧锚）**。
+  - PR #83 面：`reviews` 0、comments 4 条中最新一条为 11:14:51Z 的合并顺序落纸 ⇒ ★**PR #83 至今无独立 Gate 裁定**。
+
+- **四、★C-1 判别力：本席字节层独立复核（与兄弟席同向、取证方法不同）**
+  - ★**方法差**：兄弟席走【AST 级去 docstring 后 `ast.dump` 逐位比对】；★**本席走【blob 逐位比对 ＋ 用例输入字节核对】** ⇒ 两路独立同结论。
+  - 笔 A（`4fb83b67602612ea1cc21c8167fc8cd9da2c0fb2`）：产品文件 `backend/src/cangjie_fos/services/dd_v1_period_service.py` 的 blob ＝ `b4929f90dd951f9e20922d421b30cefca151f749`，与旧 head `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6` 侧**逐位相同** ⇒ ★**「产品实现 0 改动」在 blob 层成立**（本席自己算 sha256 ＝ `02d223797d5cc595c9e28a14ec6102e46d0d2b88f1fdd5ee1703b7a8d5d843c2`／29,434 B，与兄弟席同值互证）。
+  - 笔 B（`909195e6f04773d0226b220a7794a5323a5771fc`）：同文件 blob 变为 `fd067391e544cb967333e5807eb92f08264c93bb`（sha256 ＝ `d2c03aea2c8e7f8ec9137465787cbdac53b450be5076b3437f851148f5cf3373`／29,446 B，Δ ＋12 B）⇒ ★**产品文件 blob 确实变了 ⇒ 「产品实现 0 改动」这句表述自本笔起不再成立，正确表述是「仅注释字节变化、判定逻辑 0 改动」**（与施工方自陈同向）。
+  - 回归锁测试文件：blob 由 `a2b5fd907554939420306e9a78d9477581a99a99` 变为 `0ae978ed6922d5ed521dad786c795cbb2fb1d0dd`；★**本席字节级核对到新版本内两条 C-1 用例的输入已改为带「年」的写法**、且新增了一条「同一语义 × 多种日期写法」的不变性用例 ⇒ ★**与 Gate 给的最小修法方向一致**（★本席未复跑、未采信施工方的变异前绿／变异后红两次读数；★**该判别力的动态复算归独立 Reviewer 在新 head 上重跑**）。
+
+- **五、★★正式入口与空候选六态的现读（本席一手）**
+  - **类型表唯一性**：`dd_v1_requirement_service._DOC_TYPE_RULES` ＝ 10 个规范 key（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）；`dd_v1_bridge_service` 的 `DOC_TYPE_KEYS` 由该表**派生**、`_CURRENT_DOC_TYPES` 直接取 `rq.CURRENT_DOC_TYPES`；`dd_v1_doc_type_service` 文档字符串明写「本模块不抄规则表」⇒ ★**本轮现读面内无第三套类型表**。
+  - **六态成立**：`dd_v1_semantic_retrieval_service`（修复分支 tip 的 blob ＝ `8a7fb6986cc5898d3021321d1b9de30a1c30bedc`）内 `NO_CANDIDATE_REASONS` 恰 **6 项**、`CANDIDATE_STATUSES` 恰 4 项，且六个原因各有独立产出分支；★**候选存在但期间／版本不可用时 `no_candidate_reason` 留空、由 `candidate_status` 表达 ⇒ 未统一伪装成「没有材料」**。
+  - ★**本席新登记的一个口径点（只登记机械事实，不代裁「是否算缺口」）**：`dd_v1_bridge_service.py`（blob `c23d62c160a94bb64d4f30313c0a86e754f10842`）内 `evidence_status`／`no_candidate_reason`／`candidate_status` **各 0 命中**，其 `obligations_out` 只带 `evidence_count` 与 `evidence`；★**六态经 `sem.run_semantic` 的 `rec["evidence_status"]` 抵达的是本地评分入口的 `run_record.json` 输出面**（`tools/dd_v1_local_run.py` 的 run 路径），★**经 DSH 薄入口（`tools/dd_team_channel.py` → bridge）的义务面本席现读未携带六态** ⇒ ★**该差异归独立 Reviewer／司仓裁定是否构成「正式入口缺口」，本席不代判、不改冻结尺子**。
+
+- **六、★变更面三列（两口径分别钉死，禁互相换算）**
+  - ★**口径 A（文件级，`git diff --name-status`，不含目录条目）**：起点 ＝ 基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` → 修复分支 tip `16e18b21f261fb97e22352a64cc64ebb289c74ea` ＝ **新增 20／删除 11／既有路径 blob 变更 9**（★与司仓 §七十七 第十一节第四项同值 ⇒ 两路独立互证）。
+  - ★**口径 B（tree 路径级，含目录条目）**：同一对树的递归 tree 对 tree 差分 ＝ **新增 23／删除 14／变更 21**；★**差额恰为目录条目** ⇒ ★**两个口径各自为真，只是口径不同**；下轮引用时必须写明用哪个口径，禁混用。
+  - ★**R2 线（PR #84）相对其 base 快照 `78807393ca2ae914c82cafdf5677f1534bd7175c`**：新增 5／修改 3／删除 5（文件级）⇒ 其中**产品侧新增 1 件服务文件 ＋ 新增 2 件测试/文档目录**，★**笔 A ＋ 笔 B 两笔均落在「不改判定逻辑」的口径内**（笔 A 只改测试、笔 B 只改注释）。
+
+- **七、★分支面（git 协议现读，`git for-each-ref`，37 heads 全量）**
+  - 今日（2026-10-23）有提交的 head 共 4 个：本监工的台账分支（13:17:40Z）｜`feat/71-player2-r2-wp1-period-semantics`（13:10:36Z，PR #84 head）｜`fix/71-g5-mixed-type-packaging-20261023`（13:16:15Z，PR #83 head）｜`feat/71-player2-p0-fix-20261023`（12:08:16Z，修复分支）。
+  - ★**未授权新分支（双 Writer 风险）＝ 无**：其余 `71-*` 分支 tip 全部落在 2026-10-16 ～ 2026-10-23T11:21:39Z（＝CST 19:21:39）的既有施工包（A0–A5／wp00–wp04／G5 线／OCR 线／R2 线）范围，★**R2 线与 G5 线两笔新 commit 均属已授权闸（T3′／T1）**。
+
+- **八、★cron 面（`cron_read view=list` 一手现读）**：tasks **恰 3 条**、`has_more` ＝ false、全部 `schedule_kind` ＝ 0（周期）／enabled／每 20 分钟一次；★**本工程恰 1 条**（`455353976279398`，`*/20`，mode=new，enabled=true）⇒ ★**另两条分属 CF 与 INC3，不是重复调度，不误判、不删除**。
+
+- **九、★活跃态四栏（分开判、分开报）**
+  - ① **cron 是否在跑** ＝ 是（本轮即该 cron 的一轮）；
+  - ② **监工是否在工作** ＝ 是（本席本轮落盘 ＋ 兄弟席同窗落盘两节）；
+  - ③ **开发者是否真正施工** ＝ 是（13:10:36Z 笔 B、13:16:15Z T1 两笔新 commit）；
+  - ④ **是否产生新的功能成果** ＝ 是（T1 使 PR #83 自身 head 的 check 首次全绿、环境型红解除；C-1 判别力修复与注释传播源更正均已落字节）。
+  - ⇒ **活跃态 ＝ PRODUCTIVE**；★**该踢吗 ＝ NO**（远端 tip 7 分钟内有新 commit ＋ CI 在跑 ＋ 已在跑不打扰；★**本席 0 spawn／0 恢复／0 唤醒**）。
+
+- **十、★两本账（互不换算，±0）**：工程 **4/4**（唯一独立 Gate PASS ＝ PR #81 那条 `6358415604`，被验 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` ＝ 旧对象，**不回退不外推**）｜★R2-WP1 独立 Gate **已落 1/1、方向 FAIL**（不记 PASS）｜效果 **0/100 REAL_PASS**｜A0–A5 **0/6**｜硬门槛 **0 PASS／0 FAIL／9 UNKNOWN**。
+
+- **十一、★GM live 名册（只读现读，0 代改）**：`cangjie-gm` main 的 `data/work_items.json`（489,942 B／42 条）条目 `W-DD-V1-2026`：`executor` ＝ hermes｜`waiting_for_chairman` ＝ true｜`updated_at` ＝ 2026-10-19T19:45:00+08:00（**陈旧 4 天**）｜`next_action.action` ＝ WAIT_CHAIRMAN、`target_wp` ＝ WP-R2｜★**blockers 首条仍是「执行器全灭：cursor 额度耗尽 / dsh 余额不足 / hermes 假成功（两次声称完成、零文件产出）」** ⇒ ★**该条与当前字节相悖（R2 线执行器本轮已产出三笔 commit）**，★**名册单写者未回写，本席 0 代改**。
+
+- **十二、★本席自曝（只登记，不修饰）：自写中文整数换算器整体 +1 偏移**
+  - 现象：本席第一次枚举台账顶层节号时，把「一」读成 2、「七十七」读成 88 ⇒ ★**整体 +1**；根因 ＝ 字表 `零一二三四五六七八九十` 里**「零」占了索引 0**，而取数字用 `index(c)+1` ⇒ 一律偏大 1。
+  - ★**后果**（若未发现会怎样）：会算出**假的空闲号**（例如把已占的「七十七」读成 88，从而误判「七十八」空闲）⇒ ★**这是台账 §七十七 第八节第三项「自写换算器＝自写探针」纪律的第二个实例**。
+  - ★**定案方式**：改写换算器后**先跑阳性对照表 12 条**（一／十／十一／二十／二十一／三十／六十二／六十六／六十九／七十／七十一／七十七，全部逐位相等）**＋ 阴性对照 4 条**（非数字串一律返回空）⇒ 对照全过才允许用于取号。
+  - ★**取号结果（执行点现读）**：本节落盘前现读台账 tip ＝ `8015a8523128d839b7b523c1ed02a2b2e70d19d9`（载体 1,075,433 B，13:2xZ 现读）⇒ 顶层整数号 **26–81 连续占用**（其中「七十八」「七十九」为兄弟席**同内容连落两遍**，「八十一」为兄弟席另落的一节）⇒ ★**本席取「八十二」**。
+  - ★**「预告号不是预约」的第三次实证**：本席起草时按旧载体算出的下一个空闲号是「七十八」⇒ ★**写 ref 前二次现读时该号已被兄弟席占**（且本席枚举的换算器自身还带 +1 偏移，见本节第十二项）⇒ **处置 ＝ 改号 + 只追加登记，0 回填空洞、0 重排、0 代改他人字节**。
+
+- **十三、★下棒必查**：① PR #84 的 440+ job（13:13:09Z 起）是否收尾及其 `conclusion`；② 独立 Reviewer 是否在 `909195e6f04773d0226b220a7794a5323a5771fc` 上落修后裁定（★禁锚笔 A、禁锚旧锚）；③ PR #83 的 T1 之后是否有 G5 四文件并入 #81（合流三处是否齐 3/3）；④ PR #81 终态 head 重锚是否发生；⑤ GM 名册 `W-DD-V1-2026` 的 blockers 首条与 `updated_at` 是否被名册单写者回写；⑥ master 是否再前进；⑦ ★**六态在 DSH 面（bridge 义务输出）的缺失是否被裁定为正式入口缺口**（见第五节，本席只登记机械事实）；⑧ ★**下一空闲整数号（执行点现读，禁沿用本节预告值）**。
+
+- **十四、★本席本轮边界**：0 合并／0 关 PR／0 代写产品代码／0 代写独立 Reviewer VERDICT／0 改 Issue #71 的 AC／0 改冻结尺子（GOAL-CONTRACT 与监工判据只读）／0 改 GM 名册／0 新建第二调度器·第二套监工·第二执行器／0 spawn／0 唤醒／0 恢复／0 重复投递波总卡（首发权在司仓）／0 改写他人已落字节（只追加）／0 触碰施工工作树／0 本地跑批／0 输出明文 token。
