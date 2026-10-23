@@ -6230,3 +6230,63 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
   · ★**无人值守有效续跑 ＝ PASS（机制侧，范围限本工程）**；★**但「续跑 PASS」≠「质量 PASS」**——★**R2 唯一独立裁定仍是 FAIL、授权分支线的独立 Gate 锚仍陈旧** ⇒ ★**硬门槛 `UNATTENDED_HANDOFF` 仍记 UNKNOWN**。
 
 · **六、★边界（本席本轮全量）**：0 写产品代码｜0 合并任何分支（含 master）｜0 关 PR｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue #71 的 AC 判定｜0 改尺子口径｜0 改 GM 名册｜0 改施工方工作树｜0 spawn／0 唤醒／0 恢复／0 新建第二执行器／0 新建第二套监工／0 新建第二个调度器｜0 输出明文 token｜0 amend／0 force／0 改写他人已落字节｜0 删除已落节｜0 把合成测试当真实考试｜0 把「授权分支 tip 未前进」读成「没在施工」｜0 把未取到的读数记成「无」｜★**本节与 §一百一十 均为只追加**。
+
+#### 一百一十二、轮次 21 follow-up 4（11:40Z 槽位席 `455484297785914` · 取数窗口 2026-10-23T14:36:08Z–2026-10-23T14:56:25Z）· ★★★**本席把司仓采纳的「五项机械判据」在「远端可达的合并面」上实测完毕：五项全 PASS（含交卷文档 §6 表里根本没有的第 5 项）** ｜同时钉三处口径
+
+· **本节取数窗口**：2026-10-23T14:36:08Z–2026-10-23T14:56:25Z（起点＝本席本轮首个带服务端时刻戳的 REST 读数；终点＝落盘前再次现场读数）｜本席 ＝ 11:40Z 槽位席 `455484297785914`｜载体 ＝ 共享台账 `monitor/fos71-player2-p0-fix`，落盘基座 tip `7f435603a04c33f2493e0aec10d941ba09f020c5`，载体字节 1,396,603 B，本体 sha256 `c31eeecd61bca1227ba11b1bfe8bf2ae93173885a87f420991203cf46f844897`，载体 blob `f5d8a03fda80a2d2ae1675c6cbad19585071a85f`
+
+· **一、★★突破：合并面在远端是可达的（不必等推）**
+  · 交卷文档 `docs/dd-v1-fos71/player2-r2-wp1/DELIVERY-WP1.md`（R2 现 tip 上的 blob `d5c77f35758872393c18a988020cd20fd641223e`／20,479 B／190 行）§6 L134 自陈「合并面 tree＝`55e2383386adee9ab70ec37752a334ecdab84836`；**本地合并 commit 未推送**」。
+  · ★**本席实测：该 tree 在远端 `GET /git/trees/55e2383386adee9ab70ec37752a334ecdab84836` 返回 HTTP 200**（根树，34 条目，truncated False）⇒ ★**「合并面字节」此刻就是远端可读对象**；★但**同一 sha 走 `GET /git/commits/<该 sha>` 返回 HTTP 404** ⇒ ★★**树可达、commit 不可达** ⇒ **该合并面目前是一棵「无 commit 链的远端树」** ⇒ ★**可核性缺口（第三类）：读者能核到树、核不到「它是哪一次合并的产物」** ⇒ ★**交付侧须补：合并 commit 的 sha，或把该合并 commit 推上远端**。
+  · 合并面该路径字节：tree 内 `tools` 子树 `7e424c1816d5b63ad9d4fb9d6d94514c15e34515` → `dd_v1_local_run.py` ＝ blob **`f23f89692879e093c9ffbd9db10b174040796fb1`／30,918 B**（★解码长度 ＝ 信封 size ✔）／sha256 `bd4f5c10ab0e14a865de9bd4b9b4fc81da9f2ae3c0bc1888aef0d09d3b1a27aa`。
+
+· **二、★★★司仓采纳的「五项硬判据」在合并面上逐项实测：全 PASS**
+  · 判据（司仓 §一百零六 采纳本席建议为合并放行硬前置）：合并结果件上 `tools/dd_v1_local_run.py` 须同时含——两枚 OBS-1 标记字面各 ≥1、两个闸函数符号各 ≥1、**拒绝文案 ≥1**；任一缺失 ⇒ 不予放行。
+  · ★**本席实测（对象 ＝ 上面那棵远端可达合并面，字节取自 blob `f23f89692879e093c9ffbd9db10b174040796fb1`）**：
+    | 判据项 | 合并面命中 | 判定 |
+    |---|---|---|
+    | `gm-fix-minor4-fixture-gate: exemption-by-original-material-root-only` | **2** | PASS |
+    | `gm-fix-minor4-write-guard: refuse-writing-outside-material-into-repo` | **2** | PASS |
+    | `_fixture_exempt` | **2** | PASS |
+    | `_guard_material_output_not_in_repo` | **2** | PASS |
+    | `BLOCKED: 仓外材料不得写入仓库目录` | **1** | PASS |
+  · ★★**第 5 项（拒绝文案）是交卷文档 §6 的表里没有的一项** —— 文档全文对「BLOCKED」与「仓外材料不得写入仓库目录」**均 0 命中** ⇒ ⇒ ★**判据比自报证据更严一项，而实测这一项在合并面上确实存在（1 处）** ⇒ ★**这是本轮「判据先于自报」的正向兑现**。
+  · ★**一处必须钉的口径**：#81 侧该拒绝文案实测 **1** 处，而 §6 表里 #81 侧那四项都写 2 ⇒ ⇒ ★**判据必须写「≥1」，不得照抄 §6 的「2」当第 5 项期望值**（照抄即假红）。
+
+· **三、★★「合并结果不等于任一侧」＝独立复现为真；并附一条可机械判的「锚的性质」规则**
+  · 合并面该文件 blob 逐位比较：**≠ #81 侧**（`9c0412cea06b00902b3be39b1e215c8bcf8508da`／27,850 B）｜**≠ R2 侧**（`3981543733ca643b0caaab255de77729ff8a964b`／28,156 B）⇒ ★**「第三方合成字节」为真（两侧五项计数为 2/2/2/2 与 0/0/0/0，合并面 2/2/2/2/1）**。
+  · ⇒ ★★**由此可机械判「锚的性质」**：★**若 Gate 锚在某个真实 git merge commit 上，该路径字节应与 #81 侧逐位相同（拒绝文案 1 处）**；★**若实测出现 2/2/2/2 ⇒ 该件不是 git 三方合并结果，而是合成面** ⇒ ★**合成面锚与真合并件锚的验收口径不同**（合成面另需「commit 链不可证」这一条说明）。
+
+· **四、★★交卷文档 §6 表八项字面计数已独立复算：八项全同值（含一处口径坑）**
+  · §6 表把**不同文件里的字面混在一张表**：「R2 侧（笔 D 接线，**team_channel**）」的 `_period_spec_view`、`_config_anchor` 在**另一个文件** `tools/dd_team_channel.py`（合并面 blob `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`／34,810 B）⇒ ★**照表在 `tools/dd_v1_local_run.py` 单文件上数，会得 0／0 两处假红** ⇒ ★**那是口径/探针缺陷，不是对象缺陷**。
+  · ★**本席按表内「来源」栏指明的文件分别数，八项全部与表一致**：local_run 侧 `_period_anchor_arg` **3**｜`period_anchor=anchor` **3**｜team_channel 侧 `_period_spec_view` **3**｜`_config_anchor` **3**；#81 侧四项在合并面各 **2**。
+  · ⇒ ★★**交卷文档 §6 的八项自报计数，本席已独立复算为同值**（★**这是本轮第一次把 §6 的自报数字独立复算通过**，此前只核了「R2 侧＝0」那一侧）。
+
+· **五、★★合并面净变更面（本席按 blob 口径实测，14 条路径）** —— 合并面 799 blob vs R2 现 tip 787 blob：共同 786｜**合并面独有 13**｜**R2 tip 独有 1**｜**同路径异字节 1**
+  · **同路径异字节 1 条**：`tools/dd_v1_local_run.py`（合并面 `f23f89692879e093c9ffbd9db10b174040796fb1`／30,918 B ｜R2 `3981543733ca643b0caaab255de77729ff8a964b`／28,156 B）
+  · **合并面独有 13 条**：`backend/tests/test_dd_v1_minor4_fixture_gate.py`（9,665 B）｜`docs/dd-v1-fos71/ci-ocr-toolchain/EVIDENCE-CI-OCR.md`（16,031 B）｜`docs/dd-v1-fos71/ci-ocr-toolchain/FULL-RUN-READING.md`（6,014 B）｜`docs/dd-v1-fos71/ci-ocr-toolchain/SHA256SUMS`（437 B）｜`docs/dd-v1-fos71/ci-ocr-toolchain/SKILLS-REVIEW.md`（7,225 B）｜`docs/dd-v1-fos71/ci-ocr-toolchain/TEST-EVIDENCE.md`（8,553 B）｜`docs/dd-v1-fos71/wp05-real-integration/MINOR4-FIXTURE-GATE-ERRATA.md`（8,046 B）｜`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/README.md`（1,180 B）｜`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/SHA256SUMS.txt`（439 B）｜`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/probe-result-after.json`（5,134 B）｜`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/probe-result-before.json`（5,088 B）｜`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/probe_minor4_fixture_gate.py`（16,204 B）｜`docs/dd-v1-fos71/wp05-real-integration/a4-evidence/minor4-fixture-gate/regression-tests.txt`（3,346 B）
+  · **R2 tip 独有 1 条**：`docs/dd-v1-fos71/player2-r2-wp1/DELIVERY-WP1.md`（20,479 B）⇒ ★**交卷文档本身不在合并面内**（声明面不进合并面，合理；但★**读者若只按合并面核会看不到声明本身** ⇒ 可核性缺口的一处具体表现）
+  · ⇒ ★★**净变更面口径 = 13 新增 ＋ 1 改写（＝14 条路径）**，★**其中 5 条是 `ci-ocr-toolchain/` 证据文件** ⇒ ★**独立 Gate 复跑时「净变更面」必须按这 14 条路径写**，★**不得只写「一个文件」**（★**漏掉 5 条 CI OCR 证据文件 ⇒ 覆盖声明与实际面不符**）。★本席不代跑 Gate、不代写覆盖面。
+
+· **六、★★「锚取声明时那一枚」纪律 × 当前合并面：★当前这棵合并面是「声明前」的，不能作最终 Gate 锚**
+  · 施工席预告终态 head 在声明前**还会再移一次**（`final2_head` 与 `doctor2` 在交卷文档中**均 0 命中** ⇒ 声明要收齐四条前置 ⇒ 文档一改就得落新笔）⇒ ★**声明尚未落定** ⇒ ★★**故本节实测到的「五项全 PASS」，其适用对象是「此刻这棵合并面 tree」，不是「声明时那一枚」** ⇒ ★**正式 Gate 锚仍须在声明落定后于新 head／新合并面重取，并在这上面重跑五项计数**；★**本节结论不得被引用为「合并面已验收」**。
+  · ⇒ ★**纪律**：★**「同一 head 的 CI／合并面读数」的有效期 ＝ 到下一次 head 前进为止**（与 §一百零五 记的 CI 有效期同族）；★**验收结论必须带「对象标识符（tree/blob）＋ 取数时刻」**。
+
+· **七、★CI 读数「取代」一词的口径更正（自我更正，不改写他人字节）**
+  · 本席上一节写「14:00Z 席那条『228 于 14:04:36Z 收尾』已被新 head 的新 run 集取代」——★**该句的「取代」指的是同一 head 上「上一批 run 集」（14:00:27Z 起）的 job，被新 head（笔 G）重开的「这一批 run 集」（14:32:07Z 起）取代**；★**司仓 §一百零七 记的是这一批里 Backend 228 于 14:36:23Z 收** ⇒ ★★**两者是不同 run 集的不同 job，不存在冲突**（★**「取代」这个词必须钉口径，否则会被读成「同一批 job 的两读数打架」**）。
+  · ★**「读数时刻差」的可机械判据**：本席 14:36:08Z 读到该 job `in_progress`、其完成时刻 14:36:23Z ⇒ ★**差值 15 秒 < 观察间隔 ⇒ 可判「同一 run 集的前后两读」**；★**若差值跨越了 head 前进点 ⇒ 那是「不同 run 集」，须按取代关系表述**。
+
+· **八、★司仓 §一百零六／§一百零七 的采纳（登记，不代改其字节）**：司仓已把本席的「可机械验收前置条件」**采纳为合并放行的硬判据**（写进合并授权前置，Gate 侧同步复跑）✔｜把本席的「CI 读数有效期」纪律**采纳**（引用须带 head ＋ 取读时刻）✔｜并就归属问题**采纳本席的更正**（§九十一 作者 ＝ 11:40Z 槽位席 `455478512394410`；「通道归属」与「内容作者」**两栏并列**登记）✔。
+  · ★**本席下一节按「通道归属 ／ 内容作者」两栏并列格式登记**（采纳司仓的两栏制）——★**两栏必须各自独立可核**：★**通道归属 ＝ 消息投递到的会话标识**；★**内容作者 ＝ 该节字节在台账里的实际作者**；★**两者不同不构成矛盾，但引用任何一条结论前须先读清是哪一栏**。
+
+· **九、两本账（±0）与边界**：工程 **4/4**（★分子 ＝ 旧独立 Gate PASS，锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`；★**不回退、不外推**；★**本节新测的「五项判据在合并面上全 PASS」是合并面字节的机械读数，不是 Gate 结论、不进工程账分子**）｜效果 **0/100 REAL_PASS**｜A0–A5 0/6｜R2-WP1 0/1｜硬门槛 0 PASS／0 FAIL／9 UNKNOWN｜**边界 0**（0 合并｜0 关 PR｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue #71 的 AC｜0 改尺子口径｜0 改 GM 名册｜0 写产品代码｜0 写被验面｜0 改他人已落字节｜0 amend｜0 force push｜0 spawn／0 唤醒｜0 输出明文 token｜**0 代选 T2／T3 解法**｜**0 代跑 Gate**）｜**0 向波总出一屏卡**（触发未变：★**本节结论是「合并面字节合规」这一前置条件的机械读数，不是交付物或 Gate 的新裁定** ⇒ 归司仓授权前置面，不重复投递）
+
+· **十、★下棒（14:40Z 槽位）必查**
+  ① **声明是否落定**（`final2_head` 与 `doctor2` 是否进交卷文档）⇒ 落定则**取「声明时的那一枚」**并在其上重跑五项计数（★**本节的 PASS 不继承**）
+  ② **合并 commit 是否推上远端**（★现在 tree 200、commit 404 ⇒ **链不可证**）⇒ 补 commit sha 或推送
+  ③ **净变更面口径 ＝ 14 条路径**（13 新增 ＋ 1 改写，★含 5 条 ci-ocr-toolchain 证据文件）是否与 Gate 复跑的覆盖面一致
+  ④ T2 是否启动（★授权分支 tip 仍 `16e18b21f261fb97e22352a64cc64ebb289c74ea` ⇒ 至今未启动 ⇒ 合流仍 2/3、H1 前置不满足）
+  ⑤ #84 笔 G 的两条 Backend job 是否收齐（★本席 14:36:08Z 读 228 in_progress、其 14:36:23Z 收；440+ 仍 in_progress）
+  ⑥ **下一空闲整数号须由执行点现读枚举得出**（★域已进三位数；★正文禁手写本节号；★大载体字节一律走 git 通道复核）
+
+· **十一、★本节落盘自检（写入前跑在将要落盘的字节上）**：禁形 7 族 —— 增量面 **0** 命中、阳性对照逐族可响、阴性对照全静｜值闸 —— 本节引用的每个 40 位串逐个问远端存在性（commit／blob／tree 三端点）全命中、**并对「合并面 commit」这一个预期 404 的对象单独留证**｜写前闸 —— payload ＝ 基座字节 ＋ 插入块、旧字节为严格前缀、★**本节号在基座里 0 处**（整数号标题行口径）、他席节号仍在｜落盘方式 —— 单父快进、**非 force**、写 ref 前最后一次现读 tip、★**写后回读走 git 通道**（不用 contents API 回读大载体）
