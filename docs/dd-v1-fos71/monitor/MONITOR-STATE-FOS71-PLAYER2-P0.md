@@ -7372,3 +7372,43 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 ■ 8 本席两处工具层自曝（★均为本席脚本缺陷，非对象缺陷）
 · ① **节号枚举口径写错 ⇒ 整齐假零**：本轮临时取证脚本把顶层节号形态误设为「§ ＋ 中文数字」⇒ 在 7,136 行台账上枚举出「顶层节标题 0 条」这个**整齐的零**；★**真实形态 ＝ 标题行首个中文数字 token ＋ 顿号**（顿号是分隔符、不是排除字符）⇒ **台账落盘器内的同款枚举已按此口径实现并自带「域 26–max 连续无缺号」断言** ⇒ **本席临时脚本未复用已验证实现** ⇒ ★**「读过自曝 ≠ 已内化」复发**
 · ② **REST 树条目可缺 size 字段**：GM 仓递归树 1,128 条目中 **135 条无 `size`**（blob 条目可无 size，size 以 blob 信封为准）⇒ 本席脚本按 `e['size']` 取长度 ⇒ `KeyError` ⇒ **归因 ＝ 脚本键错，非对象缺陷**；★**处置 ＝ 树条目一律用 `e.get('size')`，长度以 blob 信封为准并断言「解码长度 ＝ 信封 size」**
+#### 一百三十二、CI 双轴读数（同一 sha：push 绿／pull_request 红）＋ 现取合并面锚 ＋ 五件集合文件名更正（11:40Z 席 · 轮次 25 续办七）
+
+■ 0 本节口径与不重复登记声明
+· 本节只登记**未被司仓 §一百二十七 与兄弟席最新节覆盖**的增量：① 同一 sha 上 push 与 pull_request 两条 CI run 一绿一红，且两棵被跑树的 blob 级逐位相同；② 现取的 #81 合并面锚（commit sha ＋ root tree sha 双件，parents 双新鲜）；③ #84 merge ref 仍锚旧 base 的可机检判据；④ 本席 §一百二十二「路径→blob 五件集合」第 3 件文件名笔误的更正；⑤ 本席两处工具层自曝。
+· ★**不重复登记**（台账已承载，本节不重写）：T2 落地本体（#81 两笔及其变更面）、GM 名册现状、cron 唯一性、裁定原件四面 0 命中、丙案 v3 四闸 2/4、T3「R2 线 10 路径未并入」、两本账既有读数。
+· 时刻口径：本节读数为 2026-10-23T15:2xZ–15:4xZ 逐次现读；★**本节落盘时台账 tip 已再前进**（域 26–130 连续 ⇒ 下一空闲 §一百三十二）⇒ ★**本节所记 tip 只代表取数时刻，不作「当前 tip」读**。
+
+■ 1 ★★独立增量一：同一 sha、两条 CI run，一绿一红；而两棵被跑树 blob 级逐位相同
+· 被验 sha ＝ `792b627d8cfc15742b1d7391dfec2e37d27c9e48`（#81 分支现读 tip，commit 时刻 2026-10-23T15:32:54Z；其父 `1baeb89c00b42d69f2c86af35ee52223a3245073`；再上一父 `16e18b21f261fb97e22352a64cc64ebb289c74ea`）。
+· **push run** `39979560235`（run 407，event ＝ push，创建 15:35:21Z）＝ **completed/success**：Frontend Build Check 15:35:24Z→15:35:45Z success；Backend Tests (228 required) 15:35:23Z→15:39:16Z success；Backend Tests (440+ required) 15:35:23Z→15:39:32Z success。
+· **pull_request run** `39979566887`（run 408，event ＝ pull_request，创建 15:35:23Z）＝ **in_progress**：Frontend Build Check 15:35:27Z→15:35:48Z success；★**Backend Tests (228 required) job `120502971990` ＝ completed/failure（15:35:26Z→15:39:51Z）**；Backend Tests (440+ required) job `120502971734` 仍 in_progress（15:35:26Z 起，未收尾）。
+· ★**同一 sha、同一 workflow 名、相隔 2 秒的两条 run 一绿一红** ⇒ ★★**「required check 全绿」若不绑 event 标签，等于没读**；★**「CI 3/3 全绿」这一措辞必须写成「某 event 的某 run 绿」**。
+· ★★**可机检的关键排除项**：本席把 #81 合并面 root tree `2223d84e3c00c27a3b7a9190fa0c9a3f80814d45` 与 #81 头树做 blob 级树对树差分 ⇒ **新增 0／删除 0／既有 blob 变 0** ⇒ ★**两条 run 跑的两棵树内容逐位相同** ⇒ ★**红灯不能由「树内容差异」解释** ⇒ 差异只可能落在 CI 触发上下文（事件、checkout 形态、并发或超时、凭据权限等）。
+· ⇒ ★**措辞更正**：本例**不成立**「合并面红」这一说法（内容等价的树不会因合并而变红）；正确措辞是「**PR 事件下的那条 run 红**」。★**本席不判根因**（属施工／复核席域）。
+· ★**失败用例未取到**：Actions job 日志通道本轮返回空（不追）⇒ 本节只登记 run／job 级读数，**0 复述用例名**。
+
+■ 2 ★★独立增量二：现取的 #81 合并面锚（双方父均新鲜，可直接当 Gate 锚）
+· `refs/pull/81/merge` 现读 ＝ commit `42e178bc8027d35f8e587c506e52987b0229c6da`（object type ＝ commit），parents ＝ [`3781311c4b1157c68a0f891506b7c33ab327f7c4`（master 现读 tip）、`792b627d8cfc15742b1d7391dfec2e37d27c9e48`（#81 现读 tip）]，root tree ＝ `2223d84e3c00c27a3b7a9190fa0c9a3f80814d45`，commit message 逐字「Merge 792b627d8cfc15742b1d7391dfec2e37d27c9e48 into 3781311c4b1157c68a0f891506b7c33ab327f7c4」，committer 时刻 2026-10-23T15:35:21Z。
+· ★**可机检的新鲜度判据（建议全席复用）**：merge ref 的**第一父 ＝ base 分支现读 tip** 且**第二父 ＝ 被验线现读 tip** ⇒ 才是「终态合并面」；不满足即**过期**，须等 GitHub 重算（★`mergeable_state` ＝ unknown 即重算中，★**unknown ≠ 不可合并、≠ 红灯**）。
+· ★**与 §一百二十二 登记的 #84 合并面（tree `55e2383386adee9ab70ec37752a334ecdab84836`）对照**：#84 的 merge ref 现读 ＝ commit `82e2b3eb6368f5a6483db60a047912e665ee43c8`，root tree ＝ `08bba95f15a3d512be96dba44a4e32f1f51ef09b`，parents ＝ [`16e18b21f261fb97e22352a64cc64ebb289c74ea`、`32af192c62818f599418bb06311b09dce5b7848e`] ⇒ ★**第一父 ＝ #81 的旧 tip ≠ #81 现读 tip ⇒ 该合并面已过期**（#84 `mergeable_state` 现 ＝ unknown ＝ 重算中）⇒ ★**取 #84 终态合并面锚必须先验第一父，再取 sha**。
+· ★**通道类型更正（兼更正本席上轮读法）**：此前「合并面 tree 路径 200／commit 路径 404」的读法，源于**把 tree sha 当 commit sha 去查 commit 端点**（`55e2383386adee9ab70ec37752a334ecdab84836` 是 tree，不是 commit）⇒ ★**404 是类型错配的必然结果，不是「对象不可达」**；★**纪律：任何通道可达性读数前必须先判该 sha 的对象类型**（commit／blob／tree），★**类型错配 ⇒ 假红**。
+· ★**条目数口径**：合并面 tree 的「根层条目数」与「recursive 展开条目数」是两个数（#84 旧合并面 34 对 888；#81 合并面 34 对 889）⇒ ★**两者不可互比、不可当内容判据**。
+
+■ 3 ★★独立增量三：更正本席 §一百二十二「路径→blob 五件集合」第 3 件的文件名
+· §一百二十二 第五节所载第 3 件写作 `dd_v1_team_channel` ⇒ ★**本席笔误**：该文件名在 R2 笔 G 树与 #81 树上**均不存在**（两树同名查找 0 命中）⇒ 应为 **`tools/dd_team_channel.py`**。
+· ★**blob 值不变**：`ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57` 确为 R2 笔 G 树 `tools/dd_team_channel.py` 的 blob；★同一路径在 #81 新 tip／#81 旧 tip／merge base 三面上**逐位相同** ＝ `8f08d560a4c4a147efca4e43c6f727114662af34` ⇒ ★**R2 单方改动、接收端与 merge base 同值 ⇒ 不构成真冲突**（真冲突须两侧都改过同一路径且内容不同）。
+· ★**独立互证**：施工席末条 thinking 逐字「`dd_team_channel.py`: merged ＝ R2 的版本（因 #81 未改它）」⇒ 与本席 blob 级读数同向。
+· ★其余四件逐件复核**逐位一致**：`dd_v1_period_service.py` ＝ `10e42c22098be4735a70027f1a7320217cdd7db7`；`tools/dd_v1_local_run.py` ＝ `3981543733ca643b0caaab255de77729ff8a964b`；`backend/tests/test_dd_v1_fos71_r2_wp1_entry_wiring.py` ＝ `b95b4edc640c521e59f65c241d2221ecffedb0d4`；`docs/dd-v1-fos71/player2-r2-wp1/DELIVERY-WP1.md` ＝ `d5c77f35758872393c18a988020cd20fd641223e`；★R2 tip 未动（`32af192c62818f599418bb06311b09dce5b7848e`，commit 时刻 14:31:56Z）⇒ **五件集合仍新鲜**；★该集合**仅覆盖 R2 笔 G 一棵树，不作终态锚**（与司仓口径同向）。
+· ★**污染面复核**：`dd_v1_team_channel` 字符串在台账全篇 **0 命中**，`dd_team_channel` 多处命中 ⇒ ★**该笔误未污染他人节**，仅限本席 §一百二十二 那一处文字；★**本节为更正，不回改原节字节**。
+
+■ 4 本席两处工具层自曝（★均为本席读法缺陷，非对象缺陷）
+· ① ★**探针口径窄 ⇒ 整齐的假缺号**：本席本窗口前一步枚举顶层节标题时用了 4 个井号的窄口径，漏计 3–6 个井号层级 ⇒ 曾把「§四十五 的重复消失」读成对象变化；★宽口径复测后重复号仍为 **6 组**（四十五／六十二／七十一／七十四／一百一十一／一百一十二）⇒ ★**对象未变，是探针口径差**；★**纪律：探针口径变更必须与该轮读数同批登记**，否则下一轮会把「我方口径差」误读成「有人删了节」。
+· ② ★**会话 `updated_at` ≠ 末条 turn 时刻**：本席一度以施工席会话的 `updated_at`（现读 2026-10-23T15:42:19Z）判「施工席静默」；★实际末条 turn 时刻为 15:46:29Z（finish_reason ＝ toolUse）⇒ ★**`updated_at` 落后末条 turn 约 4 分钟，用它判静默会假红**；★**正确读数＝末条 turn 时刻 ＋ finish_reason ＋ status**（★同族于「分支 HEAD 静默」是另一个对象）。
+· ★**施工席当前态（活证据）**：末条 turn 15:46:29Z 仍在跑 **T3（R2 线并入 #81）** 的本地三方合并子集（受影响测试文件 18 项；其索引已含合并结果：`dd_v1_agent_result_service.py` 改、`dd_v1_period_service.py` 增、`dd_v1_semantic_retrieval_service.py` 改）⇒ ★**T3 正在施工、尚未落远端**（台账已记「T3 未落地」；本节不重复登记，只补「施工中」这一时点事实）。
+
+■ 5 本轮两本账增量与边界（★只写增量，不重写既有读数）
+· 工程账 4/6、效果账 0/100 REAL_PASS、R2-WP1 0/1、硬门槛 0 PASS／0 FAIL／9 UNKNOWN ——★**本轮分子 ±0**（#81 comments 仍 5 条、#84 comments 仍 1 条、#83 comments 仍 4 条；reviews 仍全 0；无新裁定）⇒ ★**不重复登记既有读数**。
+· ★**该踢吗 ＝ NO**：施工席活证据在（末条 turn 15:46:29Z）⇒ 恢复三条件不成立 ⇒ 0 唤醒／0 spawn／0 恢复。
+· 边界：0 合并 master｜0 关 PR｜0 amend｜0 force｜0 改他人已落字节｜0 改 AC／尺子／合同／GM 名册｜0 代写 VERDICT｜0 跑全量｜0 改被验字节｜0 新建调度器｜0 输出明文 token｜0 复刻禁形字面｜0 回填空洞｜0 重排他人节。
+· ★**本节只追加、不改写任何已落字节**（含本席 §一百二十二 的笔误：更正写在 §一百三十二，不回改原节）。
