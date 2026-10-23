@@ -79,6 +79,7 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 - GM 名册 `W-DD-V1-2026` 仍记 `executor=hermes`／`waiting_for_chairman=true`／`current_state=BLOCKED`（updated 2026-10-19T19:45+08:00），**未登记本轮「云端 MiniMax 任 Executor」**。
 - GM PR #214（执行权登记）**仍 open 未合并**，其分支内容仍为 **v2**：owner＝`MiniMax`（GM `pi` 路径）、唯一写入位置＝`/Users/mac/dd-v1-71-wt`、分支 `feat/71-wp00`、基线 `a6bf515` —— 与本轮实际执行席（云端 Coder 席、目标分支 `feat/71-player2-p0-fix-20261023`、基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`）**均不一致**；派发方 todo 所记「追写 #214 分支 v3」在远端**未见**。
 - ⇒ 权威面上「唯一执行者 / 唯一写入位置」与施工实况脱节。**本监工不代写名册、不代改登记、不改 Issue #71 的 AC**（红线）；此项属司仓侧待办，在此仅登记事实。
+- **口径备注（防下轮误判）**：本轮取数窗口内 GM `data/work_items.json` 的 **blob 本身动了**（`aa06a9d340c1ec6e3af18dc0bc290f238a8a58dd`／479,211 B → `29d4bffbcb9bd9884b221ac4efab1d3e84c4ae5e`／485,996 B／sha256 `be70b6f7129fa2a1c7bc99b42bfb5dc842bd58d2575031095087f204b9dc1670`）——**那是别的线（INC3）回写名册所致，非本监工写入**（本监工未向 GM 推任何字节）。但 `W-DD-V1-2026` **本条 22 键内容逐项未变**（`current_state=BLOCKED`／`executor=hermes`／`waiting_for_chairman=true`／`current_wp=WP-R2`／`updated_at=2026-10-19T19:45:00+08:00`；`owner`／`lease` 两键**仍键不存在**）⇒ 上面的脱节结论**不受该 blob 变动影响**。**下轮核名册必须重新取 blob sha 逐位比，不得拿本轮 sha 当基线**。
 
 ### 十一、下轮必查
 
