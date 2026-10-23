@@ -2213,3 +2213,79 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 
 #### 十、下轮（09:20Z 槽位）必查
 ① 09:20:29Z REST 恢复后**补 REST 读**并与本轮 GraphQL 读数互证（PR #81 三面、Issue #71、check-runs）② 修复 tip 与 master tip 是否前进 ③ 远端 heads 是否出现新 71-* 分支（本轮 32 个，无新增）④ 效果账是否出现 REAL_PASS ⑤ A0 至 A5 是否出现独立 Reviewer PASS ⑥ live 名册 blockers 首条是否被名册单写者更正（只读验证，不代改）⑦ self-reminder `455444908941891` 是否已消耗、司仓席是否继续产出 ⑧ 兄弟轮是否又落地（落则重取基座与节号）⑨ 节号现读枚举：已用至 四十六、**本席已占 四十七 ⇒ 下轮自 四十八 起** ⑩ 取号绑执行点、禁形跑在将落字节上、值闸逐个问远端、传输瞬态必重试 ⑪ GraphQL 作为 REST 耗尽期的 PR 面备份通道（★下一轮可直接用，不必再记「不可得」）⑫ 边界 0
+
+### 四十八、轮次 18（09:20Z 槽位 · 本席 455452186640964）· ★R2 轮已启动（平台批量中止 → 换实例续任 → 新执行席开工自证）＋ ★REST 恢复后 PR 面补读与 GraphQL 逐位互证 ＋ ★活跃态由 WAITING 更正为 PRODUCTIVE ＋ 边界
+
+#### 一、本轮四件事分开判（各自独立读数，不互相顶替）
+
+- **① cron 是否运行 ＝ PASS**：`cron_read view=runs` 近 **20 笔连续 run 全部 `status=1`**，`scheduled_at_ms` 每 20 分钟一格（槽位 09:00／09:20／09:40 依次递增）；本轮 `run_id=455452278755847`、`session_id=455452186640964`（＝本席）⇒ **巡检链在跑，无跳轮**。★本工程**只有一条**巡检 cron（`task_id=455353976279398`）；另两条分属 CF 公众号重置版与副官 INC3，**不是重复调度，禁误判、禁删除**。
+- **② 监工是否工作 ＝ PASS**：monitor 分支 `monitor/fos71-player2-p0-fix` 上一轮落盘 2026-10-23T09:19:08Z；本席 09:20Z 槽位在跑。
+- **③ 开发者是否真正施工 ＝ PASS（本轮首次坐实）**：司仓席 455351523090910 于 **09:25:40.105Z** spawn 新执行席 `455452570214476`（agent Coder／MiniMax-M3.1-Flash，标题「R2-WP1 执行席 · 期间语义」）；该席末条 assistant turn `finish_reason=toolUse`、timestamp **2026-10-23T09:26:31.857Z**，同 turn 内已走 5 个 toolUse 步骤（环境自证 → 定位 pytest → `ls-remote` 现读 → 仓体量 → tools 清单）⇒ **在真施工，不是心跳**。
+- **④ 是否产生新的功能成果 ＝ 0**：修复分支字节自 05:10:01Z 未变（距本轮 **4h18m**）；R2 分支 `feat/71-player2-r2-wp1-period-semantics` **尚未落到远端**（heads 现读仍 **32** 条）。
+
+⇒ ★**活跃态 ＝ PRODUCTIVE**（施工腿 PASS、产出腿 0 增量）★**更正**：上一轮（§四十七）记的「活跃 ＝ WAITING（等 PR #81 合并授权）」**被本轮新事实取代** —— Owner 第二轮目标导向开发令已授权 R2-WP1 施工，派工链已把活派出去了。⇒ **只追加更正，不改写已落字节**；★**不得**把「tip 未前进」读成「没在施工」（两者是不同对象），也**不得**把「在施工」读成「有成果」。
+
+#### 二、★本轮唯一重大进展：R2 轮启动（派工链实证）
+
+- **09:12:24.927Z ／ 09:12:24.938Z**：R1 执行席 `455355742003520` 与 R1 独立复核席 `455362122437017` **同刻退出**（两者 `updated_at` 相差 **11 毫秒**，均 `status=3`／`status_message=user_aborted`）⇒ ★**本席自曝措辞订正**（采纳司仓席 R15 回执的同线发现，本席再做他线对照）：原拟写「**平台侧批量事件**」**范围偏宽**，正确表述是「**本司仓名下两个子会话同刻退出、来源未定、非我方动作**」。★**他线对照（本席一手现读，取数时刻 2026-10-23T09:28:52Z）**：同期他线 INC3 执行席 `455369461183016` 于 **09:18:14.003Z** 仍 `status=1`（在飞）⇒ **不成立「全平台批量停摆」**；★**纪律**：只看本线两席同刻同状**只能证「同时退出」，不能证「平台批量」**；缺他线对照时一律写「同时退出、来源未定」。
+- 司仓席两次向退场席投递均被拒（`not found or no longer reachable`）⇒ ★**再次实证：send 模式对被平台中止的会话一律拒收**（禁把「已送达」读成「已被处理」）。
+- **司仓席处置 ＝ 换实例续任**（不新建体系、不新建第二套监工、不新建第二 Planner 席）：spawn **同一 Coder／云端 MiniMax 角色**为 R2-WP1 执行席，**基座 ＝ R1 交卷 SHA**（不是 master），新分支 `feat/71-player2-r2-wp1-period-semantics`，工作树 `/workspace/fos-wt2`（隔离），**同一时刻只有一个在飞的施工席**。
+- ★**R1 的 Gate 结论不受影响**：R1 独立复核（**VERDICT ＝ PASS**，十项判据全成立、无 blocker）已落在 PR #81 的**评论面**（05:51:17Z）⇒ 可复核、可追责。★**退场的是「席」，不是「结论」**；但 ★**R2 轮交卷后必须另派独立复核席**（前序复核席已退场、不可达）⇒ 角色分离不可省。
+- ★**执行席自曝（凭据回显纪律，非我方缺陷）**：R2 执行席首轮用 `set -x` 叠加 token 展开，导致 token 字面量回显进本地回显（平台侧显示为掩码占位）；**执行席自己识别并声明**「只在自己转录里、未进任何交付件」。⇒ 登记为**执行席自曝**；★**纪律**：禁 `set -x` 与 token 展开同跑、禁 `echo $GITHUB_TOKEN`、凭据只走 `credential.helper` 字面串（不落命令行、不进 URL、不进回显）。
+
+#### 三、★REST 恢复后补 REST 读，与本轮 GraphQL 读数逐位互证（§四十七 下轮项① 已完成）
+
+- `GET /rate_limit`：core **4899/5000**、search 30、graphql 4963 ⇒ ★**REST 配额已恢复**（各轮记的「REST 读面不可得」**已过期**）；★**git 协议通道本轮独立撞 TLS 瞬态**（`gnutls_handshake() failed: The TLS connection was non-properly terminated`，3 次重试全败）⇒ 本轮取证**全部走 REST／GraphQL**，git 通道记**不可得**（不据此推断对象缺失或变化）。
+- **PR #81（REST）**：head `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`｜base `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`｜state **open**｜merged false｜`mergeable_state=blocked`｜**commits 1／changed_files 14／additions 1911／deletions 63** ⇒ 与独立 Gate §5「合计 **14 路径 / +1911 / −63**」**逐位相等**。
+- ★**REST 与 GraphQL 的 merge 字段不是同一件事（互补，不是冲突）**：REST `mergeable_state=blocked` ＝ 合成字段；GraphQL `mergeable=true`（内容可合并）＋ `mergeStateStatus=BLOCKED`（**required checks 未过**）⇒ ★**读法**：内容面**可**合并，**卡在门禁**（即下条 CI 三红），**两字段合起来才说得清**。
+- **check-runs（REST，`d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`）**：**6 条 ＝ 4 × `Backend Tests` failure ＋ 2 × `Frontend Build Check` success** ⇒ 与独立 Gate §4.2「6 个 check-run ＝ 4 Backend failure ＋ 2 Frontend success」**逐位相等** ⇒ ★**CI 三红 ＝ 基线既有红**（OCR 工具链／中文字体，环境型），`mergeable_state=blocked` 由此而来，**与本 PR 代码无关**（合并闸门禁侧从未绿过）。
+- **Issue #71**：state open｜comments **5**｜updated 2026-10-22T12:41:23Z ⇒ **本轮无新评论、AC 面未变**；末条为 Owner 2026-10-22「权威编号纠正」（1＝Codex 独立组包／2＝DeepSeek Harness＋FOS）。
+- **PR #81 评论面**：comments **1** 条（＝独立复核裁定；REST issue comment id `6358415604`，createdAt 2026-10-23T05:51:17Z，author `bog5d`，body **19,115 B**）｜**reviews 0 条／review comments 0 条** ⇒ 该裁定是**评论面**形式，**未走 GitHub review 状态机**（不影响结论成立，登记形态差异）。
+- ★**尺子口径校准（防把旧包读成当前账）**：master 上 `docs/dd-v1-fos71/wp05-real-integration/GOAL-CONTRACT.v3.8.json`（**10,818 B**）内 `hard_gates` 恰 **9** 项全 UNKNOWN、`outcome_metrics` **5** 项（权重 25／25／20／20／10）全 UNKNOWN；但其 `progress.engineering_percent=0` 是**旧包口径**（该包自陈「新扩展包 0/6」），★**不得读成当前工程账** —— 当前工程账 ＝ 4/4＝100%（只覆盖 R1 交卷 SHA 的机械口径）＋ A0–A5 0/6（两账分开）。
+- ★**跨席读数新鲜度**：司仓席 R15 回执引用的我方台账 tip `d3980c967ca46b56e5401c4ea1e555a33b104d19`（09:07:38Z）**早于** 09:19:08Z 落地的 `63c43e12e0f8d928564dd96581de2d4d6186936f` ⇒ 其为**取数时刻早于落盘**的快照，**非错读**；★**任何跨席「对方台账 tip」读数都必须带取数时刻**。
+
+#### 四、修复面字节级复核（REST 通道，树对树）
+
+- 修复分支 tree `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` vs master tree `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（两树均 `truncated=false`；recursive=1 条目 877 vs 870）。
+- **变更面三桶（分列）**：**新增 6**（1 个用例文件 ＋ 5 份交卷件）／**删除 0**／**既有 blob 变更 8**（`AGENTS.md`／`CHANGELOG.md`／`dd_v1_bridge_service.py`／`dd_v1_doc_type_service.py`／`dd_v1_requirement_service.py`／`dd_v1_semantic_retrieval_service.py`／`test_dd_v1_semantic_retrieval.py`／`tools/dd_v1_local_run.py`）⇒ 合计 **14 路径**，与 PR 面 14 **逐位一致**。
+- 修复分支提交史：**单 commit**（`d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`，committer 时刻 **2026-10-23T05:10:01Z**，父 ＝ master tip）⇒ 自基线起**零新增 commit**。
+- **master tip 未前进**（仍 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`，2026-10-22T12:03:50Z）。
+
+#### 五、★类型表唯一性 ＋ 正式入口 ＋ 六态（一手字节复核，不引任何一方自述）
+
+- **权威表唯一**：`dd_v1_requirement_service._DOC_TYPE_RULES` 恰 **10** 个英文 key（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）。
+- ★**6 个改动文件全量扫描**：除权威表本体外，**0 处**硬编码这 10 个 key 的列表／元组 ⇒ **无第二套、无第三套类型表**。`dd_v1_doc_type_service` 文档字符串明写「本模块不抄规则表」，一律走 `rq.parse_doc_type`／`rq.doc_type_search_terms`；`CURRENT_DOC_TYPES`（期间语义）与 `_DOC_TYPE_UNIQUENESS`（唯一性口径）属**不同维度**，键集仍取自权威表 ⇒ **不构成第三套类型表**。
+- **正式入口落点**：`tools/dd_v1_local_run.py` **已改** —— `scaffold` 改走 `dts.resolve_doc_type(file_name=f.name)`（**只看文件名**，规避「目录里别人的类型」）、排除索引件、期间改用英文 key 与 `rq.CURRENT_DOC_TYPES`；`split` 新增 `redact_for_output`（对外落盘面 PII 脱敏）⇒ **不是只修测试脚本**。`tools/dd_team_channel.py` **未改**（blob 逐位未变，31,346 B）⇒ 属**薄入口只委派**（`dd_team_channel` → `br.bridge_library` → `sem.build_semantic_packet`），修复沿服务层**传到队道入口** ⇒ 判定成立，非缺口。
+- **六态**：封闭枚举 `NO_CANDIDATE_REASONS` **恰 6 项**（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER），与派工令六种原因**逐项对应**；另有**正交**四态 `CANDIDATE_STATUSES`（OK → EXHAUSTED → PERIOD_OR_VERSION_MISMATCH → NO_CANDIDATE）承载「候选存在但期间／版本不可用」⇒ 域外情形走 `reason=None` ＋ `candidate_status` ＋ `diagnostics`，**不折进 OTHER、不伪装成 MISSING**。★`PERMISSION_BLOCKED` 在生产路径**不可达**（meta 的 access／restricted 是留出的扩展点，仓内两个 meta 生产者都不写）＝**已披露的已知缺口**，非隐藏缺陷。
+
+#### 六、GM 名册一手复核（跨通道互证第三条）
+
+- GM `main` tip `1e868391a6703724df157600260e4aab21ed1077`（2026-10-23T06:41:43Z）｜`data/work_items.json` blob `0e8c65074f85db2d32efd9b3e580020a625cdb76`／**489,942 B**／内容 sha256 `3d1f9b5a9a3894498e886b9d51f4f04e951abedbb73117b39049ed489ae3f6b3`／**42 条** ⇒ 与 §四十七 读数、司仓 09:0xZ 读数**逐位相同**（名册自 06:41Z 未前进）。
+- `W-DD-V1-2026`：**22 键**｜**无 owner 键、无 lease 键、无 evidence 数组**｜`current_state=BLOCKED`｜`current_wp=WP-R2`｜`executor=hermes`｜`waiting_for_chairman=true`｜`updated_at=2026-10-19T19:45:00+08:00`｜`next_action.action=WAIT_CHAIRMAN`｜`blockers` 4 条（★**首条仍是陈旧的「执行器全灭」表述**）｜`work_packages` 6 包（WP-R0／WP-R1 ＝ COMPLETED；WP-R2 至 WP-R5 ＝ BLOCKED）。
+- ★**名册状态落后于事实**（**陈旧 ≠ 错**）：名册记「执行器全灭／WAIT_CHAIRMAN」，而事实上派工链已恢复、R2 执行席在飞 ⇒ ⇒ **名册为单写者面，本席只读验证、不代改**。
+
+#### 七、两本账与活跃态 · 该踢吗
+
+- **工程 ＝ 4/4 ＝ 100%**（原 FOS WP00–WP04 已过独立 Gate；★Gate 只覆盖交卷 tip 的**机械口径**）｜**新计划 A0–A5 ＝ 0/6**（尺子内 `verified_change` 全 NONE）｜**R2-WP1 ＝ 0/1**（本轮新开，未交卷）｜**效果 ＝ 0/100 REAL_PASS**（五项 outcome 全 UNKNOWN：真实材料库实测／Windows 盲测／模型实测**均未发生**；合成与 MOCK **不折算**）｜**硬门槛 9 项全 UNKNOWN**。★**两本账互不换算**。
+- **活跃 ＝ PRODUCTIVE**（施工腿 PASS；产出腿 0 增量）｜**该踢吗 ＝ NO** —— 三条同时成立：① 执行席在飞、末条 `toolUse`、距其末条仅约 2 分钟，**未到 25 分钟门槛**；② 工作树正在新建（`/workspace/fos-wt2`）⇒ **有新增改动**；③ 下一棒「R2-WP1 期间语义」**已有合法下一 WP 且已派工** ⇒ **已在跑不打扰**，唤醒＝造第二写者。｜★**恢复能力可用**（本席有 communicate spawn 工具、peer 列表可读）但**本轮不需要、故 0 恢复 0 spawn 0 唤醒**。
+- **无人值守有效续跑 ＝ PASS（机制侧）**｜★**产出腿 0 字节未证**：本轮实证「**平台批量中止 → 换实例续任 → 新席开工自证**」整条链在**无人干预**下自动完成（09:12:24Z 退场 → 09:25:40Z spawn → 09:26:31Z 开工自证），比以往任何一轮的证据都硬；但 ★**R2 尚未交卷、尚未过独立 Gate**，且终局三步（合并授权／真实材料库／Windows 盲测）仍属**人类侧** ⇒ **不得宣称无人值守施工完成**；硬门槛 `UNATTENDED_HANDOFF` 仍记 **UNKNOWN**（须等 R2 交卷 → 独立 Gate → 下一 WP 全链跑通才可判 PASS）。
+
+#### 八、★双写者面（分支授权核）
+
+- 现读 heads **32 条**（GraphQL 一次全量，按提交时刻倒序）。晚于基线（master `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`）的**仅 3 条**：`spec/71-ddv1-real-engine-integration-20261021`（2026-10-22T12:03:57Z，**docs-only 规格包，早于本轮**）｜`monitor/fos71-player2-p0-fix`（本监工台账分支）｜`feat/71-player2-p0-fix-20261023`（授权修复分支）。
+- 其余 15 条 `71-*`（a0／a1／a2／a3 系列／a4-blind-exam／wp00–wp04／wp-r1／local-dsh）**提交时刻均在 2026-10-15 ～ 2026-10-22T11:14Z**，属**前序 A0–A4／WP 建设波**的既有分支，**非本轮新增** ⇒ ★**无未授权 71-* 新分支、无双 Writer 风险**。
+- ★**R2 分支属「授权轮次换基座」，不是未授权分支**：`feat/71-player2-r2-wp1-period-semantics` 由司仓（唯一 Planner）在 Owner 第二轮开发令下派出、基座 ＝ R1 交卷 SHA；★**本轮尚未落地远端** ⇒ 下轮读到它时按「授权 R2 分支」归档，**禁按未授权 71-* 误判为双写者**；但要核其**基座必须 ＝ R1 交卷 SHA**（若 ＝ master 则须报告为基座错位）。
+
+#### 九、禁形自检与值闸（本轮将落字节内）
+
+- **作用域** ＝ 本轮将落盘的那一份（**新增字节**）；**切法** ＝ 整份新节逐族扫描 ＋ 新旧命中集合之差；**基座一换 ⇒ 整轮读数作废重跑**。**族定义沿用 §四十五**：F1 替换符｜F2 单码点省略号｜F3 ASCII 三点连写｜F4 长度恰 8 且含 a–f 的小写 hex｜F5 裸 URL（前面不是反引号）｜F6 长度 41 至 63 或 ≥65 的 hex 游程（64 除外）｜F7 长度 7 至 39 且含 a–f 的小写 hex（长度 8 让给 F4）｜UUID 先挖空。
+- **结果**：新增命中**逐族 0**；**阳性对照 7/7 全响**；**阴性对照 7/7 全静**。
+- **值闸**：本节引用的 40 位标识符逐个问远端对象存在性 ⇒ **全部命中**（R1 交卷 tip、master tip、monitor 台账基座 tip、台账 blob、GM main tip、GM live 名册 blob、spec 分支 tip）；另 1 个 64 位串 ＝ GM live 名册 blob 的**内容 sha256**（按取到的字节**本地复算**比对，非 git 对象）｜**阴性对照 2/2 落空**（全零串与十六进制死串各一）。
+
+#### 十、边界
+
+**0 合并**（含 master）｜**0 改 PR**｜**0 代写独立 Reviewer 的 VERDICT**｜**0 改 Issue #71 的 AC**｜**0 改尺子口径**｜**0 改 live 名册**｜**0 改执行权登记**｜**0 写被验面**｜**0 触碰施工方工作树**｜**0 回退他人已落节**｜**0 改写他人已落字节**｜**0 唤醒**｜**0 spawn**｜**0 恢复**｜**0 新建调度器**｜**0 新建第二套监工**｜**0 新建第二 Planner 席**｜**0 合并 R2 分支**｜**0 输出明文 Token**（凭据只走 credential.helper 字面串）｜**0 force push**｜**出波总卡 1 屏**（★**R2 开工属新事件**；司仓席本轮**零出卡** ⇒ **非重复投递**；卡内只写本轮新事实与两本账，**不重复历史校验**；★Gate PASS 事件已于 2026-10-23T05:57:07Z 独投，本轮**不重投**）。
+
+#### 十一、下轮（09:40Z 槽位）必查
+
+① R2 分支 `feat/71-player2-r2-wp1-period-semantics` 是否落地，★其基座**必须 ＝ R1 交卷 SHA**（若 ＝ master 须报基座错位）② R2 执行席 `455452570214476` 末条 `finish_reason` 与开工回执（★判活只认末条，不认 status 翻转）③ 修复分支 tip 与 master tip 是否前进 ④ heads 是否出现**新** 71-* 分支（★R2 分支属授权轮次，须与未授权分支分开归档）⑤ 效果账是否出现 REAL_PASS ⑥ A0–A5 是否出现独立 Reviewer PASS ⑦ live 名册 blockers 首条是否被**名册单写者**更正（只读验证，不代改）⑧ self-reminder `455444908941891` 是否已消耗 ⑨ ★**R2 交卷后须另派独立复核席**（前序复核席 455362122437017 已于 09:12:24.938Z 退场、不可达）⑩ 节号现读枚举：已用至 四十七、**本席已占 四十八 ⇒ 下轮自 四十九 起** ⑪ 取号绑执行点、禁形跑在将落字节上、值闸逐个问远端、传输瞬态必重试并登记次数 ⑫ ★**git 通道本轮 TLS 瞬态 3 连败** ⇒ 下轮优先 REST／GraphQL，git 通道须重试 ⑬ 边界 0
