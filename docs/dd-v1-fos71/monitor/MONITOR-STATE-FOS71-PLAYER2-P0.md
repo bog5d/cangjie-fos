@@ -87,4 +87,9 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 ### 十二、本轮落盘回执
 
 - 本监工只读记录分支：`monitor/fos71-player2-p0-fix`（FOS 仓，**docs-only**；不含任何产品码；不与施工分支 `feat/71-player2-p0-fix-20261023` 冲突，**不构成第二写入者**）
-- 落盘 commit / blob / 字节数 / sha256 / 取数时刻：**见本文件随附的监工回执条目（落盘后回填，父提交为落盘前现读 master HEAD）**
+- 首笔落盘 commit：`5ceab54d43c28ea0f057443b333310e52079e314`（父 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`＝落盘前现读 master HEAD，快进非 force）
+- 首笔落盘 tree / blob：`c205f8322801424a61e462ce63e21e0fa3230bee` ／ `b881261283c8d7d01bdf5f5b12b27bcfcbca2862`
+- 落盘字节数 12,346 B ／ sha256 `6e01bbb9d9b56afd9a1c93b5a67aaa9291d281328d01277e40d303a88f9dcee6`（回读断言：解码长度 12,346 == 信封 size 12,346，且与本地字节逐位相同）
+- 落盘后变更面核验（对基线 master tree，三者分列）：**新增路径 1**（`docs/dd-v1-fos71/monitor/MONITOR-STATE-FOS71-PLAYER2-P0.md`）／**删除路径 0**／**既有路径 blob 变更 0**；路径总数 782 → 783。另有既有目录 tree 对象连带改 sha 2 个（`docs`、`docs/dd-v1-fos71`）＋ 新增目录 tree 1 个（`docs/dd-v1-fos71/monitor`）——**目录 tree 变化是派生变化，不是第二个 blob 变更**
+- 本卡追加自身回执的提交：**见分支 `monitor/fos71-player2-p0-fix` 的 tip（父＝首笔落盘 commit，快进非 force）**
+- 取数与落盘时刻：2026-10-23T03:06Z ～ 03:47Z（UTC，shell 当场算）
