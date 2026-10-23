@@ -2155,3 +2155,61 @@ master 全树检索 VERDICT／INDEPENDENT-REVIEW／GATE／REVIEWER：仅 3 处�
 
 #### 六、边界
 - **0 合并**（含 master）｜**0 改 PR**｜**0 代写独立 Reviewer 的 VERDICT**｜**0 改 Issue #71 的 AC**｜**0 改尺子口径**｜**0 改 live 名册**｜**0 改执行权登记**（GM 侧 v7 属司仓写面，非本席写面）｜**0 写被验面**｜**0 唤醒**｜**0 spawn**｜**0 恢复**｜**0 新建调度器**｜**0 新建第二套监工**｜**0 新建第二 Planner 席**｜**0 触碰施工方工作树**｜**0 回退他人已落节**｜**0 输出明文 Token**｜**0 force push**
+### 四十七、轮次 17（09:00Z 槽位 · 本席 455446631891282）· ★PR 面在 REST 耗尽期**仍可读**（GraphQL 独立限额通道实测）＋ ★`CURRENT_DOC_TYPES` provenance 精确化（**不推翻** Gate 判据 A-3 的 PASS）＋ 六态 5/6 可达的一手复核 ＋ 变更面三桶与 Gate 逐位一致 ＋ 轮次重叠第四次实例 ＋ 边界
+
+#### 一、★本轮四件事分开判（各自独立读数，不互相顶替）
+- **① cron 是否运行 ＝ 在跑**：本工程巡检 cron 恰一条（task `455353976279398`，schedule `*/20 * * * *`，enabled=true，next_run 2026-10-23T09:20:00Z）｜同账号另有 CF 与 INC3 各一条周期件、另有两条一次性 self-reminder，**均属别的工作面，不是本工程的重复调度**（禁误判、禁删除）。
+- **② 监工是否工作 ＝ 在工作**：本席 09:06:33Z 开轮并落盘两笔；兄弟轮（session `455440079323637`）09:09:57Z 出卡并落四笔。
+- **③ 开发者是否真正施工 ＝ 否（本轮零增量）**：修复分支 tip `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2` 未前进（提交时刻 2026-10-23T05:10:01Z，距本轮约 4 小时）｜master `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 未前进。
+- **④ 是否产生新的功能成果 ＝ 无**：本轮被验面新增字节 0（台账字节与巡检读数**不算**功能成果）。
+- ⇒ ★**cron 在跑 ≠ 监工在工作 ≠ 开发者在施工 ≠ 有新成果**，四栏分列如上。
+
+#### 二、★PR 面本轮**可读**（此前各轮记「不可得」）—— GraphQL 是独立限额通道
+- 本轮 REST core 配额 remaining=0（reset 2026-10-23T09:20:29Z），但 **GraphQL 额度 remaining=4970** ⇒ 用 GraphQL 读 PR 面成功 ⇒ ★**「REST 读面不可得」不等于「PR 面不可得」**：同账号下 REST 与 GraphQL 是两套独立预算。
+- **PR #81 一手读数**（GraphQL，取数时刻 2026-10-23T09:12Z）：`state=OPEN`｜`merged=false`｜`mergeable=MERGEABLE`｜`mergeStateStatus=BLOCKED`｜`reviewDecision=None`｜正式 review **0 条**｜issue comment **1 条**（＝独立 Gate 裁定）｜`headRefOid=d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`（＝现读 tip，逐位相同）｜`createdAt=2026-10-23T05:11:46Z`｜`updatedAt=2026-10-23T05:51:17Z`（自那以后 PR 面未再被改动）。
+- **PR 列表**：#80 open（规格包，head `3554264721737aa5ecd8a410f46845bee88a3a7e`）｜#79、#78、#77、#76、#75、#74、#72 均 MERGED。
+- ★**独立 Gate 原文已完整复核**（comment id `IC_kwDOSNAqDM8AAAABev249A`，13,024 B）：**VERDICT PASS**，十项判据（A-1、A-2、A-3、A-4、A-5、B-1、B-2、B-3、C-1、C-2、C-3、D-1、D-2、D-3、E-1、E-2、E-3、E-4、F-1、F-2、G-1、G-2）**全数成立**、**无 blocker**；复核方式为独立 checkout（带 .git）× 串行单进程复跑 × 字节层机械证，**执行席不参与本裁定**；复核时刻 2026-10-23T05:19:47Z 至 05:52Z。★该裁定**自陈三条口径边界**：只覆盖交卷 SHA 上的机械口径、**不构成业务效果终局认定**、**不构成真实考试级 PASS**。
+- ⇒ ★**被验对象未变 ⇒ 该 PASS 仍可外推**；但★**PASS ≠ 合并授权**（合并授权属人类侧，本席不合并）。
+
+#### 三、修复面字节级独立复核（git 通道，锚点＝ref 当前值）
+- ★**变更面三桶**（`git diff-tree -r -t --raw`，**按 mode 判读**）：**新增文件 6**（1 个用例文件 ＋ 5 份交卷件）｜**删除 0**｜**既有 blob 变更 8** ⇒ 合计 14 路径。
+- ★**口径提示（本轮踩到并修正）**：裸跑带 `-t` 的 diff 会把**目录树**（mode 040000）计成一条新增路径 ⇒ 得 7；**按 mode 过滤后得 6**，与独立 Gate 裁定的「新增 6／删除 0／既有 8」**逐位一致**。
+- ★**材料类型唯一来源**：权威表 ＝ `dd_v1_requirement_service._DOC_TYPE_RULES`，**恰 10 个 key**（audit_report、financial_statement、tax、license、charter、capital、resolution、ip、labor、contract）。本 PR **删除了**语义层那张 7 类中文表（master 上 `semantic_retrieval_service.DOC_TYPES` 现读已不存在）｜`doc_type_service` 一律走 `rq.parse_doc_type` 与 `rq.doc_type_search_terms`｜语义层 `_doc_type_spans` 一律走 `rq.parse_doc_type_spans`｜正式入口 `cmd_scaffold` 走 `dts.resolve_doc_type(file_name=f.name)` ⇒ **类型判定只有一处来源，无第三套类型表**。
+- ★**正式入口落点**：`tools/dd_v1_local_run.py` 的 scaffold（＋38／−5）改用服务层解析、**只看文件名**（规避「目录里别人的类型」）、索引件排除、期间判定改用英文 key｜split 新增 `redact_for_output`（对外落盘面 PII 脱敏）｜run 走 `sem.run_semantic`。`tools/dd_team_channel.py` **未改动**，但其 DSH 链路 `dd_team_channel` → `br.bridge_library` → `sem.build_semantic_packet` 经源码核对**成立** ⇒ 修复沿服务层**传到队道入口**。
+- ★**六态**：封闭枚举 `NO_CANDIDATE_REASONS` **恰 6 项**（NO_MATERIAL、UNRESOLVED_DOC_TYPE、UNKNOWN_ENTITY、PERMISSION_BLOCKED、RETRIEVAL_EXHAUSTED、OTHER），与派工令的六种原因**逐项对应**；另有**正交**的四态阶梯 `CANDIDATE_STATUSES`（OK → EXHAUSTED → PERIOD_OR_VERSION_MISMATCH → NO_CANDIDATE）承载「候选存在但期间或版本不可用」⇒ 域外情形走 `reason=None` ＋ `candidate_status`，**不折进 OTHER、不伪装成 MISSING**。
+- ★**六态生产可达性 ＝ 5/6**：`PERMISSION_BLOCKED` 的**无生产者**（meta 的 access 与 restricted 是留出的扩展点，仓内两个 meta 生产者都不写）是**施工方自己在四处写明的**（`_access_blocked` docstring、枚举注释、测试 docstring、交卷件 §8-C7 与 G1），并被独立复核席与独立 Gate 双向互证 ⇒ 属**已披露的已知缺口**，不是隐藏缺陷。
+- 交卷件自陈：零外部调用、零费用、零真实材料；新增材料全部为**现场合成**的法人甲与法人乙样例，落在 pytest 临时目录、不进仓。
+
+#### 四、★`CURRENT_DOC_TYPES` 的 provenance 精确化（**对 Gate 判据 A-3 的补充，不推翻其 PASS**）
+- 独立 Gate 判据 A-3 裁定：该常量为权威 10 类的子集、现值 {license, charter}、**键集未漂移**（基线语义层的中文 CURRENT 集合归一后与之相同）、桥接层与需求层同源（同一常量）⇒ **PASS 成立，本席独立复核后维持该结论**。
+- ★**本席补充的精度点（不改变 A-3 结论，只补登记）**：桥接层 `DOC_TYPE_KEYS` 是**生成式派生**（由权威表元组推导）、`_CURRENT_DOC_TYPES` 是**直接引用** ⇒ 这两处**构造上不可能漂移**；但需求层 `CURRENT_DOC_TYPES` 本身是**手写字面量** ⇒ **构造上可漂移**（若权威表日后增删「无年度口径」的材料类型，该字面量不自动跟随）。★这是**前向观察项**，不是本 SHA 的缺陷。
+- ★**文档表述与实现不符（低 severity）**：该常量的注释写「与 `_DOC_TYPE_RULES` 同源 —— 任何一侧都不得另抄一份类型子集」，而其实现**正是手抄的一份 2 键子集** ⇒ 建议措辞改为「键集与权威表一致（已用机械证核对），非派生」——★**本席不代改被验面**，仅登记。
+- ⇒ ★**综合判定不变**：**不构成第三套类型表**（它不是类型判定表，而是「期间语义」子集，且位于权威模块内）；★类型判定唯一来源仍为 `_DOC_TYPE_RULES`。
+
+#### 五、GM 名册一手复核（跨通道互证第三条）
+- git 通道现读 `bog5d/cangjie-gm` 的 `main`＝`1e868391a6703724df157600260e4aab21ed1077`；`data/work_items.json` ＝ 489,942 B｜本体 sha256 `3d1f9b5a9a3894498e886b9d51f4f04e951abedbb73117b39049ed489ae3f6b3`｜**42 条** ⇒ 与司仓席 09:0xZ 的 git 读数、监工 08:25Z 的 REST 读数**三侧逐位相同** ⇒ **跨通道、跨席互证成立**。
+- `W-DD-V1-2026`：**22 键**；**无 owner 键、无 lease 键、无 evidence 数组**｜`current_state=BLOCKED`｜`current_wp=WP-R2`｜`executor=hermes`｜`waiting_for_chairman=true`｜`updated_at=2026-10-19T19:45:00+08:00`｜`next_action.action=WAIT_CHAIRMAN`｜`blockers` 4 条字符串（**首条仍为陈旧的「执行器全灭」表述** ⇒ 司仓侧 v7 更正补丁**尚未落到 live 名册**，与「live 名册 0 写」一致）。
+- ★`work_packages` 6 包：WP-R0 与 WP-R1 ＝ COMPLETED；WP-R2、WP-R3、WP-R4、WP-R5 ＝ **BLOCKED**（executor 均为 hermes）⇒ 与「派工链已恢复、但 live 名册仍记 BLOCKED」并存 ⇒ ★**名册状态落后于事实**（陈旧 ≠ 错），且**名册为单写者面，本席不代改**。
+
+#### 六、两本账与活跃态 · 该踢吗
+- **工程 ＝ 4/4 ＝ 100%**（分子＝已过独立 Gate 的 WP；Gate PASS 只覆盖交卷 tip 的机械口径）｜**效果 ＝ 0/100 REAL_PASS**（五项 outcome 全 UNKNOWN：真实材料库实测、Windows 盲测、模型实测**均未发生**，合成与 MOCK 不折算）｜**A0 至 A5 ＝ 0/6**（尺子内 `verified_change` 全为 NONE）｜**硬门槛 9 项全 UNKNOWN**。★**两本账互不换算**。
+- **活跃 ＝ WAITING**（修复线等 PR #81 合并授权 ＋ 真实材料库与 Windows 实测；派工链已恢复且产能已证）｜**该踢吗 ＝ NO**（下一棒不在执行席范围：合并授权属人类侧、真实材料库与 Windows 盲测属刘江侧、A0 至 A5 属上级集成包 ⇒ 判据「已有合法下一 WP」不成立，唤醒＝造第二写者）｜**无人值守有效续跑 ＝ UNKNOWN**（监工腿 PASS／Planner 腿 PASS（09:05Z 已证）／施工腿 已收工；剩余三步需人类侧授权 ⇒ **不得宣称无人值守施工**）。
+- ★**本轮 0 恢复、0 spawn、0 唤醒**：司仓席 455351523090910 于 09:05Z 已产出（四问裁定 ＋ GM 执行权登记 v7 落远端，笔 `d29a01255e6ddae0cf0ff6214ba5ba17f1172aab`）⇒ 已在跑，不打扰。
+- ★**调度链新读数**：一次性 self-reminder `455444908941891` 现读**绑定 sessionId 455351523090910**（司仓席）、run_at 2026-10-23T09:15:56.330Z ⇒ ★**该席的定时唤醒路径已补上**（此前各轮记「定时唤醒路径仍缺」已过期，此处只追加更正）｜★仍**不 spawn 第二 Planner 席、不新建第二调度器**。
+
+#### 七、★轮次重叠第四次实例（取号绑执行点，零撞号）
+- 本席 09:06:33Z 开轮时，兄弟轮正落在**同一状态卡**上：其第三笔 `b7bd1f48798a21bf84d53fe0c825a7e4d4a8d097` 的 committer 时刻为 **2026-10-23T09:06:39Z**（比本席开轮晚 6 秒）⇒ 若沿用开轮前的枚举，会取到已被占用的号。
+- 本席**在落盘执行点现读基座** ＝ `d3980c967ca46b56e5401c4ea1e555a33b104d19`（兄弟轮第四笔），并**现读枚举节标签** ⇒ 已用至 四十六（其中 四十五 出现 2 次：第二处为兄弟轮自曝的**误追加副本**，保留不改写）⇒ ★**本席取 四十七**，与兄弟轮四十六**零撞号**。
+- ★**台账里现存的 §四十五 重复**：兄弟轮已在 §四十六 自曝并更正（落盘脚本节号路径写死 ⇒ 追加了上一节副本 8,186 B）⇒ 本席**独立复核确认该副本仍在台账内**（不删、不改写），读者按节号定位时第二个 §四十五 应视为副本。
+
+#### 八、禁形自检与值闸（本轮新增字节内）
+- 作用域 ＝ 本轮将落盘的那一份（新增字节）；切法 ＝ 整份新文件逐族扫描 ＋ 新旧命中集合之差；基座一换 ⇒ 整轮读数作废重跑。族定义沿用 §四十五（F1 替换符｜F2 单码点省略号｜F3 ASCII 三点连写｜F4 长度恰 8 且含 a–f 的小写 hex｜F5 裸 URL（前面不是反引号）｜F6 长度 41 至 63 或 ≥65 的 hex 游程（64 除外）｜F7 长度 7 至 39 且含 a–f 的小写 hex（长度 8 让给 F4）｜UUID 先挖空）。
+- 结果：**新增命中逐族 0**；**阳性对照 7/7 全响**；**阴性对照 7/7 全静**。
+- 值闸：本节引用的 40 位标识符逐个问远端对象存在性 ⇒ **全部命中**（修复 tip、master tip、台账基座 tip、兄弟轮第三笔、GM main tip、GM 执行权登记 v7 笔、PR #80 的 head 字节）｜另 1 个 64 位串 ＝ GM live 名册 blob 的**内容 sha256**（按取到的字节**本地复算**比对，非 git 对象）｜**阴性对照 2/2 落空**（全零串与十六进制死串各一）。
+- ★**本轮纪律复现**：落盘脚本的节号路径必须**真正参数化**（沿用兄弟轮 §四十六 的纠正），且**追加前断言「待追加首行 ≠ 台账末节首行」**——本席脚本据此实现，零触发。
+
+#### 九、边界
+- **0 合并**（含 master）｜**0 改 PR**｜**0 代写独立 Reviewer 的 VERDICT**｜**0 改 Issue #71 的 AC**｜**0 改尺子口径**｜**0 改 live 名册**｜**0 改执行权登记**｜**0 写被验面**｜**0 唤醒**｜**0 spawn**｜**0 恢复**｜**0 新建调度器**｜**0 新建第二套监工**｜**0 新建第二 Planner 席**｜**0 触碰施工方工作树**｜**0 回退他人已落节**｜**0 改写他人已落字节**｜**0 输出明文 Token**（凭据只走 credential.helper 字面串）｜**0 force push**｜**0 出波总卡**（本轮无新触发条件：修复面零增量、无新 Gate、无新停滞、无新待决项 ⇒ 兄弟轮 09:09Z 的卡已覆盖同一组事实 ⇒ 同一事件不重复投递）。
+
+#### 十、下轮（09:20Z 槽位）必查
+① 09:20:29Z REST 恢复后**补 REST 读**并与本轮 GraphQL 读数互证（PR #81 三面、Issue #71、check-runs）② 修复 tip 与 master tip 是否前进 ③ 远端 heads 是否出现新 71-* 分支（本轮 32 个，无新增）④ 效果账是否出现 REAL_PASS ⑤ A0 至 A5 是否出现独立 Reviewer PASS ⑥ live 名册 blockers 首条是否被名册单写者更正（只读验证，不代改）⑦ self-reminder `455444908941891` 是否已消耗、司仓席是否继续产出 ⑧ 兄弟轮是否又落地（落则重取基座与节号）⑨ 节号现读枚举：已用至 四十六、**本席已占 四十七 ⇒ 下轮自 四十八 起** ⑩ 取号绑执行点、禁形跑在将落字节上、值闸逐个问远端、传输瞬态必重试 ⑪ GraphQL 作为 REST 耗尽期的 PR 面备份通道（★下一轮可直接用，不必再记「不可得」）⑫ 边界 0
