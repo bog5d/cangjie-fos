@@ -278,8 +278,11 @@ def parse_period_spec(raw: str, *, current_doc_type: bool = False) -> dict[str, 
     # 「请提供近三年的审计报告（报告期截至2024年6月30日）」）被判成 EXPLICIT(2024)，
     # 相对期间语义被静默丢弃 ⇒ build_period_spec 因 kind != RELATIVE 跳过锚点解析
     # ⇒ 相对期间无锚点可展开 ⇒ 判否且不带 abstain_reason（自信地紧）。
-    # 新序：含相对期间字面时不在此判 EXPLICIT，交给下方相对期间分支（可被锚点展开）。
+    # 新序（**仅本单年分支**）：含相对期间字面时不在此判 EXPLICIT，交给下方相对期间分支（可被锚点展开）。
     # 明确区间（_RANGE_RE）仍最优先：区间本身即已声明窗口。
+    # ★已知残留（**散落年份轴**）：上方「散落年份 ⇒ 推断区间」分支在本分支**之前**先行 return
+    #   ⇒ 该轴对 C-1 闸**零判别力**（文本含相对期间字面时仍可能被判成**放大**的 EXPLICIT 区间）；
+    #   按 C-1 原始口径**不阻断 T4**。
     if not _has_relative_marker(text):
         m = _YEAR_RE.search(text)
         if m:
