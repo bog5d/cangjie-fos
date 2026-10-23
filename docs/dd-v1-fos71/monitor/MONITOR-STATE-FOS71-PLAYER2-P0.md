@@ -7189,3 +7189,60 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 · 硬门槛 0 PASS / 0 FAIL / 9 UNKNOWN｜活跃 PRODUCTIVE｜**该踢吗 NO**。
 · **0 出波总卡**（本轮为已登记读数的时刻差更正 ＋ 合流判据补项，非新待人类裁决项）。
 · 边界 0：0 写产品码｜0 合并任何分支｜0 关 PR｜0 代写 VERDICT｜0 改 AC・尺子・名册｜0 写施工方工作树｜0 改写他人已落字节｜0 amend｜0 force｜0 唤醒｜0 spawn｜0 输出明文 token。
+
+#### 一百三十（号 130）、轮次 37（15:20Z 槽位独立监工席 · 本席 `455539555533283` · 取数窗口 2026-10-23T15:20:41Z–2026-10-23T15:44Z UTC）· ★★**本轮头号新事实：#81 分支已前进（T2 笔落远端）＋ C-1 回归锁判别力本席一手机械复算双向坐实** ＋ 变更面三桶口径差（★两个口径都对，数值不同）＋ T3′ 独立 Gate 席已派出
+
+■ 0 通道、取数时刻与取号
+· ★**节号取自执行点现读**（写 ref 前最后一次远端现读）：`monitor/fos71-player2-p0-fix` tip 现读 = `1fc76fd3f286592d9c882ef355eb0f4e4c9fdbee`（15:33:06Z）｜★该 tip 上顶层节号已占至 **129**（§124–§129 均为同刻兄弟席所落）⇒ ★**本席取 §130**；★**字面层再查**：全文件中无任一标题行的数字 token 解析为 130（0 行命中）⇒ ★**零撞号**。
+· REST v3 只读：git/ref/heads、git/matching-refs、git/trees、git/blobs、git/commits、pulls、issues/comments、commits/check-runs；★base64 解码后逐次断言解码长度等于信封 size（本轮 8 处 blob 全过）。
+· ★时刻锚只用 GitHub 侧 commit committer date／check-run 起止／PR updated_at／评论 created_at；★**本席不把会话消息头部时刻当时间锚**。
+· ★本席本轮未取到的读数一律记「不可得」，**不记「无」**。
+
+■ 1 ★★头号新事实一：**#81 修复分支已前进一档（T2 笔落远端）**
+· 现读 `refs/heads/feat/71-player2-p0-fix-20261023` ＝ **`1baeb89c00b42d69f2c86af35ee52223a3245073`**（committer date **2026-10-23T15:23:22Z**）｜★**上轮现读的 `16e18b21f261fb97e22352a64cc64ebb289c74ea`（12:08:16Z）已被超越** ⇒ ★**本轮是本席第一次现读到该分支前进**。
+· ★**变更面（blob 口径，树对树独立复算）＝ 新增 2 ／ 删除 0 ／ 既有 blob 变更 6**（相对前一 tip `16e18b21f261fb97e22352a64cc64ebb289c74ea`）：新增 ＝ `backend/tests/test_dd_v1_g5_mixed_type_packaging.py`、`docs/dd-v1-fos71/g5-mixed-type-packaging/FULL-RUN-READING.md`；改 ＝ `AGENTS.md`、`CHANGELOG.md`、`backend/src/cangjie_fos/services/` 下 4 个 service（card／doc_type／match／policy）⇒ ★**恰 8 条 blob 变更，与施工席自报的 8 条一致**。
+· ★**派生 tree 口径（与 blob 口径分开报）＝ 新增 tree 1 ／ 删除 tree 0 ／ 变更 tree 7**（`backend`→`backend/src`→`backend/src/cangjie_fos`→其下的 services 目录、`backend/tests`、`docs`、`docs/dd-v1-fos71`）⇒ 合计 8。
+· ★**平台 CI 现读（该 head 上 check-run 共 6 条）**：Frontend Build Check ×2 **completed/success**（15:24:36Z／15:24:39Z 起，15:24:52Z 收）｜Backend Tests (440+ required) ×2 **in_progress**｜Backend Tests (228 required) ×2 **in_progress**（均 15:24:36Z–15:24:39Z 起，未收尾）⇒ ★**未收尾 ⇒ 既不记红也不记绿**；★**同一 head 上两套 run 集并存**（run id `120497600011`／`120497600530`／`120497600563` 一套 ＋ `120497623123`／`120497623444`／`120497623594` 一套）⇒ ★**登记时须写清 run id 与触发源，否则读者会把 6 条读成两个结论**。
+· ★**R2 tip 未动**＝ `32af192c62818f599418bb06311b09dce5b7848e`（14:31:56Z）｜★**master tip 未动**＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（11:01:06Z，已自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 前进 2 笔「公开面清零」）。
+· ★**PR #84 仍 open**，head ＝ `32af192c62818f599418bb06311b09dce5b7848e`，base ＝ 修复分支（★**base 现读 tip 已从 `16e18b21f261fb97e22352a64cc64ebb289c74ea` 变为 `1baeb89c00b42d69f2c86af35ee52223a3245073`** ⇒ ★**PR 的 `base.sha` 快照（`78807393ca2ae914c82cafdf5677f1534bd7175c`）已第二次过期**；★差分与判冲突一律用 base 分支现读 tip，禁 `baseRefOid`）。
+
+■ 2 ★★头号新事实二：**C-1 回归锁的判别力，本席一手机械复算双向坐实（不采信任何一方自述）**
+· 背景：#84 的独立 Gate 裁定 `6364959808`（2026-10-23T12:32:59Z）**VERDICT: FAIL**，唯一不成立项＝「C-1 的回归锁是空的」；★该裁定锚的 head `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6` 已被后续笔超越 ⇒ ★**锚已陈旧**。
+· ★**本席的复现方法（可复算，作用域＝被验字节）**：对每个 commit **取它自己的** `dd_v1_period_service.py`（产品字节）**与它自己的** `backend/tests/test_dd_v1_period_service.py`（测试字节），在**本席沙箱内**加载该产品模块（该模块仅依赖 `re`／`sys`／`typing`，★**无外部依赖 ⇒ 可独立复算**），逐条执行其 `test_c1*` 用例；★**变异＝把产品字节里唯一那处 `if not _has_relative_marker(text):` 改成 `if True:`**（★先断言该字面在产品字节中恰出现 1 次，再改；★**不回写远端、不改被验字节**）。
+· ★**结果（双向，两侧都坐实）**：
+  - **Gate 锚点（该 commit 的 40 位 blob 全串见本节第 5 节）**：原样两条 `test_c1*` **全 PASS**；★**同一条变异后仍全 PASS** ⇒ ★**本席独立复现了 Gate 的 FAIL 判定：那一刻的回归锁确实无判别力**（根因与其一致——两条用例的输入都是破折号写法「2024-06-30」，该写法走不到被判单年 EXPLICIT 的那条分支）。
+  - **R2 tip `32af192c62818f599418bb06311b09dce5b7848e`**：原样三条 `test_c1*` **全 PASS**（`test_c1_relative_period_not_swallowed_by_single_year_explicit`、`test_c1_declared_anchor_expands_relative_period_with_year`、★**新增的 `test_c1_date_writing_variants_agree`**）；★**同一条变异后三条全转 FAIL** ⇒ ★**判别力已具备**。
+· ★**字节层佐证**（两 commit 的测试文件逐字现读）：Gate 锚点的那两条用例输入**全是破折号写法**（`2024-06-30`）且**没有** `test_c1_date_writing_variants_agree`；R2 tip 上两条用例输入**已改为带「年」写法**（`2024年6月30日`），并**新增**一条三写法不变性用例（破折号／年／斜杠 ⇒ kind／span／years／resolved 全等），且测试文件的 docstring 把「写法可达性要求」写进了理由。
+· ★**本条不改变任何账**：★**Gate 的锚仍是旧 head，R2 tip 上仍无独立 Gate 裁定** ⇒ ★**R2-WP1 工程分子仍 0/1，进位条件未满足**；★**本席 0 代写 VERDICT、0 把本席复算当作独立 Gate 结论**。
+· ★**本席自曝一处探针缺陷（方向＝假红，已修探针、未动被验字节）**：初版复算**对 Gate 锚点使用了 R2 tip 的输入写法**（带「年」），据此一度报「Gate 锚点也会变红」⇒ ★**与 Gate 结论相反**；根因是**探针取了他席的输入而非被验 commit 自己的输入**（★**断言必须取自被验对象自身**）⇒ 改为「每个 commit 用它自己的测试字节」后复算，结论与 Gate 一致。★**纪律：跨 commit 比较时，测试输入属于被验字节的一部分，不可跨对象借用。**
+
+■ 3 ★★新事实三：**变更面三桶的「口径差」——两个口径都对，数值不同（★必须分列报，否则下轮会读成对象变化）**
+· ★**修复分支自**基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（任务书给定的基线）**起**：blob 口径 **新增 20 ／ 删除 11 ／ 既有 blob 变更 9**（blob 总数 782 → 791）；全条目口径（含派生 tree）**新增 23 ／ 删除 14 ／ 变更 21**。
+· ★**修复分支自 master 现读 tip `3781311c4b1157c68a0f891506b7c33ab327f7c4` 起**：blob 口径 **新增 19 ／ 删除 0 ／ 既有 blob 变更 9**（782→791 中的 772→791）；全条目口径 **新增 22 ／ 删除 0 ／ 变更 21**。
+· ★**差异来源（本席机械定位）**：master 相对基线的那 2 笔「公开面清零」**已把那 11 条 `seven-item-bundle/*` 路径删除**⇒ ★**以基线为起点数出的「删除 11」，在以 master 现读 tip 为起点时变为「删除 0」**；★**其余差额是派生 tree 条目（目录）被计入**。
+· ★**纪律**：★**「自基线起」与「自 master 现读 tip 起」是两个不同起点**⇒ 报变更面时**必须写明起点是哪一个**；★**基线已被 master 超越后，基线口径的删除数会与 master 口径不一致——这不是对象变化，是起点不同**；★**只看新增集合仍会把 9 条改写型落盘读成「0 变更」**（★三个口径都必须分列）。
+
+■ 4 六态 · 类型表 · 正式入口（本席本轮独立复核，**只登记不转述**）
+· ★**权威六态枚举在位**：`dd_v1_semantic_retrieval_service.py`（新 #81 tip 43359 B／blob `8a7fb6986cc5898d3021321d1b9de30a1c30bedc`；★**该文件在三个 tip 上均不含六态以外的第二套原因枚举**）的 `NO_CANDIDATE_REASONS` 恰 6 项（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER）＋ `CANDIDATE_STATUSES` 4 项（OK／EXHAUSTED／PERIOD_OR_VERSION_MISMATCH／NO_CANDIDATE）★**逻辑层六态判定成立**。
+· ★**类型表无第三套（★本轮重核，起点是 T2 后的新 #81 tip）**：`dd_v1_requirement_service._DOC_TYPE_RULES` 恰 **10 个**英文 key（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）｜★`dd_v1_doc_type_service.py` 在**新 #81 tip 上已被 T2 笔改动**（7974 B → 10969 B，blob `79734a720a39b1e2da5589e6edc67092c637881e` → `e2847ad6d58b9a7914092f5fab1daa498a92aaea`），★**改的是多值 API 而非类型表**：新增 `resolve_doc_types()`（返回 `types`／`primary`／`provenance`／`evidence`）与共用来源函数 `_type_sources()`，`resolve_doc_type()` 改为复用它⇒ ★**单值与多值结论共用同一来源口径、永不分叉**；★**该文件走 `rq` 公开 API（`from cangjie_fos.services import dd_v1_requirement_service as rq`），自身不抄表**（★本席逐字核：**文件内无 `_DOC_TYPE_RULES` 字面、10 个规范 key 字面量命中 0 处**）｜★新多值 API 依赖的 `rq.parse_doc_types()` **定义在权威服务内**（基于 `parse_doc_type_spans()`，★**仍走同一张 10 类表**）⇒ ★**无第三套类型表成立**。
+· ★**三处「同源」读数（供下轮直接比对）**：`dd_v1_requirement_service.py` 52618 B／blob `eccb7dfe844cf96db88c125b20c786057488f92c` 在 **旧 #81 tip ／新 #81 tip ／R2 tip 三个 tip 上逐位相同**；★`dd_v1_doc_type_service.py` 在**新 #81 tip（`e2847ad6d58b9a7914092f5fab1daa498a92aaea`）与 R2 tip（`79734a720a39b1e2da5589e6edc67092c637881e`）上不同**（★R2 tip 仍是旧版（blob 全串见本节类型表段））⇒ ★**这是 T2 笔的真实增量，不是类型表分叉**；★`dd_v1_bridge_service.py`（23455 B／blob `c23d62c160a94bb64d4f30313c0a86e754f10842`）**三个 tip 逐位相同**。
+· ★**正式入口接线在位**：入口 A `tools/dd_v1_local_run.py`（新 #81 tip 27850 B／blob `9c0412cea06b00902b3be39b1e215c8bcf8508da`；R2 tip 28156 B／blob `3981543733ca643b0caaab255de77729ff8a964b`）经 `sem.run_semantic` 走语义层；★**入口 B `tools/dd_team_channel.py`（新 #81 tip 31346 B／blob `8f08d560a4c4a147efca4e43c6f727114662af34`；R2 tip 34810 B／blob `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`）在本席现读的 #81 tip 与 R2 tip 上，字节层面不含 `no_candidate_reason`／`candidate_status`／`evidence_status` 三键** ⇒ ★**六态在薄入口的可达性缺口仍成立**（★兄弟席 §一百二十三 已登记该缺口，本席只作**独立复现登记**，不重复投递、不改写他人字节）。
+
+■ 5 独立 Gate 面（本轮现读）
+· #84 唯一裁定 ＝ `6364959808`（12:32:59Z，**VERDICT: FAIL**，锚（blob 全串见本节 Gate 段））⇒ ★**锚已被超越**；★**R2 tip `32af192c62818f599418bb06311b09dce5b7848e` 上无独立 Gate 裁定**（★本席现读 #84 的 reviews 0 条、review comments 0 条、issue comments 仅此 1 条）。
+· ★**T3′ 独立复核席已派出**（会话面读数，非远端字节）：新席 `455539551396187`（agent=Verifier，父＝司仓 `455351523090910`）★**创建于 2026-10-23T15:20:56Z**（≈ 本席开轮时刻）⇒ ★**Gate 在飞，尚未落裁定 ⇒ 工程分子不因「在飞」进位**。
+· ★**#81 的十项 PASS 裁定**（`6358415604`，锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`）★**仍只覆盖该旧对象，不可外推**到 `16e18b21f261fb97e22352a64cc64ebb289c74ea`／`1baeb89c00b42d69f2c86af35ee52223a3245073`／R2 tip／终态合并面。
+
+■ 6 两本账（±0，互不换算）
+· 工程 **4/6**（A0–A5 口径）｜效果 **0/100 REAL_PASS**（五项 outcome 全 UNKNOWN）｜★**R2-WP1 0/1**（终态合并面 Gate 在飞，尚未落裁定）｜硬门槛 **0 PASS／0 FAIL／9 UNKNOWN**。
+· ★**两账本轮 ±0 的理由**：★**「C-1 判别力已修」是本席的字节级复算，不是独立 Gate 裁定** ⇒ ★**不得据此进位**；★**#81 分支前进是施工进展，不是验收进展**。
+
+■ 7 活跃态 · 四件事分开判（分开报，互不顶替）
+· ① **cron 是否在跑**：✔（本席即 cron 轮次；`cron_read view=list` 全表 **3 条**，本工程**恰 1 条**（`455353976279398`）；另 2 条分属 CF（`455347827208431`）与 INC3（`455164742488166`）⇒ ★**禁误判为重复调度、禁删除**；★三条 `last_run=0` 属平台未回填，**不作「没跑」判据**）
+· ② **监工是否在工作**：✔（本席本轮独立复算 ＋ 落盘；兄弟席 §一百二十三 于 15:19:28Z 落盘）
+· ③ **开发者是否真正施工**：✔（#81 分支 15:23:22Z 落新笔；T2 施工席 `455536575127975` 末条 **finish_reason=toolUse**、在飞）
+· ④ **是否产生新的功能成果**：✔（T2 笔把 G5 四服务文件并入 #81 线：8 条 blob 变更，其中 card／doc_type／match／policy 4 个 service 为**产品字节**改动）
+· **活跃态 ＝ PRODUCTIVE**｜**该踢吗 ＝ NO**（★**已在跑不打扰**：#81 tip 15:23:22Z 刚前进、T2 席末条 toolUse、T3′ Gate 席刚派出 ⇒ ★**恢复条款三要件均不成立**；★**本席 0 spawn／0 唤醒**）。
+
+■ 8 边界（本席本轮全集）
+0 写产品代码｜0 合并任何分支（含 master）｜0 关 PR｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue #71 的 AC 判定｜0 改尺子口径｜0 改 GM 名册｜0 改施工方工作树｜0 spawn／0 唤醒／0 恢复｜0 新建第二执行器｜0 新建第二套监工｜0 新建第二个调度器｜0 输出明文 token｜0 amend／0 force／0 改写他人已落字节｜0 删除已落节｜0 把合成测试当真实考试｜0 把「远端 tip 未前进」读成「没在施工」｜0 把未取到的读数记成「无」｜★**本节只追加**。
