@@ -6839,3 +6839,40 @@ check-run 现读（head 上共 **3** 条，全部 completed）：
 ① 施工席**接续派工**后的终态 head 声明是否到达（40 位全串 ＋ 当场程序化声明时刻 ＋ 声明时 tip 现读值 ＋ 四条前置逐项证据面 ＋ 声明后无后续笔）② 声明到达即派 T3′ Gate（锚 ＝ 派工时刻现取终态 head 全串 ＋ 第四节锚集合按新笔重取）③ ★**下一空闲整数号按执行点现读枚举**（★本节域为 26 至 120 连续、域内重号 6 组；★**各席取号器须同时防「假空闲号」与「漏占号」两端，并须接受本库两族三位数字形**）④ 独立复核席 `455458672263345` 的待命态（★本席现读 `status=0`、`updated_at` ＝ 13:53:23Z，与上轮逐位相同 ⇒ **自 13:53Z 起未被唤活**）⑤ T2 是否落进授权分支（合流 3/3）⑥ master 是否前进／PR #82 是否关闭 ⑦ GM 名册陈旧面是否被单写者回写（只读）⑧ 台账是否再现「同席重落／跨席撞号」事故。
 
 本节号：一百二十二（由落盘器在**写 ref 前最后一次远端现读**的基座上按分层口径枚举后同源注入，禁手写；★取号绑执行点、禁沿用任何一方的预告值）。
+#### 一百二十三、轮次 36（15:04Z 槽位独立监工席 · 本席 `455533944021338` · 取数窗口 2026-10-23T15:04:10Z–2026-10-23T15:34:28Z UTC）· ★★**本轮唯一新事实：空候选六态在 DSH 薄入口被结构性截断（已实现但未贯通）** ＋ 两账与 CI 终态复核（±0）＋ GM 名册 4 天陈旧 ＋ 台账并发写面告警（本节号 123）
+
+■ 0 通道与取数时刻
+· REST v3 只读：git/trees、git/blobs、git/refs、commits/052a080950b18b7c85d2f805f564c5e6bfc76b45/check-runs、pulls、issues/comments；★base64 解码长度逐次断言等于信封 size（基座 1511237 B、入口 B 31346 B、名册 489942 B 三处均过）。
+· ★时刻锚只用 GitHub 侧 commit date／check-run 起止／PR updated_at；跨席消息头部的时刻标签不作时间锚。
+
+■ 1 ★★新事实（字节层机械证）：「空候选六态」**已实现，但未贯通到 DSH 薄入口**
+· 权威实现面：`backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py`（#81 head blob `8a7fb6986cc5898d3021321d1b9de30a1c30bedc`）—— 封闭六态 `NO_CANDIDATE_REASONS` 恰 6 项（NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER）；`_retrieve_minimal_evidence_detailed` 返回 `evidence` ＋ `no_candidate_reason` ＋ `candidate_status` ＋ `diagnostics`；`build_semantic_packet` 装入 `packet["evidence_status"]`；`run_semantic` 装入 `rec["evidence_status"]` 并把整份 rec 落盘 `workdir/run_record.json`。
+· ★**入口 A（`tools/dd_v1_local_run.py`）已贯通**：run 路径经 `sem.run_semantic` ⇒ 六态随 rec 落盘，读者可核。
+· ★**入口 B（`tools/dd_team_channel.py`）被截断**：该文件在 #81 head 上 blob `8f08d560a4c4a147efca4e43c6f727114662af34`／31346 B／sha256 `b9972450fe34c554ac9e66b6f87298aad3f96bfce8f1614793f4cd4eccad691f`，★**与修复前基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 上的同一路径 blob 逐位相同**（同一 blob、同一 sha256）⇒ 入口 B 自身零改动。
+· ★截断点在**桥接层**：`backend/src/cangjie_fos/services/dd_v1_bridge_service.py`（blob `c23d62c160a94bb64d4f30313c0a86e754f10842`）L419 调 `sem.rule_hint(ob, ev)`（**两参**）⇒ `rule_hint` 的第三参 `no_candidate_reason` 未传 ⇒ 空证据提示退化为 `verdict=MISSING` ＋ `note=NO_EVIDENCE`（**无原因键**）；且桥接只读 `packet` 的 `evidence` 键，**从不读** `evidence_status` ⇒ 六态在桥接边界被丢弃。
+· ★**全仓消费面扫描**（`backend/src` ＋ `tools` 全量 .py 共 216 个 blob）：`no_candidate_reason`／`candidate_status`／`evidence_status` 三键的**生产者只有语义层**，**消费者只有语义层自身与 `backend/tests/test_dd_v1_fos71_player2_p0.py`** ⇒ **无任何生产入口以字段名读取六态**（入口 A 靠 rec 整份落盘间接可见；入口 B 连间接都不可见）。
+· ★**R2 分支未修此面**：`32af192c62818f599418bb06311b09dce5b7848e` 上 `dd_v1_bridge_service.py` blob **仍为 `c23d62c160a94bb64d4f30313c0a86e754f10842`（与 #81 逐位相同）**；`dd_team_channel.py` blob `ebd2fbb8cab4b2a335b2d8f4c0188120cff46c57`（R2 改的是期间轴，**不含**上述三键）⇒ ★**该缺口在 #81、R2 与二者合并面同时成立**。
+· ★**口径澄清（防假红三条）**：① 入口 B 里唯一的 `MISSING` 字面是**匹配裁定枚举** `ms.V_MISSING`（「缺材料」，与 PERIOD／CONFLICT／UNCERTAIN 等并列），**不是**候选为空原因 ⇒ 不是「统一伪装成 MISSING」；② 语义层对「候选存在但期间或版本不可用」明确 `reason=None` ＋ `candidate_status=PERIOD_OR_VERSION_MISMATCH` ⇒ **逻辑层六态判定本身成立**；③ 本条登记的是**可达性缺口**（读者按入口 B 的报告核不到它声称的原因），**不是**独立 Gate 假绿 —— Gate 的 B-3 判的是「`packet.evidence_status` 含 candidate_status」（字面成立）、D-2／D-3 用的是服务层直调，★**Gate 未覆盖入口输出面**，覆盖面外的新缺口。
+· ★影响面：GOAL-CONTRACT 成功标准第一条把「Team Channel 薄入口」列为**主路径** ⇒ 主路径恰是六态不可见的那一条。
+
+■ 2 本轮复核（±0；已被同刻兄弟席报过的不重复投递）
+· 分支 tip：#81 head `16e18b21f261fb97e22352a64cc64ebb289c74ea`（12:08:16Z，**本轮未前进**）｜master tip `3781311c4b1157c68a0f891506b7c33ab327f7c4`（11:01:06Z，★**已从基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 前进**）｜R2 tip `32af192c62818f599418bb06311b09dce5b7848e`（14:31:56Z）｜G5 tip `6afe3ee06b918970d1e25d8d31af88724b694c30`（13:16:15Z）。
+· 自基线起变更面三桶分列：**新增 20 ／ 删除 11 ／ 既有 blob 变更 9**（782 → 791 blob）⇒ ★只看新增集合会把 9 条改写型落盘读成「0 变更」。
+· 类型表：**无第三套**。权威 `rq._DOC_TYPE_RULES` 恰 10 key；`card`／`match`／`policy`／`semantic_retrieval`／`doc_type_service` 五个模块**全部 `import dd_v1_requirement_service as rq`** 引用同一常量，本地类型字面量集合 0 处、本地类型正则定义 0 处。
+· 入口 A 接线在位：`cmd_scaffold` → `dts.resolve_doc_type` ＋ `rq.CURRENT_DOC_TYPES`，输出 `doc_type_provenance` ＋ `doc_type_unresolved`；`cmd_split` → `sem.redact_for_output` ＋ `ambiguous_splits`。
+· CI 终态：#81 head **6/6 success**（两条 440+ 分别于 12:12:45Z 与 12:39:39Z 收齐）｜#84 head **3/3 success**（440+ 14:32:07Z → 15:04:03Z，31 分 56 秒 ⇒ 长耗时非红）⇒ ★「某 head 全绿」的有效期**只到下一次 head 前进为止**。
+· 独立 Gate：#81 十项 **PASS**（锚 `d1ebe3392fb20f04c2d0ecb00bbe639804187ac2`，05:19Z–05:52Z；★其口径自陈不构成业务效果终局认定）｜#84 唯一裁定 **FAIL**（锚 `0351386f1d18dde3c4bc7f4d1d9b7009676c76a6`，★锚已陈旧；C-1 回归锁在新 head 上已修字节，**新 head 上独立 Gate 仍缺**）⇒ R2-WP1 仍 0/1。
+· ★**GM 名册陈旧**：`data/work_items.json` 中 W-DD-V1-2026 仍为 `current_state=BLOCKED`／`executor=hermes`／`waiting_for_chairman=true`／`next_action.action=WAIT_CHAIRMAN`（updated_at 2026-10-19T19:45:00+08:00，**4 天陈旧**），仍写「执行器全灭（cursor 额度耗尽／dsh 余额不足／hermes 假成功），即使立即派工也无执行能力」⇒ 与今日远端实际字节（#81 6 笔／R2 4 笔／G5 1 笔）矛盾 ⇒ ★**本巡检 prompt 里的基线快照同样陈旧**；两者都须以远端字节为准，名册不作为「没在施工」的判据。
+
+■ 3 两本账（±0，互不换算）
+· 工程 **4/6**（A0–A5 口径；分母 6 有尺子依据：GOAL-CONTRACT 的 progress.note 逐字「新6个WP，0/6已完成独立验收」；分子 4 ＝ A0／A1／A2／A3 各一条独立 Reviewer PASS 载体）｜效果 **0/100 REAL_PASS**（五项 outcome 全 UNKNOWN；★远端唯一盲考成绩为 8 义务**合成自检**，agent 0.125 ＜ RULE_ONLY 控制组 0.25 ⇒ 不折算）｜R2-WP1 **0/1**｜硬门槛 **0 PASS／0 FAIL／9 UNKNOWN**。
+· 活跃态 **PRODUCTIVE**（① cron 在跑 ✔ ② 监工在工作 ✔ ③ 开发者真正施工 ✔ — R2 线 14:31:56Z 出新字节 ④ 有新功能成果 ✔ — R2 交卷文档已落远端）｜**该踢吗 NO**（#81 tip 虽约 3 小时未动，但 R2 线 32 分钟前有新 commit ⇒ 已在跑不打扰；且原执行席已被平台批量中止、司仓已派 T2 施工席，本席不重复恢复）。
+· cron 全表 **3 条**，本工程**恰 1 条**（`455353976279398`）⇒ 另 2 条分属 CF（`455347827208431`）与 INC3（`455164742488166`），**禁误判为重复调度、禁删除**；★三条 `last_run=0` 属平台未回填，**不作「没跑」判据**。
+
+■ 4 ★并发写面告警与本席自曝
+· ★台账本轮被 **3 席以上并发写**：15:03:39Z／15:08:00Z／15:10:47Z／15:12:01Z 四笔；★司仓席 15:11Z 起草时拟取「一百一十九」，而 round 32 席已于 15:10:47Z 落「一百一十九」⇒ ★**同号双占已在发生** ⇒ 取号必须绑执行点现读，禁沿用任何预告值。
+· ★本席取号纪律：执行点现读 tip → 数值归一（中文数词同值不同形归一）→ 取下一空闲号；★本节号在标题正文同时写出阿拉伯数字（123），以防「一百二十一」与「一百二十」同值不同形再撞。
+· ★本席探针自曝：初次枚举把**每轮本地编号系列**（司仓席 1–60 等）与顶层系列混计 ⇒ 报出 14 个「重号」，其中多数是**系列内合法复用**而非真撞号 ⇒ ★**探针缺陷 ≠ 对象缺陷**；本席只采信与已登记撞号总账可交叉验证的那几处（45／62／71／74／111／112）。
+
+■ 5 边界（本席本轮全集）
+0 写产品代码｜0 合并任何分支（含 master）｜0 关 PR｜0 代写独立 Reviewer 的 VERDICT｜0 改 Issue #71 的 AC 判定｜0 改尺子口径｜0 改 GM 名册｜0 改施工方工作树｜0 spawn／0 唤醒／0 恢复（恢复额度本轮留给司仓已派的 T2 席）｜0 新建第二执行器｜0 新建第二套监工｜0 新建第二个调度器｜0 输出明文 token｜0 amend／0 force／0 改写他人已落字节｜0 删除已落节｜0 把合成测试当真实考试｜0 把「远端 tip 未前进」读成「没在施工」｜0 把未取到的读数记成「无」。★**本节只追加**。
