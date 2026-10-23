@@ -1,0 +1,24 @@
+A4a 白名单对账（★ 扫描面 = `git diff --name-only c44700f..HEAD` ∪ `git status --porcelain` 自动推导）
+==============================================================================
+base            : c44700f（A3 封版 commit）
+实测 HEAD       : c44700f0f3f0ea573f5fd65c6c60b2219d87b9de
+扫描面件数      : 11
+
+白名单内        : 10 件
+白名单外        : 0 件
+工作树基线自带  : 1 件（backend/.venv；A4a 开工前就在，非本包改动）
+
+【白名单内】
+  + backend/src/cangjie_fos/services/dd_v1_blind_service.py
+  + backend/src/cangjie_fos/services/dd_v1_score_service.py
+  + backend/src/cangjie_fos/services/dd_v1_snapshot_freeze_service.py
+  + backend/tests/fixtures/dd-v1-fos71-a4/
+  + backend/tests/test_dd_v1_blind.py
+  + backend/tests/test_dd_v1_score.py
+  + backend/tests/test_dd_v1_snapshot_freeze.py
+  + docs/dd-v1-fos71/wp05-real-integration/A4-BLIND-EXAM.md
+  + docs/dd-v1-fos71/wp05-real-integration/a4-evidence/
+  + tools/dd_v1_local_run.py
+
+【白名单里允许但本包未改的文件】
+  - backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py（隔离与评分语义必须不改 ⇒ 本包只新增服务，**未改**该文件）
