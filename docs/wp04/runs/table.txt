@@ -1,3 +1,0 @@
-codex.stdout.json OK 0 129.45 UNKNOWN UNKNOWN(ChatGPT subscription) AGENT_SUGGESTION acc [('R1-O1', 'MATCH', ['G001', 'G002'], 0.99), ('R2-O1', 'MATCH', ['G006'], 0.99), ('R2-O2', 'MISSING', [], 1.0), ('R4-O1', 'MISSING', [], 0.99)] rej [] warn [] deg None
-minimax-pi.stdout.json OK 0 26.18 MiniMax-M3.1-Flash-Preview 0 AGENT_SUGGESTION acc [('R1-O1', 'MATCH', ['G001', 'G002'], 0.99), ('R2-O1', 'MATCH', ['G006'], 0.99), ('R2-O2', 'MISSING', [], 0.99), ('R4-O1', 'MISSING', [], 0.99)] rej [] warn [] deg None
-deepseek-harness.stdout.json UNAVAILABLE None None UNKNOWN UNKNOWN RULE_ONLY acc [] rej [] warn [] deg AGENT_CALL_FAILED:UNAVAILABLE:BLOCKED:dsh retired 2026-10-11; OQ-1 pending chairman; no purchase, no API fallback

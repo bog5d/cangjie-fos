@@ -1,4 +1,0 @@
-code git-archive 0d67b55 sha256 cbcb5383b9d8c17b49116e62340d3243a5a82f7b9e528436abc41bff1d92863c start 2026-10-16 15:16:01 CST
-codex exit=0 wall=130s
-minimax-pi exit=0 wall=26s
-deepseek-harness exit=2 wall=1s

@@ -1,0 +1,67 @@
+{
+  "policy_version": "a2-2026-10.3",
+  "default_level": "RESTRICTED",
+  "sendable_doc_types": ["license"],
+  "sensitivity_defaults": {
+    "audit_report": "RESTRICTED",
+    "financial_statement": "RESTRICTED",
+    "tax": "RESTRICTED",
+    "license": "PUBLIC",
+    "charter": "RESTRICTED",
+    "capital": "RESTRICTED",
+    "resolution": "RESTRICTED",
+    "ip": "RESTRICTED",
+    "labor": "RESTRICTED",
+    "contract": "RESTRICTED"
+  },
+  "public_defaults_authorized": ["license"],
+  "_sensitivity_defaults_note": "A2（G-A2-2）新增：按**规范材料类型**声明的敏感等级默认映射，由认知卡构建时填入卡片（provenance=INFERRED —— 机器默认定级，不是人工逐件定级）。取值空间 = 10 个规范英文 key（不是中文类型名、不是文件扩展名）。九条收紧类型一律 RESTRICTED（与 rules 的收紧结果一致）。license（营业执照/登记证书/资质证照/工商公开登记信息）默认 PUBLIC，依据是**已登记的业务授权**：董事长 2026-10-21 授权「只放开营业执照/资质证照/工商公开登记信息三类，其余八类不放开；豁免需业务负责人逐份书面授权」——该授权已登记在 sendable_doc_types 与本段中；PUBLIC 的语义是「已人工批准为可公开的材料（如已公开的工商登记信息）」，营业执照即已公开的工商登记信息。**闸门一条都没松**：本映射只决定卡片上的等级，外发仍须同时过 ① 级别闸（externally_sendable）② 规则闸 ③ 类型闸（sendable_doc_types）④ 逐件人工复核（requires_review=true）⑤ 最终人工批准（HG1）。任何类型若未在 public_defaults_authorized 中声明授权却默认到 PUBLIC ⇒ load_policy 直接拒绝加载（fail-closed ⇒ 全部不可外发）。未声明类型 ⇒ 等级留空 ⇒ 不可判定 ⇒ 不可外发。",
+  "_sendable_doc_types_note": "类型闸（可选字段，WP-A1 引入）：声明后只有清单内的 doc_type 才可能外发，且仍须同时满足级别闸（externally_sendable_levels）。取值空间 = dd_v1_requirement_service._DOC_TYPE_RULES 的内部英文 key。license = 营业执照/登记证书/资质证照/工商公开登记信息，是业务口径里唯一可外发的材料类型；其余九类（审计报告/财务报表/纳税/公司章程/验资/决议/知识产权/劳动合同·社保/合同）全部收紧为 RESTRICTED。空 doc_type 与任何不在清单内的 doc_type（含中文类型名、文件扩展名）一律不可外发——「不认识就放行」的老坑在此堵死。",
+  "levels": {
+    "PUBLIC": {
+      "externally_sendable": true,
+      "requires_review": true,
+      "description": "已人工批准为可公开的材料（如已公开的工商登记信息）；外发前仍需逐件复核"
+    },
+    "INTERNAL": {
+      "externally_sendable": false,
+      "requires_review": true,
+      "description": "内部使用；脱敏并经书面批准后方可对外"
+    },
+    "CONFIDENTIAL": {
+      "externally_sendable": false,
+      "requires_review": true,
+      "description": "涉商业秘密；不对外发送，需业务负责人书面授权"
+    },
+    "RESTRICTED": {
+      "externally_sendable": false,
+      "requires_review": true,
+      "description": "一律不对外发送（含未定级/无法定级材料的安全默认）"
+    }
+  },
+  "rules": [
+    { "id": "R1-AUDIT",      "doc_type": "audit_report",       "level": "RESTRICTED" },
+    { "id": "R3-FIN",        "doc_type": "financial_statement","level": "RESTRICTED" },
+    { "id": "R3-TAX",        "doc_type": "tax",                "level": "RESTRICTED" },
+    { "id": "R3-CHARTER",    "doc_type": "charter",            "level": "RESTRICTED" },
+    { "id": "R3-CAPITAL",    "doc_type": "capital",            "level": "RESTRICTED" },
+    { "id": "R3-RESOLUTION", "doc_type": "resolution",         "level": "RESTRICTED" },
+    { "id": "R3-IP",         "doc_type": "ip",                 "level": "RESTRICTED" },
+    { "id": "R1-LABOR",      "doc_type": "labor",              "level": "RESTRICTED" },
+    { "id": "R3-CONTRACT",   "doc_type": "contract",           "level": "RESTRICTED" }
+  ],
+  "_rules_note": "doc_type 取值空间 = dd_v1_requirement_service._DOC_TYPE_RULES 的 10 个内部英文 key（义务侧 doc_type 的真实取值空间；策略判定吃义务侧 doc_type，见 dd_v1_match_service.py:196-198）。写中文类型名或文件扩展名 ⇒ 规则永不命中 ⇒ 九类材料全部可外发（安全洞）。license（营业执照/登记证书）故意不设收紧规则 = 唯一可外发类；doc_type 为空（解析不出 key 的义务）会命中任一带 doc_type 的规则 ⇒ 被收紧为 RESTRICTED，即最严兜底。三禁令：无 doc_type 且无 entity 的规则（_rule_hit 判为总是命中）、带 entity 的规则（entity 常为空）、default_level 可外发（load_policy:157-161 会直接拒绝加载）。",
+  "_provenance": {
+    "task_id": "T-DD-V1-REALINT-2026-WP-A1 → WP-A2",
+    "work_id": "W-DD-V1-REALINT-2026",
+    "created_by": "A1 executor (hermes), under 司仓 dispatch",
+    "date": "2026-10-21",
+    "revised_by": "A2 executor (司仓直连), under 司仓 dispatch",
+    "revised_date": "2026-10-22",
+    "revision_note": "A2（G-A2-2）新增 sensitivity_defaults + public_defaults_authorized 两段；其余（levels / rules / sendable_doc_types / default_level）一字未改。policy_version a1-2026-10.2 → a2-2026-10.3。",
+    "basis": "dd_v1_policy_service.py 的四级命名与「默认取最严」语义（#75 草案 V0.1 预留结构）；本文件为 A1 接线验收所需的最小可生效配置",
+    "business_authorization": "董事长 2026-10-21：只放开营业执照/资质证照/工商公开登记信息三类，其余八类不放开，豁免需业务负责人逐份书面授权。本文件的 sendable_doc_types 与 sensitivity_defaults(license→PUBLIC) 都以这条授权为依据；未列入授权的类型一律不得默认到 PUBLIC。",
+    "review_required": "业务负责人（#75 草案审核范围）复核本文件的级别定义、规则与默认映射后方可用于真实业务；未复核前仅用于合成 fixture 接线验证",
+    "note": "default_level 必须不可外发（load_policy :157-161 锁死）；规则只能收紧不能放宽；空 sensitivity 一律不可外发；sensitivity_defaults 只填卡片等级，不改任何判定阈值"
+  }
+}
