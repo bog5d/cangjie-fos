@@ -1,8 +1,8 @@
 # SHA256SUMS - FOS #71 考生2 P0 修复交付包
-# 对应 commit: c3b224975bfd9e2560ea04019bc17455cf1a82e8
+# 对应 commit: 973b8eee813a386c8f52925bf6b88374424f71d0
 # 对应分支: feat/71-player2-p0-fix-20261023
-# 清单内容: 该 commit 树上 13 个交付件的实际字节的 sha256
-# 条目数: 13 (原 12 条逐条重算 + 新增运行探针件 1 条)
+# 清单内容: 该 commit 树上 14 个交付件的实际字节的 sha256
+# 条目数: 14 (原 13 条逐条重算 + 新增落盘器 1 条)
 # 本清单不含自身行 (两文件互列哈希会成环)
 # 校验: 仓库根执行 sha256sum -c docs/dd-v1-fos71/player2-p0-fix/SHA256SUMS
 47dbf525824e01552044cd26cf16db33427e83e3416a744c4df4cccb5826b0a3  docs/dd-v1-fos71/player2-p0-fix/CALLCHAIN-BEFORE-AFTER.md
@@ -18,3 +18,4 @@ d107573b7d9c2eeee05e0708a55a7458b36d1645b77ebd973aa2d1c4d477d0ba  backend/src/ca
 29eccccc662778f4c05c15a0c1f2ed9641655926eddbaff161ab9f3d5815ff2a  backend/tests/test_dd_v1_semantic_retrieval.py
 bd4f5c10ab0e14a865de9bd4b9b4fc81da9f2ae3c0bc1888aef0d09d3b1a27aa  tools/dd_v1_local_run.py
 aa36b0db3f3fc72e2e8b3976097bd91e9eb267f0a31c0b3461fea58fd8b9a428  tools/dd_v1_six_state_reachability_probe.py
+c4bbe9a3210a1aeb6422fbf7deae09f27ac5419c972d28cb4e12fa48b0e4dd7e  tools/fos71_land.py

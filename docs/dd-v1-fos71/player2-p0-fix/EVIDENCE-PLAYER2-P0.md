@@ -235,22 +235,23 @@ pytest 版本 **9.1.1**；命令＝复核席同款（§6.1-3 说明为何不用 
 ★ **取数口径**：sha256 ＝ 64 位十六进制全串；git blob ＝ 40 位（git 对象 id，与提交后 tree 内逐位一致）；
 字节数与 sha256 为**本轮一次现读**的同一份字节；取数时刻为 UTC。
 
-取数时刻(UTC)：2026-10-23T05:08:37Z
+取数时刻(UTC)：2026-10-24T03:10:58Z
+★ **本表重取说明**：本表 13 行于 2026-10-24T03:10:58Z 按现读基座 commit（`973b8eee813a386c8f52925bf6b88374424f71d0`）的树逐行重取 —— 7 行（行 4／5／6／7／9／12／13）的字节数／sha256／git blob 随 R2／T3／T5 并线而变更，其余 6 行重取后与原值逐位相同（字节自 2026-10-23T05:08:37Z 起未变）；行 13 记的是**本笔刷新后**清单的字节身份（清单不含自身行、亦不含本文件行 ⇒ 引用方向单向、无哈希环）。★ 本表口径与判据语义未改，行集合与列集合未改。
 | # | 路径 | 字节数 | sha256（64 位全串） | 取数时刻(UTC) | git blob（40 位全串） |
 |---|---|---|---|---|---|
-| 1 | `docs/dd-v1-fos71/player2-p0-fix/CALLCHAIN-BEFORE-AFTER.md` | 7904 | `47dbf525824e01552044cd26cf16db33427e83e3416a744c4df4cccb5826b0a3` | 2026-10-23T05:08:37Z | `01306192756baa666c117dcbf21361efcd45aa74` |
-| 2 | `docs/dd-v1-fos71/player2-p0-fix/TEST-EVIDENCE.md` | 12778 | `17a6129fe60868eddae45021fbb0c4ecbc6d15c9b45cac79ec9a30b2aeb56d12` | 2026-10-23T05:08:37Z | `6efd3bba842513fac1ddf308bde744a0b947a069` |
-| 3 | `docs/dd-v1-fos71/player2-p0-fix/SKILLS-REVIEW.md` | 7025 | `34d60e0a50a9295f5d115ee5e68c67ad07ee8c498708176ac926de5657b8716d` | 2026-10-23T05:08:37Z | `6b43f566162b1ce57dbaaeb8cc13fe250056f25e` |
-| 4 | `AGENTS.md` | 18628 | `3fd91867573f33034bc06fa442cbfc50e0ace32adbf661377e48806651aabcd7` | 2026-10-23T05:08:37Z | `82075a2f58965bf6ad675174aa579a05ba5d1be8` |
-| 5 | `CHANGELOG.md` | 107992 | `2ad4047608f163b951ae9b292ebcedde0f5d658835edbef58a37e1f5cf63d78d` | 2026-10-23T05:08:37Z | `31a964a4bc91b6385c15db331a3615147106e5d9` |
-| 6 | `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | 23455 | `394adf3040e56f2df4c0073e266e65879cab8f8ae1ec117706b518fd48e7088a` | 2026-10-23T05:08:37Z | `c23d62c160a94bb64d4f30313c0a86e754f10842` |
-| 7 | `backend/src/cangjie_fos/services/dd_v1_doc_type_service.py` | 7974 | `9cfeb03f4783c0dc6d10dbedd87b6570e2a66bbd98b1b6edb0324dc1d1f321aa` | 2026-10-23T05:08:37Z | `79734a720a39b1e2da5589e6edc67092c637881e` |
-| 8 | `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 52618 | `82e6217613a1fce08f00d52284030cbde8aa8e3d373b57dd6ed6583cda23515b` | 2026-10-23T05:08:37Z | `eccb7dfe844cf96db88c125b20c786057488f92c` |
-| 9 | `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | 43359 | `0d4df7df25a817589004208ec1af2b782bc3469f24a40a91a409cf76bb55929c` | 2026-10-23T05:08:37Z | `8a7fb6986cc5898d3021321d1b9de30a1c30bedc` |
-| 10 | `backend/tests/test_dd_v1_fos71_player2_p0.py` | 46800 | `83069a64092c296a7e3391a07f4d1f67df18783e32d328c0cb1907fcdcb8f94e` | 2026-10-23T05:08:37Z | `4ef15e1aac72d96027cab5320ca293d8f5f4c885` |
-| 11 | `backend/tests/test_dd_v1_semantic_retrieval.py` | 18657 | `29eccccc662778f4c05c15a0c1f2ed9641655926eddbaff161ab9f3d5815ff2a` | 2026-10-23T05:08:37Z | `7302447e128fa2fe537d12ba26bca132e092e1b3` |
-| 12 | `tools/dd_v1_local_run.py` | 25088 | `c75b2aac66dd74b7dac4d159d0547897240f51944e45b29da56445d62faf25be` | 2026-10-23T05:08:37Z | `bb1f8e5eb2b1f0e3d4596d764f7dceed4cbf83a6` |
-| 13 | `docs/dd-v1-fos71/player2-p0-fix/SHA256SUMS` | 1335 | `e819f13b1377b02bbedbf62f2591da0f5d785f9a2cebf37b32877354165dd434` | 2026-10-23T05:08:37Z | `237960356458bd0814bc1c89a0badc6cfa7faf43` |
+| 1 | `docs/dd-v1-fos71/player2-p0-fix/CALLCHAIN-BEFORE-AFTER.md` | 7904 | `47dbf525824e01552044cd26cf16db33427e83e3416a744c4df4cccb5826b0a3` | 2026-10-24T03:10:58Z | `01306192756baa666c117dcbf21361efcd45aa74` |
+| 2 | `docs/dd-v1-fos71/player2-p0-fix/TEST-EVIDENCE.md` | 12778 | `17a6129fe60868eddae45021fbb0c4ecbc6d15c9b45cac79ec9a30b2aeb56d12` | 2026-10-24T03:10:58Z | `6efd3bba842513fac1ddf308bde744a0b947a069` |
+| 3 | `docs/dd-v1-fos71/player2-p0-fix/SKILLS-REVIEW.md` | 7025 | `34d60e0a50a9295f5d115ee5e68c67ad07ee8c498708176ac926de5657b8716d` | 2026-10-24T03:10:58Z | `6b43f566162b1ce57dbaaeb8cc13fe250056f25e` |
+| 4 | `AGENTS.md` | 23111 | `86e3e98161b1083420644c0fe3f60e965236c0bcd7a773d80d9a6a9454c403bf` | 2026-10-24T03:10:58Z | `ab727fe27555cf9a9b2304fa233897e38aade4b0` |
+| 5 | `CHANGELOG.md` | 110002 | `06e8e0de8be7f3b8506fb89b65de1d097ed135b87bc90ede9f64313fc164ed1a` | 2026-10-24T03:10:58Z | `fef918cbced0112d11864640ba2d6d3899e3b1d6` |
+| 6 | `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | 24513 | `baa54531b431b8be3baa389dc1b1025fef69e11af8d2581e1db32e8be7c9a3d3` | 2026-10-24T03:10:58Z | `3d23ab078eb72f4c83b5a65d5aaafe34505afdb0` |
+| 7 | `backend/src/cangjie_fos/services/dd_v1_doc_type_service.py` | 10969 | `d107573b7d9c2eeee05e0708a55a7458b36d1645b77ebd973aa2d1c4d477d0ba` | 2026-10-24T03:10:58Z | `e2847ad6d58b9a7914092f5fab1daa498a92aaea` |
+| 8 | `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 52618 | `82e6217613a1fce08f00d52284030cbde8aa8e3d373b57dd6ed6583cda23515b` | 2026-10-24T03:10:58Z | `eccb7dfe844cf96db88c125b20c786057488f92c` |
+| 9 | `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | 55724 | `020d2aec4b1529bbfe8e263b6ef65f7026440e16726ffc2889812c8e2e4e11ea` | 2026-10-24T03:10:58Z | `63d13d1f001f64520d35f5d903087e0cfdffe76b` |
+| 10 | `backend/tests/test_dd_v1_fos71_player2_p0.py` | 46800 | `83069a64092c296a7e3391a07f4d1f67df18783e32d328c0cb1907fcdcb8f94e` | 2026-10-24T03:10:58Z | `4ef15e1aac72d96027cab5320ca293d8f5f4c885` |
+| 11 | `backend/tests/test_dd_v1_semantic_retrieval.py` | 18657 | `29eccccc662778f4c05c15a0c1f2ed9641655926eddbaff161ab9f3d5815ff2a` | 2026-10-24T03:10:58Z | `7302447e128fa2fe537d12ba26bca132e092e1b3` |
+| 12 | `tools/dd_v1_local_run.py` | 30918 | `bd4f5c10ab0e14a865de9bd4b9b4fc81da9f2ae3c0bc1888aef0d09d3b1a27aa` | 2026-10-24T03:10:58Z | `f23f89692879e093c9ffbd9db10b174040796fb1` |
+| 13 | `docs/dd-v1-fos71/player2-p0-fix/SHA256SUMS` | 1969 | `a7332caf472006dc67f73800ae418becc7e18822756bc80817c68c5df06c0e5e` | 2026-10-24T03:10:58Z | `bed50588c55a073e60506a9249aec4241d62e298` |
 
 ★ **本表不列本文件（`EVIDENCE-PLAYER2-P0.md`）自己的 sha256**：写入即改变字节 ⇒ 恒自指漂移；
 本文件的字节身份由**提交后的 git blob 全串**给出（见 PR 正文与交卷回执），可逐位复算。
