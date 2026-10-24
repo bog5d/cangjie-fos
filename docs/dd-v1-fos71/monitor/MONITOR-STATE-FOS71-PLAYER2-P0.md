@@ -16456,3 +16456,74 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 
 ■ 四、★**边界（本段全集）**
 0 合并任何分支（含 master）｜0 代合 PR｜0 改 PR 正文与 comment｜0 关 PR｜0 amend／0 force push｜0 改写或删除 §237 及前序已落字节｜0 删节／0 回填／0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 代跑独立 Gate｜0 代当 Planner｜0 改 Issue #71 的 AC／尺子口径／GOAL-CONTRACT／GM 名册｜0 写产品代码｜0 触碰施工方工作树与修复分支｜0 改仓内探针与随包证据件｜0 新建调度器／第二套监工／第二执行器｜0 催办｜0 唤醒已收工席｜0 spawn｜0 输出明文凭证｜0 复刻禁形字面｜0 抹除失败留下的未挂 ref 对象｜0 清理历史存量的禁形命中｜0 沿用他席读数充当本席现读｜0 用手拨常量当落款时刻
+## §239（号 239）：★2026-10-24T15:00Z 槽位独立监工席 · 本席 `455888252400043`（★cron run `455889728364850`）· ★**远端 0 新字节** ＋ ★★**本席两项新坐标（★**且均为本席**实跑生产字节**复现、★非字节层推导**）**｜★**① 正式入口渲染段的「候选为空」判据是**第三套谓词**（★`evidence_count`＝0）⇒ ★**语义层算出的原因在「有证据但无证据可用」时整段不出现在人看的报告里**｜★**② 桥接层 `EMPTY_INPUT` 降级路径**根本不调用语义层** ⇒ ★**六态原因恒为空、★入口渲染成「候选状态 `—`、原因 `—`、规则提示 MISSING」**）**＋ ★**十一项一手现读** ＋ ★**§238 下轮必查 11 项逐项复核**
+
+■ 一、★**本轮远端现读（★锚点 ＝ 服务端 Date 头 Sat, 24 Oct 2026 15:29:16 GMT）**
+· ★**修复分支 tip 仍 `622f297ac57d23cebdc20e3187010658c718ec47`**（★committer 2026-10-24T03:12:42Z ⇒ 静默 **12 小时 16 分 34 秒**）｜★**master 仍 `3781311c4b1157c68a0f891506b7c33ab327f7c4`**（★未动）
+· ★**全量 heads 恰 37**（★`branches?per_page=100` 端点逐条枚举、★与 §232／§233／§235／§236／§237／§238 记数逐位相同、★**NEW 空**）｜★**含「71」字样的分支恰 25 条**（★本席逐名核对、★全部为已登记的既有分支、★**0 新 `71-*`** ⇒ **0 双 Writer 风险**）｜★**0 删除、0 改动他人分支**
+· ★**CI**：tip 上 **check-runs 端点返 6 条**、★**全 success**、★**head_sha 唯一且 ＝ tip 本身**（★completed 区间 2026-10-24T03:13:11Z–03:17:45Z）
+· ★**PR**：#81 open（★head ＝ tip、★base `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`、★29 commits、★**8 comment**、★最新仍 **2026-10-23T18:42:12Z**、★**reviews 端点 0 条 formal approval**）／#82 open（★2 comment）／#83 open（★4 comment）／#84 closed＋merged（★merged_at 2026-10-23T15:49:53Z）／#80 open ⇒ ★**本轮 0 新 PR、0 新 comment、0 新裁定**｜★**`pulls?state=all` 端点现读最新 PR 仍是 #84（★2026-10-23 创建）⇒ 0 新 PR 号**
+· ★**Issue #71 comments 恰 5**（★最新仍 2026-10-22T12:41:22Z、★本轮 0 新评论）
+· ★**GM 名册**：`data/work_items.json`（★条目主键 `work_id`）的 `W-DD-V1-2026` ＝ `current_state` **BLOCKED**、★`current_wp` **WP-R2**、★`waiting_for_chairman` **true**、★`executor` **hermes**、★`updated_at` 2026-10-19T19:45:00+08:00（★**6 天未动**）｜★`next_action.action` ＝ **WAIT_CHAIRMAN**、★4 条 blocker 全落 Owner 域
+· ★**会话层（一手）**：★**施工执行席 `455705910747290`** ＝ `status` **0**、★`updated_at` 2026-10-24T03:18:36Z、★**本席本轮一手读其末条 `finish_reason` ＝ `stop`**（★**非 toolUse**、★正常收工、★末条正文自陈「三件『交卷面自洽』的事都做完了」）｜★**唯一 Planner（司仓）席 `455351523090910`** ＝ `status` **2**、★`status_message` ＝ `invalid params, context window exceeds limit (2013)`、★`updated_at` 2026-10-23T22:42:41Z ⇒ ★**仍死、★本轮仍未被处置**｜★**0 在飞施工席、★0 在飞 Planner、★0 新 Planner 席、★0 新独立 Gate 席**
+· ★**父链一手**：★修复分支自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 起 29 笔、★**逐笔 `parents[0]` 链序现读**、★tip ＝ **链尾**（★按父链判权威、★**不按落款时刻排序**）
+
+■ 二、★**三桶差分（★本席自算、★基座 ＝ 任务书基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`）**
+· ★**blob 级 ADD 34／DEL 11／MOD 14**（★＝ §232／§233／§235／§236／§237／§238 **逐位相同**、★**本席重算不沿用**）｜★**全类型 ADD 39／DEL 14／MOD 26**（★tree 条目 ADD 5／DEL 3／MOD 12、★**目录 sha 必随子树变、★不计入 blob 变更**）
+· ★**MOD 14 逐条**：`.github/workflows/ci.yml`／`AGENTS.md`／`CHANGELOG.md`／**`backend/src/cangjie_fos/services/` 产品 7 条**（agent_result／bridge／card／doc_type／match／policy／semantic_retrieval）／`backend/tests/test_dd_v1_semantic_retrieval.py`／**正式入口 2 条**（★`tools/dd_team_channel.py`、★`tools/dd_v1_local_run.py`）
+· ★**⇒ 修复确实落在正式入口**（★两个入口 blob 均被改写、★不是只改测试脚本）
+· ★**权威 10 类唯一性本席再复核**：★`dd_v1_requirement_service._DOC_TYPE_RULES` 恰 **10** 组（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）｜★`dd_v1_match_service._DOC_TYPE_PURPOSE_MAP` 键集与之**逐位相等**、★但它是「用途词典」非「类型识别表」｜★`dd_v1_doc_type_service` 明文「本模块不抄规则表」、★走 `rq` 公开 API｜★**全仓 0 第三套类型表**（★本席对 24 份改动 `.py` 做「模块级赋值容器里 ≥4 个权威 key 字面量」的 AST 级普查、★命中恰 2 处、★**恰是权威表自身**）
+
+■ 三、★★**新坐标 ①（★本席**实跑**生产字节复现、★非推导）：★正式入口渲染段的「候选为空」判据是**第三套谓词**（★`evidence_count` ＝ 0）**
+· ★**三套判据并列**（★本席逐字节读出、★互不替代）：
+　★**判据 A（语义层 reason）** ＝ `not usable`（★`usable` ＝ 期间 MATCH／NOT_A_CONSTRAINT／UNVERIFIABLE **且** version ＝ EFFECTIVE）
+　★**判据 B（语义层 status）** ＝ `usable` 空 ⇒ 再按 候选超上限 ⇒ EXHAUSTED ／ pool 非空 ⇒ PERIOD_OR_VERSION_MISMATCH ／ 否则 NO_CANDIDATE
+　★**判据 C（★本席本轮新发现、★入口渲染段）** ＝ **桥接层 `evidence_count` ＝ `len(ev)` ＝ 0**（★`tools/dd_team_channel.py` 的 `_empty` 列表按 `not ob["evidence_count"]` 选行、★`for ob in b["obligations"]` 主循环按 `if not ob["evidence_count"]: continue` 跳过）
+· ★**三者不重合 ⇒ 语义层算出的原因可能整段不出现在人看的报告里**：★**判据 A 的「无可用证据」覆盖面 ⊋ 判据 C 的「零证据行」**（★`evidence_count` 统计的是**进入证据池的行数**、★**不含**期间／版本／附件被过滤掉的那些）
+· ★★**本席实跑复现（★在本沙箱用**现读 tip 的生产字节**跑**正式薄入口** `tools/dd_team_channel.py run`、★非引用他席、★非字节层推导）**：★取 107 份 `.py` 生产字节（★逐份 base64 解码长度 ＝ 信封 size、★sha1 复算 ＝ 服务端 blob sha）｜★**场景 A（8 份草稿、★超上限）** ⇒ 桥接层 `evidence_count` ＝ **6**、★语义层 reason ＝ **RETRIEVAL_EXHAUSTED**、★status ＝ **EXHAUSTED**、★诊断 `truncated_candidate_count` ＝ **2**、★`candidates_total` ＝ **8** ｜ ★**人看的 MD 报告里「候选为空的义务」段整段不存在**、★**MD 全文 0 命中 `RETRIEVAL_EXHAUSTED`／`EXHAUSTED`／`候选状态`／`过滤诊断`**、★**MD 只留一行「候选证据 6 份｜规则提示：OUTDATED」** ｜ ★**同一场景的机读 JSON 里 `RETRIEVAL_EXHAUSTED` 与 `EXHAUSTED` 均在**
+· ★★**这一格的实质后果（★比 §237 记的「local_run 不外显」更靠内）**：★**「没看全 ⇒ 不得断言『确实没有』」这条契约自带的要求、★在 MD 报告上被吞掉了** —— ★MD 显示「候选证据 6 份」+ OUTDATED、★**读者看不到「还有 2 份没看」**（★`truncated_candidate_count` 只在 JSON）｜★**判据 C 把「有证据但无可用证据」与「真的一行证据都没有」判成同一类**、★**六态原因在正式入口的人看面上被丢掉**
+· ★**边界（★本席不夸大）**：★**这不是「把六态统一伪装成 MISSING」**（★那是任务书明文禁止项、★§237 已确认本席未发现该形态）｜★**JSON 侧完整、★缺口只在人看的 MD 面**｜★**0 代裁**：★判据 A／B／C 该以哪一套为准、★还是入口改成按 status 而非 count 选行、★属**产品语义域**、★0 由监工定
+· ★**与既有登记的关系**：★**不推翻** §237 的「local_run 侧 0 外显」、★**也不推翻** §236／§238 的谓词一（reason 与 status 错标）与谓词二（权限维两字段都丢）｜★**本席补的是第三个位置：★判据 C（入口渲染段）本身又是一套、★且与 A／B 不重合**
+
+■ 四、★★**新坐标 ②（★本席**实跑**复现）：★桥接层 `EMPTY_INPUT` 降级路径**根本不调用语义层** ⇒ ★**六态原因恒为空、★入口把「没有材料」渲染成 MISSING**
+· ★**字节层机制**：`dd_v1_bridge_service` 在 `not meta or not obl_out` 时走 `packet = {"obligations": obl_out, "evidence": {}, "unsplit_items": []}`（★**该 packet 里没有 `evidence_status` 键**）｜★随后的 `st = evidence_status.get(ob["obligation_id"]) or {}` 取到**空 dict** ⇒ ★**`no_candidate_reason` 与 `candidate_status` 双双为 `None`**
+· ★★**本席实跑复现（★同一份清单、★只改材料数）**：★**材料 0 份** ⇒ `degrade_reason` ＝ **EMPTY_INPUT**（材料库或义务为空）、★`evidence_count` ＝ **0**、★reason ＝ **None**、★status ＝ **None**、★`rule_hint.verdict` ＝ **MISSING** ｜ ★**人看的 MD 那一行逐字是：「候选状态：`—`｜没有候选的原因：`—`｜规则提示：MISSING｜规则提示里带的原因：—」** ｜ ★**材料 1 份** ⇒ `degrade_reason` ＝ NO_ADAPTER_PROVIDED、★reason ＝ **UNKNOWN_ENTITY**、★status ＝ **NO_CANDIDATE**、★MD 那一行逐字是「候选状态：`NO_CANDIDATE`｜没有候选的原因：`UNKNOWN_ENTITY`｜规则提示：MISSING｜规则提示里带的原因：UNKNOWN_ENTITY」
+· ★★★**⇒ 这一格是本席本轮最实的一处「统一伪装成 MISSING」**：★**材料一份都没有时、★人看的报告上的「没有候选的原因」栏是空的、★同一行的「规则提示」栏却是 MISSING** ⇒ ★**人读到的字面效果 ＝ 「没有材料、没别的可说」**、★**而「材料库是空的」这一事实（★`EMPTY_INPUT`）在 MD 上一字不出**｜★★**这与任务书动作 4 的禁止项（「禁止统一伪装成 MISSING」）**在**人看的产出面**上直接撞上**（★**注：★JSON 侧同样为空、★故这不是「只漏了 MD」而是**降级路径上六态整条没被计算**）｜★**0 代裁**：★`EMPTY_INPUT` 该不该算一种候选为空、★该不该给一个专属原因、★属产品语义域
+· ★**边界**：★**本席只报实测到的这一格**、★**不宣称「EMPTY_INPUT 是唯一漏网路径」**、★**0 把「没查到别的路径」说成「不存在别的路径」**
+
+■ 五、★**§238 下轮必查 11 项逐项复核（★0 项有变化）**
+① ★**修复分支 tip 是否再前进** ⇒ **未前进**（★同一 sha）｜② ★**Planner 席是否被处置、★或出现新的 Planner／独立 Gate 席** ⇒ **未处置、0 新席**（★`455351523090910` 仍 status 2、★`status_message` 仍上下文超限）｜③ ★**T4' 是否已在终态 head 重锚重跑** ⇒ **未发生**（★PR #81 最新 comment 仍 2026-10-23T18:42:12Z、★reviews 端点 0 条）｜④ ★**仓内探针是否补了 `text_path` 档、★以及 `UNREACHABLE_REASONS` 里那半句假命题是否被更正** ⇒ ★**未补**（★全文件 `text_path` 命中 **0**）、★**未更正**（★该档仍写「read_errors 恒 0 ⇒ 兜底分支到不了」、★而 §235 实跑已得 read_errors ＝ 1）｜⑤ ★**local_run 侧的六态外显缺口是否被处置** ⇒ **未处置**（★`candidate_status`／`no_candidate_reason`／`evidence_status` 三者各 0 命中）｜⑥ ★**GM 名册是否仍 BLOCKED** ⇒ **仍 BLOCKED**、★`updated_at` 仍 2026-10-19｜⑦ ★**0 新 `71-*` 分支** ⇒ **0 新**（★全量 37）｜⑧ ★**PR #83 的 T1 是否被改坏** ⇒ **未被改坏**（★PR #83 head 的 ci.yml blob `fdf0e0cca7d8b25ef0ba2a0573e184f8e9aea382`／11,620 B、★与 §237／§238 记录**逐位相同**）｜⑨ ★**台账节号** ⇒ ★**本席落盘前一刻现读末号 ＝ 238、★§239 空闲、★0 撞号**｜⑩ ★**谓词二（★权限维在两个字段里都丢）是否被处置、★以及六态生产路径可达数是否从 4/6 变动** ⇒ ★**谓词二未处置**（★判定序逐字未变）、★**可达数仍 4/6**（★**本席本轮实跑随包探针复现**：★判定 **OK**、★实测可达 `['NO_MATERIAL','RETRIEVAL_EXHAUSTED','UNKNOWN_ENTITY','UNRESOLVED_DOC_TYPE']`、★两项不可达态的机械理由核对全过）｜⑪ ★**T4 覆盖清单那 13 行在 tip 上是否仍 13/13 逐位相等** ⇒ ★**13/13 逐位相等、0 不同、0 条路径消失**（★本席从 PR #81 comment `6370738997` 正文抽「路径 ＋ blob sha」覆盖表 **13 行**、★逐条与 tip 现读 tree 比对）
+
+■ 六、★**两账（★互不换算、★0 投票 0 择一 0 代裁）**
+· ★**尺子口径 A0–A5 ＝ 0/6**：★冻结尺子 `docs/dd-v1-fos71/wp05-real-integration/GOAL-CONTRACT.v3.8.json`、★blob `106699d2c8a3e8e4d00124070eee6d417038cb49`、★**10,818 B**｜★`goal_alignment.work_to_goal_map` 恰 **6** 项、★**`verified_change` 全为 NONE**｜★`progress.engineering_percent` ＝ **0**
+· ★**派工口径 WP1–WP4 ＝ 台账并存的五个读数、★本席不新增第六个、★0 代裁**（★本轮 0 新 Gate ⇒ 分歧面不变）｜★**对外沿用上轮口径并注 WP1 ＝ UNKNOWN**
+· ★**GM 名册口径 WP-R0–R5 ＝ 2/6**（★COMPLETED 恰 WP-R0／WP-R1、★BLOCKED 恰 WP-R2／R3／R4／R5）
+· ★**效果账 ＝ 0/100 REAL_PASS**：★`outcome_metrics` 恰 **5** 项、★权重 **O1 25／O2 25／O3 20／O4 20／O5 10 ＝ 100**、★`verified_points` **全 0**、★`status` **全 UNKNOWN**｜★**UNKNOWN 既不算 PASS、★也不算已证伪**｜★**MOCK／合成不折算**
+· ★**硬门槛 ＝ 0 PASS／0 FAIL／9 UNKNOWN**（★`hard_gates` 恰 9 项、★status 全 UNKNOWN、★`goal_state.status` ＝ SPEC_PR_OPEN_PENDING_GM_ACK_AND_INDEPENDENT_REVIEW）
+
+■ 七、★**调度权威与活跃态（★四件事分列、★互不推出）**
+· ★**① cron 是否运行 ＝ 是**：★本工程**恰 1 条** `455353976279398`（★`*/20`、★enabled、★agent 名带尾随空格、★mode=new）｜★**`view=runs` 近 21 轮 `status` 连续 1**、★**本席 ＝ run `455889728364850`（★scheduled 2026-10-24T15:00:00Z、★session `455888252400043`）**｜★**另 2 条（CF `455347827208431`／INC3 `455164742488166`）属别的工程、★非重复调度、★0 删除**
+· ★**② 监工是否工作 ＝ 是**（★本节即本席的落盘产出）｜★**下一槽席 `455894160523351` 已于 15:20:00Z 起跑**（★`view=runs` 返 run `455893411762886`、★status 1）｜★**本席落盘前一刻现读台账节号 ＝ 末号 238（★追加段不占新节号）、★§239 空闲** ⇒ ★**0 撞号**
+· ★**③ 开发者是否真正施工 ＝ 否**（★远端字节面 12 小时 16 分 34 秒 0 新字节、★施工席 status 0 末条 `finish_reason` ＝ stop、★0 在飞施工席、★0 在飞 Planner）
+· ★**④ 是否产生新的功能成果 ＝ 否**（★0 新产品字节、★三桶与上席逐位相同、★0 新 PR／0 新 Gate／0 新 Issue 评论、★0 新分支）
+· ★**⑤ 派工通道 ＝ 断**（★承 §237 的机械成因：★唯一 Planner 席 status 2 已死、★剩余唯一闸 T4 属独立 Reviewer 域、★0 人被派）
+
+■ 八、★**该踢吗 ＝ NO（★四档逐条、★本轮重算）**
+· ★**A 成立**：★远端 tip 未前进 **12 小时 16 分 34 秒** ≥ 25 分钟
+· ★**B 成立**：★工作面 0 新增改动（★0 新 commit、★0 新分支、★全量 heads 仍 37、★0 新 PR 活动、★0 新裁定、★0 新 Issue 评论、★CI 仍全 success）
+· ★**C 成立**：★执行席末条 `finish_reason` ＝ `stop`（★**非 toolUse**、★本席本轮一手复核）
+· ★**D 不成立**：★**施工侧 0 待做项**（★司仓 v3 闸序的 T1／T2／T3 字节级已完成、★剩余唯一闸 T4 属**独立 Reviewer 域**）；★**派 T4 属 Planner 动作、★唯一 Planner 席已死、★本席 0 代 Planner**；★**§237 已就「谁来派 T4'」投过卡、★未获回复 ⇒ 同一事件不重复投递**
+· ⇒ ★**本轮 0 spawn／0 催办／0 唤醒**（★**恢复能力可用**、★「恢复能力不可用」不成立、★communicate 工具在席、★但因 D 不成立而不行使、★**恢复计数本 HEAD 下 ＝ 0**）｜★**本席 0 代 Planner、★0 代跑独立 Gate、★0 代写 VERDICT**
+
+■ 九、★**外发判定（本轮 0 张卡）**
+· ★**① 重大进展 ＝ 无**（★远端 0 新字节；★本席两项新坐标是**监工侧复算**、★**不是**施工方的新功能成果）
+· ★**② 停滞 ＝ 是，★但同一事件已于 §237／§238 报过 ⇒ 不重复投递**
+· ★**③ 独立 Gate 新结果 ＝ 无**
+· ★**④ 需波总新决策 ＝ 无新增**（★甲／乙／① 三项自 §235 起在挂、★§237 已就「谁来派 T4'」投过卡）
+· ⇒ ★**本轮 0 外发卡、★只更新落盘状态卡**（★波总口径：★正常无变化不必反复报告）
+
+■ 十、★**下轮（15:20Z 槽位）必查（★执行点现算、★禁沿用本段指针）**
+① ★**下一空闲节号须在落盘前一刻现读取号**（★禁按本段预置、★禁与并发兄弟席撞号）② ★修复分支 tip 是否再前进（★现 `622f297ac57d23cebdc20e3187010658c718ec47`）③ ★**Planner 席 `455351523090910` 的上下文超限是否被处置、★或是否出现新的 Planner／独立 Gate 席**④ ★**T4' 是否已在终态 head 重锚重跑**（★覆盖面须按 **10 路径**口径）⑤ ★**仓内探针是否补了 `text_path` 档、★以及 `UNREACHABLE_REASONS` 里那半句假命题是否被更正**⑥ ★**local_run 侧的六态外显缺口是否被处置**⑦ ★GM 名册 `W-DD-V1-2026` 是否仍 BLOCKED（★`updated_at` 仍 2026-10-19）⑧ ★0 新 `71-*` 分支 ⑨ ★**PR #83 的 T1 是否被改坏**⑩ ★**谓词二（★权限维在两个字段里都丢）是否被处置、★以及六态生产路径可达数是否从 4/6 变动**⑪ ★**T4 覆盖清单那 13 行在 tip 上是否仍 13/13 逐位相等**（★若 tip 前进则重算）⑫ ★★**新坐标①（★入口渲染段判据 C）是否被处置：★正式入口的 MD 是否仍按 `evidence_count` ＝ 0 选行、★「有证据但无可用证据」那一格的原因是否仍不出现在 MD**（★**本席本轮新增维度**）⑬ ★★**新坐标②（★`EMPTY_INPUT` 降级路径）是否被处置：★材料库为空时人看的报告那一行是否仍渲染成「候选状态 `—`、原因 `—`、规则提示 MISSING」**（★**本席本轮新增维度**）
+
+■ 十一、★**边界（本节全集）**
+0 合并任何分支（含 master）｜0 代合 PR｜0 改 PR 正文与 comment｜0 关 PR｜0 amend／0 force push｜0 改写或删除 §238 及前序已落字节｜0 删节／0 回填／0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 代跑独立 Gate｜0 代当 Planner／0 派 Planner 动作｜0 改 Issue #71 的 AC／尺子口径／GOAL-CONTRACT／GM 名册｜0 写产品代码｜0 触碰施工方工作树与修复分支｜0 改仓内探针与随包证据件｜0 新建调度器／第二套监工／第二执行器｜0 催办｜0 唤醒已收工席｜0 spawn｜0 输出明文凭证｜0 复刻禁形字面｜0 沿用他席读数充当本席现读｜0 手写补全任何 sha 尾巴｜0 把监工侧复算记成施工方新成果｜0 改产品语义裁定｜0 改产品接口面｜0 声明「tip 上已有独立 Gate 结论」（★本席只认 PR #81 上已落的裁定书、★T4' 未发生）｜0 沿用已过期的基座落盘（★基座漂移闸拦下即中止、★重取基座后重跑）｜0 把「降级路径上六态未计算」外推成「仓内只有这一条降级路径」（★本席只报实测到的一格、★其余记不可得）
