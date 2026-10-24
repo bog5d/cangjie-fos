@@ -15343,3 +15343,66 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 
 ■ 四、★边界（★本追加段）
 0 合并任何分支｜0 代合 PR｜0 改 PR 正文／comment｜0 关 PR｜0 amend／0 force push｜0 改写或删除 §227 各段及前序已落字节｜0 删节／0 回填／0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 代跑独立 Gate｜0 改尺子口径／GM 名册｜0 写产品代码｜0 新建调度器／第二套监工／第二执行器｜0 催办｜0 唤醒已收工席｜0 spawn｜0 输出明文凭证｜0 手写补全任何 sha 尾巴（★只许程序化取用现读全串）
+
+## §228（号 228）：★**本席 11:40Z 槽 · 远端 0 新字节 · 六因与 10 类权威表 AST 逐位复核 · §11 锚点表 13/13 · N1 仍未闭合 · 该踢吗 ＝ NO（★只追加、0 改写已落字节、0 amend／0 force push）**（★本席 `455838165807332`、★基座 ＝ 现读 monitor 分支 tip `a1945d939f86bc1c1f079fe9e9019d61c8bbbd82`、★**取数时刻 2026-10-24T11:40:15Z 起**、★**落盘前基座现读取号**）
+
+■ 一、★**分支与变更面（★本席一手现读、★非转述）**
+· 修复分支 tip ＝ `622f297ac57d23cebdc20e3187010658c718ec47`、★commit 时刻 **2026-10-24T03:12:42Z**、★**静默 507.6 分钟**（起手 11:40:15Z 计）｜★**与上一轮逐位相同 ⇒ 远端 0 新字节**
+· master tip ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`、★commit 时刻 2026-10-23T11:01:06Z（★未动 24.6 小时）
+· ★**全量 heads ＝ 37 条**、★与上一轮同数、★**本轮 0 新增授权外 `71-*` 分支**
+· ★**变更面三桶分列（★基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` → 现读 tip）**：★路径级 **ADD 39**（5 tree ＋ 34 blob）／**DEL 14**（3 tree ＋ 11 blob）／**MOD 26**（12 tree ＋ 14 blob）／SAME 830｜★整树 **870 → 895 条目**｜★相对 master 现读 tip：★ADD 38／**DEL 0**／MOD 26／SAME 831
+· ★**删除面是刻意收缩**：★被删的 14 条全是 `docs/dd-v1-fos71/wp05-real-integration/a4-evidence/seven-item-bundle`（★含 3 个非 ASCII 名文件）｜★**它同时在 master 现读 tip 上已被删**（★master 相对基线同样 DEL 14）⇒ ★**不是修复分支单方面删档**
+
+■ 二、★**题面第 3 项：修复是否落在正式入口 ＋ 是否存在第三套类型表（★本席一手）**
+· ★**正式入口确实落在产品面、不是只修测试脚本**：★`tools/dd_v1_local_run.py` ＝ `8d51c05c93354268ea3e02eb2df6a86758937101` → `f23f89692879e093c9ffbd9db10b174040796fb1`（MOD）｜★`tools/dd_team_channel.py` ＝ `8f08d560a4c4a147efca4e43c6f727114662af34` → `3610eb4db61f41b5aec25a2490c027b1f6c0bb45`（MOD）｜★**两者皆与测试件同列 MOD 桶**
+· ★**权威类型表唯一（本席 AST 取值逐位、★非字面扫描）**：★`dd_v1_requirement_service._DOC_TYPE_RULES` ＝ **恰 10 个 key**（audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）｜★**本席实测该容器是「元组套元组」**（★按 dict 语法读它会 AttributeError ⇒ 假红）
+· ★**同文件的 `_DOC_TYPE_UNIQUENESS` 不是第二套类型规则表**：★它取**同样那 10 个 key**、但维度是「唯一性口径」、★源码自述「不是第二份类型规则表」｜★`dd_v1_bridge_service.DOC_TYPE_KEYS` 是从权威表派生的视图、★非副本｜★**0 第三套类型表**
+
+■ 三、★**题面第 4 项：候选为空是否区分六种原因、是否被统一伪装成 MISSING（★本席一手 AST 取值）**
+· ★`dd_v1_semantic_retrieval_service.NO_CANDIDATE_REASONS`（★第 66 行）＝ **恰 6 值**：`NO_MATERIAL`／`UNRESOLVED_DOC_TYPE`／`UNKNOWN_ENTITY`／`PERMISSION_BLOCKED`／`RETRIEVAL_EXHAUSTED`／`OTHER`｜★**恰 6 值、无第七值、且六值域里没有把原因压成同一个词**
+· ★**正交四态** `CANDIDATE_STATUSES`（★第 81 行）＝ **恰 4 值**：`OK`／`EXHAUSTED`／`PERIOD_OR_VERSION_MISMATCH`／`NO_CANDIDATE`｜★**候选状态与空原因不是同一对象、★未合并**
+· ★**正式入口直接引用语义层枚举、0 处自造原因表**：★`tools/dd_team_channel.py` 第 618 行 `NO_CANDIDATE_REASONS` 引用 1 处｜★**六因字面在桥接层与两个正式入口 ＝ 0 命中** ⇒ ★**六因未被压成 MISSING**
+
+■ 四、★**题面第 5 项：独立 Reviewer 的 Gate 结论（★现读、★非施工者自评）**
+· ★**PR #81 issue comments ＝ 8 条**、★末条 id `6372203092` @ **2026-10-23T18:42:12Z**（★独立复核席 `455539551396187`、★agent ＝ Verifier）｜★reviews ＝ 0｜★**PR #81 现读 head ＝ 现读 tip `622f297ac57d23cebdc20e3187010658c718ec47`**
+· ★**该裁定的被验锚仍在旧 tree**：★现读 tip tree ＝ `44d10fef4578458bd93b64da2f698bf107aa517c`、★与旧锚 `6b24fc830a9a9a590fb606a406e3c7c03c40bde5` 不同 ⇒ ★**T4' 尚未在新锚重锚重跑**
+· ★**PR #83** issue comments 4 条／reviews 0、★**无独立 Gate 载体**；★PR #82 comments 2 条／reviews 0
+· ★**三个 `merge_commit_sha` 的 tree（★本席逐个现读）**：★PR #81 ＝ `44d10fef4578458bd93b64da2f698bf107aa517c`（★＝ 现读 tip tree）｜★PR #83 ＝ `44d10fef4578458bd93b64da2f698bf107aa517c`（★＝）｜★PR #82 ＝ `c299ce71fbd6d1db13b477ae61ec4151224a3d7d`（★≠）
+· ★**CI**：★fix tip 的 check-runs **6/6 success**、★`head_sha` **唯一** ＝ 现读 tip
+
+■ 五、★**两账（★互不换算、★0 投票 0 择一 0 代裁）**
+· ★**工程账 ＝ 3/4（Gate PASS 3）**：★本席沿用既有读数、★**不新增并列读数**｜★台账另有 1/4 与 4/4 两个读数、★**三者并存未裁定**、★**本席不代裁**
+· ★**效果账 ＝ 0/100（REAL_PASS）**：★本席一手现读 `GOAL-CONTRACT.v3.8.json` 的 `goal_alignment.outcome_metrics` 五项 —— ★O1 25／O2 25／O3 20／O4 20／O5 10（★权重合计 100）、★**五项 `verified_points` 全为 0、`status` 全为 `UNKNOWN`**｜★**UNKNOWN 既不算 PASS、也不算已证伪**｜★MOCK／合成不折算
+· ★**硬门槛 ＝ 0 PASS／0 FAIL／9 UNKNOWN**：★`hard_gates` 九项（ONE_WRITER／REAL_FOS_CALL／GOLD_ISOLATION／SENSITIVE_AUTH／FALSE_MATCH_GUARD／PRECISE_PACKAGING／INDEPENDENT_REVIEW／WINDOWS_REAL_E2E／UNATTENDED_HANDOFF）★**status 逐项全为 `UNKNOWN`**
+
+■ 六、★**活跃态：四件事分开判（★题面第 7 项）**
+· ★**① cron 是否运行 ＝ PASS**：★`cron_read view=list` 现读共 3 条、★**本工程恰 1 条**（★task `455353976279398`、★schedule `*/20 * * * *`、★enabled、★next_run 2026-10-24T12:00:00Z）｜★另 2 条分属 CF 公众号重置版与副官 INC3、★**是不同工程的各自 cron、不是重复调度、禁误判禁删除**
+· ★**② 监工是否工作 ＝ PASS**：★本席本轮现读远端权威字节并落盘本节；★台账分支已由 11:20Z 兄弟席推进至 §227 四段
+· ★**③ 开发者是否真正施工 ＝ 否**：★施工执行席 `455351523090910`（★title 考生2修复）★`status` ＝ **2**、★`status_message` ＝ 「invalid params, context window exceeds limit (2013)」、★末次活动 **2026-10-23T22:42:31Z**（★距本轮 **777.6 分钟**）｜★**该席已死、0 新字节**
+· ★**④ 是否产生新的功能成果 ＝ 否**：★0 新 commit／0 新 blob／0 新裁定／0 新 PR／0 新分支
+· ★**活跃态总判 ＝ BLOCKED**（★**注：★「远端 tip 未前进」与「没在施工」是不同对象、★本席把两者分开记**）
+
+■ 七、★**该踢吗 ＝ NO（★ABCD 四档逐条、★理由在 D）**
+· ★**A 成立**：★远端 tip 未前进 **507.6 分钟** ≥ 25
+· ★**B 成立**：★0 新 commit／0 新分支／0 新 PR／0 新裁定、★工作树无新增改动
+· ★**C 成立**：★执行席末条是 **API 错误**（context window 超限）、★**非 toolUse**
+· ★**D 不成立 ＝ 派工内容不可得**，★四条独立理由：★**①**唯一能推进工程账的动作是「T4 独立 Gate 在现读 tip 上重锚重跑」⇒ 属**独立 Reviewer 域**、★本席 **0 代跑 Gate、0 代写 VERDICT**、★复核席 `455539551396187` 已收工（`status` ＝ 0）｜★**②**施工执行席在 2026-10-23T22:42:31Z 收到的那条 Owner 裁定、★**其正文是 CF 公众号重置版项目的内容**（★D-13 密钥泄露／安全门禁／9 篇手机审稿包／WP6）、★它落在 FOS 执行席上 ⇒ ★**不构成 FOS #71 的施工派工**｜★**③**H1／H2、D-13 凭证吊销、GM 名册回写、Gold Set 提供（OQ-2）、真实材料送外部模型授权（OQ-3）★**全部落在 Owner／司仓域**｜★**④**churn 环：★此刻在修复分支落任何字节都会再移动 tip、★使待重锚的 T4' 锚再次失效
+· ★**恢复计数**：★**本 HEAD `622f297ac57d23cebdc20e3187010658c718ec47` 下 ＝ 0**、★「同一 HEAD 连续 2 次恢复无新 commit ⇒ 停手」**未触发**｜★上一轮那 1 次恢复发生在**父 HEAD** 上、★**确实产出了当前 tip** ⇒ 恢复机制本身有效
+· ★**本轮 0 spawn／0 催办／0 唤醒**｜★**恢复能力可用**（★本席持有 `communicate` spawn 通道）、★**「恢复能力不可用」不成立**、★但 **D 不成立故不行使**
+
+■ 八、★**本席本轮新增的一手坐标（★监工侧复算、★不进两账）**
+· ★**交卷件 §11 锚点表逐条复核 ＝ 13/13**：★§11 段内 14 个去重 40 位串中、★**13 个是 blob 全串、逐位命中现读 tip 树、且路径一一对应**（★含 `tools/dd_v1_local_run.py` ＝ `f23f89692879e093c9ffbd9db10b174040796fb1`、★`dd_v1_requirement_service.py` ＝ `eccb7dfe844cf96db88c125b20c786057488f92c`、★WP4 落点 `backend/tests/test_dd_v1_fos71_player2_p0.py` ＝ `4ef15e1aac72d96027cab5320ca293d8f5f4c885`）｜★**第 14 个 `973b8eee813a386c8f52925bf6b88374424f71d0` 是 SHA256SUMS 头部绑定的父 commit、不是 blob、属预期**
+· ★**SHA256SUMS 14 条**：★14 行全部可解析、★0 解析异常行
+· ★**N1 仍未闭合（本席一手复核、★与上轮同向）**：★交卷件自身 blob `afc3830919b1cd700f2d027ce2a014d108431550` ★**仍不在 §11 锚点表内**；★PR #81 正文（★9,506 B、★16 处 40 位串、★去重 15）★**也不含该串**｜★裁定1 的 N1 是「建议下一笔 commit 时在 PR 正文补该 40 位全串」⇒ ★**该「下一笔 commit」（2026-10-24T03:12:42Z）已发生、而 PR 正文未补 ⇒ N1 由「尚未到期」变「未闭合」**
+· ★**GM 名册 `W-DD-V1-2026`**：★`current_state` ＝ BLOCKED、★`waiting_for_chairman` ＝ true、★`executor` ＝ hermes、★`current_wp` ＝ WP-R2、★`next_action.action` ＝ WAIT_CHAIRMAN、★**`updated_at` 仍为 2026-10-19T19:45:00+08:00（未动 5 天）**
+
+■ 九、★**本席两处自曝（★红的是本席的判据、★不是远端对象、★已在本节改正）**
+· ★**自曝一（★行首锚与标题锚都是形态敏感的、★0 命中先怀疑自己的锚）**：★本席首版按字面「§11」去交卷件里找锚点表、★**返回 0 行**（★交卷件里写的是「## 11. 工件」，★其副题是「锚点表：路径 ＋ 字节数 ＋ sha256 ＋ 取数时刻」）⇒ ★首版判据落在空集上、★改正为按标题语义定位后得 **13/13**
+· ★**自曝二（★分子口径必须写明数的是谁）**：★本席首版把「全文 40 位串出现次数 15 个去重」混进了「§11 段内去重数」⇒ ★首版报「2 个不可定位」、★真相是 **§11 段内 14 个去重、1 个不可定位**（★那 1 个是父 commit）⇒ ★改正后以**段内口径**为准
+· ★★**可复用纪律**：★**「0 命中」与「不可得」都必须先排除自己的锚与自己的口径、★再谈远端事实**
+
+■ 十、★**边界（本节）**
+0 合并任何分支（含 master）｜0 代合 PR #81／#82／#83｜0 改 PR 正文／comment｜0 关 PR｜0 amend／0 force push｜0 改写或删除 §227 及前序已落字节｜0 删节／0 回填／0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 代跑独立 Gate｜0 改 Issue #71 的 AC／尺子口径／GOAL-CONTRACT／GM 名册｜0 写产品代码｜0 触碰施工方工作树与修复分支｜0 新建调度器／第二套监工／第二执行器｜0 催办｜0 唤醒已收工席｜0 spawn｜0 输出明文凭证｜0 代裁 WP1–WP4 口径｜0 代裁 A0–A5 是否折算 T4｜0 把合成 fixture 读数冒充真实考试｜0 沿用他席读数充当本席现读｜0 手写补全任何 sha 尾巴（★**只许程序化取用现读全串**）
+
+■ 十一、★**下轮必查**
+① ★**下一空闲节号须在落盘前一刻现读取号**（★10:20Z 席 `455819716460631` 仍 `status` ＝ 1、★自 2026-10-24T10:21:31Z 起无新消息、★至今未落任何节、★**它若醒来会撞 228 号 ⇒ 撞号风险已在册**）② 修复分支 tip 是否再前进（★现 `622f297ac57d23cebdc20e3187010658c718ec47`）③ ★**T4' 是否在新锚重锚重跑**（★新锚须覆盖 T4 §5.1 的 17 行 ＋ 4 个 G5 服务件 ＋ WP4 落点、★核新锚 check-run 的 `head_sha` 逐条 ＝ 新锚）④ PR #81 comment 数／末条（★现 8／18:42:12Z）⑤ PR #83 是否出现独立 Gate 载体（★现 0）⑥ 全量 heads 是否仍 37 ⑦ 本工程 cron 是否仍恰 1 条 ⑧ ABCD 四档 ＋ 派工内容可得性 ＋ ★**churn 环按「tip 静止 ≥ 一轮」逐轮重算、★不是一次性结论** ⑨ GM 名册 `updated_at` 是否回写、★D-13 凭证吊销是否落地、★Gold Set（OQ-2）与外部模型授权（OQ-3）是否解 ⑩ ★**落盘前基座现读**（★走 `GET /git/ref/heads/{branch}`、★禁走 `branches` 端点、★禁沿用起手值）⑪ ★**落盘后语义回读**（★本节标题可 grep、★行首锚最大值 ＝ 本节号）⑫ 台账整树形状（★现读 872 条目、★blob 级 ADD 0／DEL 0／MOD 恰 1 路径）⑬ ★**交卷件自身 blob 是否已入 §11 或 PR 正文**（★N1 闭合判据）⑭ §11 锚点表 13 行与 SHA256SUMS 14 条是否仍逐条相符 ⑮ 三个 `merge_commit_sha` 的 tree 是否仍 ＝ 现读 tip tree
