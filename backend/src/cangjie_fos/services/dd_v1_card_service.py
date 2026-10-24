@@ -47,7 +47,8 @@ UNKNOWN = "UNKNOWN"
 
 # 认知卡字段全集（Schema 固定，便于校验与后续映射）
 CARD_FIELDS = (
-    "doc_type",        # 文件类型
+    "doc_type",        # 文件类型（主类型，单值）
+    "doc_types",       # 材料命中的**全部**类型（G5 · 多值；空 = 认不出）
     "title",           # 材料标题
     "entity",          # 公司主体
     "group",           # 所属集团
@@ -313,6 +314,27 @@ def _extract_labels(text: str) -> dict:
     return out
 
 
+def _sensitivity_for_types(policy, types: list[str]) -> tuple[str, str]:
+    """按材料命中的**全部**类型取默认敏感等级（G5 · 取最严）。
+
+    - 单类型 ⇒ 与 :func:`dd_v1_policy_service.default_sensitivity` **逐位一致**；
+    - 多类型 ⇒ 取各类型默认等级里**最严**的一个
+      （一份材料只要含有一类受限内容，就不能按最松的那类定级）；
+    - 任一命中类型**没有**声明默认等级 ⇒ 等级**留空**
+      （不可判定 ⇒ 按最严处理 ⇒ 不可外发），**不得**按已知的那几类放行。
+    """
+    if not types:
+        return "", ""
+    levels: list[str] = []
+    for t in types:
+        level, _basis = dpol.default_sensitivity(policy, t)
+        if not level:
+            # 有类型没声明默认等级 ⇒ 整体不可判定（fail-closed）
+            return "", ""
+        levels.append(level)
+    return policy.strictest(*levels), "INFERRED"
+
+
 def _siblings_of(conn, manifest_row: dict) -> list[dict]:
     """取同目录下、同材料库内的其他文件，供附件关系识别使用。"""
     rel = manifest_row.get("rel_path") or ""
@@ -371,9 +393,12 @@ def build_card(
                     "⇒ 不作为材料类型证据、不参与内容冲突判定、不可交付；"
                     "需人工确认",
         }]
+        doc_types_value: list[str] = []
     else:
-        doc_type_value, doc_type_basis, doc_type_evidence = dts.resolve_doc_type(
-            file_name=file_name, text=text, purpose=" ".join(purpose_hits))
+        # ★ G5：一次解析同时拿到**主类型**与**全部命中类型**（同一来源口径，不分叉）。
+        doc_types_value, doc_type_value, doc_type_basis, doc_type_evidence = (
+            dts.resolve_doc_types(
+                file_name=file_name, text=text, purpose=" ".join(purpose_hits)))
     b.set("doc_type", doc_type_value, doc_type_basis,
           list(doc_type_evidence) + [{
               "kind": "fs_ext_not_type",
@@ -381,6 +406,12 @@ def build_card(
               "rule": f"文件扩展名 {ext.lstrip('.') or '(无)'} 只是容器格式，"
                       f"不是材料类型，不得写入 doc_type",
           }])
+    # ★ G5：材料命中的**全部**类型都保留（多值字段）。
+    #   `doc_type` 仍是**主类型**（单值，向后兼容）；`doc_types` 是全部命中类型。
+    #   组包链的披露闸按**材料自己的**类型判定 ⇒ 段内可外发类材料不再被
+    #   「整段的类型归属」连坐（G5 的成因环与后果环一并断掉）。
+    b.multi("doc_types", list(doc_types_value), doc_type_basis,
+            list(doc_type_evidence))
 
     b.set("title", stem, INFERRED,
           [{"kind": "filename_stem", "loc": rel, "rule": "取文件名去扩展名；可能是草稿名，非正式标题"}])
@@ -435,7 +466,12 @@ def build_card(
     # 声明了 → 填入并标 INFERRED（机器默认定级，**不是**人工逐件定级，
     # 外发仍须逐件人工复核 + 最终人工批准）。
     _pol = dpol.load_policy()
-    _sens_level, _sens_basis = dpol.default_sensitivity(_pol, doc_type_value)
+    # ★ G5：材料可能命中**多类**（例：正文里既有审计报告又有营业执照）。
+    #   等级取**全部命中类型**的默认等级里**最严**的一个；
+    #   任一命中类型**没有**声明默认等级 ⇒ 等级留空（不可判定 ⇒ 不可外发）。
+    #   （单类型材料的读数与修复前**逐位一致**。）
+    _sens_level, _sens_basis = _sensitivity_for_types(
+        _pol, doc_types_value or ([doc_type_value] if doc_type_value else []))
     if _sens_level:
         b.set("sensitivity", _sens_level, _sens_basis, [{
             "kind": "policy_default",
@@ -767,6 +803,49 @@ def doc_type_key(card: dict | None) -> str:
         if k:
             return k
     return ""
+
+
+def doc_types_key(card: dict | None) -> list[str]:
+    """卡片材料命中的**全部**规范类型 key（G5 · 多值）。
+
+    - 空列表 ＝ 认不出 / UNKNOWN；
+    - 只有一类时 ＝ ``[doc_type_key(card)]``（单值材料读数不变）；
+    - 多类时 ＝ 材料**自己**命中的全部类型（按命中顺序，去重）。
+
+    ## 为什么组包链必须用这个，而不是段的类型
+
+    PR #81 登记缺口 G5：组包链按**整段的类型归属**给材料定类型 ⇒ 段内
+    **可外发类**的材料被归到同段的**另一类** ⇒ 披露闸把它拦下 ⇒
+    授权组包取不到它。⇒ 披露闸的输入必须是**材料自己的类型**。
+    """
+    if not card:
+        return []
+    fields = card.get("fields")
+    if isinstance(fields, dict) and fields:
+        raw = (fields.get("doc_types") or {}).get("value")
+    else:
+        # 卡片**字段字典**形态（``build_card`` 的返回值）：字段值包在 {"value": ...} 里
+        node = card.get("doc_types")
+        raw = node.get("value") if isinstance(node, dict) else node
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            raw = [raw]
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, (list, tuple)):
+        raw = []
+    out: list[str] = []
+    for t in raw:
+        k = str(t or "").strip().lower()
+        if k and k not in out:
+            out.append(k)
+    if out:
+        return out
+    # 旧卡（没有 doc_types 多值字段）⇒ 退回单值主类型
+    single = doc_type_key(card)
+    return [single] if single else []
 
 
 def _existing_card_fields(conn, file_id: str) -> dict:

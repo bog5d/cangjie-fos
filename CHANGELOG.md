@@ -40,6 +40,48 @@
   现改为版本化策略判定：未知等级按**不可判定**处理，一律不可外发。
   另修策略加载的一处逻辑反转：`default_level` 可外发（本应拒绝的最危险配置）
   反而被接受——由 `test_dangerous_default_level_is_rejected` 当场抓出。
+- **DD-V1 · 考生2 P0：材料类型统一到权威 10 类（#71）**：
+  语义层 `dd_v1_semantic_retrieval_service` 过去硬着一张**只覆盖 10 类中 7 类**的中文类型表
+  （缺 `resolution` 决议 / `ip` 知识产权 / `contract` 合同），且与桥接链的**英文 key 空间**分叉；
+  正式入口 `tools/dd_v1_local_run.py` 的 `scaffold` 又拿**整条相对路径**去匹配那张表
+  （真实材料库的 `1.审计报告(1)/营业执照2024.pdf` 会被认成审计报告）。
+  两处叠加 ⇒ 义务侧与材料侧 key 空间不同 ⇒ **证据池恒空且静默**（空列表没有原因）。
+  修法：**类型取值空间只剩一处**（`dd_v1_requirement_service._DOC_TYPE_RULES` 的 10 个英文 key）：
+  ① 语义层改走公开 API `rq.parse_doc_type_spans`（新增，同表同口径），
+     **一段里出现多类材料不再整条丢弃**：按类拆成多条原子义务并留痕 `AMBIGUOUS_SPLIT`；
+     复合词（「员工合同」「劳动合同」）**不拆**——拆了就是猜；
+  ② 证据比较前**归一**（新增 `dd_v1_doc_type_service.normalize_doc_type`）：
+     旧 meta / 旧 fixture 里的**中文 doc_type** 仍然可用，不必一次性改完调用方；
+     主体按 `dd_v1_entity_service` 同口径归一（跨法人不混桶）；
+  ③ **候选为空时区分六种原因**（`NO_MATERIAL` / `UNRESOLVED_DOC_TYPE` / `UNKNOWN_ENTITY` /
+     `PERMISSION_BLOCKED` / `RETRIEVAL_EXHAUSTED` / `OTHER`）+ 过滤诊断，
+     不得统一伪装成「没有材料」；其中「检索被上限耗尽」时**不谎称确实没有**；
+  ④ 正式入口 `scaffold` 改用 `dd_v1_doc_type_service.resolve_doc_type(file_name=f.name)`
+     （**只看文件名、不看目录**，产出英文 key 与 provenance）。
+  合成口径复算（同批 14 条义务 / 8 份材料）：拆解 12→17 条义务、**整条丢弃 4→0**、
+  材料侧类型与权威判定不一致 5→0、canonical 配对丢失 7→3（剩下 3 类是合成材料里确实没有的）。
+  证据包：`docs/dd-v1-fos71/player2-p0-fix/`。
+  ★ 本条登记在 `## [Unreleased]` 桶内（**未发布任何版本、未加版本号**），
+  `AGENTS.md` 的版本号行也**未 bump**（该行落后于本文件已发布版 1.25.0，发布号由发布负责人定）。
+- **DD-V1 · G5：组包链改按「材料自身类型」判定披露闸（#71；四服务文件自 PR #83 并入 #81 线）**：
+  组包链过去按**整段的类型归属**给材料定类型 ⇒ 一段里横跨多类材料时
+  （例：「营业执照与2024年度审计报告」），整段只落**一个**类型 ⇒ 段内**可外发类**的材料
+  被归到同段的另一类 ⇒ 被披露闸按那一类拦下（fail-closed：无越权外发，
+  但授权组包取不到它；既有缺陷、非本轮引入）。修法（4 个 service 文件）：
+  ① `dd_v1_doc_type_service` 新增 `resolve_doc_types()`：材料命中的**全部**类型都保留
+     （同一来源内多类不丢；**不跨来源合并**），`resolve_doc_type()` 仍只给**单值主类型**
+     （向后兼容，单值调用方读数逐字不变），两 API 共用 `_type_sources()` 唯一来源口径；
+  ② `dd_v1_card_service`：认知卡新增多值字段 `doc_types`（`doc_type` 保留为主类型），
+     敏感等级改按**全部命中类型取最严**（任一命中类型无默认等级 ⇒ 等级留空 ⇒ 不可外发）；
+  ③ `dd_v1_match_service`：披露闸的输入改按**材料自己**命中的类型（不再是段的类型归属）；
+  ④ `dd_v1_policy_service`：`evaluate()` 的 `doc_type` 支持多类型（`str`／`list`），
+     类型闸按「**全部**类型都在放行清单内」判定（含一类不在 ⇒ 整份材料**不可外发**，
+     fail-closed），规则按「命中任一类型即收紧」，单类型材料结论逐字不变。
+  ★**安全方向不放松**：材料只要含有一类**不在**放行清单里的类型 ⇒ 整份材料**不得**外发
+  （反向对照用例已钉死）；★**本轮只跑受影响子集、未跑全量**
+  （全量由独立复核席在终态合并面执行）。
+  证据包：`docs/dd-v1-fos71/g5-mixed-type-packaging/`。
+  ★ 本条登记在 `## [Unreleased]` 桶内（**未发布任何版本、未加版本号**）。
 
 ### Added
 - **DD-V1 · 必备附件关系识别**：认知卡 `related_files` 不再恒 UNKNOWN。

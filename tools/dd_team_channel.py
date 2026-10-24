@@ -395,7 +395,72 @@ def _run_bridge(lib, root: Path, a) -> dict:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
 
-def _bridge_json(bridge) -> dict:
+def _config_anchor(a) -> dict | None:
+    """把 ``--anchor-year`` 折成**显式配置**锚点（期间四态锚点链的第一优先档）。
+
+    ★ ``--anchor-year`` 本来就是规则层 ``period_from/period_to`` 的锚定年度；
+      这里**只读**同一个值，不改它的行为 ⇒ 两层用的是同一个操作员意图。
+    ★ 没给（或不在可核验范围）⇒ ``None`` ⇒ 相对期间若没有其它可验证锚点就判「依据不足」。
+    """
+    y = getattr(a, "anchor_year", None)
+    if y is None:
+        return None
+    try:
+        yi = int(y)
+    except (TypeError, ValueError):
+        return None
+    if not (1900 <= yi <= 2999):
+        return None
+    return {"year": yi}
+
+
+def _period_spec_view(ob: dict, *, config_anchor: dict | None = None) -> dict:
+    """给一条义务算**期间语义四态**（EXPLICIT / RELATIVE / CURRENT / UNKNOWN）视图。
+
+    ★ 口径全部来自 ``dd_v1_period_service``（**不另抄一份期间表**）。
+    ★ 旧字符串 ``period``（规则层口径）**一字不改** ⇒ 本函数只**附加**一份结构化视图。
+    ★ 相对期间优先于单年显式（与语义层同一优先级）。
+    ★ 相对期间没有可验证锚点 ⇒ **保持未锚定**（**不拿系统时间当基准**）
+      ⇒ 由调用方按「依据不足」呈现（不判否、不升格）。
+    """
+    from cangjie_fos.services import dd_v1_period_service as ps
+    text = str(ob.get("text") or "")
+    legacy = str(ob.get("period") or "").strip()
+    if legacy.upper() == "CURRENT":
+        # ① 该类无年度口径（规则层已判 CURRENT）⇒ 期间维度不构成年度门槛。
+        return ps.spec_from_obligation({"period": legacy})
+    spec = ps.parse_period_spec(text)
+    if spec.get("kind") == "RELATIVE":
+        # ② 相对期间：锚点链 = 显式配置 > 原文声明（材料自身年度不在本入口参与锚定）。
+        anchor = ps.resolve_anchor(config_anchor=config_anchor,
+                                   declared_anchor=spec.get("declared_anchor"))
+        if anchor:
+            spec = ps.apply_anchor(spec, anchor)
+        return spec
+    if legacy.isdigit() and len(legacy) == 4:
+        # ③ 规则层已解析出单一年份 ⇒ 以它为准（唯一退化入口，字符串口径一字不改）。
+        return ps.spec_from_obligation({"period": legacy})
+    # ④ 规则层没解析出年份 ⇒ 用原文口径兜底（EXPLICIT / UNKNOWN）。
+    return spec
+
+
+def _period_view_text(spec: dict) -> str:
+    """把四态视图压成一行人话（给报告用）。"""
+    kind = str(spec.get("kind") or "UNKNOWN")
+    if kind == "RELATIVE":
+        if spec.get("resolved"):
+            years = spec.get("years") or []
+            return "RELATIVE（%s → %s）" % (years[0], years[-1]) if years else "RELATIVE（已锚定）"
+        return "RELATIVE（依据不足：没有可验证锚点）"
+    if kind == "EXPLICIT":
+        years = spec.get("years") or []
+        return "EXPLICIT（%s）" % "、".join(str(y) for y in years) if years else "EXPLICIT"
+    if kind == "CURRENT":
+        return "CURRENT"
+    return "UNKNOWN（该维度不构成门槛）"
+
+
+def _bridge_json(bridge, *, config_anchor: dict | None = None) -> dict:
     """桥接产物的机读形态。**只作建议**：不参与判定、不进交付包、不改结论。"""
     if not bridge:
         return {"ran": False, "reason": "NO_BRIDGE"}
@@ -424,8 +489,15 @@ def _bridge_json(bridge) -> dict:
                 "subject_verified": o["subject_verified"],
                 "doc_type": o["doc_type"],
                 "period": o["period"],
+                "period_spec": _period_spec_view(o, config_anchor=config_anchor),
                 "evidence_count": o["evidence_count"],
                 "rule_hint": o["rule_hint"],
+                # ★ 追加式：候选为空时的**六态原因**与诊断随正式入口一起出去。
+                #   口径全部来自语义层（桥接层只透传）⇒ 不在入口另造一套原因表。
+                "evidence_status": o.get("evidence_status") or {},
+                "candidate_status": (o.get("evidence_status") or {}).get("candidate_status"),
+                "no_candidate_reason": (o.get("evidence_status") or {}).get("no_candidate_reason"),
+                "diagnostics": (o.get("evidence_status") or {}).get("diagnostics") or {},
                 "candidates": [
                     {"file_id": e["file_id"], "sha256": e["sha256"],
                      "locator": e["locator"], "relative_path": e["relative_path"],
@@ -524,6 +596,7 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
             lines2.append("")
             lines2.append(f"- 材料类型：{ob['doc_type'] or '（未识别）'}"
                           f"｜期间：{ob['period']}"
+                          f"（{_period_view_text(_period_spec_view(ob, config_anchor=_config_anchor(a)))}）"
                           f"｜主体：{ob['entity'] or '（无线索）'}"
                           f"（{ob['entity_basis']}"
                           f"{'，**未经权威核验**' if not ob['subject_verified'] else ''}）")
@@ -536,6 +609,33 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
                               f"，定位 `{e['locator']}`"
                               f"，版本 {e['version_status']}）")
             lines2.append("")
+        # ★ 追加式新增段：候选为空的义务在上面的既有段落里**一行都不出**（被 continue 跳过）
+        #   ⇒ 这里单独补一段「为什么没有候选」：封闭六态原因 ＋ 候选状态 ＋ 过滤诊断。
+        #   ★ 既有段落结构与既有输出行**一字不改**；本段全部是**新增**输出行。
+        _empty = [ob for ob in b["obligations"] if not ob["evidence_count"]]
+        if _empty:
+            from cangjie_fos.services import dd_v1_semantic_retrieval_service as _sem
+            _six = "、".join(_sem.NO_CANDIDATE_REASONS)
+            lines2.append("### 候选为空的义务（为什么没有候选）")
+            lines2.append("")
+            lines2.append("> 下面每条都**没有**候选材料。原因**分六类**，"
+                          "不合并成一个笼统的「缺材料」；"
+                          f"取值域（语义层封闭枚举）：`{_six}`。"
+                          "本段只透传语义层算出的结论，入口不另造一套原因表。")
+            lines2.append("")
+            for ob in _empty:
+                _st = ob.get("evidence_status") or {}
+                _dg = _st.get("diagnostics") or {}
+                _hint = ob.get("rule_hint") or {}
+                lines2.append(f"- {ob['text']}")
+                lines2.append(f"    - 候选状态：`{_st.get('candidate_status') or '—'}`"
+                              f"｜没有候选的原因：`{_st.get('no_candidate_reason') or '—'}`"
+                              f"｜规则提示：{_hint.get('verdict', '—')}"
+                              f"｜规则提示里带的原因：{_hint.get('no_candidate_reason') or '—'}")
+                if _dg:
+                    _bits = "｜".join(f"{k}={v}" for k, v in sorted(_dg.items()))
+                    lines2.append(f"    - 过滤诊断：{_bits}")
+                lines2.append("")
         lines += lines2
 
     md.write_text("\n".join(lines), encoding="utf-8")
@@ -556,7 +656,7 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
         },
         "understanding_quality": q["by_dimension"],
         "card_provenance": cov["by_provenance"],
-        "semantic_bridge": _bridge_json(bridge),
+        "semantic_bridge": _bridge_json(bridge, config_anchor=_config_anchor(a)),
         "obligations": [
             {"obligation": o["obligation"],
              "verdict": (ms.get_status(o["obligation_id"]) or {}).get("verdict", ""),

@@ -1,0 +1,54 @@
+{
+  "fingerprints": {
+    "tree": "<REPO_BASE>",
+    "tree_head": "d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2",
+    "source_local_run_sha256": "15282351088537ee79f126203ddc26bbfb3582ee2751de59aa6b181b82b56d46",
+    "work_dir": "<WORKSPACE>/_minor4_probe_before",
+    "python": "<PYTHON>"
+  },
+  "results": {
+    "A_inside_fixture": {
+      "rc": 0,
+      "gate_blocked": false,
+      "write_blocked": false,
+      "refused": false,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_before/A_inside/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_before/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/material --meta <WORKSPACE>/_minor4_probe_before/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/material/meta.json --items <WORKSPACE>/_minor4_probe_before/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/raw_items.json --out <WORKSPACE>/_minor4_probe_before/A_inside/out --adapter manual --synthetic-replies <WORKSPACE>/_minor4_probe_before/A_inside/repo/backend/tests/fixtures/dd-v1-fos71-a4/replies --blind-leak-words Q-2024-07,案例甲机构,案例乙机构,星海项目 --blind-material-out <WORKSPACE>/_minor4_probe_before/A_inside/blind --blind-mapping-out <WORKSPACE>/_minor4_probe_before/A_inside/map.json",
+      "err_tail": ": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n{\"group\": \"R6\", \"adapter_status\": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n{\"group\": \"R7\", \"adapter_status\": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n{\"group\": \"R8\", \"adapter_status\": \"OK\", \"elapsed_s\": null, \"mode\": \"AGENT_SUGGESTION\", \"accepted\": 1, \"rejected\": 0, \"uncovered\": [], \"degrade_reason\": null}\n"
+    },
+    "_A_repo_pollution": [],
+    "C_outside_plain": {
+      "rc": 3,
+      "gate_blocked": true,
+      "write_blocked": false,
+      "refused": true,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_before/C_outside/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_before/C_outside/materials/materials --meta <WORKSPACE>/_minor4_probe_before/C_outside/materials/materials/meta.json --items <WORKSPACE>/_minor4_probe_before/C_outside/materials/items.json --out <WORKSPACE>/_minor4_probe_before/C_outside/out",
+      "err_tail": "拒绝：BLOCKED: 真实材料需要操作员在本机显式 --allow-real-material；默认只允许合成 fixture\n"
+    },
+    "_C_repo_pollution": [],
+    "B_outside_blind_into_repo": {
+      "rc": 3,
+      "gate_blocked": false,
+      "write_blocked": false,
+      "refused": false,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_before/B_outside_blind_into_repo/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_before/B_outside_blind_into_repo/materials/materials --meta <WORKSPACE>/_minor4_probe_before/B_outside_blind_into_repo/materials/materials/meta.json --items <WORKSPACE>/_minor4_probe_before/B_outside_blind_into_repo/materials/items.json --out <WORKSPACE>/_minor4_probe_before/B_outside_blind_into_repo/out --blind-material-out <WORKSPACE>/_minor4_probe_before/B_outside_blind_into_repo/repo/backend/tests/fixtures/probe-evilcase/blind --blind-leak-words 某外部机构 --blind-mapping-out <WORKSPACE>/_minor4_probe_before/B_outside_blind_into_repo/map.json",
+      "err_tail": "{\"limits\": {\"cost_cap\": \"不限额（本地 CLI 不报告费用，代码无法按金额限制；请在 DeepSeek 平台设置余额/预警）\", \"max_total_calls\": \"不限\", \"max_calls_per_item\": 2}}\n拒绝：DeepSeek Harness 需要显式 --allow-local-dsh\n"
+    },
+    "_B_repo_pollution": [
+      "backend/tests/fixtures/probe-evilcase/blind/audit_2024.txt"
+    ],
+    "Bprime_original_only": {
+      "rc": 3,
+      "gate_blocked": true,
+      "write_blocked": false,
+      "refused": true,
+      "cmd": "<PYTHON> <WORKSPACE>/_minor4_probe_before/Bprime_original_only/repo/tools/dd_v1_local_run.py run --material-root <WORKSPACE>/_minor4_probe_before/Bprime_original_only/materials/materials --meta <WORKSPACE>/_minor4_probe_before/Bprime_original_only/materials/materials/meta.json --items <WORKSPACE>/_minor4_probe_before/Bprime_original_only/materials/items.json --out <WORKSPACE>/_minor4_probe_before/Bprime_original_only/out --blind-material-out <WORKSPACE>/_minor4_probe_before/Bprime_original_only/repo/backend/tests/fixtures/probe-evilcase/blind --blind-leak-words 某外部机构 --blind-mapping-out <WORKSPACE>/_minor4_probe_before/Bprime_original_only/map.json",
+      "err_tail": "拒绝：BLOCKED: 真实材料需要操作员在本机显式 --allow-real-material；默认只允许合成 fixture\n",
+      "patched_to_original_only": true
+    },
+    "_Bprime_repo_pollution": [
+      "backend/tests/fixtures/probe-evilcase/blind/audit_2024.txt"
+    ]
+  },
+  "verdict": "REPRODUCED",
+  "criteria_all_pass": false
+}

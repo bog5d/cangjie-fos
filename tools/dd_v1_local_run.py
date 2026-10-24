@@ -30,6 +30,8 @@ sys.path.insert(0, str(ROOT / "backend" / "src"))
 # GM:A4A:CLI:IMPORTS
 from cangjie_fos.services import dd_v1_agent_adapters as ad  # noqa: E402
 from cangjie_fos.services import dd_v1_blind_service as bl  # noqa: E402
+from cangjie_fos.services import dd_v1_doc_type_service as dts  # noqa: E402
+from cangjie_fos.services import dd_v1_requirement_service as rq  # noqa: E402
 from cangjie_fos.services import dd_v1_score_service as sc  # noqa: E402
 from cangjie_fos.services import dd_v1_semantic_retrieval_service as sem  # noqa: E402
 from cangjie_fos.services import dd_v1_snapshot_freeze_service as fz  # noqa: E402
@@ -149,28 +151,111 @@ def _synthetic_provenance(recs: list[dict]) -> dict:
 
 
 def cmd_scaffold(a) -> int:
+    """扫描材料目录 → meta.json 草稿（材料类型**只看文件自己的名字**）。
+
+    ★ **为什么不能按整条相对路径判类型**：真实材料库普遍按法人/类型建多级目录，
+      形如 ``1.审计报告(1)/营业执照2024.pdf`` —— 按路径判会把**目录里别人的类型**
+      认成这份材料的类型（``dd_v1_doc_type_service`` 的文档字符串已明确记载这个坑）。
+      现在走 ``resolve_doc_type(file_name=f.name)``：**只看文件名**、产出**英文 key** 与 provenance。
+
+    ★ **类型取值空间只有一处**：``dd_v1_requirement_service`` 的 10 个规范 key
+      （license / charter 等）—— 本文件**不另抄一份类型表**。
+    ★ **期间口径**：执照/章程无年度口径 ⇒ ``CURRENT``（与桥接层同口径）；
+      其余类型取路径里的年份；都没有 ⇒ 空（需人工补）。
+    """
     root = Path(a.material_root).resolve()
     meta = []
+    unresolved = 0
     for i, f in enumerate(sorted(x for x in root.rglob("*") if x.is_file() and not x.name.startswith("."))):
         rel = f.relative_to(root).as_posix()
         y = YEAR.findall(rel)
-        dt = next((d for d in sem.DOC_TYPES if d in rel), "")
+        # ★ 索引/目录/清单件**不是材料**（dd_v1_doc_type_service.is_index_artifact）：
+        #   「00_审计报告目录.md」只把同目录材料列一遍 ⇒ 若按文件名判类型会得到
+        #   audit_report，与**真**审计报告同主体、同类型、同期间落进同一冲突桶 ⇒ **假 CONFLICT**。
+        #   口径与卡片层（dd_v1_card_service）一致：类型强制留空 + 留痕（不静默丢弃）。
+        if dts.is_index_artifact(f.name):
+            dt, prov = "", dts.UNKNOWN
+        else:
+            dt, prov, _evidence = dts.resolve_doc_type(file_name=f.name)
+        if not dt:
+            unresolved += 1
+        period = "CURRENT" if dt in rq.CURRENT_DOC_TYPES else (y[-1] if y else "")
         meta.append({"file_id": f"F{i + 1:05d}", "relative_path": rel, "entity": a.entity or "",
-                     "period": y[-1] if y else ("CURRENT" if dt in ("营业执照", "公司章程") else ""),
-                     "doc_type": dt, "part": "附注" if "附注" in rel else "正文",
+                     "period": period,
+                     "doc_type": dt, "doc_type_provenance": prov,
+                     "part": "附注" if "附注" in rel else "正文",
                      "version_status": "DRAFT" if re.search(r"草稿|征求意见|draft", rel, re.I) else "EFFECTIVE"})
     Path(a.out).write_text(json.dumps(meta, ensure_ascii=False, indent=1), "utf-8")
     blank = sum(1 for m in meta if not (m["entity"] and m["period"] and m["doc_type"]))
-    print(json.dumps({"files": len(meta), "need_manual_fill": blank, "out": str(a.out)}, ensure_ascii=False))
+    print(json.dumps({"files": len(meta), "need_manual_fill": blank,
+                      "doc_type_unresolved": unresolved, "out": str(a.out)}, ensure_ascii=False))
     return 0
+
+
+# GM:A4A:CLI:PERIOD-ANCHOR
+def _period_anchor_arg(raw: str | None) -> dict | None:
+    """把 ``--period-anchor``（JSON 文本）解析成**显式配置**的可验证锚点。
+
+    ★ 锚点优先级（期间服务口径）：**显式配置 > 原文声明 > 材料自身年度**；
+      本函数只负责第一档。默认空 ⇒ ``None`` ⇒ 相对期间若没有其它可验证锚点就判
+      「依据不足」（**不擅自拿系统时间当基准**）。
+    ★ 给了但不是合法 JSON 对象、或既没有 ``year`` 也没有 ``date`` ⇒ **报错退出**：
+      静默忽略会让口径悄悄退化成「无法判定」，而调用方以为锚点已生效。
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    try:
+        obj = json.loads(s)
+    except (TypeError, ValueError):
+        print("拒绝：--period-anchor 不是合法 JSON"
+              "（例：'{\"date\": \"2024-12-31\"}' 或 '{\"year\": 2024}'）",
+              file=sys.stderr)
+        raise SystemExit(3)
+    if not isinstance(obj, dict):
+        print("拒绝：--period-anchor 必须是一个 JSON 对象", file=sys.stderr)
+        raise SystemExit(3)
+    out: dict = {}
+    if obj.get("year") is not None:
+        try:
+            yi = int(obj["year"])
+        except (TypeError, ValueError):
+            print("拒绝：--period-anchor 的 year 必须是整数", file=sys.stderr)
+            raise SystemExit(3)
+        if not (1900 <= yi <= 2999):
+            print("拒绝：--period-anchor 的 year 超出可核验范围（1900-2999）",
+                  file=sys.stderr)
+            raise SystemExit(3)
+        out["year"] = yi
+    if obj.get("date") is not None:
+        d = str(obj["date"]).strip()
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", d):
+            print("拒绝：--period-anchor 的 date 必须是 YYYY-MM-DD", file=sys.stderr)
+            raise SystemExit(3)
+        out["date"] = d
+    if not out:
+        print("拒绝：--period-anchor 里必须有 year（四位年）或 date（YYYY-MM-DD）",
+              file=sys.stderr)
+        raise SystemExit(3)
+    for k in ("literal", "note"):
+        if obj.get(k):
+            out[k] = str(obj[k])
+    return out
 
 
 # GM:A4A:CLI:SPLIT
 def cmd_split(a) -> int:
     items = _maybe_blind_items(a, _load_items(Path(a.items)))
-    obs, flags = sem.split_items(items)
+    anchor = _period_anchor_arg(getattr(a, "period_anchor", None))
+    obs, flags = sem.split_items(items, period_anchor=anchor)
+    # ★ 输出面脱敏：写盘 / 打印的文本一律走 dd_v1_pii_service（不另抄正则）。
+    #   检索与摘录仍用原文（摘录的检索键是类型词/期间/附件，不含义务文本）⇒ 不退化。
+    obs, flags = sem.redact_for_output(obs, flags)
     Path(a.out).write_text(json.dumps(obs, ensure_ascii=False, indent=1), "utf-8")
-    print(json.dumps({"obligations": len(obs), "needs_human_split": flags, "out": str(a.out)}, ensure_ascii=False))
+    print(json.dumps({"obligations": len(obs),
+                      "needs_human_split": [f for f in flags if f.get("status") in ("NEEDS_HUMAN_SPLIT", "PARTIAL_SPLIT")],
+                      "ambiguous_splits": [f for f in flags if f.get("status") == "AMBIGUOUS_SPLIT"],
+                      "out": str(a.out)}, ensure_ascii=False))
     return 0
 
 
@@ -190,21 +275,68 @@ def _adapter(a):
     return ad.ADAPTERS[a.adapter]()
 
 
+# gm-fix-minor4-fixture-gate: exemption-by-original-material-root-only
+def _fixture_exempt(orig_material_root: Path) -> bool:
+    """合成 fixture 豁免：**只看原始材料根**（输入是什么），不看输出落在哪。
+
+    ★ 唯一判据口径（监工第 38 条①）：原始材料根在仓内 backend/tests/fixtures 下 ⇒ 豁免；
+      否则一律视为真实材料，必须 --allow-real-material。
+    ★ 本函数**只吃一个参数** ⇒ 输出路径（盲化目录 / 冻结目录）在结构上**无法**影响豁免。
+    """
+    return sem._inside(orig_material_root, ROOT / "backend" / "tests" / "fixtures")
+
+
+# gm-fix-minor4-write-guard: refuse-writing-outside-material-into-repo
+def _guard_material_output_not_in_repo(a, orig_material_root: Path) -> str | None:
+    """仓外材料**不得**把副本写进仓库目录（公开仓泄漏面）。
+
+    闸口（fixture 豁免）只拦「处理」，拦不住「写副本」：
+    `_prepare_material` 在闸口**之前**就把盲化/冻结副本写到 `--blind-material-out` /
+    `--snapshot-freeze-dir` ⇒ 即使随后 exit 3，仓外材料的副本**已经**落进仓库树
+    （实测：只按原始根判的 B' 案同样被污染）。
+    ⇒ 这里在**任何写入之前**先拦：源材料不在仓内 fixture 下时，
+      盲化 / 冻结 / 评估目标一律不得落在仓库树内（仓内合成 fixture 源不受此限）。
+    """
+    if sem._inside(orig_material_root, ROOT / "backend" / "tests" / "fixtures"):
+        return None  # 仓内合成 fixture ⇒ 允许在仓内落副本
+    for attr in ("blind_material_out", "snapshot_freeze_dir", "snapshot_evaluate_dir"):
+        val = getattr(a, attr, None)
+        if not val:
+            continue
+        p = Path(val).resolve()
+        if sem._inside(p, ROOT):
+            return (f"BLOCKED: 仓外材料不得写入仓库目录（--{attr}={p}）；"
+                    f"请把盲化/冻结目标指向仓库外的目录")
+    return None
+
+
 # GM:A4A:CLI:RUN-HEAD
 def cmd_run(a) -> int:
+    # ★ 锚点先解析：**非法锚点在花任何模型调用之前就退出**（不静默忽略）。
+    anchor = _period_anchor_arg(getattr(a, "period_anchor", None))
     meta = _json(Path(a.meta))
     orig_material_root = Path(a.material_root).resolve()
+    # gm-fix-minor4-write-guard: refuse-writing-outside-material-into-repo
+    blocked = _guard_material_output_not_in_repo(a, orig_material_root)
+    if blocked:
+        print(f"拒绝：{blocked}", file=sys.stderr)
+        return 3
     material_root, meta = _prepare_material(a, orig_material_root, meta)
-    # gm-fix-a4a-minor4: fixture-exemption-on-original-material-root
-    # ★ 合成 fixture 豁免必须按**原始**材料根判定。
-    #   `_prepare_material` 会把材料搬到 `--blind-material-out` / `--snapshot-freeze-dir`，
-    #   若按**冻结后**路径判：冻结到仓外（/tmp）⇒ 豁免**不可达** ⇒ 合法合成材料
-    #   被误判为真实材料而 Blocked（exit 3）。原实现被交付测试「把冻结目标指回仓内」
-    #   这一巧合盖住 ⇒ 一直没人发现。
-    #   修法：原始材料根 **或** 冻结后材料根，任一落在仓内 backend/tests/fixtures 下即豁免。
+    # gm-fix-minor4-fixture-gate: exemption-by-original-material-root-only
+    # gm-fix-a4a-minor4: fixture-exemption-on-original-material-root（前序标记：当时口径写错，见下）
+    # ★ 合成 fixture 豁免**只按原始材料根**判定（看**输入**是什么，不看输出落在哪）。
+    #   `_prepare_material` 会把材料搬到 `--blind-material-out` / `--snapshot-freeze-dir`；
+    #   若把**盲化后/冻结后**路径也算进豁免：输出落在仓内 backend/tests/fixtures 下
+    #   ⇒ 任意仓外材料都自动获得豁免 ⇒ 真实材料闸口形同虚设（可被放行），
+    #   且仓外材料的副本被写进仓内（公开仓泄漏面）。
+    #   ★ 对照实验（会话工作区探针 v2，四组 A/B/B'/C；被测代码 sha256 前缀 15282351088537ee）：
+    #       A 仓内合成 fixture         ⇒ 放行（rc 0）
+    #       C 仓外材料 + 不盲化        ⇒ 拒绝（rc 3，BLOCKED: 真实材料）
+    #       B 仓外材料 + 输出落仓内    ⇒ 旧实现**未触发** BLOCKED（闸口被绕过）
+    #       B' 同 B 但只按原始材料根    ⇒ 拒绝（rc 3）⇒ 绕过确由 `or` 那一半引入
+    #   修法：豁免只看 `orig_material_root`（**输入**是不是仓内合成 fixture）。
     #   ★ 不放宽真实材料：原始材料根在仓外时仍必须 --allow-real-material。
-    fixture = (sem._inside(orig_material_root, ROOT / "backend" / "tests" / "fixtures")
-               or sem._inside(material_root, ROOT / "backend" / "tests" / "fixtures"))
+    fixture = _fixture_exempt(orig_material_root)
     try:  # 仓库内合成 fixture 免开关；其他任何目录都视为真实材料，必须 --allow-real-material
         snap_dir = sem.local_material_snapshot(material_root, meta,
                                                allow_real=fixture or a.allow_real_material)
@@ -234,7 +366,7 @@ def cmd_run(a) -> int:
         if obs_g == []:
             summary.append({"group": tag, "status": "NO_OBLIGATIONS"})
             continue
-        if obs_g is None and not sem.split_items(g)[0]:  # 拆不出义务就不调用模型（不浪费付费调用）
+        if obs_g is None and not sem.split_items(g, period_anchor=anchor)[0]:  # 拆不出义务就不调用模型（不浪费付费调用）
             summary.append({"group": tag, "status": "NEEDS_HUMAN_SPLIT"})
             print(json.dumps(summary[-1], ensure_ascii=False), flush=True)
             continue
@@ -259,7 +391,8 @@ def cmd_run(a) -> int:
                 print(f"拒绝：{err}", file=sys.stderr)
                 return 3
         rec = sem.run_semantic(_adapter(a), snap_dir, meta, g, budget, workdir=wd,
-                               obligations=obs_g, text_root=text_root)
+                               obligations=obs_g, text_root=text_root,
+                               period_anchor=anchor)
         calls_total += rec.get("calls_used", 1)
         v = rec["semantic_validation"]
         summary.append({"group": tag, "adapter_status": rec["adapter"]["status"],
@@ -350,10 +483,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--entity", default="")
 # GM:A4A:CLI:ARG-SPLIT
     s = sub.add_parser("split"); s.add_argument("--items", required=True); s.add_argument("--out", required=True)
+    s.add_argument("--period-anchor", default="",
+                   help="相对期间的可验证锚点（JSON）：'{\"date\": \"2024-12-31\"}' 或 '{\"year\": 2024}'。"
+                        "锚点优先级：显式配置 > 原文声明 > 材料自身年度；"
+                        "不给则不擅自假定（相对期间无其它可验证锚点时判「依据不足」）")
     s.add_argument("--blind-leak-words", default="", help="盲化泄漏词表（逗号分隔）；给了就把条目里的泄漏串换成盲化名")
     s.add_argument("--blind-items-out", default=None, help="盲化后的条目落盘路径（拆分依据）")
     r = sub.add_parser("run")
     r.add_argument("--material-root", required=True); r.add_argument("--meta", required=True)
+    r.add_argument("--period-anchor", default="",
+                   help="同 split：相对期间的可验证锚点（JSON）")
     r.add_argument("--items", required=True); r.add_argument("--obligations", default=None)
     r.add_argument("--text-root", default=None); r.add_argument("--out", required=True)
     r.add_argument("--adapter", choices=sorted(ad.ADAPTERS), default="deepseek-harness",

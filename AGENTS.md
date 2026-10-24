@@ -32,18 +32,20 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v1.9.6，2026-06-06）
+## 当前状态（v1.9.6，2026-10-23）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v1.9.6**（+ 资产瘦身四：删旧MatchMaker，机构档案收编到尽调台） |
-| 测试基线 | **803 passed**，0 failed |
+| 版本 | **v1.9.6**（+ 资产瘦身四：删旧MatchMaker，机构档案收编到尽调台）｜**版本号行沿用旧线**：DD-V1 线在 `CHANGELOG.md` 的 `[Unreleased]` 累积（该节最新已发布版为 1.25.0），发布号由发布负责人定，本轮**不代定** |
+| 测试基线 | **全量（标准命令）通过、无失败**（`cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q`；`test_doctor_script` 需本机 `.env` 与前端 `node_modules`，按本仓标准命令排除）。**用例条数不在本表登记**（随依赖完整度而变，自报数在别的环境不可复现）⇒ 以独立复核席在交卷 SHA 上的复跑读数为权威；本地读数、命令原文、退出码与取数时刻见 `docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md` §6.2 ｜★**T2（2026-10-23）本轮只跑受影响子集**（受改 API 覆盖的 24 个文件 ＋ G5 新增 1 个 ＝ 25 文件）：**364 collected / 0 failures / 0 errors / 0 skipped / exit 0**；基座侧同 24 文件 **353 / 0 / 0 / 0 / exit 0**（两侧命令逐字相同）⇒ 用例 ID 集合**删除 0 条、新增 11 条**（全为 G5 新增）⇒ **零退化**；★**本轮未跑全量**（全量由独立复核席在终态合并面执行）⇒ 上行「全量通过」**不是**本轮读数；★**skipped ＝ 0**（不触发「待处理」说明义务） |
+| 测试基线读数登记 | ★**上表测试基线行内的用例条数登记按仓规「用例条数不在本表登记」撤除**（原句一字不动，本行只作撤除说明，不删任何字符）；权威读数见 `docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md` §6.2；★**本轮（2026-10-23 T2）受影响子集的五元组读数登记在下方「最近做了什么」段**（该处登记事实读数不违反仓规） |
 | 压测 | `uv run python bench/dd_stress.py --scale large --charts`；CI 烟雾 `tests/test_dd_stress_smoke.py` |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
 | DB fixture | `_isolate_db_per_test` autouse：每测试独立 SQLite。用 `@pytest.mark.real_db` 声明豁免 |
 | Push hook | `.git/hooks/pre-push` 自动跑 DB fixture 测试 |
+| 本轮（2026-10-23） | 分支 `feat/71-player2-p0-fix-20261023`（PR 待独立复核）：材料类型取值空间在代码里收敛为 `dd_v1_requirement_service._DOC_TYPE_RULES` 的 10 个英文 key（语义层不再保留第二张 7 类中文表）；证据池比较前做 doc_type 归一；空候选返回结构化原因；正式入口 `tools/dd_v1_local_run.py` 的 `scaffold` 按**文件名**判类型。证据包 `docs/dd-v1-fos71/player2-p0-fix/`（**业务效果账待刘江 Windows 实测**）；**T2（2026-10-23）**：G5 四服务文件（`dd_v1_card_service`／`dd_v1_doc_type_service`／`dd_v1_match_service`／`dd_v1_policy_service`）自 PR #83 并入本分支 —— 组包链改按**材料自身命中的全部类型**驱动披露闸（`doc_type` 仍为单值主类型，新增多值 `doc_types`），随附 G5 回归用例 `backend/tests/test_dd_v1_g5_mixed_type_packaging.py` 与读数件 `docs/dd-v1-fos71/g5-mixed-type-packaging/FULL-RUN-READING.md`（★业务效果账仍 **0/100 REAL_PASS**，本轮**不**代表效果已验证） |
 
 ---
 
@@ -107,6 +109,23 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 | scan status DB fallback | 服务重启后 `get_scan_status` 降级查 `dd_asset_index`，返回 `source: "db_fallback"` |
 | 导出 guard | 单文件 >100MB 跳过，累计 >500MB 终止。在 `dd_export_service.py` 顶部 `MB_LIMIT_PER_FILE` / `MB_LIMIT_TOTAL` 可调节 |
 | 新增测试 | `tests/test_dd_v072.py`（5个）
+
+---
+
+## 2026-10-23 刚做的事（T2 · G5 四服务文件并入 #81 线）
+
+| 改了哪里 | 做了什么 |
+|---------|---------|
+| `backend/src/cangjie_fos/services/dd_v1_doc_type_service.py` | 新增 `resolve_doc_types()`：**材料命中的全部类型**都保留（同一来源内多类不丢）；`resolve_doc_type()` 仍只给**单值主类型**（向后兼容，单值调用方读数逐字不变）；两 API 共用 `_type_sources()` 唯一来源口径 ⇒ 单值与多值结论**永不分叉** |
+| `backend/src/cangjie_fos/services/dd_v1_card_service.py` | 认知卡新增多值字段 `doc_types`（`doc_type` 保留为**主类型**，单值）；新增 `doc_types_key()`；敏感等级改按**全部命中类型取最严**（任一命中类型无默认等级 ⇒ 等级留空 ⇒ 不可外发） |
+| `backend/src/cangjie_fos/services/dd_v1_match_service.py` | 披露闸的输入改按**材料自己**命中的类型（不再是「整段的类型归属」）⇒ 段内**可外发类**材料不再被连坐；反向同时变严（段内受限类材料不再被段的类型放过） |
+| `backend/src/cangjie_fos/services/dd_v1_policy_service.py` | `evaluate()` 的 `doc_type` 支持多类型（`str`／`list`）：类型闸按「**全部**类型都在放行清单内」判定（含一类不在 ⇒ 整份材料**不可外发**，fail-closed）；规则按「命中任一类型即收紧」；单类型材料结论逐字不变 |
+| `backend/tests/test_dd_v1_g5_mixed_type_packaging.py` | G5 回归用例（新增 11 条）：成因环／传导环／后果环逐环钉住 ＋ **安全方向反向对照**（含受限类 ⇒ 仍必须被拦） |
+| `docs/dd-v1-fos71/g5-mixed-type-packaging/FULL-RUN-READING.md` | G5 全量回归读数件（命令／退出码／失败 ID 全集／取数时刻／被测对象身份／一次作废读数的自曝） |
+
+★ 本轮**只跑受影响子集**（25 文件），**未跑全量**（全量由独立复核席在终态合并面执行）；子集读数 **364 collected / 0 failures / 0 errors / 0 skipped / exit 0**（基座侧同 24 文件 353 / 0 / 0 / 0 / exit 0，用例 ID 集合删除 0 条 ⇒ 零退化）。
+★ 业务效果账仍 **0/100 REAL_PASS**（真实材料库实测未做）—— 本轮**不**代表效果已验证。
+★ **本轮受影响子集五元组（collected / failures / errors / skipped / 退出码）＝ 364 / 0 / 0 / 0 / 0**（基座侧同 24 文件 ＝ **353 / 0 / 0 / 0 / 0**，两侧命令逐字相同；用例 ID 集合删除 0 条、新增 11 条 ⇒ 零退化；失败 ID 全集 ＝ 空）；★**skipped ＝ 0**（不触发「待处理」说明义务）；★**本轮未跑全量**（全量由独立复核席在终态合并面执行）。★**上表测试基线行内的用例条数登记已按仓规「用例条数不在本表登记」撤除**（撤除说明见上表「测试基线读数登记」行；本段是本轮读数的登记面）。
 
 ---
 
