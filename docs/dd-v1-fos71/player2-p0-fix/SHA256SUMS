@@ -1,12 +1,20 @@
+# SHA256SUMS - FOS #71 考生2 P0 修复交付包
+# 对应 commit: c3b224975bfd9e2560ea04019bc17455cf1a82e8
+# 对应分支: feat/71-player2-p0-fix-20261023
+# 清单内容: 该 commit 树上 13 个交付件的实际字节的 sha256
+# 条目数: 13 (原 12 条逐条重算 + 新增运行探针件 1 条)
+# 本清单不含自身行 (两文件互列哈希会成环)
+# 校验: 仓库根执行 sha256sum -c docs/dd-v1-fos71/player2-p0-fix/SHA256SUMS
 47dbf525824e01552044cd26cf16db33427e83e3416a744c4df4cccb5826b0a3  docs/dd-v1-fos71/player2-p0-fix/CALLCHAIN-BEFORE-AFTER.md
 17a6129fe60868eddae45021fbb0c4ecbc6d15c9b45cac79ec9a30b2aeb56d12  docs/dd-v1-fos71/player2-p0-fix/TEST-EVIDENCE.md
 34d60e0a50a9295f5d115ee5e68c67ad07ee8c498708176ac926de5657b8716d  docs/dd-v1-fos71/player2-p0-fix/SKILLS-REVIEW.md
-3fd91867573f33034bc06fa442cbfc50e0ace32adbf661377e48806651aabcd7  AGENTS.md
-2ad4047608f163b951ae9b292ebcedde0f5d658835edbef58a37e1f5cf63d78d  CHANGELOG.md
-394adf3040e56f2df4c0073e266e65879cab8f8ae1ec117706b518fd48e7088a  backend/src/cangjie_fos/services/dd_v1_bridge_service.py
-9cfeb03f4783c0dc6d10dbedd87b6570e2a66bbd98b1b6edb0324dc1d1f321aa  backend/src/cangjie_fos/services/dd_v1_doc_type_service.py
+86e3e98161b1083420644c0fe3f60e965236c0bcd7a773d80d9a6a9454c403bf  AGENTS.md
+06e8e0de8be7f3b8506fb89b65de1d097ed135b87bc90ede9f64313fc164ed1a  CHANGELOG.md
+baa54531b431b8be3baa389dc1b1025fef69e11af8d2581e1db32e8be7c9a3d3  backend/src/cangjie_fos/services/dd_v1_bridge_service.py
+d107573b7d9c2eeee05e0708a55a7458b36d1645b77ebd973aa2d1c4d477d0ba  backend/src/cangjie_fos/services/dd_v1_doc_type_service.py
 82e6217613a1fce08f00d52284030cbde8aa8e3d373b57dd6ed6583cda23515b  backend/src/cangjie_fos/services/dd_v1_requirement_service.py
-0d4df7df25a817589004208ec1af2b782bc3469f24a40a91a409cf76bb55929c  backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py
+020d2aec4b1529bbfe8e263b6ef65f7026440e16726ffc2889812c8e2e4e11ea  backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py
 83069a64092c296a7e3391a07f4d1f67df18783e32d328c0cb1907fcdcb8f94e  backend/tests/test_dd_v1_fos71_player2_p0.py
 29eccccc662778f4c05c15a0c1f2ed9641655926eddbaff161ab9f3d5815ff2a  backend/tests/test_dd_v1_semantic_retrieval.py
-c75b2aac66dd74b7dac4d159d0547897240f51944e45b29da56445d62faf25be  tools/dd_v1_local_run.py
+bd4f5c10ab0e14a865de9bd4b9b4fc81da9f2ae3c0bc1888aef0d09d3b1a27aa  tools/dd_v1_local_run.py
+aa36b0db3f3fc72e2e8b3976097bd91e9eb267f0a31c0b3461fea58fd8b9a428  tools/dd_v1_six_state_reachability_probe.py
