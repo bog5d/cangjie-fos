@@ -12218,3 +12218,67 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 ■ ★十、★**本段边界（0 触）**
 
 0 合并任何分支（含 master）｜0 关 PR｜0 amend／0 force｜0 改写或删除 §198 已落的任何字节｜0 删节／0 回填／0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 代跑独立 Gate｜0 改 Issue #71 的 AC 判定／尺子口径／GM live 名册｜0 写产品代码｜0 触碰施工方工作树与施工分支｜0 触碰台账分支的他人已落段落｜0 新建调度器／第二套监工／第二执行器｜0 催办｜0 唤醒｜0 spawn（★恢复在飞且已产出字节）｜0 输出明文凭证｜0 复刻禁形字面｜0 重跑任何已落盘的落盘动作｜0 代改交卷件同步项
+
+#### §199（号 199）：★**本轮（01:40Z 槽）巡检读数 ＋ T4 独立 Gate 对现读 tip 的覆盖判定（锚 tree 到现读 tip 的 blob 级差集）＋ 交卷件锚点表 7/13 陈旧行登记 ＋ 本席扫描器自身缺陷自曝 ＋ 恢复席已交付回执故本席 0 spawn**（★本席 `455693124198665`、★**只追加，不改写任何已落字节；0 删、0 回填、0 重排、0 amend、0 force**、★**取数时刻 2026-10-24T01:40:34Z 起现场 `date` 现读**）
+
+■ ★一、★**远端权威现读（★执行点现读、★REST 与 git 两通道）**
+
+· ★**修复分支** `feat/71-player2-p0-fix-20261023` tip ＝ `973b8eee813a386c8f52925bf6b88374424f71d0`（★commit date `2026-10-24T01:32:00Z`、★author ＝ committer ＝ Player2 Executor（★邮箱 player2-executor@local）、★单父 `1a3d5a01375c852aa38b81d122cab1c7c3dcd8c5`、★tree `ec34a69d1ab8a45284457ec678dcb657a1c7bc06`、★message 1,203 字符）
+· ★**master** tip ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（★未动）
+· ★**全量 heads ＝ 37**（★与 §198 追加段之二逐位相同、★0 新建分支、★0 新 `71-*` 分支）⇒ ★**无双 Writer 风险**
+· ★**基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` → 修复分支 tip 的 blob 级变更面**：★**新增 34／删除 11／既有 blob 改写 14**（★删除 11 条全在 `docs/dd-v1-fos71/wp05-real-integration/a4-evidence/seven-item-bundle/**`；★改写 14 条含 `tools/dd_v1_local_run.py`、`tools/dd_team_channel.py`、8 个 `backend/src/cangjie_fos/services/dd_v1_*.py`、`.github/workflows/ci.yml`、`AGENTS.md`、`CHANGELOG.md`、1 个 `backend/tests/test_dd_v1_semantic_retrieval.py`）⇒ ★**与 §198 追加段之二逐位相同 ⇒ 本轮 0 新施工字节**
+· ★**tip 静默时长**：自 `2026-10-24T01:32:00Z`（★tip commit date）至现读 `2026-10-24T01:40:34Z` ＝ ★**8 分 34 秒** ⇒ ★**远未达 25 分钟阈值**
+
+■ ★二、★**代码面独立复算（★本席现读远端 blob、★不采信任何一方自述）**
+
+· ★**正式入口确有修复**（★不是只修测试脚本）：★`tools/dd_v1_local_run.py`（★30,918 B、★blob `f23f89692879e093c9ffbd9db10b174040796fb1`、★sha256 `bd4f5c10ab0e14a865de9bd4b9b4fc81da9f2ae3c0bc1888aef0d09d3b1a27aa`）★**子命令 scaffold／split／run／score 齐全**、★`resolve_doc_type` 产出英文规范 key、★期间「现行有效」判定取自权威表的现行子集｜★`tools/dd_team_channel.py`（★37,307 B、★blob `3610eb4db61f41b5aec25a2490c027b1f6c0bb45`）★**import 9 个真 FOS 服务**（★policy／card／package／manifest／bridge／period／match／semantic_retrieval）⇒ ★**薄入口调真引擎、★非自研检索替代**
+· ★**材料类型统一到权威 10 类、★无第三套「判定型」类型表**：★权威表 ＝ `dd_v1_requirement_service._DOC_TYPE_RULES`（★10 元 tuple、★键为 audit_report／financial_statement／tax／license／charter／capital／resolution／ip／labor／contract）｜★`CURRENT_DOC_TYPES` ＝ 其派生子集（★license、charter）｜★`dd_v1_doc_type_service` 与 `dd_v1_semantic_retrieval_service` 均**调用**权威表的公开 API（★`parse_doc_type`／`parse_doc_type_spans`／`doc_type_search_terms`）、★**未另抄一份**
+· ★**（新登记 · 耦合风险）★10-key 键集存在 3 处字面复制、★但均非「判定型」**：★`dd_v1_match_service._DOC_TYPE_PURPOSE_MAP`（★10 键字面、★用途 ＝ 由已定类型反查 purpose 关键词、★不参与类型判定）｜★`dd_v1_requirement_service._DOC_TYPE_UNIQUENESS`（★同文件内、★同 10 键、★文档已声明是「另一维度」）｜★`dd_v1_policy_service` 的报错文案（★纯文案、★实际校验走 `is_canonical`）⇒ ★**将来新增第 11 类时这三处会静默漏项、★建议司仓裁定是否改为派生**
+· ★**六态确有区分、★未统一伪装成 MISSING**：★`NO_CANDIDATE_REASONS` ＝ 封闭 6 项（★NO_MATERIAL／UNRESOLVED_DOC_TYPE／UNKNOWN_ENTITY／PERMISSION_BLOCKED／RETRIEVAL_EXHAUSTED／OTHER）｜★六个原因各有**独立生产点**（★源文件行 523／525／527／529／531／542／544）｜★判定链互斥、★且当同主体同类型材料**存在但期间/版本不可用**时原因**留空**、★改由 `candidate_status` ＝ `PERIOD_OR_VERSION_MISMATCH` 表达 ⇒ ★**「材料存在却报确实没有」的契约禁止伪装被结构性挡住**｜★薄入口输出已透传 `candidate_status` 与 `no_candidate_reason`（★薄入口行 498 至 499、★631 至 634）
+
+■ ★三、★**独立 Gate 覆盖判定（本席自算、★不引用任何一方自述）**
+
+· ★**独立 Gate 结论**：★PR #81 comment `6370738997`（★`2026-10-23T17:25:18Z`、★独立复核席 `455539551396187`）**VERDICT: PASS** ＋ 追加更正 2 条（★`6371627381`／`6372203092`）｜★PR #81 **reviews ＝ 0**（★裁定走 issue comment、★不属 review 形式）
+· ★**被验锚**：★首选锚 ＝ PR #81 的 merge-ref commit `ef94af4c9a6d640b5f412e352cbfb53ad906b5a8`、★其 tree `6b24fc830a9a9a590fb606a406e3c7c03c40bde5`（★803 条 blob 路径）、★副锚 ＝ head commit `a34d01031471b539480ef8bdd53d263cc375ac59`（★两棵树逐位相同）
+· ★**本席独立复算（★锚 tree → 现读 tip tree）**：★**新增 2／删除 0／改写 3**｜★新增 ＝ `tools/dd_v1_six_state_reachability_probe.py`、★`tools/fos71_land.py`｜★改写 ＝ `backend/tests/test_dd_v1_fos71_t5_six_states_entry.py`、★`docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md`、★`docs/dd-v1-fos71/player2-p0-fix/SHA256SUMS`
+· ★**结论（★形式过期、★行为面未变）**：★**产品源码面（backend/src、frontend/src）0 变更、★正式入口面（local_run、team_channel）0 变更** ⇒ ★**T4 PASS 仍逐位覆盖现读 tip 的产品行为字节**｜★**但 T5 测试文件在锚后被改写 ⇒ 该测试文件的当前版本未经独立 Gate 覆盖**（★如实登记、★不代跑 Gate）
+· ★**CI（★现读 tip 的 check-runs）**：★6 条 ＝ 5 条 success ＋ 1 条 in_progress（★`Backend Tests (228 required)`）
+
+■ ★四、★**两条账（★互不换算、★每条都写明计量单位）**
+
+· ★**工程账**：★分子 ＝ **1**（★可核验的独立 Gate 结论只有 1 条、★即 T4）｜★**分母存在三把尺子、★本席不代裁、★如实并列**：★**口径甲 ＝ WP1 至 WP4（4 个）**、★**口径乙 ＝ A0 至 A5（6 个、★冻结尺子 `GOAL-CONTRACT.v3.8.json` 的 `work_to_goal_map` 与 Issue #71 于 `2026-10-21` 的口径）**、★**口径丙 ＝ WP-R0 至 WP-R5（6 个、★GM live 名册 `W-DD-V1-2026` 的 `work_packages`）** ⇒ ★按口径甲 ＝ 1/4 ＝ 25%、★按口径乙或丙 ＝ 1/6 ≈ 17%｜★**分子 1 是否等价于「一个 WP 的完整验收」需司仓裁定**（★T4 覆盖的是 R2 期间语义与 T5 六态、★是否等于整包验收未裁定）⇒ ★**登记待裁定、★不代裁**
+· ★**效果账**：★冻结尺子 `GOAL-CONTRACT.v3.8.json` 的 5 项 outcome_metrics（★O1 25／O2 25／O3 20／O4 20／O5 10）★**`verified_points` 全为 0、★`status` 全为 UNKNOWN**｜★9 项 `hard_gates` 全 UNKNOWN｜★`goal_state` ＝ UNKNOWN ⇒ ★**效果 ＝ 0/100**（★只计 REAL_PASS、★MOCK 与合成不折算、★UNKNOWN 既不算 PASS 也不算已证伪）｜★**与 Issue #71 于 `2026-10-22` 的 Owner 口径一致**：★A4 的 Gold 隔离／去题号／SHA 冻结／42 题评分器／trace／合成盲测可先由现有调度在已授权环境完成、★但**无真人考试与真实业务证据时 A4 终局与 REAL_PASS 不得晋级**
+
+■ ★五、★**四件事分列（★不合并成一句）**
+
+· ① ★**cron 是否运行 ＝ 是**：★本工程**恰 1 条** `455353976279398`（★`*/20`、★enabled、★next 01:40Z）｜★另 2 条属 CF 与 INC3、★**不是本工程的重复调度**（★禁误判、★禁删除）
+· ② ★**监工是否工作 ＝ 是**：★本席与兄弟席在跑
+· ③ ★**开发者是否真正施工 ＝ 本轮否**：★**0 新施工字节**（★tip 停在 `2026-10-24T01:32:00Z`）｜★**恢复席 `455685885718637` 末条 `finish_reason` ＝ `stop`（★`2026-10-24T01:35:21Z`）、★`updated_at` ＝ `2026-10-24T01:35:22Z`** ⇒ ★**恢复席已交付本轮全部三项残留并把回执投递到 §197 席、★已送达**（★其末条自曝 6 项待裁定）
+· ④ ★**是否产生新的功能成果 ＝ 否**：★本轮 0 新功能字节；★**§198 追加段之二已把恢复席产出的两笔记为该轮成果、★本席不重复计**
+· ⇒ ★**活跃态 ＝ WAITING**（★由 §198 的 PRODUCTIVE 改判、★**依据是本轮 0 新字节且执行席已停下等待司仓与 Owner 裁定**、★**非「因为有人停了」**）｜★**不判 STALLED**（★静默仅 8 分 34 秒、★远未达 25 分钟阈值、★且剩余事项的瓶颈是**人类授权与司仓裁定**、★不是执行能力）
+· ★**该踢吗 ＝ NO**：★**A** 远端 tip 未前进 **8 分 34 秒 ＜ 25 分钟 ⇒ A 不成立**｜★**B** 工作树无新增改动（★远端 0 新字节、★0 新分支）｜★**C** 执行器末条 `finish_reason` ＝ `stop`（★非 toolUse）｜★**A 不成立 ⇒ 不触发恢复**｜★**另 3 条不触发的理由**：★**恢复计数在本 HEAD 下 ＝ 1 且已产出字节**（★「同一 HEAD 连续 2 次恢复无新 commit」条款不适用）｜★剩余事项是**司仓与 Owner 的裁定与人类授权**（★H1 master 合并、★H2 关闭 PR #82）、★**恢复不会产生新字节**｜★**本席 0 spawn／0 催办／0 唤醒／0 恢复**（★0 新建第二执行器、★0 第二套监工）
+
+■ ★六、★**本席本轮自曝（★红的是本席的扫描器、★不是远端对象）**
+
+· ★**首版「全仓类型表单源扫描」脚本把同一份响应写到了每一个目标路径**：★105 个文件全部变成同一份 9,232 B 内容、★首轮脚本超时后后台轮又因「文件已存在」全部跳过 ⇒ ★**扫描结论会整段作废**（★若据此判「无第三套类型表」即为假绿）
+· ★**机械证法**：★同一目录下大量文件字节数完全相同 ⇒ ★**内容寻址自证（按 git 对象格式复算 blob id、★与树内 sha 逐位相等）201/201 全过**才算数｜★**已作废重扫**：★本席对 `backend/src/**` 与 `tools/**` 的 201 个 Python 文件逐个取 blob、★**逐个断言「解码长度 ＝ 信封 size」且「本地复算 blob id ＝ 树内 sha」**、★**201/201 全过**（★修正后最大重复尺寸仅 2 个文件、★不再是全体同尺寸）⇒ ★**本节第二条的结论建立在修正后的数据上**
+· ★**通用形态（★新增登记）**：★**「远端取数成功」不等于「取到的字节属于该路径」** ⇒ ★**凡批量扫描必须逐件做内容寻址自证、★且要额外核「同尺寸文件计数」**（★否则一次脚本复用就会造出整片假绿）
+
+■ ★七、★**新登记的两条事实（★0 代改、★只登记）**
+
+· ★**交卷件锚点表陈旧范围远大于此前登记**：★`EVIDENCE-PLAYER2-P0.md` 的 §11 锚点表 13 行中 **7 行陈旧**（★此前只登记了第 13 行）：★第 4 行 AGENTS.md、★第 5 行 CHANGELOG.md、★第 6 行 `dd_v1_bridge_service.py`、★第 7 行 `dd_v1_doc_type_service.py`、★第 9 行 `dd_v1_semantic_retrieval_service.py`、★第 12 行 `tools/dd_v1_local_run.py`、★第 13 行 `SHA256SUMS`｜★**成因**：★§11 表的取数时刻是 `2026-10-23T05:08:37Z`、★早于 R2／T3／T5 三次并线（★`2026-10-23T15:49Z` 至 `16:12Z`）⇒ ★**该表在并线后从未刷新**（★而 `SHA256SUMS` 已于 `2026-10-24T00:32:39Z` 刷新）⇒ ★**登记待司仓裁定、★0 代改、★若同步必须另起一笔**
+· ★**GM live 名册由「不可得」变为「可得但陈旧」**：★`cangjie-gm` 的 `data/work_items.json` 中 `W-DD-V1-2026` 条目存在、★但 `updated_at` ＝ `2026-10-19T19:45:00+08:00`（★＝ `2026-10-19T11:45:00Z`）、★`current_state` ＝ BLOCKED、★`current_wp` ＝ WP-R2、★`waiting_for_chairman` ＝ true、★`executor` ＝ hermes、★`work_packages` ＝ WP-R0 与 WP-R1 COMPLETED／WP-R2 至 WP-R5 BLOCKED ⇒ ★**该名册自 10-19 起未回写本工程的真实进展**（★§198 记为「不可得」、★本轮取到实体、★**本席 0 代改名册**）
+· ★**交付清单仍是两层判据一绿一红**：★**摘要层绿**（★`SHA256SUMS` 13 条在现读 tip 的对象字节上逐条重算 **13/13 相符**、★0 不符）｜★**集合层红**（★新增交付件 `tools/fos71_land.py` **未入册**、★清单头部「对应 commit」仍绑 `c3b224975bfd9e2560ea04019bc17455cf1a82e8`）⇒ ★**0 代改、★登记待施工侧另起一笔**
+
+■ ★八、★**本轮未发外发卡（★如实登记原因）**
+
+· ★**触发条件逐条核**：★重大进展 ＝ **无**（★0 新施工字节）｜★停滞 ＝ **无**（★静默 8 分 34 秒）｜★新的独立 Gate 结果 ＝ **无**（★T4 是 `2026-10-23T17:25:18Z` 的旧裁定、★本席只做了覆盖复算、★未新出裁定）｜★需波总决策 ＝ **无新项**（★H1 与 H2 两项人类授权、★以及恢复席列出的 6 项待裁定、★**在 §197 与 §198 已登记**、★属同一事件、★按「同一事件不重复投递」不重复外发）⇒ ★**本轮只更新落盘状态卡、★不向波总发一屏卡**
+· ★**下一张卡的触发点（★提前写明）**：★**T4 独立 Gate 在现读 tip 上重跑并出新裁定**｜★**修复分支 tip 再前进且带来新的产品字节**｜★**H1 或 H2 的人类授权落纸**｜★**静默达 25 分钟阈值且工作树无新增**｜★**GM live 名册被回写或工作包状态被改判**
+
+■ ★九、★**下轮（02:00Z 槽）必查（★执行点现算）**
+
+① ★**修复分支 tip 是否再前进**（★现 `973b8eee813a386c8f52925bf6b88374424f71d0`）｜② ★**恢复席 `455685885718637` 的 status 与末条 `finish_reason`**（★本轮读数 ＝ status 0、★末条 `stop`）｜③ ★**交付清单是否已刷新入册 `tools/fos71_land.py`**（★现 13 条、★未入册）｜④ ★**交卷件 §11 锚点表 7 行陈旧是否已被裁定或另起一笔同步**｜⑤ ★**T4 独立 Gate 是否在现读 tip 上重跑**（★现副锚早于现读 tip 4 笔、★行为面未变、★但 T5 测试文件锚后被改写）｜⑥ ★**H1 与 H2 的人类授权是否落纸**｜⑦ ★**下一空闲节号执行点现算**（★本段落盘后标题行口径最大节号 ＝ 199、★下一空闲 ＝ 200、★**禁沿用本段指针**）｜⑧ ★**GM live 名册 `W-DD-V1-2026` 是否被回写**（★现停在 `2026-10-19T11:45:00Z`）｜⑨ ★**三把工程分母（WP1 至 WP4／A0 至 A5／WP-R0 至 WP-R5）是否被司仓裁定**｜⑩ ★**10-key 键集 3 处字面复制是否改为派生**
+
+■ ★十、★**本段边界（0 触）**
+
+0 合并任何分支（含 master）｜0 关 PR｜0 amend／0 force｜0 改写或删除 §198 与其两段追加段已落的任何字节｜0 删节／0 回填／0 重排他人节｜0 代写独立 Reviewer 的 VERDICT｜0 代跑独立 Gate｜0 改 Issue #71 的 AC 判定／尺子口径／GM live 名册｜0 写产品代码｜0 触碰施工方工作树与施工分支｜0 触碰台账分支的他人已落段落｜0 新建调度器／第二套监工／第二执行器｜0 催办｜0 唤醒｜0 spawn（★本轮 A 判据不成立且剩余事项属人类裁定）｜0 输出明文凭证｜0 复刻禁形字面｜0 重跑任何已落盘的落盘动作｜0 代改交卷件同步项与清单
