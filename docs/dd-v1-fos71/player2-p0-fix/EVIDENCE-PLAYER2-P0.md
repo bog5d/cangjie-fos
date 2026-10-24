@@ -78,9 +78,11 @@
 | 2 | `backend/tests/test_dd_v1_semantic_retrieval.py:81` | `assert (obs["R2-O2"]["doc_type"], obs["R2-O2"]["period"]) == ("社保缴纳证明", "2024")` | `== ("labor", "2024")` | 同上：「社保缴纳证明」在权威表里的 key 是 `labor`（`(劳动合同\|社保\|花名册\|员工)`）。**期间 2024 未变** |
 | 3 | `backend/tests/test_dd_v1_semantic_retrieval.py:94`（整条用例重写） | `test_ambiguous_two_doc_types_in_one_segment_not_guessed`：`assert obs == [] and flags["status"] == "NEEDS_HUMAN_SPLIT"` | 改名 `test_ambiguous_two_doc_types_in_one_segment_split_into_atomic_obligations`：断言拆成 **2 条原子义务**（`audit_report` / `license`）+ 留痕 `AMBIGUOUS_SPLIT` + 义务 ID `X-O1/X-O2` + 共享该段期间 | **WP1(a) 明令「默认选 (a)」**：一段含多类不得整条丢弃（业务事实是 54 条只拆出 7 条，拆解率是本次核心）。**判据未被削弱**：同批新增反例 `test_compound_doc_type_is_not_split_into_two_obligations` 锁住「复合词（员工合同/劳动合同）不拆」，且新文件里 `test_multi_type_segment_splits_into_atomic_obligations_with_separate_pools` 锁住「拆出来的两条义务各自只召回自己那一类材料」（误匹配率不上升） |
 | 4 | `backend/tests/test_dd_v1_semantic_retrieval.py:112`（随 #3 连带） | `flags` 是 `dict`（`flags["status"]`） | `flags` 是 `list`（`[f["status"] for f in flags] == ["AMBIGUOUS_SPLIT"]`） | 一个条目可能同时有「拆不出来的片段」与「多类拆分」两种留痕，单个 dict 装不下 ⇒ 返回留痕**列表**。**兼容性**：`split_items` 的返回结构（`(obligations, flags)`）不变，包内 `unsplit_items` 字段**仍只收** NEEDS_HUMAN_SPLIT / PARTIAL_SPLIT（既有断言 `pkt["unsplit_items"] == [{"item_id": "R3", "text": "其他相关材料等", "status": "NEEDS_HUMAN_SPLIT", "reason": "NO_KNOWN_DOC_TYPE"}]`（`:85-86`）逐字未改），新增的 `split_flags` 承载全部留痕 |
+| 5 | `backend/tests/test_dd_v1_fos71_t5_six_states_entry.py`（用例改名 ＋ 场景扩充 ＋ 口径改判） | `test_production_reachable_states_measured_three_of_six`：断言 `len(observed) == 3`，docstring 写「生产路径实测可达 3/6」，并把 `NO_MATERIAL` 列为**不可达**，理由是「桥接把义务主体取自有该类型材料的主体 ⇒ 主体非空 ⇒ 候选池非空」 | 改名 `test_production_reachable_states_measured_four_of_six`：**实测**四态（`NO_MATERIAL` / `UNRESOLVED_DOC_TYPE` / `UNKNOWN_ENTITY` / `RETRIEVAL_EXHAUSTED`）并断言**逐项相等**；新增第 4 场景（登记权威主体 ⇒ 主体非空但名下只有别类材料 ⇒ `NO_MATERIAL`）＋「同一库同一清单、只差有没有登记权威主体」的**反差对照**（`UNKNOWN_ENTITY` → `NO_MATERIAL`）＋ `OTHER` 不可达的机械核对 | **旧机制理由已被同一 PR 的桥接层字节证伪**：`dd_v1_bridge_service.build_semantic_obligations` 取到**权威主体**时**不按 doc_type 过滤**（只有另一条「按 doc_type 取卡片推断主体」的路才过滤）⇒「权威主体名下只有别类材料」会走到语义层 else 分支给出 `NO_MATERIAL` ⇒ 该态**在生产路径可达**。★ 旧断言是**一条会误导后人的绿断言**：它绿，是因为它**从不跑**能证伪自己理由的那个场景（登记权威主体），**不是**因为生产路径到不了 `NO_MATERIAL`；独立 Gate 在生产入口实测为 4/6。**产品实现字节未改**（本条只改测试件的口径、机制说明与断言，并另落一个可重跑的运行探针） |
 
-**没有为了让测试变绿而弱化的判据**：唯一被改判的是「类型字面量」与「一段两类的处置方向」两处，
-且两处都补了**更强**的反向用例；其余既有断言（含 `h["R1-O1"] == {"verdict": "MATCH", "files": ["G001","G002"]}`
+**没有为了让测试变绿而弱化的判据**：改判三处 —— 「类型字面量」「一段两类的处置方向」
+与「六态生产路径可达数（3/6 → 4/6）」；前两处都补了**更强**的反向用例，第三处**由实测取代文案**
+（并补了反差对照与可重跑的运行探针，判据只会更严不会更松）；其余既有断言（含 `h["R1-O1"] == {"verdict": "MATCH", "files": ["G001","G002"]}`
 这种**整字典相等**的断言）**一字未改**仍通过。
 
 ---
@@ -167,18 +169,27 @@ pytest 版本 **9.1.1**；命令＝复核席同款（§6.1-3 说明为何不用 
 | C4 | 「`scaffold` 产出英文 key 与 provenance」 | 已做（`doc_type` + `doc_type_provenance`）。**期间口径**：执照/章程取 `CURRENT`（无年度口径），文件名里的年份是**签发年**不是材料期间 ⇒ 不写入 `period`；「2022 版执照 vs 2024 版执照」的区分靠**版本维度**（`version_status`），而 `scaffold` 目前只认「草稿/征求意见」⇒ 这一点是**已知缺口**，留给 §9 | `tools/dd_v1_local_run.py:182` |
 | C5 | 「必须员工走正式入口也能用上修复成果」 | 已做：`scaffold`/`split`/`run` 三个子命令全部走新的类型口径与新的拆分逻辑；新用例 `test_full_synthetic_chain_to_authorized_package` 就是**从 `scaffold` 起**跑完整链 | — |
 | C6 | 「`scaffold` 主体用 `--entity`」 | 保持不变（**单主体**）。多主体库要走桥接链（认知卡 + 权威名单归一）或人工分批；本次只修类型口径，不改主体的来源。多主体隔离由**证据过滤**保证（用例覆盖） | 派工本未要求改主体来源 |
-| C7 | 「六态原因：NO_MATERIAL / UNRESOLVED_DOC_TYPE / UNKNOWN_ENTITY / PERMISSION_BLOCKED / RETRIEVAL_EXHAUSTED / OTHER」 | 六态**全部可区分**，但 **PERMISSION_BLOCKED 在生产路径下不可达**：meta 的 `access` / `restricted` 是**留出的扩展点**，仓内两个 meta 生产者（桥接链 `build_meta`、入口 B `scaffold`）**都不写**这两个字段。本 PR **不假装已接线**（代码 docstring、`NO_CANDIDATE_REASONS` 注释、测试 docstring 三处都写明）。**为什么不接敏感等级**：策略默认把 10 类里的 9 类定成 `RESTRICTED`，若按敏感等级过滤证据池 ⇒ 绝大多数材料对模型不可见 ⇒ 复核覆盖面塌陷；受限材料的**披露**闸在 `dd_v1_policy_service`（外发口径），不在证据召回口径 | `_access_blocked` 的 docstring（已写明）＋ 独立复核席的机械证（两处生产者都不写该字段） |
+| C7 | 「六态原因：NO_MATERIAL / UNRESOLVED_DOC_TYPE / UNKNOWN_ENTITY / PERMISSION_BLOCKED / RETRIEVAL_EXHAUSTED / OTHER」 | 六态**全部可区分**（语义层六个分支都齐备），但**生产路径上只有 4/6 可达**：不可达的是 `PERMISSION_BLOCKED` 与 `OTHER` 两态。`PERMISSION_BLOCKED`：meta 的 `access` / `restricted` 是**留出的扩展点**，仓内两个 meta 生产者（桥接链 `build_meta`、入口 B `scaffold`）**都不写**这两个字段。`OTHER`：兜底分支要 `read_errors>0`，而生产路径在 `local_material_snapshot` 就把缺文件拒掉了。本 PR **不假装已接线**（代码 docstring、`NO_CANDIDATE_REASONS` 注释、测试 docstring 三处都写明）。**为什么不接敏感等级**：策略默认把 10 类里的 9 类定成 `RESTRICTED`，若按敏感等级过滤证据池 ⇒ 绝大多数材料对模型不可见 ⇒ 复核覆盖面塌陷；受限材料的**披露**闸在 `dd_v1_policy_service`（外发口径），不在证据召回口径。★ **`NO_MATERIAL` 在生产路径是可达的**（不是缺口）：桥接层取到**权威主体**时**不按 doc_type 过滤** ⇒ 主体名下只有别类材料时给出 `NO_MATERIAL`（详见 §5 第 5 条） | `_access_blocked` 的 docstring（已写明）＋ 独立复核席的机械证（两处生产者都不写该字段）＋ 六态可达性运行探针 `tools/dd_v1_six_state_reachability_probe.py`（实测 4/6） |
 | C8 | 「(a) 一段多类 ⇒ 按类拆成多条原子义务」 | 拆的**触发条件**写成可复核的规则：**两次类型命中之间有间隔，且间隔不是「纯汉字连接」** ⇒ 拆；**紧挨着**（如「员工合同」）或**纯汉字连接**（如「甲公司营业执照」）⇒ 判复合词 ⇒ **不拆**。含**年份/非汉字**的间隔（如「审计报告2024年营业执照」）⇒ 拆。★ 这条规则经独立复核席指出边界后**收紧过一次**（初版只认标点分隔符 ⇒ 漏掉带年份的间隔），已补正例与反例 | 独立复核席的机械证 → 本 PR 改 `_is_separable_gap`（`backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py`）+ 新增 2 条用例 |
 
 ### 已知缺口（如实登记，不藏）
 
 | # | 缺口 | 影响 | 现状 |
 |---|---|---|---|
-| G1 | `PERMISSION_BLOCKED` 无生产者 | 该状态在生产路径下不可达 | **扩展点**，已三处写明；未接线的原因见 C7 |
+| G1 | `PERMISSION_BLOCKED` 无生产者 | 该状态在生产路径下不可达（**不可达两态之一**） | **扩展点**，已三处写明；未接线的原因见 C7 |
 | G2 | `scaffold` 仍是单主体（`--entity`） | 多主体库需走桥接链或人工分批 | 派工本未要求改；证据过滤的主体隔离已覆盖 |
 | G3 | `scaffold` 的 `version_status` 只认「草稿/征求意见/draft」 | 认不出「被取代版本」⇒ 同类型多版本的先后关系仍要人工/卡片补 | 已知；`rule_hint` 的 `OUTDATED` 仍能区分「非现行有效」 |
 | G4 | 语义层归一后的主体与 R4 结构层的**逐字**主体比较之间有口径差 | 归一后能召回，但字面不同仍会被 R4 拦下 | **更严**的方向（双保险），未改 |
 | G5 | 多类型段：组包链按**整段的类型归属**给材料定类型 ⇒ 段内**可外发类**的材料被归到同段的**另一类** ⇒ 授权组包取不到它 | 该材料被披露策略闸拦下（**fail-closed**：无越权外发 ⇒ 非安全缺陷）；该段其余材料一并受影响 | **既有缺陷、本 PR 未引入**（改动侧与基线侧跑同一条组包链，`exported` / `blocked` 逐字相同）；成因在组包链的整段定类型逻辑，**不在本 PR 改动面**（组包服务未改）；留给后续单独修 |
+| G6 | `OTHER` 无生产路径触发条件 | 该状态在生产路径下不可达（**不可达两态之一**） | 兜底分支要 `read_errors>0`（读材料抛 `OSError`）；生产路径在更早的闸口就拒了（`local_material_snapshot` 先校验文件存在 ⇒ 缺文件直接 `FileNotFoundError`；`PermissionError` 又被语义层原样上抛不计数）⇒ `read_errors` 恒 0 |
+
+★ **生产路径可达态数：实测 4/6**（`NO_MATERIAL` / `UNRESOLVED_DOC_TYPE` / `UNKNOWN_ENTITY` /
+`RETRIEVAL_EXHAUSTED`），不可达 2/6（G1 + G6）。
+★ 该口径由**同一 PR 的独立 Gate** 在生产入口实测复核，并落成**可重跑的运行探针**：
+`tools/dd_v1_six_state_reachability_probe.py`（跑一次即自证；口径或生产接线一变就红）。
+★ **口径更正留痕**：本包此前只登记 `PERMISSION_BLOCKED` 一态不可达（等于 5/6），
+而测试件自称 3/6 —— 两处互相矛盾。现按实测统一为 **4/6**；
+`NO_MATERIAL` **不是**缺口，它在生产路径**可达**（理由见 C7 与 §5 第 5 条）。
 
 ---
 

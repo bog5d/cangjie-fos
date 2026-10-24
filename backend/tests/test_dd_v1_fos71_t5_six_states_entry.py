@@ -10,8 +10,18 @@
    人看的报告里也写得出「为什么没有候选」。
 3. **六态不被压成一种**：两种不同的空候选场景必须给出**不同**的原因
    ⇒ 证明入口没有把六种原因统一伪装成 ``MISSING``。
-4. **可达态数实测**（探针）：生产路径上实测可达 **3/6**；
-   另三项在语义层**可写**、但在生产路径**不可达**，各带机械理由。
+4. **可达态数实测**（探针）：生产路径上实测可达 **4/6**
+   （``NO_MATERIAL`` / ``UNRESOLVED_DOC_TYPE`` / ``UNKNOWN_ENTITY`` /
+   ``RETRIEVAL_EXHAUSTED``）；另两项在语义层**可写**、但在生产路径**不可达**，
+   各带机械理由。
+   ★ 本口径经**同一 PR 的独立 Gate** 在生产入口实测复核（4/6），并有**可重跑的运行探针**
+     ``tools/dd_v1_six_state_reachability_probe.py`` 随包交付（跑一次即可自证）。
+   ★ **口径更正留痕**：本文件此前自称生产路径可达 **3/6**、并把 ``NO_MATERIAL``
+     列为不可达，理由是「桥接把义务主体取自有该类型材料的主体 ⇒ 主体非空 ⇒ 候选池非空」。
+     **该机制理由已被同一 PR 的桥接层字节证伪** —— ``build_semantic_obligations``
+     取到**权威主体**时**不按 doc_type 过滤** ⇒ 「权威主体名下只有别类材料」会走到
+     语义层 else 分支给出 ``NO_MATERIAL`` ⇒ 该态在生产路径**可达**。
+     旧数字是**对生产接线的一份陈旧描述**，不是生产缺陷（产品实现未改，见下）。
 
 ★ 六态取值域只从权威枚举 ``dd_v1_semantic_retrieval_service.NO_CANDIDATE_REASONS`` 取，
   本文件**不另抄一份**（抄一份就变成第二套表）。
@@ -87,6 +97,28 @@ def _build_library(tmp_path, root: Path, lib: str, checklist: list[str]):
 def _bridge(tmp_path, root: Path, lib: str, checklist: list[str]):
     """走**生产路径**（薄入口调用的同一个函数 ``bridge_library``）。"""
     lib = _build_library(tmp_path, root, lib, checklist)
+    return br.bridge_library(lib, material_root=root, db_path=_db(tmp_path),
+                             allow_real_material=True)
+
+
+def _bridge_with_authority(tmp_path, root: Path, lib: str, checklist: list[str],
+                            entity_name: str, entity_id: str = "E1"):
+    """走**生产路径**，但**先登记权威主体** ⇒ 桥接层取主体走 ``AUTHORITY`` 分支。
+
+    ★ 登记用**生产函数** ``rq.register_entity``；``source_ref`` 必填（生产契约：
+      没有权威依据的主体不得入册）—— 本用例写的是**合成登记**。
+    ★ 登记**必须在摄取清单之前**：``ingest_checklist`` 在开头取一次本库主体词表，
+      清单摄完之后再登记就来不及了（回落查权威名单那条路会拿不到）。
+    """
+    mf.register_library(lib, str(root), authorized_by="T5", db_path=_db(tmp_path))
+    rq.register_entity(lib, entity_id, entity_name, relation="other",
+                       source_ref="T5 合成登记（权威主体，用于生产路径可达性探针）",
+                       db_path=_db(tmp_path))
+    mf.build_manifest(lib, db_path=_db(tmp_path))
+    ps.parse_pending_batch(lib, db_path=_db(tmp_path))
+    cs.build_cards_for_library(lib, db_path=_db(tmp_path))
+    rq.ingest_checklist(lib, [{"item_no": str(i + 1), "raw_text": t}
+                               for i, t in enumerate(checklist)], db_path=_db(tmp_path))
     return br.bridge_library(lib, material_root=root, db_path=_db(tmp_path),
                              allow_real_material=True)
 
@@ -214,19 +246,25 @@ def test_thin_entry_report_states_why_no_candidate(tmp_path):
 
 # ── 6. 探针：生产路径可达态数实测（「可写」≠「可达」） ──────────────────────
 
-def test_production_reachable_states_measured_three_of_six(tmp_path):
-    """★ 探针实测：生产路径（薄入口 ⇒ 桥接 ⇒ 语义层）上可达 **3/6**。
+def test_production_reachable_states_measured_four_of_six(tmp_path):
+    """★ 探针实测：生产路径（薄入口 ⇒ 桥接 ⇒ 语义层）上可达 **4/6**。
 
-    ★ 另三项在语义层**可写**（反事实可触发），但在生产路径**不可达**：
-      · ``NO_MATERIAL``       —— 桥接把义务主体取自「**有该类型材料**的主体」
-                                 ⇒ 主体非空 ⇒ 候选池非空 ⇒ 「池为空」那一族分支走不到；
-                                 主体为空时又被 ``UNKNOWN_ENTITY`` 先占（判定顺序写死）。
+    ★ 可达四态：``NO_MATERIAL`` / ``UNRESOLVED_DOC_TYPE`` / ``UNKNOWN_ENTITY`` /
+      ``RETRIEVAL_EXHAUSTED``。
+    ★ 另两项在语义层**可写**（反事实可触发），但在生产路径**不可达**，各带机械理由：
       · ``PERMISSION_BLOCKED`` —— 需要 meta 带 ``access``／``restricted``；
                                  两个生产 meta 生产者（``build_meta``／``cmd_scaffold``）
                                  **都不写**这两个字段 ⇒ 生产路径无生产者。
       · ``OTHER``             —— 需要读材料抛 ``OSError``（``read_errors>0``）；
                                  生产路径在更早的闸口就拒了（``local_material_snapshot``
                                  先校验文件存在，``PermissionError`` 又被原样上抛不计数）。
+
+    ★ ``NO_MATERIAL`` **在生产路径可达**（本用例是**实测**，不是文案自称）：
+      桥接层 ``build_semantic_obligations`` 有两条取主体的路 ——
+      取到**权威主体**（``rq.resolve_entities``）时**不按 doc_type 过滤**；
+      另一条（按 doc_type 取卡片推断主体）才带 doc_type 过滤。
+      ⇒ 「权威主体名下只有别类材料」⇒ 主体非空、候选池空 ⇒ 语义层 else 分支给
+      ``NO_MATERIAL``。下方「反差对照」段把这条翻转**逐条断言**出来。
     """
     observed: set[str] = set()
     # 场景 1：义务侧类型判不出（材料里没有「类型也判不出」的那份）
@@ -246,8 +284,38 @@ def test_production_reachable_states_measured_three_of_six(tmp_path):
     assert "RETRIEVAL_EXHAUSTED" in ex, out3["obligations"]
     observed |= ex
     assert observed == {"UNRESOLVED_DOC_TYPE", "UNKNOWN_ENTITY", "RETRIEVAL_EXHAUSTED"}, observed
-    # ★ 报数口径：3/6，**不是** 6/6（「可写」≠「生产路径可达」）
-    assert len(observed) == 3 and observed <= set(SIX)
+
+    # 场景 4：★ **权威主体已登记** ⇒ 主体非空，但名下只有别类材料 ⇒ NO_MATERIAL
+    root4 = _synthetic_materials(tmp_path, "探针4")
+    out4 = _bridge_with_authority(tmp_path, root4, "T5探针4",
+                                  ["请提供示例科技2024年度营业执照"], "示例科技")
+    rows4 = _empty_rows(out4)
+    assert rows4, out4["counts"]
+    r4 = {o["evidence_status"]["no_candidate_reason"] for o in rows4}
+    assert r4 == {"NO_MATERIAL"}, r4
+    observed |= r4
+    # ★ 机制自证：主体取自**权威登记**（AUTHORITY 分支），且主体名下**确有别类材料**
+    ob4 = rows4[0]
+    assert ob4["entity_basis"] == "AUTHORITY", ob4
+    diag4 = ob4["evidence_status"]["diagnostics"]
+    assert diag4["entity_materials"] >= 1, diag4
+    assert diag4["available_doc_types"], diag4
+    assert diag4["candidates_total"] == 0, diag4
+    assert diag4["rejected_by_doc_type"] >= 1, diag4
+
+    # ★ 反差对照：**同一个库、同一份清单**，只差「有没有登记权威主体」：
+    #   没登记 ⇒ UNKNOWN_ENTITY；已登记 ⇒ NO_MATERIAL。
+    #   这一条是「NO_MATERIAL 在生产路径可达」的**机械证**（不靠文案自称）。
+    root5 = _synthetic_materials(tmp_path, "探针5")
+    out5 = _bridge(tmp_path, root5, "T5探针5", ["请提供示例科技2024年度营业执照"])
+    r5 = {o["evidence_status"]["no_candidate_reason"] for o in _empty_rows(out5)}
+    assert r5 == {"UNKNOWN_ENTITY"}, r5
+
+    # ★ 报数口径：**4/6**（不是 6/6：「可写」≠「生产路径可达」；也不是旧的 3/6）
+    #   逐项相等 ⇒ 哪天多出第 5 态（或少一态）本用例就红，不会静默变陈旧。
+    assert observed == {"UNRESOLVED_DOC_TYPE", "UNKNOWN_ENTITY",
+                        "RETRIEVAL_EXHAUSTED", "NO_MATERIAL"}, observed
+    assert len(observed) == 4 and observed <= set(SIX)
     assert len(observed) < len(SIX)
 
     # ③ 生产 meta 生产者都不写 access/restricted ⇒ PERMISSION_BLOCKED 无生产者
@@ -256,3 +324,10 @@ def test_production_reachable_states_measured_three_of_six(tmp_path):
         body = (REPO / rel).read_text(encoding="utf-8").split(f"def {fn}", 1)[1][:4000]
         assert '"access"' not in body and '"restricted"' not in body, \
             f"{fn} 疑似写了 access/restricted ⇒ 已知缺口已变化，请更新本用例的可达态数"
+
+    # ④ OTHER：生产路径在 local_material_snapshot 先校验文件存在 ⇒ read_errors 恒 0
+    #   ⇒ 兜底分支（材料读不到）到不了 ⇒ 该态在生产路径不可达。
+    missing_meta = [{"file_id": "S9", "relative_path": "不存在.txt",
+                     "entity": "示例科技", "period": "2024"}]
+    with pytest.raises(FileNotFoundError):
+        sem.local_material_snapshot(tmp_path, missing_meta, allow_real=True)
