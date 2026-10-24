@@ -1,0 +1,42 @@
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+**/venv/
+**/*.egg-info/
+
+# Node
+frontend/node_modules/
+frontend/.vite/
+
+# 数据文件（运行时产生，不进镜像）
+backend/data/
+backend/*.sqlite
+
+# 开发工具
+.git/
+.gitignore
+**/.DS_Store
+**/Thumbs.db
+
+# 文档
+docs/
+*.md
+TODO_LIST_*.md
+
+# 测试
+backend/tests/
+**/test_*.py
+
+# 临时文件
+**/*.log
+**/*.tmp
+**/tmp/
+
+# IDE
+.vscode/
+.idea/

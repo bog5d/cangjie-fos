@@ -1,0 +1,22 @@
+{
+  "denylist_version": "a1-2026-10.2",
+  "note": "DD-V1 PII 拒识名单（WP-A1/G5）——**只承载增量与覆盖**，不再抄一份全量正则。",
+  "base_source": "desensitize_service._IDENTITY_PATTERNS（邮箱/身份证/银行卡/手机号/座机）——**唯一来源**，本仓已验收；本文件不重复维护它们。",
+  "base_note": "基线模式由 dd_v1_pii_service._derive_base_patterns() 从 desensitize_service 派生（含其「先长后短、身份证不被银行卡规则截断」的顺序）。DD-V1 与基线的**唯一差异**是标签口径（银行卡/账号 + [账号]）。",
+  "increments": [
+    {
+      "type": "统一社会信用代码",
+      "pattern": "[159Y][1239]\\d{6}[0-9A-HJ-NP-RTUWXY]{10}",
+      "replacement": "[统一社会信用代码]",
+      "why": "desensitize_service 未覆盖统一社会信用代码；本仓新增的这一类是 A1 的真实增量。顺序上排在「银行卡/账号」**之后**——否则 18 位纯数字账号会被误判成统一社会信用代码。"
+    }
+  ],
+  "patterns": [
+    {
+      "type": "统一社会信用代码",
+      "pattern": "[159Y][1239]\\d{6}[0-9A-HJ-NP-RTUWXY]{10}",
+      "replacement": "[统一社会信用代码]"
+    }
+  ],
+  "override_semantics": "同 type 的条目**覆盖**基线里同名的类型；新 type 追加在基线之后（即排在「银行卡/账号」之后）。"
+}

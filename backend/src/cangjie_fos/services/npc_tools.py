@@ -1,0 +1,844 @@
+"""NPC Chat 工具集：DeepSeek 可按需调用的查询工具。
+
+工具清单：
+  1. get_institution_detail        — 查单家机构档案（参数提取型）
+  2. query_pipeline_overview       — 融资全景大盘（无参数型）
+  3. list_recent_roadshows         — 最近几场路演记录
+  4. list_pending_followups        — 未完成的待办行动项
+  5. suggest_pitch_improvements    — 单场路演改进建议
+  6. generate_followup_message     — 生成跟进话术
+  7. get_deal_probability          — 成交概率
+  8. summarize_common_weaknesses   — 跨多场路演归纳共同弱点（聚合分析）
+  9. aggregate_institution_concerns— 跨机构归纳最关心的问题（聚合分析）
+"""
+from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ── Tool Schemas（OpenAI function-calling 格式）────────────────────────────────
+
+GET_INSTITUTION_DETAIL: dict = {
+    "type": "function",
+    "function": {
+        "name": "get_institution_detail",
+        "description": (
+            "查询单家投资机构的档案信息，包括当前 pipeline 阶段、热度、AI 画像摘要、"
+            "已知关注点和偏好。当用户提到某个具体机构名称时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "机构名称或关键词，例如：红杉、高瓴资本、民生证券",
+                }
+            },
+            "required": ["institution_name"],
+        },
+    },
+}
+
+QUERY_PIPELINE_OVERVIEW: dict = {
+    "type": "function",
+    "function": {
+        "name": "query_pipeline_overview",
+        "description": (
+            "查询当前融资 pipeline 全景：各阶段机构数量统计，以及最近更新的机构列表。"
+            "当用户询问整体融资进展、漏斗状态、有多少机构在谈时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+LIST_RECENT_ROADSHOWS: dict = {
+    "type": "function",
+    "function": {
+        "name": "list_recent_roadshows",
+        "description": (
+            "查询最近几场路演（BP 路演 / 沟通会）的记录，包括机构名、时间、状态和得分。"
+            "当用户询问最近开了哪些会、路演情况、上周或近期有什么进展时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "返回条数，默认 5，最多 20",
+                    "default": 5,
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+LIST_PENDING_FOLLOWUPS: dict = {
+    "type": "function",
+    "function": {
+        "name": "list_pending_followups",
+        "description": (
+            "查询当前未完成的跟进行动项和承诺事项。"
+            "当用户询问还有什么事没做、今天要干什么、有哪些待办或承诺未兑现时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "返回条数，默认 10，最多 30",
+                    "default": 10,
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+SUGGEST_PITCH_IMPROVEMENTS: dict = {
+    "type": "function",
+    "function": {
+        "name": "suggest_pitch_improvements",
+        "description": (
+            "基于某场路演的评分报告，提炼 3 条具体改进建议。"
+            "当用户询问如何改进路演、下次该注意什么、怎么提升评分时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "job_id": {
+                    "type": "string",
+                    "description": "路演任务 job_id，前端会传入当前复盘任务 ID",
+                }
+            },
+            "required": ["job_id"],
+        },
+    },
+}
+
+GENERATE_FOLLOWUP_MESSAGE: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_followup_message",
+        "description": (
+            "为某家机构生成一段跟进话术（微信/邮件均适用，100字以内）。"
+            "当用户要求起草跟进消息、催进度、或不知道怎么跟对方说时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "机构名称",
+                },
+                "context": {
+                    "type": "string",
+                    "description": "最新进展或背景，一句话，如「上周刚开了视频会」",
+                },
+            },
+            "required": ["institution_name"],
+        },
+    },
+}
+
+GET_DEAL_PROBABILITY: dict = {
+    "type": "function",
+    "function": {
+        "name": "get_deal_probability",
+        "description": (
+            "查询某家机构的成交概率评分（0-100）及当前关键指标。"
+            "当用户询问某家机构成功率、胜算、这家有没有希望时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "机构名称",
+                }
+            },
+            "required": ["institution_name"],
+        },
+    },
+}
+
+SUMMARIZE_COMMON_WEAKNESSES: dict = {
+    "type": "function",
+    "function": {
+        "name": "summarize_common_weaknesses",
+        "description": (
+            "跨多场路演聚合分析，归纳出反复出现的共同弱点 Top3。"
+            "当用户问「最近几场路演的共同问题/共同弱点是什么」「我总是在哪些地方讲不好」"
+            "「这段时间路演反复出现的短板」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer",
+                    "description": "回看最近多少场已完成路演，默认 5，最多 20",
+                    "default": 5,
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+AGGREGATE_INSTITUTION_CONCERNS: dict = {
+    "type": "function",
+    "function": {
+        "name": "aggregate_institution_concerns",
+        "description": (
+            "跨机构聚合分析，归纳出投资机构最关心的 Top3 问题/关注点。"
+            "当用户问「最近机构最关心哪几个问题」「投资人普遍在意什么」"
+            "「大家反复问的点是什么」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+}
+
+CHECK_CONSISTENCY: dict = {
+    "type": "function",
+    "function": {
+        "name": "check_consistency",
+        "description": (
+            "跨最近几场路演/高管访谈录音，检查关键指标口径是否一致（如营收/估值/技术路线"
+            "在不同场次、不同人之间对不对得上）。当用户问「口径一致吗」「CEO和我说的对得上吗」"
+            "「不同高管说的一致吗」「有没有前后矛盾/数字对不上」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "institution_name": {
+                    "type": "string",
+                    "description": "只看某家机构相关录音时填；不填则看全部最近录音",
+                }
+            },
+            "required": [],
+        },
+    },
+}
+
+GENERATE_INTERVIEW_PREP: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_interview_prep",
+        "description": (
+            "为某位高管生成访谈前重点准备清单（基于其历史易错点/错题本）。"
+            "当用户说「帮我准备访谈 XX 高管」「访谈前该重点核查什么」「给 CTO 出个访谈准备清单」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "executive_name": {
+                    "type": "string",
+                    "description": "高管姓名/标识，如 张总、CTO",
+                }
+            },
+            "required": ["executive_name"],
+        },
+    },
+}
+
+GENERATE_RECEPTION_CHECKLIST: dict = {
+    "type": "function",
+    "function": {
+        "name": "generate_reception_checklist",
+        "description": (
+            "生成【行政/后勤】接待准备清单——会议室预订、停车、接待物料、餐饮茶歇、"
+            "参观动线、签到、纪要安排等**事务性**待办。注意：这是后勤清单，"
+            "不是路演话术/估值口径/避坑建议。当用户说「帮我生成 XX 来访的接待清单」"
+            "「明天有机构来参观要准备什么（后勤）」「接待准备清单」时调用。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "type": "string",
+                    "description": "来访背景一句话，如「明天上午10点红杉资本3人来参观」",
+                }
+            },
+            "required": ["context"],
+        },
+    },
+}
+
+# 全量工具
+ALL_TOOLS = [
+    GET_INSTITUTION_DETAIL,
+    QUERY_PIPELINE_OVERVIEW,
+    LIST_RECENT_ROADSHOWS,
+    LIST_PENDING_FOLLOWUPS,
+    SUGGEST_PITCH_IMPROVEMENTS,
+    GENERATE_FOLLOWUP_MESSAGE,
+    GET_DEAL_PROBABILITY,
+    SUMMARIZE_COMMON_WEAKNESSES,
+    AGGREGATE_INSTITUTION_CONCERNS,
+    CHECK_CONSISTENCY,
+    GENERATE_INTERVIEW_PREP,
+    GENERATE_RECEPTION_CHECKLIST,
+]
+
+# 向后兼容别名
+PHASE1_TOOLS = ALL_TOOLS
+
+
+# ── Tool 执行器 ────────────────────────────────────────────────────────────────
+
+def execute_tool(tool_name: str, arguments: dict, *, tenant_id: str) -> str:
+    """
+    根据工具名和参数执行对应查询，返回供 LLM 消费的字符串摘要。
+    所有错误都返回可读字符串，不向上抛（LLM 会据此告知用户）。
+    """
+    try:
+        if tool_name == "get_institution_detail":
+            return _exec_get_institution_detail(arguments, tenant_id=tenant_id)
+        if tool_name == "query_pipeline_overview":
+            return _exec_query_pipeline_overview(tenant_id=tenant_id)
+        if tool_name == "list_recent_roadshows":
+            return _exec_list_recent_roadshows(arguments, tenant_id=tenant_id)
+        if tool_name == "list_pending_followups":
+            return _exec_list_pending_followups(arguments, tenant_id=tenant_id)
+        if tool_name == "suggest_pitch_improvements":
+            return _exec_suggest_pitch_improvements(arguments)
+        if tool_name == "generate_followup_message":
+            return _exec_generate_followup_message(arguments, tenant_id=tenant_id)
+        if tool_name == "get_deal_probability":
+            return _exec_get_deal_probability(arguments, tenant_id=tenant_id)
+        if tool_name == "summarize_common_weaknesses":
+            return _exec_summarize_common_weaknesses(arguments, tenant_id=tenant_id)
+        if tool_name == "aggregate_institution_concerns":
+            return _exec_aggregate_institution_concerns(tenant_id=tenant_id)
+        if tool_name == "generate_reception_checklist":
+            return _exec_generate_reception_checklist(arguments)
+        if tool_name == "check_consistency":
+            return _exec_check_consistency(arguments, tenant_id=tenant_id)
+        if tool_name == "generate_interview_prep":
+            return _exec_generate_interview_prep(arguments, tenant_id=tenant_id)
+        return f"未知工具：{tool_name}"
+    except Exception as e:
+        logger.warning("npc_tool_exec_failed tool=%s: %s", tool_name, e)
+        return f"工具执行失败：{e}"
+
+
+def _exec_get_institution_detail(args: dict, *, tenant_id: str) -> str:
+    from cangjie_fos.services.institution_store import find_matching_names
+
+    name_query = (args.get("institution_name") or "").strip()
+    if not name_query:
+        return "请提供机构名称。"
+
+    hits = find_matching_names(tenant_id=tenant_id, text=name_query)
+    if not hits:
+        from cangjie_fos.services.institution_store import list_institutions
+        all_insts = list_institutions(tenant_id=tenant_id, limit=500)
+        hits = [i for i in all_insts if name_query in (i.name or "")]
+
+    if not hits:
+        return f"未找到名称包含「{name_query}」的机构。"
+
+    inst = hits[0]
+    lines = [
+        f"机构：{inst.name}",
+        f"阶段：{inst.stage.value if inst.stage else '未知'}",
+        f"热度：{inst.thermal.value if inst.thermal else '未知'}",
+    ]
+    if inst.ai_summary:
+        lines.append(f"AI画像：{inst.ai_summary}")
+    if inst.concerns:
+        lines.append(f"关注点：{inst.concerns}")
+    if inst.preferences:
+        lines.append(f"偏好：{inst.preferences}")
+    # 游梦秋 #1：这些字段以前读了 DB 却没喂给 LLM，导致豆豆读不到你手动改的卡点/估值等
+    if getattr(inst, "blocker_note", ""):
+        lines.append(f"当前卡点：{inst.blocker_note}")
+    if getattr(inst, "review_locked", False):
+        lines.append("档案状态：已锁定（AI 不自动覆盖）")
+    if getattr(inst, "contact_name", ""):
+        title = getattr(inst, "contact_title", "") or ""
+        lines.append(f"联系人：{inst.contact_name}" + (f"（{title}）" if title else ""))
+    if getattr(inst, "valuation", ""):
+        lines.append(f"估值：{inst.valuation}")
+    if getattr(inst, "deal_size", ""):
+        lines.append(f"目标融资：{inst.deal_size}")
+    if getattr(inst, "probability", 0):
+        lines.append(f"成交概率：{inst.probability}%")
+    if getattr(inst, "legal_status", ""):
+        lines.append(f"法务进度：{inst.legal_status}")
+
+    if len(hits) > 1:
+        others = "、".join(h.name for h in hits[1:4])
+        lines.append(f"（另有相关机构：{others}）")
+
+    return "\n".join(lines)
+
+
+def _exec_query_pipeline_overview(*, tenant_id: str) -> str:
+    from cangjie_fos.services.institution_store import count_by_stage, list_institutions
+
+    counts = count_by_stage(tenant_id=tenant_id)
+    total = sum(counts.values())
+    stage_lines = [
+        f"  {stage}: {n} 家"
+        for stage, n in counts.items()
+        if n > 0
+    ]
+
+    recent = list_institutions(tenant_id=tenant_id, limit=5)
+    recent_lines = [
+        f"  {i.name}（{i.stage.value}，热度{i.thermal.value}）"
+        for i in recent
+    ]
+
+    parts = [f"当前 pipeline 共 {total} 家机构："]
+    parts.extend(stage_lines or ["  暂无机构数据"])
+    if recent_lines:
+        parts.append("最近更新：")
+        parts.extend(recent_lines)
+
+    return "\n".join(parts)
+
+
+def _exec_list_recent_roadshows(args: dict, *, tenant_id: str) -> str:
+    import time as _time
+    from cangjie_fos.services.pitch_job_db import db_job_list_for_tenant
+
+    limit = min(int(args.get("limit") or 5), 20)
+    jobs = db_job_list_for_tenant(tenant_id, limit=limit)
+
+    if not jobs:
+        return "暂无路演记录。"
+
+    lines = [f"最近 {len(jobs)} 场路演："]
+    for _, job in jobs:
+        institution = job.get("institution_id") or "（机构未确认）"
+        status = job.get("status") or "unknown"
+        score = job.get("exp_delta")
+        created = job.get("created_at")
+        date_str = ""
+        if created:
+            import datetime
+            date_str = datetime.datetime.fromtimestamp(float(created)).strftime("%m-%d")
+        score_str = f"  得分±{score}" if score else ""
+        lines.append(f"  {date_str} {institution}（{status}）{score_str}")
+
+    return "\n".join(lines)
+
+
+def _exec_list_pending_followups(args: dict, *, tenant_id: str) -> str:
+    from cangjie_fos.services.pitch_job_db import db_follow_up_list
+
+    limit = min(int(args.get("limit") or 10), 30)
+    items = db_follow_up_list(tenant_id, limit=limit, include_done=False)
+
+    if not items:
+        return "当前没有未完成的待办行动项。"
+
+    lines = [f"未完成行动项（共 {len(items)} 条）："]
+    for item in items:
+        actor = item.get("actor") or "我方"
+        action = item.get("action") or ""
+        priority = item.get("priority") or "normal"
+        institution = item.get("institution_id") or ""
+        inst_str = f"[{institution}] " if institution else ""
+        priority_mark = "🔴" if priority == "high" else "⚪"
+        lines.append(f"  {priority_mark} {inst_str}{actor}：{action}")
+
+    return "\n".join(lines)
+
+
+def _exec_suggest_pitch_improvements(args: dict) -> str:
+    """从路演报告风险点提炼3条改进建议，不需调 LLM。"""
+    job_id = (args.get("job_id") or "").strip()
+    if not job_id:
+        return "请提供 job_id。"
+    try:
+        from cangjie_fos.services.pitch_job_db import db_job_get
+        row = db_job_get(job_id)
+    except Exception as e:
+        return f"获取路演报告失败：{e}"
+    if not row:
+        return f"未找到 job_id={job_id} 的路演记录。"
+
+    report = row.get("original_report") or {}
+    if not isinstance(report, dict):
+        return "路演报告格式异常，无法解析。"
+
+    risk_points = report.get("risk_points") or []
+    if not risk_points:
+        total = report.get("total_score", "未知")
+        return f"该路演（总分 {total}）暂无风险点记录，建议先完成路演评估。"
+
+    suggestions = []
+    for rp in risk_points[:5]:
+        problem = rp.get("problem_summary") or rp.get("issue") or rp.get("description") or ""
+        suggestion = rp.get("suggestion") or rp.get("improvement") or ""
+        if not problem and not suggestion:
+            continue
+        if suggestion:
+            suggestions.append(f"• 针对「{problem}」：{suggestion}")
+        else:
+            suggestions.append(f"• 建议改善「{problem}」这个环节，准备更具体的数据或案例支撑")
+        if len(suggestions) >= 3:
+            break
+
+    if not suggestions:
+        return "风险点记录不含建议文字，请在审查台手动补充改进方向。"
+
+    total_score = report.get("total_score", "未知")
+    lines = [f"本场路演评分 {total_score}，建议重点改进："] + suggestions
+    return "\n".join(lines)
+
+
+def _exec_generate_followup_message(args: dict, *, tenant_id: str) -> str:
+    """用 DeepSeek 生成 100 字以内的跟进话术。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    name = (args.get("institution_name") or "").strip()
+    context = (args.get("context") or "").strip()
+    if not name:
+        return "请提供机构名称。"
+
+    stage_info = ""
+    try:
+        from cangjie_fos.services.institution_store import find_matching_names
+        hits = find_matching_names(tenant_id=tenant_id, text=name)
+        if hits:
+            inst = hits[0]
+            stage_info = f"当前阶段：{inst.stage.value}，热度：{inst.thermal.value}"
+            if inst.ai_summary:
+                stage_info += f"，背景：{inst.ai_summary}"
+    except Exception:
+        pass
+
+    prompt_parts = [f"请为融资方起草一段针对「{name}」的简短跟进消息（微信/邮件均适用，100字以内，语气专业友好）。"]
+    if stage_info:
+        prompt_parts.append(f"机构信息：{stage_info}")
+    if context:
+        prompt_parts.append(f"最新背景：{context}")
+    prompt_parts.append("直接给出消息正文，不要任何解释。")
+
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": "\n".join(prompt_parts)}],
+            max_tokens=200,
+            temperature=0.7,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    try:
+        return call_with_retry(_call, max_retries=2)
+    except Exception as e:
+        return f"生成失败：{e}"
+
+
+def _exec_get_deal_probability(args: dict, *, tenant_id: str) -> str:
+    """从机构档案读取成功概率及关键指标。"""
+    name = (args.get("institution_name") or "").strip()
+    if not name:
+        return "请提供机构名称。"
+
+    from cangjie_fos.services.institution_store import find_matching_names
+    import time as _time
+
+    hits = find_matching_names(tenant_id=tenant_id, text=name)
+    if not hits:
+        return f"未找到名称包含「{name}」的机构，请先在 Pipeline 中添加。"
+
+    inst = hits[0]
+    prob = inst.probability if hasattr(inst, "probability") else 0
+    days_stale = 0
+    if inst.updated_at:
+        days_stale = int((_time.time() - inst.updated_at) / 86400)
+
+    lines = [
+        f"机构：{inst.name}",
+        f"成功概率：{prob}%",
+        f"当前阶段：{inst.stage.value}  热度：{inst.thermal.value}",
+        f"最后更新：{days_stale} 天前",
+    ]
+    if hasattr(inst, "valuation") and inst.valuation:
+        lines.append(f"估值：{inst.valuation}")
+    if hasattr(inst, "deal_size") and inst.deal_size:
+        lines.append(f"目标融资：{inst.deal_size}")
+    if hasattr(inst, "legal_status") and inst.legal_status:
+        lines.append(f"法务进度：{inst.legal_status}")
+
+    if prob == 0:
+        lines.append("（概率未设置，请在机构档案中手动更新）")
+    elif prob >= 70:
+        lines.append("判断：胜算较高，建议加速推进 TS 谈判。")
+    elif prob >= 40:
+        lines.append("判断：中等概率，需持续跟进并解决核心疑虑。")
+    else:
+        lines.append("判断：概率偏低，建议复盘卡点或考虑重新激活策略。")
+
+    return "\n".join(lines)
+
+
+# ── 聚合分析工具（跨会话/跨机构）──────────────────────────────────────────────
+
+def _collect_recent_weakness_texts(tenant_id: str, limit: int) -> list[str]:
+    """从最近 limit 场已完成路演里，摊平所有风险点的「问题简述」文本。"""
+    from cangjie_fos.services.pitch_job_db import db_job_list_risk_keywords
+
+    jobs = db_job_list_risk_keywords(tenant_id, limit=limit)
+    problems: list[str] = []
+    for job in jobs:
+        for rp in job.get("risk_points") or []:
+            if not isinstance(rp, dict):
+                continue
+            text = (rp.get("problem_summary") or rp.get("issue")
+                    or rp.get("description") or "").strip()
+            if text:
+                problems.append(text)
+    return problems
+
+
+def _exec_summarize_common_weaknesses(args: dict, *, tenant_id: str) -> str:
+    """跨多场路演归纳共同弱点 Top3。
+
+    数据来源：db_job_list_risk_keywords（最近 N 场已完成路演的全部风险点）。
+    先用 LLM 聚类；LLM 不可用时降级为词频统计，保证始终有可读输出。
+    """
+    limit = min(int(args.get("limit") or 5), 20)
+    problems = _collect_recent_weakness_texts(tenant_id, limit)
+    if not problems:
+        return "最近还没有带风险点的已完成路演记录，先跑几场路演复盘再来分析。"
+
+    n_jobs = min(limit, len(problems))
+    try:
+        summary = _llm_cluster_weaknesses(problems)
+        if summary:
+            return f"回看最近路演的 {len(problems)} 条风险点，反复出现的共同弱点：\n{summary}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("summarize_common_weaknesses LLM 失败，降级词频: %s", e)
+
+    # 降级：字符串出现次数粗排
+    freq: dict[str, int] = {}
+    for p in problems:
+        freq[p] = freq.get(p, 0) + 1
+    top = sorted(freq.items(), key=lambda x: -x[1])[:3]
+    lines = [f"回看最近的 {len(problems)} 条风险点，出现最多的问题："]
+    lines += [f"{i+1}. {p}（{c} 次）" for i, (p, c) in enumerate(top)]
+    return "\n".join(lines)
+
+
+def _exec_aggregate_institution_concerns(*, tenant_id: str) -> str:
+    """跨机构归纳最关心的问题 Top3。
+
+    数据来源：机构档案的 concerns 字段（路演情报持续沉淀进来）。
+    先用 LLM 归纳；不可用时降级为直接罗列。
+    """
+    from cangjie_fos.services.institution_store import list_institutions
+
+    insts = list_institutions(tenant_id=tenant_id, limit=500)
+    concern_texts: list[str] = []
+    for inst in insts:
+        c = (getattr(inst, "concerns", "") or "").strip()
+        if c:
+            concern_texts.append(f"{inst.name}：{c}")
+    if not concern_texts:
+        return "机构档案里还没有记录关注点。多传几场路演情报后，系统会自动沉淀机构关注点。"
+
+    try:
+        summary = _llm_summarize_concerns(concern_texts)
+        if summary:
+            return f"综合 {len(concern_texts)} 家机构的关注点，投资人最在意的：\n{summary}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("aggregate_institution_concerns LLM 失败，降级罗列: %s", e)
+
+    lines = [f"已记录关注点的机构（共 {len(concern_texts)} 家）："]
+    lines += [f"  {t}" for t in concern_texts[:8]]
+    return "\n".join(lines)
+
+
+def _llm_cluster_weaknesses(problems: list[str]) -> str:
+    """把多条风险点文本喂 LLM，归纳共同弱点 Top3（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    joined = "\n".join(f"- {p}" for p in problems[:60])
+    prompt = (
+        "以下是同一个人最近多场路演被指出的风险点/问题（每行一条）：\n"
+        f"{joined}\n\n"
+        "请归纳出反复出现、最值得优先改进的 3 个共同弱点。"
+        "每条一行，格式「1. 弱点概括：一句话说明+改进方向」，不要复述原文，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _llm_summarize_concerns(concern_texts: list[str]) -> str:
+    """把多家机构关注点喂 LLM，归纳共同关注 Top3（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    joined = "\n".join(f"- {t}" for t in concern_texts[:60])
+    prompt = (
+        "以下是多家投资机构对本项目的关注点/疑虑（每行一家）：\n"
+        f"{joined}\n\n"
+        "请归纳出投资人最普遍关心的 3 个问题。"
+        "每条一行，格式「1. 关注主题：一句话说明」，不要复述原文，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _exec_generate_reception_checklist(args: dict) -> str:
+    """为一次来访接待生成结构化准备清单。"""
+    context = (args.get("context") or "").strip()
+    if not context:
+        return "请描述一下来访背景（谁、什么时候来、几个人、是否参观等）。"
+    try:
+        return _llm_reception_checklist(context)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("generate_reception_checklist LLM 失败: %s", e)
+        return (
+            "生成失败，先给你一个通用接待清单模板：\n"
+            "【接待前】确认到访时间/人数 · 预约会议室 · 录入停车牌 · 准备接待物料/水果茶点 · 打印公司介绍\n"
+            "【接待中】前台引导 · 参观讲解 · 核心数据备好 · 全程录音（可用会议纪要提炼）\n"
+            "【接待后】送客 · 整理会议纪要 · 更新机构档案 · 安排跟进"
+        )
+
+
+def _exec_check_consistency(args: dict, *, tenant_id: str) -> str:
+    """跨录音口径一致性对比，返回可读结论。"""
+    from cangjie_fos.services.consistency_service import run_consistency_check
+
+    institution = (args.get("institution_name") or "").strip()
+    result = run_consistency_check(tenant_id, institution_filter=institution)
+    sources = result.get("checked_sources") or []
+    if not sources:
+        return result.get("note", "最近没有可对比的录音。")
+
+    incons = result.get("inconsistencies") or []
+    if not incons:
+        return f"对比了最近 {len(sources)} 场录音，关键指标口径未发现明显不一致。"
+
+    lines = [f"对比了最近 {len(sources)} 场录音，发现 {len(incons)} 处口径需核对："]
+    for it in incons:
+        flag = "⚠️冲突" if it.get("verdict") == "inconsistent" else "🔶待核对"
+        lines.append(f"\n{flag}【{it['topic']}】{it.get('note','')}")
+        for e in it.get("entries", []):
+            lines.append(f"  · {e['source']}：{e['statement']}")
+    return "\n".join(lines)
+
+
+def _exec_generate_interview_prep(args: dict, *, tenant_id: str) -> str:
+    """基于高管历史易错点生成访谈前重点准备清单。"""
+    name = (args.get("executive_name") or "").strip()
+    if not name:
+        return "请告诉我要准备哪位高管（如 张总 / CTO）。"
+
+    # 取该高管的错题本条目（历史易错点）
+    memories: list[dict] = []
+    try:
+        from cangjie_fos.engine.coach.agent_tenant import resolve_memory_company_id
+        from cangjie_fos.services.memory_db import db_exec_memory_list
+        cid = resolve_memory_company_id(tenant_id)
+        if cid:
+            memories = db_exec_memory_list(cid, tag=name) or []
+    except Exception as e:  # noqa: BLE001
+        logger.warning("读取高管错题本失败: %s", e)
+
+    if not memories:
+        return (
+            f"暂无「{name}」的历史易错点记录（错题本为空）。"
+            "先跑几场该高管的访谈复盘并确认风险点，之后这里就能自动生成针对性准备清单。"
+        )
+    try:
+        return _llm_interview_prep(name, memories)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("生成访谈准备清单 LLM 失败: %s", e)
+        lines = [f"「{name}」历史易错点（访谈前重点核查）："]
+        for m in memories[:8]:
+            raw = (m.get("raw_text") or "").strip()
+            corr = (m.get("correction") or "").strip()
+            lines.append(f"• {raw}" + (f" → 标准口径：{corr}" if corr else ""))
+        return "\n".join(lines)
+
+
+def _llm_interview_prep(name: str, memories: list[dict]) -> str:
+    """把高管错题本喂 LLM 生成访谈前准备清单（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    items = "\n".join(
+        f"- 易错表述：{(m.get('raw_text') or '').strip()}；标准口径：{(m.get('correction') or '').strip()}"
+        for m in memories[:12]
+    )
+    prompt = (
+        f"以下是高管「{name}」过往访谈中被标注的易错点和标准口径：\n{items}\n\n"
+        "请生成一份**访谈前重点准备清单**：提醒他这次访谈要特别注意哪些问题、"
+        "被追问时怎么答才不跑偏。每条一行、可勾选、动词开头。只输出清单。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.4,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)
+
+
+def _llm_reception_checklist(context: str) -> str:
+    """调 LLM 生成接待准备清单（monkeypatch 点）。"""
+    from cangjie_fos.services.dd_llm_client import call_with_retry, get_dd_llm_client
+
+    prompt = (
+        f"来访背景：{context}\n\n"
+        "请生成一份【行政/后勤】接待准备清单，分【接待前】【接待中】【接待后】三段，"
+        "每段列出具体**事务性**待办（每条一行、动词开头、可勾选）。"
+        "只写后勤事务：会议室预订、停车位/停车牌、前台签到与引导、接待物料（水牌/桌牌/资料袋）、"
+        "餐饮茶歇、参观动线安排、设备与网络、全程录音安排、会后送客与纪要跟进等。\n"
+        "⚠️ 严禁写路演话术、估值口径、退出路径、技术壁垒这类【业务/避坑】内容——那不是接待清单。"
+        "只输出清单，不要额外解释。"
+    )
+    client = get_dd_llm_client()
+
+    def _call() -> str:
+        resp = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.5,
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    return call_with_retry(_call, max_retries=2)

@@ -1,0 +1,17 @@
+# 仓颉 FOS —— Caddy 反向代理（自动 HTTPS）
+# 仅在「公网域名访问」方案下需要。把下面的域名换成你自己的，
+# Caddy 会自动申请并续期 Let's Encrypt 证书，无需手动配证书。
+#
+# 前提：你有一个域名，且它的 A 记录已指向这台服务器的公网 IP。
+
+fos.example.com {
+    # 把所有请求转发给后端容器（同一 docker 网络内用服务名 cangjie-fos）
+    reverse_proxy cangjie-fos:8000
+
+    # 大文件上传（录音）放宽限制
+    request_body {
+        max_size 500MB
+    }
+
+    encode gzip
+}

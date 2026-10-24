@@ -1,0 +1,432 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { api } from "../api/client";
+import { AudioProvider } from "../components/workbench/AudioContext";
+import { WorkbenchContext } from "../components/workbench/WorkbenchContext";
+import WorkbenchHeader from "../components/workbench/WorkbenchHeader";
+import WorkbenchBody from "../components/workbench/WorkbenchBody";
+import SceneHeaderFields from "../components/workbench/left/SceneHeaderFields";
+import { RiskPointList } from "../components/workbench/left/RiskPointList";
+import AddRiskPointForm from "../components/workbench/left/AddRiskPointForm";
+import JobInfoPanel from "../components/workbench/right/JobInfoPanel";
+import WorkbenchNPCChat from "../components/workbench/right/WorkbenchNPCChat";
+import HtmlReportPreview from "../components/workbench/right/HtmlReportPreview";
+import RoadshowIntelView from "../components/workbench/RoadshowIntelView";
+import type {
+  AnalysisReport,
+  AnyReport,
+  PitchReviewResponse,
+  PitchReviewCommitRequest,
+  RiskPoint,
+  TranscriptionWord,
+} from "../types/review";
+import { isRoadshowReport } from "../types/review";
+
+const DEFAULT_TENANT = "demo-tenant";
+
+const PROCESSING_STATUSES = ["pending", "transcribing", "evaluating"];
+const STATUS_LABELS: Record<string, string> = {
+  pending: "排队等待中…",
+  transcribing: "语音转写中…",
+  evaluating: "LangGraph 评估中…",
+};
+
+function deepClone<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj)) as T;
+}
+
+function getTenant(): string {
+  const q = new URLSearchParams(window.location.search).get("tenant");
+  return q && q.length > 0 ? q : DEFAULT_TENANT;
+}
+
+function getUserName(): string {
+  try {
+    return localStorage.getItem("fos_commander_name") ?? "";
+  } catch {
+    return "";
+  }
+}
+
+// ── 路演情报 HTML 导出按钮 ─────────────────────────────────────────────────────
+function RoadshowHtmlExport({ jobId }: { jobId: string }) {
+  const [state, setState] = useState<"idle" | "generating" | "done" | "error">("idle");
+  const [errMsg, setErrMsg] = useState("");
+
+  async function handleGenerate() {
+    setState("generating");
+    setErrMsg("");
+    try {
+      await api.post(`/api/v1/roadshow/jobs/${jobId}/html-report`);
+      setState("done");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErrMsg(msg);
+      setState("error");
+    }
+  }
+
+  function handleDownload() {
+    window.open(`/api/v1/roadshow/jobs/${jobId}/html-report`, "_blank");
+  }
+
+  return (
+    <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan/70 mb-3">导出 HTML 报告</p>
+      {state === "idle" && (
+        <button
+          type="button"
+          onClick={() => void handleGenerate()}
+          className="rounded-lg border border-cyan/30 bg-cyan/10 px-4 py-2 text-xs text-cyan-300 hover:bg-cyan/20 transition-colors"
+        >
+          📄 生成 HTML 报告
+        </button>
+      )}
+      {state === "generating" && (
+        <p className="text-xs text-slate-400 animate-pulse">生成中…</p>
+      )}
+      {state === "done" && (
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-emerald-400">✅ 报告已生成</span>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-1.5 text-xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
+          >
+            ⬇ 下载 / 预览
+          </button>
+          <button
+            type="button"
+            onClick={() => { setState("idle"); }}
+            className="text-xs text-slate-500 hover:text-slate-400"
+          >
+            重新生成
+          </button>
+        </div>
+      )}
+      {state === "error" && (
+        <div>
+          <p className="text-xs text-rose-400 mb-2">生成失败：{errMsg}</p>
+          <button
+            type="button"
+            onClick={() => setState("idle")}
+            className="text-xs text-slate-400 hover:text-slate-300"
+          >
+            重试
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ReviewWorkbench() {
+  const { job_id: jobId = "" } = useParams<{ job_id: string }>();
+  const navigate = useNavigate();
+  const tenantId = getTenant();
+  const userName = getUserName();
+
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [reviewData, setReviewData] = useState<PitchReviewResponse | null>(null);
+  const [draftReport, setDraftReport] = useState<AnyReport | null>(null);
+  const [wordsMap, setWordsMap] = useState<Map<number, TranscriptionWord>>(new Map());
+  const [isDirty, setIsDirty] = useState(false);
+  const [committing, setCommitting] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
+  const originalRef = useRef<AnyReport | null>(null);
+
+  // Load review data
+  useEffect(() => {
+    if (!jobId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr(null);
+    void (async () => {
+      try {
+        const { data } = await api.get<PitchReviewResponse>(`/api/pitch/jobs/${jobId}/review`);
+        if (cancelled) return;
+        setReviewData(data);
+        const base = data.edited_report ?? data.original_report;
+        originalRef.current = data.original_report;
+        setDraftReport(deepClone(base));
+      } catch (e: unknown) {
+        if (!cancelled) setErr(e instanceof Error ? e.message : "加载失败");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [jobId]);
+
+  // Lazy load words map
+  useEffect(() => {
+    if (!jobId) return;
+    void (async () => {
+      try {
+        const { data } = await api.get<TranscriptionWord[]>(`/api/pitch/jobs/${jobId}/words`);
+        const m = new Map<number, TranscriptionWord>();
+        for (const w of data) m.set(w.word_index, w);
+        setWordsMap(m);
+      } catch {
+        // words 加载失败不影响主流程，音频联动降级
+      }
+    })();
+  }, [jobId]);
+
+  useEffect(() => {
+    if (!reviewData) return;
+    if (!PROCESSING_STATUSES.includes(reviewData.status)) return;
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await api.get<PitchReviewResponse>(`/api/pitch/jobs/${jobId}/review`);
+        setReviewData(data);
+        const base = data.edited_report ?? data.original_report;
+        if (base) {
+          originalRef.current = data.original_report;
+          setDraftReport(deepClone(base));
+        }
+      } catch { }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [reviewData?.status, jobId]);
+
+  const updateDraft = useCallback((updater: (prev: AnalysisReport) => AnalysisReport) => {
+    setDraftReport((prev) => {
+      if (!prev || isRoadshowReport(prev)) return prev;
+      const next = updater(prev as AnalysisReport);
+      setIsDirty(true);
+      return next;
+    });
+  }, []);
+
+  const handleSceneChange = useCallback(
+    (field: "scene_type" | "speaker_roles", value: string) => {
+      updateDraft((prev) => ({
+        ...prev,
+        scene_analysis: { ...prev.scene_analysis, [field]: value },
+      }));
+    },
+    [updateDraft],
+  );
+
+  const handleScoreChange = useCallback(
+    (score: number, reason: string) => {
+      updateDraft((prev) => ({
+        ...prev,
+        total_score: score,
+        total_score_deduction_reason: reason,
+      }));
+    },
+    [updateDraft],
+  );
+
+  const handleRiskChange = useCallback(
+    (index: number, updated: RiskPoint) => {
+      updateDraft((prev) => {
+        const pts = [...prev.risk_points];
+        pts[index] = updated;
+        return { ...prev, risk_points: pts };
+      });
+    },
+    [updateDraft],
+  );
+
+  const handleRiskDelete = useCallback(
+    (index: number) => {
+      updateDraft((prev) => {
+        const remaining = prev.risk_points.filter((_, i) => i !== index);
+        const newTotal = Math.max(
+          0,
+          100 - remaining.reduce((sum, p) => sum + (p.score_deduction ?? 0), 0),
+        );
+        return { ...prev, risk_points: remaining, total_score: newTotal };
+      });
+    },
+    [updateDraft],
+  );
+
+  const handleAddRisk = useCallback(
+    (point: Omit<RiskPoint, "_rid">) => {
+      updateDraft((prev) => ({
+        ...prev,
+        risk_points: [...prev.risk_points, { ...point, _rid: `manual-${Date.now()}` }],
+      }));
+    },
+    [updateDraft],
+  );
+
+  const handleCommit = useCallback(async (reportOverride?: AnyReport) => {
+    if (!jobId) return;
+    const toSave = reportOverride ?? draftReport;
+    if (!toSave) return;
+    setCommitting(true);
+    try {
+      const body = { edited_report: toSave };
+      await api.patch(`/api/pitch/jobs/${jobId}/review`, body);
+      setReviewData((prev) =>
+        prev ? { ...prev, committed_at: Date.now() / 1000, edited_report: toSave } : prev,
+      );
+      setDraftReport(toSave);
+      setIsDirty(false);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "提交失败，请重试");
+    } finally {
+      setCommitting(false);
+    }
+  }, [draftReport, jobId]);
+
+  const handleUnlock = useCallback(async () => {
+    if (!jobId) return;
+    setUnlocking(true);
+    try {
+      await api.delete(`/api/pitch/jobs/${jobId}/review-lock`);
+      setReviewData((prev) => prev ? { ...prev, committed_at: undefined } : prev);
+      setIsDirty(false);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "解锁失败，请重试");
+    } finally {
+      setUnlocking(false);
+    }
+  }, [jobId]);
+
+  const isCommitted = reviewData?.committed_at != null;
+  const committedAt = reviewData?.committed_at
+    ? new Date(reviewData.committed_at * 1000).toLocaleString("zh-CN")
+    : null;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0a0a14] text-slate-400 text-sm">
+        载入审查台…
+      </div>
+    );
+  }
+
+  if (reviewData && PROCESSING_STATUSES.includes(reviewData.status)) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#0a0a14]">
+        <div className="w-8 h-8 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
+        <p className="text-slate-300 text-sm">{STATUS_LABELS[reviewData.status] ?? "处理中…"}</p>
+        <p className="text-slate-600 text-xs">每 5 秒自动刷新，完成后自动显示</p>
+        <button type="button" onClick={() => navigate(-1)} className="text-xs text-cyan-400 hover:text-cyan-300 mt-2">← 返回</button>
+      </div>
+    );
+  }
+
+  if (err || !draftReport || !reviewData) {
+    const isFailed = reviewData?.status === "failed";
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-[#0a0a14]">
+        <p className="text-rose-300 text-sm">
+          {isFailed ? "任务执行失败" : err ?? "数据异常"}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="text-xs text-cyan-400 hover:text-cyan-300"
+        >
+          ← 返回
+        </button>
+      </div>
+    );
+  }
+
+  // ── 路演情报报告：独立视图，不走常规审查台 ──────────────────────────────────
+  if (isRoadshowReport(draftReport)) {
+    return (
+      <AudioProvider>
+        <div className="flex h-screen flex-col bg-[#0a0a14] text-white overflow-hidden">
+          <WorkbenchHeader
+            jobId={jobId}
+            status={reviewData!.status}
+            isCommitted={false}
+            committedAt={null}
+            isDirty={false}
+            onBack={() => navigate(-1)}
+            onCommit={() => void Promise.resolve()}
+            committing={false}
+          />
+          <div className="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full">
+            <RoadshowIntelView
+              report={draftReport}
+              interviewee={reviewData?.interviewee}
+              onSave={(updated) => void handleCommit(updated)}
+              saving={committing}
+            />
+            {/* HTML 报告导出 */}
+            <RoadshowHtmlExport jobId={jobId} />
+          </div>
+        </div>
+      </AudioProvider>
+    );
+  }
+
+  // ── 常规评估报告视图 ──────────────────────────────────────────────────────
+  const analysisReport = draftReport as AnalysisReport;
+
+  const leftPanel = (
+    <div className="space-y-0">
+      <SceneHeaderFields
+        sceneType={analysisReport.scene_analysis.scene_type}
+        speakerRoles={analysisReport.scene_analysis.speaker_roles}
+        totalScore={analysisReport.total_score}
+        totalScoreDeductionReason={analysisReport.total_score_deduction_reason}
+        isReadonly={isCommitted}
+        onSceneChange={handleSceneChange}
+        onScoreChange={handleScoreChange}
+      />
+      <RiskPointList
+        points={analysisReport.risk_points}
+        isReadonly={isCommitted}
+        onChange={handleRiskChange}
+        onDelete={handleRiskDelete}
+        intervieweeName={reviewData?.interviewee}
+      />
+      <AddRiskPointForm onAdd={handleAddRisk} disabled={isCommitted} />
+    </div>
+  );
+
+  const originalAnalysis = isRoadshowReport(reviewData!.original_report)
+    ? null
+    : (reviewData!.original_report as AnalysisReport);
+
+  const rightPanel = (
+    <>
+      <JobInfoPanel
+        jobId={jobId}
+        status={reviewData!.status}
+        totalWords={reviewData!.words_summary.total_words}
+        durationSec={reviewData!.words_summary.duration_sec}
+        originalScore={originalAnalysis?.total_score ?? 0}
+        currentScore={analysisReport.total_score}
+        committedAt={reviewData!.committed_at}
+        interviewee={reviewData!.interviewee}
+      />
+      <WorkbenchNPCChat tenantId={tenantId} jobId={jobId} userName={userName} />
+      <HtmlReportPreview jobId={jobId} isDirty={isDirty} onCommitFirst={handleCommit} />
+    </>
+  );
+
+  return (
+    <AudioProvider>
+      <WorkbenchContext.Provider value={{ jobId, wordsMap }}>
+        <div className="flex h-screen flex-col bg-[#0a0a14] text-white overflow-hidden">
+          <WorkbenchHeader
+            jobId={jobId}
+            status={reviewData!.status}
+            isCommitted={isCommitted}
+            committedAt={committedAt}
+            isDirty={isDirty}
+            onBack={() => navigate(-1)}
+            onCommit={() => void handleCommit()}
+            onUnlock={() => void handleUnlock()}
+            committing={committing}
+            unlocking={unlocking}
+          />
+          <WorkbenchBody leftPanel={leftPanel} rightPanel={rightPanel} />
+        </div>
+      </WorkbenchContext.Provider>
+    </AudioProvider>
+  );
+}

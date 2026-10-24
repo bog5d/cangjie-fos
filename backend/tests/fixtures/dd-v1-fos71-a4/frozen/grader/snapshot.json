@@ -1,0 +1,49 @@
+{
+ "schema_version": "dd_v1_snapshot_freeze.v1",
+ "snapshot_id": "snap-da8f944ca5c9d242",
+ "frozen_at": "2026-10-22T13:56:08+08:00",
+ "source_dir": "/Users/mac/cangjie-fos-wt-a4/backend/tests/fixtures/dd-v1-fos71-a4/frozen/examiner",
+ "meta_relative_path": "meta.json",
+ "files": [
+  {
+   "file_id": "F00001",
+   "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+   "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c"
+  },
+  {
+   "file_id": "F00002",
+   "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
+   "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90"
+  },
+  {
+   "file_id": "F00003",
+   "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
+   "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68"
+  },
+  {
+   "file_id": "F00004",
+   "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2023_正文.txt",
+   "sha256": "1f8c032515aa14696f041ca85d94081a47e14547e255bfce42ac69caa017a8f1"
+  },
+  {
+   "file_id": "F00005",
+   "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_社保缴纳证明_2024.txt",
+   "sha256": "03e10a0ff0c3806d1390293b374cbd066f84e5ac081b32a08e9fc9781cfcf763"
+  },
+  {
+   "file_id": "F00006",
+   "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+   "sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6"
+  },
+  {
+   "file_id": "F00007",
+   "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_草稿.txt",
+   "sha256": "b1efd478dbe1b37242af44c0c70780128016db2099f28867f451c0a3249fabab"
+  },
+  {
+   "file_id": "F00008",
+   "relative_path": "主体乙/BLIND-0001_BLIND-0002_BLIND-0004_审计报告_2024_正文.txt",
+   "sha256": "cfa825ecff154147e0661ceabfea79ad2366b91f5aea6c1452cb4e38de9a328e"
+  }
+ ]
+}
