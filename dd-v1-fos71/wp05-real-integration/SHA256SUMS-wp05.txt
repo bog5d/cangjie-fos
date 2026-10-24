@@ -1,0 +1,24 @@
+# wp05-real-integration 交付目录 SHA256 冻结清单
+# 生成时间(UTC): 2026-10-21T20:13:41Z
+# 校验: cd wp05-real-integration && shasum -a 256 -c SHA256SUMS-wp05.txt
+# [round-4] R1 修复 + F-1 叙述层修正 + trace 输入冻结 ⇒ 重新冻结
+80316157e2e2bc030e7a03f58f6bf7c82ac783e1e21c19563576875bea11c151  A1-BRIDGE.md
+477212ee46f20b0b7d1898543c8d062330dd9d6d612bee8080737419f2aabfbb  a1-evidence/SHA256SUMS-a1-evidence.txt
+da2a22bcbd7aab7ecf9ced3f228d868e8fb7de7346f56bc003ea7e6788bc5f45  a1-evidence/a1-trace-checklist.tsv
+209c82aa1a2cd8a494bc434b5910ef0b5560370589d96f9a517186c70fb5c501  a1-evidence/a1-trace-runner.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  a1-evidence/bridge-run-stderr.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  a1-evidence/bridge-run-stderr.txt
+223c6e25950f5f2d2a90ff1ca9d79b5d4007b68c4c88cada136b9b09a3bf7b7f  a1-evidence/bridge-run-stdout.log
+223c6e25950f5f2d2a90ff1ca9d79b5d4007b68c4c88cada136b9b09a3bf7b7f  a1-evidence/bridge-run-stdout.txt
+7bdeb089a58d99be64bfc9c9655e9cfa41ea2667defb7c8afc1ed9dfd82d4258  a1-evidence/calltrace-bridge.jsonl
+ef7eed3a1d62f7aebf55e1c9f4ea0b14a342b7ad171e48809744f9d5831b8b99  a1-evidence/check_policy_g4.py
+0f0c241b7241b878d57993ea4203e182a895d5c16c4357437d46e63d7a34b035  a1-evidence/entryA-reports/尽调报告-A1封版验证库-20261022-035044.md
+3794ddb80db8d620184fe16c037b79c3cf3c380ad0349f26ae1ee29ab7edbd75  a1-evidence/entryA-reports/尽调结果-A1封版验证库-20261022-035044.json
+ea18b8a5d4e76bdab21940a2b5aaf93f0bbe3e6b9b97144f4fdc595ff86a0f6c  a1-evidence/provenance-check.txt
+8f62005686c43bef380a0da554489ed5ff0444d93aca173e3dc87ff1d231961a  a1-evidence/provenance_plugin.py
+7e7307fc6487fbbe020ba01b9737d4082397fc763dcf4ca5077f70893821bb53  a1-evidence/pytest-a1-junit.xml
+6e0bd4c9686703746c6b5cb84714dd0cab21103dbbc5189213d22a429a6aaf6f  a1-evidence/pytest-master-same-interpreter-junit.xml
+1f90647d2c16959a9fb5ef5be4ece9a55a9c2bdc8e7caa680298bf892c7a8182  a1-evidence/real-regression-post-a1-no-bridge.txt
+f829151ea4bf6d521135b173d69d827f24d0087a49293b46c89fbb797cd9c314  a1-evidence/real-regression-post-a1.txt
+c97e76440abc0b3563c92c5f52e678dd04e648bcbf4156b926127ff0fc725691  a1-evidence/summarize_trace.py
+20fa7527e12efdfa107d17d689c02b5dd42f8460921d2a71ad233b13596697c8  a1-evidence/trace-summary.json

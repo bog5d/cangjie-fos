@@ -1,0 +1,191 @@
+A2 判别力实测 · 机器证据
+生成时间: 2026-10-22 10:28:17 CST
+被测 worktree: /Users/mac/cangjie-fos-wt-a2
+★ 全部探针在 /tmp 符号链接农场副本上执行（src/ 真副本，其余指回原目录）
+★ 每个探针自带 worktree SHA256 指纹自证（缺该行 ⇒ 该探针不成立）
+★ 探针 6/6 = m-4 整改新增：verdict 断言必须是真判别点（回退 ⇒ verdict 变 PARTIAL）
+═══════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════
+### 探针 1/6 · G-A2-11 三组（E1 闸门输入 / E2 前缀链 / E3 文案脱敏）
+═══════════════════════════════════════════════════════════════
+[E1] MATCHED 主体证据闸 · 触发输入
+      回退后 exit=1 —— FAILED tests/test_dd_v1_obligation_subject.py::test_multi_entity_library_without_subject_blocks_matched
+[E2] 主体前缀抽取 + 传播 + 简称解析
+      回退后 exit=1 —— FAILED tests/test_dd_v1_obligation_subject.py::test_unregistered_named_subject_detail_is_desensitized
+[E3] 判据文案脱敏三个调用点
+      回退后 exit=1 —— FAILED tests/test_dd_v1_obligation_subject.py::test_requirement_summary_does_not_leak_raw_hint
+
+✓ worktree 零改动自证：SHA256 指纹前后一致（6 个文件）
+
+=== 还原后复跑（必须全绿）===
+exit=0
+   ..........................                                               [100%]
+
+=== 判别力结论 ===
+  [ OK ] E1 MATCHED 主体证据闸 · 触发输入：回退后用例转红 ⇒ 生产端确在起作用
+  [ OK ] E2 主体前缀抽取 + 传播 + 简称解析：回退后用例转红 ⇒ 生产端确在起作用
+  [ OK ] E3 判据文案脱敏三个调用点：回退后用例转红 ⇒ 生产端确在起作用
+
+--- 退出码: 0 ---
+
+═══════════════════════════════════════════════════════════════
+### 探针 2/6 · G-A2-12 相关性闸（2 条）
+═══════════════════════════════════════════════════════════════
+== G-A2-12 判别力实测 ==
+  [基线·生产端在位] 15/15 passed，failures=0 errors=0 exit=0
+  [回退生产端]     13/15 passed，failures=2 errors=0 exit=1
+      转红：test_unrelated_unknown_type_does_not_block_matched
+      转红：test_trace_fields_still_reported
+  [还原生产端]     15/15 passed，failures=0 errors=0 exit=0
+  ✓ worktree 零改动自证：SHA256 指纹前后一致（6 个文件）
+
+== 判定 ==
+  回退后转红：是 ⇒ 有判别力（2 条挂）
+  还原后全绿：是
+  ⇒ PASS
+
+--- 退出码: 0 ---
+
+═══════════════════════════════════════════════════════════════
+### 探针 3/6 · G-A2-13 + F3 + F4（R-B / R-C / R-D）
+═══════════════════════════════════════════════════════════════
+== A2 判别力实测（G-A2-13 / F3 / F4）==
+  [基线·生产端在位] exit=0 failures=0
+  ✓ worktree 零改动自证：SHA256 指纹前后一致（6 个文件）
+  [R-B · G-A2-13 角色后缀归一]
+      回退后 exit=1 failures=3 ⇒ 预期用例已转红 ⇒ 有判别力（转红的是：['test_role_suffix_resolves_to_registered_entity']）
+      还原后 exit=0 failures=0 ⇒ 全绿
+         转红：test_role_suffix_resolves_to_registered_entity
+         转红：test_numeric_copy_suffix_not_stripped_by_role_path
+         转红：test_hint_lookup_keys_order_is_strict_first
+  [R-C · F4 MATCHED 须主体维度已核对]
+      回退后 exit=1 failures=1 ⇒ 预期用例已转红 ⇒ 有判别力（转红的是：['test_f4_guard_present_and_positioned']）
+      还原后 exit=0 failures=0 ⇒ 全绿
+         转红：test_f4_guard_present_and_positioned
+  [R-D · F3 主体维度断言收窄]
+      回退后 exit=1 failures=1 ⇒ 预期用例已转红 ⇒ 有判别力（转红的是：['test_conflict_message_scoped_when_no_subject_named']）
+      还原后 exit=0 failures=0 ⇒ 全绿
+         转红：test_conflict_message_scoped_when_no_subject_named
+
+  ⇒ PASS
+
+--- 退出码: 0 ---
+
+═══════════════════════════════════════════════════════════════
+### 探针 4/6 · M-1 主体闸顺序（Reviewer 第一轮 MAJOR）
+═══════════════════════════════════════════════════════════════
+== M-1 判别力实测（/tmp 副本；worktree 零改动）==
+  [基线·修复在位] exit=0 failures=0
+  [回退主体闸顺序] exit=1 failures=3 ⇒ 预期用例已转红 ⇒ 有判别力
+  ✓ worktree 零改动自证：SHA256 指纹前后一致（6 个文件）
+      转红：test_unregistered_named_subject_partial_period_is_uncertain
+      转红：test_candidate_subject_registered_keeps_verdict_discriminative
+      转红：test_two_subject_library_keeps_verdict_discriminative
+
+  ⇒ PASS
+
+--- 退出码: 0 ---
+
+═══════════════════════════════════════════════════════════════
+### 探针 5/6 · G-A2-8 实现缺陷：别名表 db_path 漏传（监工第 38 轮）
+═══════════════════════════════════════════════════════════════
+== `db_path` 漏传 · 判别力实测（/tmp 副本；worktree 零改动）==
+  [基线·修复在位] exit=0 failures=0
+  [回退 alias_map 传递] exit=1 failures=1
+      转红：test_directory_name_alias_resolves_subject_dimension
+  [还原] exit=0 failures=0
+  ✓ worktree 零改动自证：SHA256 指纹前后一致（6 个文件）
+
+  ⇒ 判别力成立：1/1 条预期用例转红
+  ⇒ PASS
+
+--- 退出码: 0 ---
+
+═══════════════════════════════════════════════════════════════
+### 探针 6/6 · ★ m-4 回归锁真判别：verdict 断言随主体闸顺序翻转（Reviewer 第二轮）
+═══════════════════════════════════════════════════════════════
+
+──── ① 当前顺序（A2 修后）⇒ 期望 PASS（rc=0） ────
+..                                                                       [100%]
+
+回退主体闸顺序：成功
+
+──── ② 回退顺序（A1 封版）⇒ 期望 FAIL（rc≠0） ────
+       assert st["need_entities"] == 0, \
+            f"双主体库 ⇒ 隐含要求不计入 ⇒ need_entities 应为 0：{st['need_entities']}"
+>       assert st["verdict"] == "UNCERTAIN", (
+            f"★ m-4：主体闸必须早于期间分支：verdict={st['verdict']} / {st.get('missing_detail')}")
+E       AssertionError: ★ m-4：主体闸必须早于期间分支：verdict=PARTIAL / 期间缺 1/2 年
+E       assert 'PARTIAL' == 'UNCERTAIN'
+E         
+E         - UNCERTAIN
+E         + PARTIAL
+
+/Users/mac/cangjie-fos-wt-a2/backend/tests/test_dd_v1_obligation_subject.py:291: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_dd_v1_obligation_subject.py::test_candidate_subject_registered_keeps_verdict_discriminative
+FAILED tests/test_dd_v1_obligation_subject.py::test_two_subject_library_keeps_verdict_discriminative
+
+★ worktree 零改动自证：一致（6 个文件）
+★ 判别力结论：当前=PASS / 回退=FAIL(rc=1) ⇒ ✓ 成立（回退真转红）
+
+--- 退出码: 0 ---
+
+═══════════════════════════════════════════════════════════════
+### 收尾 · worktree 零改动三重复核
+═══════════════════════════════════════════════════════════════
+--- git status --porcelain=v1 -uall ---
+ M backend/config/dd_v1_disclosure_policy.json
+ M backend/src/cangjie_fos/services/dd_v1_bridge_service.py
+ M backend/src/cangjie_fos/services/dd_v1_card_service.py
+ M backend/src/cangjie_fos/services/dd_v1_manifest_service.py
+ M backend/src/cangjie_fos/services/dd_v1_match_service.py
+ M backend/src/cangjie_fos/services/dd_v1_parser_service.py
+ M backend/src/cangjie_fos/services/dd_v1_policy_service.py
+ M backend/src/cangjie_fos/services/dd_v1_requirement_service.py
+ M tools/dd_team_channel.py
+?? backend/config/dd_v1_entity_aliases.json
+?? backend/src/cangjie_fos/services/dd_v1_doc_type_service.py
+?? backend/src/cangjie_fos/services/dd_v1_entity_service.py
+?? backend/src/cangjie_fos/services/dd_v1_ocr_service.py
+?? backend/tests/test_dd_v1_alias.py
+?? backend/tests/test_dd_v1_alias_db_path.py
+?? backend/tests/test_dd_v1_checklist_exclusion.py
+?? backend/tests/test_dd_v1_idempotency.py
+?? backend/tests/test_dd_v1_obligation_subject.py
+?? backend/tests/test_dd_v1_ocr.py
+?? backend/tests/test_dd_v1_period_and_type_coverage.py
+?? backend/tests/test_dd_v1_relevance_gate.py
+?? backend/tests/test_dd_v1_uniqueness.py
+?? docs/dd-v1-fos71/wp05-real-integration/A2-JUDGMENT-DATA.md
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/SHA256SUMS-a2-evidence.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/acceptance-selfcheck.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/conflict-probe.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/discriminability-probe.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/provenance-check.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/provenance_plugin.py
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/pytest-a1-same-interpreter-junit.xml
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/pytest-a2-junit.xml
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/real-regression-post-a2-registered.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/real-regression-post-a2-v2registry.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/real-regression-post-a2-v3-g1213.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/real-regression-post-a2-v4-dbpath.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/real-regression-post-a2-v5-r3review.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/real-regression-post-a2.txt
+?? docs/dd-v1-fos71/wp05-real-integration/a2-evidence/uv-lock-regeneration-disclosure.txt
+--- git diff --stat ---
+ backend/config/dd_v1_disclosure_policy.json        |  26 +-
+ .../cangjie_fos/services/dd_v1_bridge_service.py   |  72 ++-
+ .../src/cangjie_fos/services/dd_v1_card_service.py | 180 +++++-
+ .../cangjie_fos/services/dd_v1_manifest_service.py | 638 ++++++++++++++++++++-
+ .../cangjie_fos/services/dd_v1_match_service.py    | 440 ++++++++++++--
+ .../cangjie_fos/services/dd_v1_parser_service.py   |  70 ++-
+ .../cangjie_fos/services/dd_v1_policy_service.py   |  93 ++-
+ .../services/dd_v1_requirement_service.py          | 304 +++++++++-
+ tools/dd_team_channel.py                           |   3 +
+ 9 files changed, 1744 insertions(+), 82 deletions(-)
+--- 关键源文件 sha256 ---
+958ba89fc2405570b5c0b1703dca20146e1fd05599e20b2bcb97f4ecc644a67d  /Users/mac/cangjie-fos-wt-a2/backend/src/cangjie_fos/services/dd_v1_match_service.py
+7c86a4183b3c060af6fa3ac42017824264a0732fef72afe11cc9911c8c4af6c6  /Users/mac/cangjie-fos-wt-a2/backend/src/cangjie_fos/services/dd_v1_requirement_service.py
+39bf9df2c591cf69fac9e53b455a0af092a0bfc202ac2f7b242b85a86de25d84  /Users/mac/cangjie-fos-wt-a2/backend/src/cangjie_fos/services/dd_v1_entity_service.py

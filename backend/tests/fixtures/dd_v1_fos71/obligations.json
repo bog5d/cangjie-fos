@@ -1,5 +1,0 @@
-[
-  {"item_id": "S1", "obligation_id": "S1-O1", "text": "提供示例科技有限公司 2024 年度审计报告", "entity": "示例科技有限公司", "period": "2024", "doc_type": "审计报告"},
-  {"item_id": "S2", "obligation_id": "S2-O1", "text": "提供示例科技有限公司营业执照副本", "entity": "示例科技有限公司", "period": "CURRENT", "doc_type": "营业执照"},
-  {"item_id": "S3", "obligation_id": "S3-O1", "text": "提供示例科技有限公司 2024 年社保缴纳证明", "entity": "示例科技有限公司", "period": "2024", "doc_type": "社保证明"}
-]

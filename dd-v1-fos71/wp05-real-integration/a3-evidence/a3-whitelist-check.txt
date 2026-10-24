@@ -1,0 +1,40 @@
+A3 白名单对账（★ 扫描面 = `git diff --name-only <base>..HEAD` ∪ 工作树差集）
+==============================================================================
+base            : 557cf3f（A2 封版 commit）
+实测 HEAD       : d2f3b48d5b06423574c38d77f74756515076f282
+扫描面件数      : 20
+
+白名单内        : 20 件
+白名单外        : 0 件
+已披露的机器级  : 0 件（不随本次提交进 Git）
+
+【白名单内】
+  + backend/src/cangjie_fos/services/dd_v1_match_service.py
+  + backend/src/cangjie_fos/services/dd_v1_package_service.py
+  + backend/src/cangjie_fos/services/dd_v1_qc_service.py
+  + backend/src/cangjie_fos/services/dd_v1_requirement_service.py
+  + backend/src/cangjie_fos/services/dd_v1_selection_service.py
+  + backend/tests/test_dd_v1_packaging_exact.py
+  + backend/tests/test_dd_v1_qc.py
+  + backend/tests/test_dd_v1_selection.py
+  + docs/dd-v1-fos71/wp05-real-integration/A3-EXACT-PACKAGING.md
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/a3-delivery-package-check.txt
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/a3-probe-results.txt
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/a3-real-regression.txt
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/a3-tests-summary.txt
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/a3-whitelist-check.txt
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/calltrace-alias-cli.jsonl
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/calltrace-entry-default.jsonl
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/calltrace-entry-package.jsonl
+  + docs/dd-v1-fos71/wp05-real-integration/a3-evidence/wiring-trace-summary.json
+  + tools/dd_team_channel.py
+  + tools/dd_v1_manifest.py
+
+【白名单外（必须为 0）】
+  （无）
+
+【已披露的机器级产物（已还原，不入提交）】
+  （无）
+
+★ 白名单来源：A3 任务书第 2 段「允许改动（白名单）」+ 司仓 2026-10-22 校正记录（tools/dd_team_channel.py 三条授权口径、dd_v1_package_service.py 追加授权）。
+★ 判据条文（A3-1…A3-13）一字未改。

@@ -1,0 +1,65 @@
+[
+  {
+    "obligation": "提供示例科技有限公司 2024 年度审计报告",
+    "file_id": "b6af1168e41b8802a30be14cdc3ce000",
+    "rel_path": "F001_shili_audit_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+  },
+  {
+    "obligation": "提供示例科技有限公司 2024 年度审计报告",
+    "file_id": "b60934cd571a26933fe2ce2631bec849",
+    "rel_path": "F003_yangban_audit_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+  },
+  {
+    "obligation": "提供示例科技有限公司 2024 年度审计报告",
+    "file_id": "11208145099ac0e46d738b704cac32fe",
+    "rel_path": "F002_shili_audit_2023.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+  },
+  {
+    "obligation": "提供示例科技有限公司 2024 年度审计报告",
+    "file_id": "db8e2d7f142e59765eab491833b8dbde",
+    "rel_path": "F004_shili_business_license.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+  },
+  {
+    "obligation": "提供示例科技有限公司营业执照副本",
+    "file_id": "b6af1168e41b8802a30be14cdc3ce000",
+    "rel_path": "F001_shili_audit_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：声明等级=RESTRICTED"
+  },
+  {
+    "obligation": "提供示例科技有限公司营业执照副本",
+    "file_id": "11208145099ac0e46d738b704cac32fe",
+    "rel_path": "F002_shili_audit_2023.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：声明等级=RESTRICTED"
+  },
+  {
+    "obligation": "提供示例科技有限公司 2024 年社保缴纳证明",
+    "file_id": "b6af1168e41b8802a30be14cdc3ce000",
+    "rel_path": "F001_shili_audit_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+  },
+  {
+    "obligation": "提供示例科技有限公司 2024 年社保缴纳证明",
+    "file_id": "11208145099ac0e46d738b704cac32fe",
+    "rel_path": "F002_shili_audit_2023.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+  },
+  {
+    "obligation": "提供示例科技有限公司 2024 年社保缴纳证明",
+    "file_id": "db8e2d7f142e59765eab491833b8dbde",
+    "rel_path": "F004_shili_business_license.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+  }
+]

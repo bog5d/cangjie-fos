@@ -1,5 +1,0 @@
-{
-  "alias_config_version": "a2-2026-10.3",
-  "_note": "主体别名/简称登记（可选用）。**仓内这份是空模板 —— 真实客户简称不进 Git。** 真实别名随权威主体一起登记在 dd_v1_entity_aliases 表（库内登记优先于本文件）；本文件只用于「配置即用」的轻量场景（例如合成测试夹具），或用环境变量 CANGJIE_DD_V1_ENTITY_ALIASES 指向库外的真实别名文件。结构：aliases[] = {alias, entity_id, display_name}。纪律：① 一个别名不得跨主体复用；② 别名匹配的结果 provenance 记 ALIAS/INFERRED，不得当 FACT；③ 未登记就是未登记，不得猜。",
-  "aliases": []
-}

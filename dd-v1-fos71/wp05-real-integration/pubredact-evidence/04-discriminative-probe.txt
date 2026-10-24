@@ -1,0 +1,57 @@
+# R-5 脱敏**判别力**探针：回退任一处脱敏 ⇒ 扫描必须**重新命中**
+# 生成时间: 2026-10-22T14:33:59+0800
+# 探针脚本: <workspace>/redact/gm_probe_discriminative.py
+# 探针形态: /tmp **符号链接农场**（指向工作树的全部已跟踪文件）+ 断开软链后落真副本再改
+#           ⇒ **绝不改工作树**
+# 自证: worktree SHA256 == 农场软链解析后 SHA256 == 回退后去掉 marker 的 SHA256 == 改前基线 SHA256
+# 回退锚: **起止标记型锚代码结构**（START=目标行上方最近的非注释非空代码行；END=下方最近的同型行）
+#         ⇒ 回退锚**不写在注释上**
+# 原值: 运行时推导（模式从权威文件读 / 代号从材料库根目录推导）⇒ 探针脚本零字面量
+# 探针日志里的标识符行已做**占位符掩码**（案例代号→«PH»）⇒ 证据文件自身零字面量
+===== 探针 1: target=tools/dd_team_channel.py
+=== PROBE target=tools/dd_team_channel.py
+FINGERPRINT worktree_sha256      = 052b22be4da9f31fb0edc7f93d0914de52e01acdd8d9d14b6bd023dab1e936ac
+FINGERPRINT farm_symlink_sha256  = 052b22be4da9f31fb0edc7f93d0914de52e01acdd8d9d14b6bd023dab1e936ac   (symlink_resolves_to_worktree=True)
+SCAN farm_baseline HIT_FILES=0
+ANCHOR start_line=289 end_line=291 target_line=290  (锚点均为代码行；回退锚不写在注释上)
+ANCHOR start_code =r = sp.add_parser("run", help="跑一次完整流程：清单进来 → 匹配结果与缺口清单出去")
+ANCHOR end_code   =r.add_argument("--root", required=True, help="材料库根目录（本机路径）")
+ANCHOR target_code=r.add_argument("--library", required=True, help="材料库标识（自己起个名字，如 «PH»材料库）")
+ROLLBACK single_line=290 substitutions=1  (替身代称 → 原值；原值运行时推导，脚本零字面量)
+FINGERPRINT after_rollback_sha256 = e26296041e874d2b267064e0f86a4b342e1271ae9b03283f28fb54129032f29e
+SCAN after_rollback HIT_FILES=1
+  REHIT tools/dd_team_channel.py
+DISCRIMINATIVE=PASS  (回退后扫描必须重新命中 tools/dd_team_channel.py)
+EXACT_INVERSE all_lines=1 by_sha256 = True   (全部回退并去掉 marker 后 sha256=e0a7530b02c54c13b7aa8fd0cd2192dca0218b66ba9da660efb8822711ebd6c1 / 改前基线 sha256_before=e0a7530b02c54c13b7aa8fd0cd2192dca0218b66ba9da660efb8822711ebd6c1)
+
+===== 探针 2: target=backend/tests/test_dd_v1_recall.py
+=== PROBE target=backend/tests/test_dd_v1_recall.py
+FINGERPRINT worktree_sha256      = f4a16f14f61b646c4a0a50c54f1d9b9c7fc67510e7290afe6e45691ba99eb252
+FINGERPRINT farm_symlink_sha256  = f4a16f14f61b646c4a0a50c54f1d9b9c7fc67510e7290afe6e45691ba99eb252   (symlink_resolves_to_worktree=True)
+SCAN farm_baseline HIT_FILES=0
+ANCHOR start_line=186 end_line=188 target_line=187  (锚点均为代码行；回退锚不写在注释上)
+ANCHOR start_code ="股权结构说明.txt": "实际控制人及股权结构说明\n"
+ANCHOR end_code   =})
+ANCHOR target_code="«PH»科技第一大股东为长风资本，持股 42%。\n",
+ROLLBACK single_line=187 substitutions=1  (替身代称 → 原值；原值运行时推导，脚本零字面量)
+FINGERPRINT after_rollback_sha256 = 2409feaa6be15fe58064745f0fe047237b0b0ca42f6b14965d77b0eddd2948c5
+SCAN after_rollback HIT_FILES=1
+  REHIT backend/tests/test_dd_v1_recall.py
+DISCRIMINATIVE=PASS  (回退后扫描必须重新命中 backend/tests/test_dd_v1_recall.py)
+EXACT_INVERSE all_lines=3 by_sha256 = True   (全部回退并去掉 marker 后 sha256=0251bce26e7033a9f5d073f2d80494406720b0649821f114f65d6060112f7f12 / 改前基线 sha256_before=0251bce26e7033a9f5d073f2d80494406720b0649821f114f65d6060112f7f12)
+
+===== 探针 3: target=frontend/src/components/DueDiligenceWizard.tsx
+=== PROBE target=frontend/src/components/DueDiligenceWizard.tsx
+FINGERPRINT worktree_sha256      = 3f04458fcfc1bb28805e7d559364b199417a7a7b8d18ef984e87778adfd6f474
+FINGERPRINT farm_symlink_sha256  = 3f04458fcfc1bb28805e7d559364b199417a7a7b8d18ef984e87778adfd6f474   (symlink_resolves_to_worktree=True)
+SCAN farm_baseline HIT_FILES=0
+ANCHOR start_line=939 end_line=941 target_line=940  (锚点均为代码行；回退锚不写在注释上)
+ANCHOR start_code =className="w-full border rounded px-3 py-2 text-sm h-20 text-gray-900"
+ANCHOR end_code   =value={contextNote}
+ANCHOR target_code=placeholder="例如：本项目含「«PH»«PH»」和「«PH»」两个主体，材料须按主体区分；增值税申报表、成本结构等的年份/期间必须精确对应，差一年视为缺失；母子公司
+ROLLBACK single_line=940 substitutions=3  (替身代称 → 原值；原值运行时推导，脚本零字面量)
+FINGERPRINT after_rollback_sha256 = 0568d808862744338984472dfdbb13fd52c14bfa814c8aa04fd9930f6df01a26
+SCAN after_rollback HIT_FILES=1
+  REHIT frontend/src/components/DueDiligenceWizard.tsx
+DISCRIMINATIVE=PASS  (回退后扫描必须重新命中 frontend/src/components/DueDiligenceWizard.tsx)
+EXACT_INVERSE all_lines=3 by_sha256 = True   (全部回退并去掉 marker 后 sha256=16ca26a7270f592b65b9268accf9d69fede718a6420eee7417e99ec29bb7915d / 改前基线 sha256_before=16ca26a7270f592b65b9268accf9d69fede718a6420eee7417e99ec29bb7915d)

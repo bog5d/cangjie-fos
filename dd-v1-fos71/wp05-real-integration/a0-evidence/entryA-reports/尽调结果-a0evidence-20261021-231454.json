@@ -1,0 +1,121 @@
+{
+  "library": "a0evidence",
+  "institution": "A0合成机构",
+  "generated_at": "2026-10-21T23:14:54",
+  "human_approval_required": true,
+  "sent_to_institution": false,
+  "disclosure_policy": {
+    "policy_version": "unset",
+    "loaded": false,
+    "load_error": "策略文件不存在：/Users/mac/cangjie-fos-wt-a0/backend/config/dd_v1_disclosure_policy.json；未配置披露政策时一律按最严处理，全部不可外发",
+    "default_level": "RESTRICTED",
+    "known_levels": [
+      "PUBLIC",
+      "INTERNAL",
+      "CONFIDENTIAL",
+      "RESTRICTED"
+    ],
+    "externally_sendable_levels": [],
+    "effective": "全部材料按最严处理，一律不可对外交付"
+  },
+  "summary": {
+    "materials": 8,
+    "parse": {
+      "ok": 8,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    "obligations": 4,
+    "by_verdict": {
+      "MISSING": 1,
+      "CONFLICT": 3
+    },
+    "candidate_cap": 20
+  },
+  "understanding_quality": {
+    "entity_basis": {
+      "FACT": 0,
+      "INFERRED": 0,
+      "UNKNOWN": 4
+    },
+    "period_basis": {
+      "FACT": 3,
+      "INFERRED": 0,
+      "UNKNOWN": 1
+    },
+    "doc_type_basis": {
+      "FACT": 3,
+      "INFERRED": 0,
+      "UNKNOWN": 1
+    },
+    "caliber_basis": {
+      "FACT": 0,
+      "INFERRED": 0,
+      "UNKNOWN": 4
+    },
+    "attachment_basis": {
+      "FACT": 0,
+      "INFERRED": 0,
+      "UNKNOWN": 4
+    }
+  },
+  "card_provenance": {
+    "FACT": 46,
+    "INFERRED": 16,
+    "UNKNOWN": 74
+  },
+  "obligations": [
+    {
+      "obligation": "其他相关材料等",
+      "verdict": "MISSING",
+      "missing": "",
+      "candidates": []
+    },
+    {
+      "obligation": "提供示例科技有限公司2022年度审计报告",
+      "verdict": "CONFLICT",
+      "missing": "期间缺 1/1 年; 同一主体/期间存在 1 组内容冲突，需人工裁定",
+      "candidates": [
+        "G001_shili_audit_2024_body.txt",
+        "G004_shili_audit_2023_body.txt",
+        "G006_shili_articles_2024.txt",
+        "G005_yangban_audit_2024_body.txt",
+        "G003_shili_audit_2024_draft.txt",
+        "G002_shili_audit_2024_notes.txt",
+        "G007_shili_articles_2021.txt",
+        "G008_shili_memo_injection.txt"
+      ]
+    },
+    {
+      "obligation": "提供示例科技有限公司2024年度审计报告（含附注）",
+      "verdict": "CONFLICT",
+      "missing": "同一主体/期间存在 1 组内容冲突，需人工裁定",
+      "candidates": [
+        "G002_shili_audit_2024_notes.txt",
+        "G001_shili_audit_2024_body.txt",
+        "G006_shili_articles_2024.txt",
+        "G005_yangban_audit_2024_body.txt",
+        "G003_shili_audit_2024_draft.txt",
+        "G004_shili_audit_2023_body.txt",
+        "G007_shili_articles_2021.txt",
+        "G008_shili_memo_injection.txt"
+      ]
+    },
+    {
+      "obligation": "提供示例科技有限公司最新公司章程及2024年社保缴纳证明",
+      "verdict": "CONFLICT",
+      "missing": "同一主体/期间存在 1 组内容冲突，需人工裁定",
+      "candidates": [
+        "G006_shili_articles_2024.txt",
+        "G003_shili_audit_2024_draft.txt",
+        "G005_yangban_audit_2024_body.txt",
+        "G002_shili_audit_2024_notes.txt",
+        "G001_shili_audit_2024_body.txt",
+        "G007_shili_articles_2021.txt",
+        "G004_shili_audit_2023_body.txt",
+        "G008_shili_memo_injection.txt"
+      ]
+    }
+  ]
+}

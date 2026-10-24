@@ -1,0 +1,296 @@
+{
+  "contract_version": "3.8",
+  "task_level": "L1",
+  "work_id": "DD-V1-FOS71",
+  "wp": "WP02",
+  "issue": "https://github.com/bog5d/cangjie-fos/issues/71",
+  "goal": {
+    "success_criteria": [
+      "FOS71-G01: 考生2（Codex+DD-V1）与考生3（或经董事长批准的替补）的真实模型语义输入/输出有日志记录，模型标识或 UNKNOWN，与 RULE_ONLY 运行路径可区分",
+      "FOS71-G02: 不新增强制独立 API key，至少一条模型介入的匿名 fixture 闭环（WP01 已在合成 fixture 上由 Codex 完成）",
+      "FOS71-G03: 同一冻结清单+材料快照，三份答卷用同一份与考生隔离的人工 Gold Set 评分；样本不足 → LOW_CONFIDENCE/NOT_SCORABLE",
+      "FOS71-G04: 主体/期间/版本/签章/附件/hash/披露 Gate 不被模型跳过；错主体、伪造文件、prompt injection、未授权外发四类负例被拦截",
+      "FOS71-G05: RULE_ONLY 回归无劣化；模型不可用时显式降级并记原因",
+      "FOS71-G06: 非开发投融资员工在 Windows 独立运行并看懂对照结果",
+      "FOS71-G07: 同一 work item 全程只有一个有效 writer",
+      "FOS71-G08: 工程进度与业务效果分开报告"
+    ],
+    "non_goals": [
+      "重写 FOS 主引擎/FTS/GM",
+      "因 AI 输出取消确定性 Gate",
+      "把 CLI 执行规则当模型参与",
+      "模型自评当准确率",
+      "自动外发/部署",
+      "读取 Gold Set",
+      "授权云模型接触保密资料",
+      "第二调度权威",
+      "购买 DeepSeek 额度或新 API key（未获批准）"
+    ]
+  },
+  "context": {
+    "facts": [
+      {
+        "claim": "新版 DD-V1 链全部确定性、零 LLM",
+        "classification": "CURRENT",
+        "source": "docs/dd-v1-fos71/WP00-BASELINE.md（grep exit 1/0 证据）",
+        "event_at": "2026-10-16T05:40:00Z",
+        "collected_at": "2026-10-16T05:40:00Z"
+      },
+      {
+        "claim": "Codex CLI 0.152.0（ChatGPT 订阅）可非交互回传符合 dd_v1_agent_result.v1 的 JSON，并通过 FOS 硬校验 3/0",
+        "classification": "CURRENT",
+        "source": "docs/dd-v1-fos71/wp01/raw/n4-rerun/codex.timing.json + codex.events",
+        "event_at": "2026-10-16T06:13:00Z",
+        "collected_at": "2026-10-16T06:25:00Z"
+      },
+      {
+        "claim": "MiniMax（pi/hermes，minimax-cn Coding Plan）同样回传可校验 JSON 3/0；不在 #71 原考生定义内",
+        "classification": "CURRENT",
+        "source": "docs/dd-v1-fos71/wp01/raw/n4-rerun/pi.timing.json, hermes.timing.json",
+        "event_at": "2026-10-16T06:16:00Z",
+        "collected_at": "2026-10-16T06:25:00Z"
+      },
+      {
+        "claim": "DeepSeek Harness（dsh 0.1.7-rc.2）无可用会话；GM 配置 2026-10-11 永久停用",
+        "classification": "CURRENT",
+        "source": "docs/dd-v1-fos71/wp01/EVIDENCE-WP01.md 路径 C",
+        "event_at": "2026-10-16T05:55:00Z",
+        "collected_at": "2026-10-16T05:55:00Z"
+      },
+      {
+        "claim": "Gold Set 不存在；teams-channel #74/#75 仍 open",
+        "classification": "HISTORICAL",
+        "source": "STATUS-CARD 2026-10-16 12:40 CST",
+        "event_at": "2026-10-16T04:40:00Z",
+        "collected_at": "2026-10-16T04:40:00Z"
+      },
+      {
+        "claim": "Windows 兼容性未测",
+        "classification": "UNKNOWN",
+        "source": "WP00-RISKS-AND-WP01-PLAN.md",
+        "event_at": "2026-10-16T05:40:00Z",
+        "collected_at": "2026-10-16T05:40:00Z"
+      }
+    ]
+  },
+  "capability": {
+    "effective_config_ref": "backend/src/cangjie_fos/services/dd_v1_agent_result_service.py (SCHEMA_VERSION=dd_v1_agent_result.v1, PROMPT_VERSION=fos71-wp01-p1) + dd_v1_agent_result.v1.schema.json",
+    "candidates": [
+      {
+        "id": "EXAMINEE_1",
+        "definition": "Codex 无 DD-V1，独立组包",
+        "runner": "codex exec -s read-only（ChatGPT 订阅）",
+        "status": "CLI_READY+TASK_EXECUTED(synthetic, adjacent task)",
+        "scored": true,
+        "ranked": true,
+        "uses_dd_v1": false,
+        "vendor": "codex"
+      },
+      {
+        "id": "EXAMINEE_2",
+        "definition": "Codex 语义驱动 DD-V1（任务包→dd_v1_agent_result.v1→FOS 校验）",
+        "runner": "codex exec --output-schema",
+        "status": "TASK_EXECUTED(synthetic)",
+        "scored": true,
+        "ranked": true,
+        "uses_dd_v1": true,
+        "vendor": "codex"
+      },
+      {
+        "id": "EXAMINEE_3",
+        "definition": "DeepSeek Harness 语义驱动 DD-V1",
+        "runner": "dsh",
+        "status": "UNAVAILABLE / BLOCKED_ON_CHAIRMAN",
+        "scored": true,
+        "ranked": true,
+        "uses_dd_v1": true,
+        "vendor": "deepseek-harness",
+        "score_status": "BLOCKED"
+      },
+      {
+        "id": "AUX_MINIMAX",
+        "definition": "MiniMax 语义驱动 DD-V1：辅助路径，也是考生3 的候选替补；董事长批准前不计入考生3、不出分",
+        "runner": "pi -p --no-tools --mode json / hermes chat -Q",
+        "status": "TASK_EXECUTED(synthetic)",
+        "scored": false,
+        "ranked": false,
+        "uses_dd_v1": true,
+        "vendor": "minimax"
+      },
+      {
+        "id": "CONTROL_RULE_ONLY",
+        "definition": "现有确定性 DD-V1，作为对照组",
+        "runner": "tools/dd_team_channel.py",
+        "status": "CURRENT",
+        "scored": true,
+        "ranked": false,
+        "uses_dd_v1": true,
+        "vendor": "none"
+      }
+    ]
+  },
+  "state": {
+    "status": "WP02_SPEC_FROZEN_PENDING_REVIEW",
+    "current_child": "WP02",
+    "project_complete": false,
+    "next_action": "独立 Reviewer 复核 WP02 → 董事长裁决 OQ-1（考生3）/ OQ-2（Gold Set 授权）→ WP03 Agent Adapter"
+  },
+  "evidence": [
+    {
+      "subject_id": "DD-V1-FOS71/WP01",
+      "source": "docs/dd-v1-fos71/wp01/EVIDENCE-WP01.md",
+      "event_at": "2026-10-16T06:17:00Z",
+      "collected_at": "2026-10-16T06:25:00Z",
+      "claim": "Codex/MiniMax 回传可校验结构化建议；DeepSeek Harness UNAVAILABLE",
+      "validation_result": "PASS_WITH_NOTES（独立复核 PR #74），N1–N4 已修"
+    },
+    {
+      "subject_id": "DD-V1-FOS71/WP02",
+      "source": "docs/dd-v1-fos71/wp02/EVIDENCE-WP02.md",
+      "event_at": "2026-10-16T06:40:00Z",
+      "collected_at": "2026-10-16T06:40:00Z",
+      "claim": "本合同通过 grill-to-spec check_gccseg.py --require-v3-8",
+      "validation_result": "PASS（结构性；语义待独立复核）"
+    }
+  ],
+  "gate": {
+    "level": "TASK_EXECUTED",
+    "acceptance_criteria": [
+      "WP02：本合同通过 check_gccseg.py --require-v3-8；独立 Reviewer 确认 SPEC/ACCEPTANCE 与 Issue #71 一致、未偷换考生定义",
+      "WP03–WP06 每个 WP 都有 target_goal_ids、命令/退出码、正反用例、工件 sha、独立 Gate",
+      "评分硬规则以 scoring_rules（fos71-scoring-v1）为唯一机读来源；WP05 评分器必须引用同一组值并有测试",
+      "WP05 HG-ISOL：Gold 不得存在于执行器主机任何可读位置（不只是工作目录）；人工交换回贴（independent_examinee_answer=false）不得计为考生答卷"
+    ]
+  },
+  "goal_alignment": {
+    "north_star": "投融资业务核验人拿到一份由现有 Codex/DeepSeek（或获批替补）模型做语义判断、FOS 做来源与权限硬校验、人工审核过的尽调材料匹配答卷，并能看到它与 RULE_ONLY 对照、按人工 Gold Set 评分的准确率和错误清单",
+    "user_visible_acceptance": [
+      "业务核验人在 Windows 上运行一条命令，对同一份冻结清单得到 RULE_ONLY / 考生2 / 考生3（或获批替补）三份逐条答卷（Excel/JSON/Markdown）",
+      "每条建议都显示候选文件、出处定位、理由、模型标识或 UNKNOWN，且全部标为待人工审核；没有一条被模型直接置为 approved",
+      "评分报告按主体/期间/有效版本/附件/证明原件/真正缺失/无法核实七个维度拆分 TP/FP/FN，单列错主体、错年度、自信错配（confidence≥0.8 且错误）；每个错误归类为规则缺陷/模型推理缺陷/召回缺陷/资料缺失；无 Gold Set 时显示 NOT_SCORABLE，n<30 条义务显示 LOW_CONFIDENCE",
+      "模型不可用时报告明确写 RULE_ONLY 及原因"
+    ],
+    "baseline": {
+      "status": "UNKNOWN",
+      "evidence_ref": "docs/dd-v1-fos71/WP00-BASELINE.md（业务效果 NOT_SCORABLE：无 Gold Set）"
+    },
+    "work_to_goal_map": [
+      {
+        "work_item_id": "WP00",
+        "goal_metric_id": "FOS71-G07",
+        "expected_change": "事实底座+单 writer",
+        "verified_change": "PASS_WITH_NOTES（PR #72）"
+      },
+      {
+        "work_item_id": "WP01",
+        "goal_metric_id": "FOS71-G02",
+        "expected_change": "无新 API 的模型闭环（合成）",
+        "verified_change": "PASS_WITH_NOTES（PR #74），合成 fixture"
+      },
+      {
+        "work_item_id": "WP02",
+        "goal_metric_id": "FOS71-G08",
+        "expected_change": "Goal Contract/Spec 冻结、量纲与硬 Gate 定义",
+        "verified_change": "pending independent review"
+      },
+      {
+        "work_item_id": "WP03",
+        "goal_metric_id": "FOS71-G01",
+        "expected_change": "Codex / MiniMax（替补候选）/ 人工交换 Adapter，超时与降级",
+        "verified_change": "none"
+      },
+      {
+        "work_item_id": "WP04",
+        "goal_metric_id": "FOS71-G04",
+        "expected_change": "语义拆条+检索判断，硬校验拦截负例",
+        "verified_change": "none"
+      },
+      {
+        "work_item_id": "WP05",
+        "goal_metric_id": "FOS71-G03",
+        "expected_change": "三考生同卷考试+Gold 评分（无 Gold → NOT_SCORABLE）",
+        "verified_change": "none"
+      },
+      {
+        "work_item_id": "WP06",
+        "goal_metric_id": "FOS71-G06",
+        "expected_change": "对抗复核+Windows 真人实跑",
+        "verified_change": "none"
+      },
+      {
+        "work_item_id": "WP07",
+        "goal_metric_id": "FOS71-G05",
+        "expected_change": "经验沉淀与交接，回归无劣化",
+        "verified_change": "none"
+      }
+    ],
+    "next_goal_gap": "考生3 无可用 Harness（待董事长裁决是否以 MiniMax 替补）；没有 Gold Set，业务效果无法评分；Windows 未测",
+    "progress": {
+      "engineering_percent": 25,
+      "outcome_verified_points": 0,
+      "outcome_total_points": 100,
+      "note": "工程：WP00、WP01 已完成并经独立复核 = 2/8 = 25%（WP02 本身待复核，不计）；效果：G01–G08 已真实验证 0 项（WP01 只是合成 fixture，不计业务分）",
+      "completed_reviewed_wps": [
+        "WP00",
+        "WP01"
+      ],
+      "total_wps": 8
+    }
+  },
+  "scoring_rules": {
+    "version": "fos71-scoring-v1",
+    "gold_required": true,
+    "no_gold_status": "NOT_SCORABLE",
+    "low_confidence_min_obligations": 30,
+    "low_confidence_status": "LOW_CONFIDENCE",
+    "min_reruns": 3,
+    "high_confidence_threshold": 0.8,
+    "rerun_agreement_threshold": null,
+    "rerun_agreement_threshold_note": "N5：Gold 出现前只报告一致率、不设阈值；WP05 开工前必须定好（OPEN_ITEM WP05-PRE-1）",
+    "dimensions": [
+      "entity",
+      "period",
+      "effective_version",
+      "attachment",
+      "proof_original",
+      "truly_missing",
+      "unverifiable"
+    ],
+    "separate_counts": [
+      "wrong_entity",
+      "wrong_period",
+      "confident_mismatch"
+    ],
+    "coverage_vs_correct_separate": true,
+    "error_categories": [
+      "RULE_DEFECT",
+      "MODEL_REASONING_DEFECT",
+      "RECALL_DEFECT",
+      "MATERIAL_MISSING"
+    ],
+    "metrics": [
+      "TP",
+      "FP",
+      "FN",
+      "precision_if_applicable",
+      "recall_if_applicable",
+      "review_minutes",
+      "tokens_or_UNKNOWN",
+      "cost_or_UNKNOWN",
+      "elapsed_s",
+      "rerun_agreement"
+    ],
+    "gold_must_not_be_on_executor_host": true,
+    "gold_isolation_note": "复核 WP03 N4：codex -s read-only 只限制写，模型仍能读整台主机；工作目录约定挡不住读取。WP05 Gold 必须放在执行器主机（运行 Codex/MiniMax 的机器）不可读的位置，评分在另一台主机或考试结束后进行",
+    "manual_reply_counts_as_examinee": false
+  },
+  "open_items": [
+    {
+      "id": "WP05-PRE-1",
+      "source": "REVIEW-WP02 N5",
+      "item": "确定重跑一致率阈值（HG-STAB）",
+      "due": "WP05 开工前",
+      "status": "OPEN"
+    }
+  ]
+}

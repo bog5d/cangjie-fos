@@ -1,0 +1,21 @@
+== A2 验收判据自检 ==
+  [PASS] A2-1：规则可配置=True 留痕计数=True/True 「命中未排除」计数=True；验收用例 20 条
+  [PASS] A2-2：默认映射段=True 显式业务授权通道=True INFERRED 标注=True fail-closed=True
+  [PASS] A2-3：主体范围=True 主体未登记降级=True 桥接层 entity_basis=True
+  [PASS] A2-4：doctype_cov 口径存在=True capped 置信提示=True 未恒置1=True
+  [PASS] A2-5：unresolved=True relative_unresolved=True（UNKNOWN 不构成门槛）
+  [PASS] A2-6：4 方向=True 置信度过滤=True 未引入 poppler=True PDF 栅格化用既有 pypdfium2=True；验收用例 19 条
+  [PASS] A2-6b：卡片 doc_type 走规范 key=True 唯一类型来源模块存在=True
+  [PASS] A2-7：A2 1600/0/0/5 ⇒ 1595 passed；A1 同解释器基线 1458 passed ⇒ tests +137 / passed +137，零回归
+  [PASS] A2-8：改动 **38 件**（`git status -uall` 逐件口径，未跟踪文件逐个列出且尊重 .gitignore）⇒ 与回执 files_changed 逐件一致；白名单外未披露项：无
+  [PASS] A2-9：披露策略仍在（类型闸 sendable_doc_types + 可外发级别 PUBLIC）；策略版本 a2-2026-10.3
+  [PASS] A2-10：9 项硬 Gate 中 PRECISE_PACKAGING / WINDOWS_REAL_E2E / UNATTENDED_HANDOFF 保持 UNKNOWN（本包未触碰真实交付、Windows 盲考与无人值守）
+  [PASS] A2-11：别名登记 API=True 跨主体复用拒绝=True ALIAS/INFERRED 口径=True；验收用例 19 条（其中失败 0 条）；★ F1 产品侧守卫：alias_kind 列=True 形参=True 三档常量=True 形态硬守卫=True include_directory=True 判定层排除=True 自跑「分类目录冒充法定别名被拒 + DIRECTORY 不参与归一」=True
+  [PASS] A2-12：内容指纹去重 + 跳过留痕=True；验收用例 8 条（含入口 A 连跑两次端到端）
+  [PASS] A2-13：唯一性公开 API=True 索引件判定=True 冲突侧索引件分桶/多份合法留痕=True 卡片侧索引件类型留空=True；验收用例 9 条（其中失败 0 条；含 ANNUAL_UNIQUE 真冲突仍报 + 主体未登记仍不报的双向判据）
+  [PASS] A2-14：义务侧主体前缀抽取/传播=True MATCHED 主体证据闸=True F3 材料层发现不构成主体断言=True F4 MATCHED 须主体已核对=True；验收用例 26 条（其中失败 0 条；含脱敏断言 + 单来源正则断言）；★ F4 守卫在当前调用图下**不作为决定性闸** ⇒ 其判别力以**白盒断言**证明，可观测契约由 G-A2-11 闸 / unknown-entity 闸的行为回退证明
+  [PASS] A2-15：相关性闸函数=True 阻断集=True 留痕字段仍在=True；验收用例 15 条（其中失败 0 条；判别力实测：回退生产端 ⇒ 用例转红，由 gm_probe_a2_relevance_discriminative.py 独立证明）
+  [PASS] A2-16：角色后缀剥离（仅查表路径）=True 由严到宽查表键=True 义务侧认登记全称逐字相等=True；验收用例 15 条（含纯数字副本后缀不剥的双向判据；判别力实测：回退 `_strip_trailing_paren` ⇒ 3 条转红）
+
+== 汇总 ==
+  17/17 PASS

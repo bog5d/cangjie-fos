@@ -1,0 +1,23 @@
+# R-7 交付面自净扫描（两套匹配规则）
+# 生成时间: 2026-10-22T14:33:59+0800
+# 扫描器: <workspace>/redact/gm_pubredact_delivery_scan.py（只报路径+计数，**永不打印命中内容/模式内容**）
+# 匹配规则①=纯子串（全仓扫描器口径）；匹配规则②=代号加词边界（A2 扫描器口径）
+# 面分三段（各自独立判定）：A=交付面 / B=执行器脚本 / C=执行者本地暂存区（**非交付件**）
+
+=== DELIVERY SURFACE SCAN (R-7) ===
+PATTERNS_LOADED=8  CASE_CODES_DERIVED=3
+匹配规则①=纯子串（全仓扫描器口径）；匹配规则②=代号加词边界（A2 扫描器口径）
+
+--- A 段 · 交付面（FOS 仓交付件 + GM 侧回执/派工任务书/DONE）---
+  文件数=29  规则①命中=0  规则②命中=0
+--- B 段 · 执行器脚本 + 基线清单（任务书：扫描器自身也不得带字面量）---
+  文件数=13  规则①命中=0  规则②命中=0
+--- C 段 · 执行者本地暂存区（原始测量日志，**非交付件**，单列登记）---
+  文件数=6  规则①命中=8  规则②命中=0
+
+HIT	C-scratch	/Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/evidence/after-junit.xml	real=0	code_plain=4	code_bounded=0
+HIT	C-scratch	/Users/mac/.minimax/sessions/mvs_9d861162716f4f6785d5e4bf09d4941e/workspace/redact/evidence/baseline-junit.xml	real=0	code_plain=4	code_bounded=0
+
+R7_DELIVERY_SURFACE_HITS=0  R7_EXECUTOR_SCRIPTS_HITS=0   (判定依据 A/B 两段)
+SCRATCH_DISCLOSED_HITS_rule1=8  rule2=0  (C 段单列，见 10-raw-measurement-logs.txt)
+RESULT: PASS（A 段交付面 + B 段执行器脚本，两套规则均 0 命中）
