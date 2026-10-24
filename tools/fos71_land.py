@@ -15,12 +15,17 @@
 
 闸（fail-closed；任一红 ⇒ 0 远端写）：
 
-  Gate A  重入闸：落盘前独立重读目标 ref tip，取该 tip 的 commit message；
-                  若其中含本笔落盘的 LAND-ID ⇒ 判「已落过」⇒ 零写动作退出。
-  Gate B  基座闸：落盘前再验一次 ref；tip 与基座不一致 ⇒ 零写动作退出，
-                  调用方须以新基座重跑全流程（禁重推旧载荷）。
+  Gate A  重入闸（身份口径）：在任何写动作之前独立重读目标 ref tip，取该 tip
+                  的 commit message；若其中含本笔落盘的 LAND-ID ⇒ 判「已落过」
+                  ⇒ 零写动作退出（0 个写请求）。
+  Gate A2 逐位相等口径：在 POST commit 之前，把本笔将要产生的 commit 对象按
+                  git 对象格式本地复算成 planned sha，再读一次 ref tip；
+                  tip 已等于 planned sha ⇒ 判「已落过」⇒ commit 对象不建、
+                  0 新增 commit 对象、0 ref 写；tip 已漂 ⇒ 同样不建 commit。
   Gate C  补丁前复验：PATCH 之前再读一次 ref；tip 已等于本席目标 commit ⇒
                   不 PATCH（0 新对象、0 ref 写）；tip 已漂 ⇒ 零 ref 写退出。
+  基座闸   落盘前再验一次 ref（Gate A 内已做）；不一致 ⇒ 零写动作退出，
+                  调用方须以新基座重跑全流程（禁重推旧载荷）。
   禁形闸  可选调用仓内 shape_probe.py（硬闸、退出码驱动、作用域＝本轮增量字节）。
 
 退出码：
@@ -308,10 +313,38 @@ def land(args, api=None):
         raise RuntimeError("建 tree 失败 HTTP %d: %s" % (code, json.dumps(tree)[:200]))
     tree_sha = tree["sha"]
 
-    # STEP3 commit（author/committer 的时刻在本轮现读）
+    # commit 对象的本地预演（planned sha；两种 message 尾换行形态都算）
     stamp = args.date if args.date else now_iso()
     epoch, tz = parse_iso_to_git(stamp)
     ident = "%s <%s> %d %s" % (args.author_name, args.author_email, epoch, tz)
+    head_txt = "tree %s\nparent %s\nauthor %s\ncommitter %s\n\n" % (
+        tree_sha, base, ident, ident)
+    variants = {}
+    for tag, tail in (("尾换行", "\n"), ("无尾换行", "")):
+        body = head_txt.encode("utf-8") + (message + tail).encode("utf-8")
+        variants[tag] = git_object_id("commit", body)
+
+    # Gate A2：planned commit sha 逐位相等（在 POST commit 之前 ⇒ commit 对象不建）
+    tip_a2 = api.head_tip(args.branch)
+    if tip_a2 in variants.values():
+        out["verdict"] = "IDEMPOTENT_ABORT"
+        out["land_id"] = landing_id
+        out["tip"] = tip_a2
+        out["planned_variants"] = variants
+        out["note"] = "目标 commit 已在位：0 新增 commit 对象、0 ref 写"
+        out["writes"] = api.writes
+        out["reads"] = api.reads
+        return EXIT_ALREADY_LANDED, out
+    if tip_a2 != base:
+        out["verdict"] = "BASE_DRIFT_ABORT"
+        out["base"] = base
+        out["tip"] = tip_a2
+        out["note"] = "基座漂移：commit 对象未建、0 ref 写"
+        out["writes"] = api.writes
+        out["reads"] = api.reads
+        return EXIT_BASE_DRIFT, out
+
+    # STEP3 commit（author/committer 的时刻在本轮现读）
     commit_payload = {
         "message": message,
         "tree": tree_sha,
@@ -324,13 +357,7 @@ def land(args, api=None):
         raise RuntimeError("建 commit 失败 HTTP %d: %s" % (code, json.dumps(commit)[:200]))
     commit_sha = commit["sha"]
 
-    # 本地按内容寻址复算（自证；两种 message 尾换行形态都试，报告命中哪一形态）
-    head_txt = "tree %s\nparent %s\nauthor %s\ncommitter %s\n\n" % (
-        tree_sha, base, ident, ident)
-    variants = {}
-    for tag, tail in (("尾换行", "\n"), ("无尾换行", "")):
-        body = head_txt.encode("utf-8") + (message + tail).encode("utf-8")
-        variants[tag] = git_object_id("commit", body)
+    # 内容寻址自证：本地复算与服务端 sha 是否逐位相等（命中哪一形态一并报出）
     recompute_hit = [k for k, v in variants.items() if v == commit_sha]
 
     # Gate C：PATCH 之前再验一次 ref
