@@ -20590,3 +20590,52 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 
 ### 四、★**本席 0 外发卡（★无变化时只更新落盘状态卡、★不向波总发消息）**
 ★**理由**：★远端**修复分支侧 0 新字节**、★0 新独立 Gate 结果、★0 新 PR comment、★0 新 review、★**两条账与活跃态与「该踢吗 NO」与 §273 逐位相同**；★本轮三条新坐标属**判据精度化、★不改变任一账目与判红**；★**故不向波总发卡**（★波总明确「正常无变化不必反复报告」）。★**本席 0 写产品代码、0 合并任何分支（含 master）、0 代写独立 Reviewer 的 VERDICT、0 改 Issue #71 的 AC 判定、0 改尺子口径、0 触碰施工方工作树、0 触碰他人已落字节、0 新建调度器、0 新建第二套监工、0 spawn、0 催办、0 唤醒、0 接触或输出明文凭据。**
+
+## §275 （号 275）：★2026-10-25T03:00Z 槽位独立监工席 · 本席 `456065691218008`（★cron task `455353976279398`）· 巡检轮次 §275 · ★**本轮有动作、★非无变化轮**
+
+### 一、★**本轮现读快照（★远端权威字节、★取数时刻 2026-10-25T03:06Z–03:2xZ）**
+- ★**修复分支 tip** ＝ `622f297ac57d23cebdc20e3187010658c718ec47`（★**本轮未前进**、★静默 **86028 秒 ＝ 23.90 时**、★落款 2026-10-24T03:12:42Z、★声明值 ⇒ 下界）｜★**master tip** ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（★静默 144324 秒 ＝ 40.09 时）｜★**基线** ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`
+- ★**变更面（★自基线 / ★自 master、★三者分列、★blob 桶与 tree 桶不混）**：自基线 ＝ **新增 34 ／ 删除 11 ／ 既有路径 blob 改写 14**（★全条目 782 → 805）｜自 master ＝ **新增 33 ／ 删除 0 ／ 改写 14**（★全条目 772 → 805、★**修复侧自身删除 0**）
+- ★**全量 heads 37、★含「71」者 25、★NEW ＝ ∅、★双 Writer 风险 0**（★除 `feat/71-player2-p0-fix-20261023` 外无新增 71-* 分支）
+- ★**PR #81** ＝ open／mergeable ＝ true／mergeable_state ＝ clean／head ＝ `622f297ac57d23cebdc20e3187010658c718ec47`｜★**issue-comments 8 ／ reviews 0 ／ 行内 0**（★最新一条 id `6372203092` 落 2026-10-23T18:42:12Z ⇒ **本轮 0 新增**）｜★**PR #83** head `6afe3ee06b918970d1e25d8d31af88724b694c30` 的 ci.yml **已含 OCR 安装步**（★T1 已闭）、★其 3 条 check-run 全 success
+- ★**现读 tip 上 check-run 6 条、全 success**（★2×Backend Tests 440+、★2×Backend Tests 228、★2×Frontend Build）｜★**CI 绿 ≠ 独立裁定**
+- ★**cron 复核**：`cron_read view=list` ＝ 本账号恰 **3 条**周期 cron（★本工程 **恰 1 条** `455353976279398`、★另 2 条属 INC3 `455164742488166` 与 CF `455347827208431`、★**那不是重复调度、★禁误判、★禁删除**）
+
+### 二、★**两条账（★互不换算、★三口径并列、★值须当轮现读）**
+- ★**工程账 · 尺子口径 ＝ 4/6 ＝ 67%**（★冻结尺子 `MINIMAX-INDEPENDENT-SUPERVISOR.md` V0.3 §4 明写分母 ＝ A0–A5 共 6、★分子 ＝ A0 ／ A1 ／ A2 ／ A3）｜★**证据源本轮现读复核**：PR #80 issue-comments **8 条**、reviews 0、行内 0、★末条 id `6332913347` 落 2026-10-22T04:44:21Z、★其正文逐字载「独立 Reviewer 第一轮裁定 PASS（工程进度 4/6）」、★**证据形态 ＝ 司仓封版回写、★属转述级**｜★**A4 ＝ 待裁**（★其包内另载 ROUND2 独立 Reviewer 裁定 PASS、★判据 11/11、★故 **含 A4 的 5/6 并列报出**）｜★**A5 ＝ 0**
+- ★**工程账 · 派工口径 ＝ 4/4 ＝ 100%**（★WP1 材料类型统一 ／ WP2 正式入口修复 ／ WP3 主体与证据过滤 ／ WP4 全链路合成回归、★**分母来自本席 cron 派工指令**）
+- ★**效果账 ＝ 0/100 REAL_PASS**（★O1 25 ／ O2 25 ／ O3 20 ／ O4 20 ／ O5 10、★五项 verified_points 全 0、★status 全 UNKNOWN、★**MOCK 与合成不折算、★UNKNOWN 不算 PASS 也不算已证伪**）｜★**硬门槛 9 项全 UNKNOWN**（★ONE_WRITER／REAL_FOS_CALL／GOLD_ISOLATION／SENSITIVE_AUTH／FALSE_MATCH_GUARD／PRECISE_PACKAGING／INDEPENDENT_REVIEW／WINDOWS_REAL_E2E／UNATTENDED_HANDOFF）｜★**work_to_goal_map A0–A5 verified_change 全 NONE**
+
+### 三、★**本轮技术核（★全部现读远端字节、★不采信任何一方自述）**
+- ★**权威 10 类唯一性**：★**窄口径 AST 容器 3 处**、★键集与权威 10 键**逐位相等** —— `_DOC_TYPE_RULES`（requirement_service L144、★**真身 ＝ tuple-of-2-tuples**）／`_DOC_TYPE_UNIQUENESS`（requirement_service L168）／`_DOC_TYPE_PURPOSE_MAP`（match_service L115）｜★**旧 `DOC_TYPES` 在 `backend/src` 内 0 命中**（★旧 7 类中文表已废除）｜★**阳性对照 PASS**（真身命中且带赋值名）／★**阴性对照 PASS**（同族合成容器 0 命中）
+- ★**六态（★语义层）**：`NO_CANDIDATE_REASONS` ＝ semantic_retrieval_service **L66**、★恰 **6** 值（NO_MATERIAL ／ UNRESOLVED_DOC_TYPE ／ UNKNOWN_ENTITY ／ PERMISSION_BLOCKED ／ RETRIEVAL_EXHAUSTED ／ OTHER）｜★**生产赋值点 8 处**（L523／525／527／529／531／540／542／544）覆盖 6 个字面量、★**L538 刻意取 None**（★候选存在但期间/版本不符 ⇒ 原因留空、★禁报 NO_MATERIAL）
+- ★**正式入口落点（★非只修测试脚本）**：`tools/dd_v1_local_run.py` 的 `cmd_scaffold` **L153** ／ `cmd_split` **L247** ／ `cmd_run` **L314**；★`tools/dd_team_channel.py` 亦承载
+- ★**CLI 缺口（★本轮逐条现读、★状态与在册逐位相同）**：`dd_v1_local_run.py` 侧 `candidate_status` ／ `no_candidate_reason` ／ `NO_CANDIDATE_REASONS` ／ `MISSING` ＝ **0／0／0／0**（★**CLI 缺口未闭合**）｜`dd_team_channel.py` 侧 3 次 2 行 ／ 4 次 3 行、★1 处 `NO_CANDIDATE_REASONS`（L618）、★1 处 `MISSING`（L517、★属匹配结论枚举、★与六态不同取值空间）
+- ★**独立 Gate 覆盖（★「锚分叉」与「字节分叉」是两个对象、★禁拿 compare 的 ahead／behind 当字节结论）**：原 T4 独立 Gate（comment `6370738997`、★VERDICT PASS、★被验树 `6b24fc830a9a9a590fb606a406e3c7c03c40bde5`、★803 条路径、★parents[1] ＝ `a34d01031471b539480ef8bdd53d263cc375ac59`）与现读 tip 的 compare ＝ **diverged ／ ahead 5 ／ behind 3**；★**改按树对树逐路径 blob sha 比对** ⇒ **ADD 2 ／ DEL 0 ／ MOD 3**；★**产品面**（`backend/src/**` ＋ 两个正式入口）**DIFF ＝ 0** ⇒ **该 Gate 的产品字节面覆盖现读 tip**；★**整树覆盖 ＝ 否**、★落在原范围外的 5 条非产品路径 ＝ 新增 2 工具（`tools/dd_v1_six_state_reachability_probe.py` ／ `tools/fos71_land.py`）＋ 改写测试件 `backend/tests/test_dd_v1_fos71_t5_six_states_entry.py` ＋ 2 份交付面文档（`EVIDENCE-PLAYER2-P0.md` ／ `SHA256SUMS`）｜★**两条读数并列报出、★禁只报产品面**
+- ★**GM 派工权威（★调度权威、★现读 `cangjie-gm` main 的 `data/work_items.json`）**：`W-DD-V1-2026` ＝ state **BLOCKED** ／ current_wp **WP-R2** ／ **waiting_for_chairman ＝ true** ／ executor ＝ hermes ／ next_action ＝ **WAIT_CHAIRMAN**（★理由逐字：三条执行器路径实测全部不可用、★叠加 Gold Set 未提供）｜★**4 条 blocker 全落 Owner 域**（★执行器全灭 ／ Gold Set 未提供 OQ-2 ／ 真实材料送外部模型未授权 OQ-3 ／ DSH 余额不足）；★**名册 updated_at ＝ 2026-10-19T19:45:00+08:00、★已陈旧 6 天、★且其「执行器全灭」一条已被本轮 Owner 授权云端 MiniMax 作 Executor 覆盖**
+
+### 四、★**活跃态：四件事分开判、分开报**
+| 维度 | 判定 | 依据 |
+|---|---|---|
+| ① cron 是否运行 | **YES** | 本工程恰 1 条 cron `455353976279398`、★20 分钟栅格、★本席即本轮 |
+| ② 监工是否工作 | **YES** | 本席本轮现读并落盘 |
+| ③ 开发者是否真正施工 | **NO** | ★**0 新 commit、★0 新路径、★0 新 blob、★静默 23.90 时**（★**「远端 tip 未前进」≠「没在施工」是不同对象、★但本项的判据是产物**） |
+| ④ 是否产生新的功能成果 | **NO** | ★**0 新 comment、★0 新 review、★0 新裁定、★0 新 Gate、★0 新 PR** |
+- ★**主态 ＝ BLOCKED**（★GM 派工权威 WAIT_CHAIRMAN ＋ 4 条 blocker 全落 Owner 域）｜★**并列报出停滞事实**：★静默 23.90 时、★**根因本轮已定位（★见第五节）、★且技术侧唯一未闭闸已被本轮重派**、★**但 Owner 域三条（★Gold Set ／ 外部模型授权 ／ DSH 余额）本席无权解**
+
+### 五、★**该踢吗 ＝ NO（★踢的是施工席、★本席不踢施工席）＋ ★本轮实际动作 ＝ 催动独立 Gate 席**
+- ★**机械三条件全部成立**（★供对照、★**但机械三条件成立 ≠ 该踢**）：★tip 静默 86028 秒 ≥ 25 分 ✔｜★工作树 0 新增改动 ✔｜★执行席末条 **finish_reason ＝ stop（非 toolUse）** ✔（★末条落 2026-10-24T03:18:36Z、★status ＝ 0、★空闲）
+- ★**不踢施工席的三条理由**：① ★**施工席无授权剩余施工项** —— WP1–WP4 ＋ R2/T5 全部已落且已过独立 Gate、★其回执逐字写明「待裁定 5 项已登记不代裁、★其中最要紧：T4 独立 Gate 须在新 tip 上重锚重跑 —— 我 0 代跑、0 代写 VERDICT」；② ★**唯一未闭的技术闸 T4 属独立 Gate、★施工席 0 代裁**；③ ★**踢施工席会产生 0 字节、★并白白消耗「同一 HEAD 连续 2 次恢复」预算**
+- ★**本轮实际动作（★催动、★非恢复施工）**：★**T4 独立 Gate 在现读终态 head `622f297ac57d23cebdc20e3187010658c718ec47`（★tree `44d10fef4578458bd93b64da2f698bf107aa517c`）上重锚重跑**
+  - ★**原独立复核席不可达**：`455539551396187`（★agent ＝ Verifier）自 2026-10-23T18:44:08Z 空闲、★**send 模式被平台拒收（not in peer set）⇒ 原位唤活结构上不可达**
+  - ★**⇒ 重开同一复核席角色**：`spawn` agent ＝ **Verifier** ⇒ 新席 **`456069720134365`**（★父 ＝ 本席 `456065691218008`、★status ＝ 1 在跑、★created 2026-10-25T03:16:43Z、★title ＝「T4 独立复核席 · FOS #71 终态 head 重锚 Gate（被验 tip `622f297ac57d23cebdc20e3187010658c718ec47`）」）｜★**派工正文已写明**：★先取原三席 comment（`6370738997` ／ `6371627381` ／ `6372203092`）全文作判据继承源（★新席无上一席上下文）、★判据口径（★锚分叉 vs 字节分叉、★静态可写 vs 生产路径可达）、★post-Gate 5 笔增量清单、★**探针边界提醒**（★`_DOC_TYPE_RULES` 是 tuple-of-2-tuples、★禁用只认直接常量的抽键探针）、★落点 ＝ PR #81 issue comment、★红线全集
+  - ★**0 新建调度器、0 新建第二套监工、0 新建第二执行器、0 代裁、0 合并任何分支**
+- ★**「同一 HEAD 连续 2 次恢复无新 commit 则停止恢复」未触发**：★本 HEAD（`622f297ac57d23cebdc20e3187010658c718ec47`）下恢复计数 ＝ **0**；★上一轮那次恢复发生在**父 HEAD**、★且确实产出了现 tip ⇒ **恢复机制本身有效**
+
+### 六、★**本轮新坐标（★跨项目可复用、★0 双计）**
+- ★★★**「上下文窗口溢出」是一个会静默掐断调度链的失败形态** —— ★它不产生 0 产出自述、★不在业务面留错误标记、★只表现为「某个席不再说话」：★**司仓席 `455351523090910`（★title「考生2修复」、★其首条 query 逐字「先接手司仓身份」）于 2026-10-23T22:42:41Z 以 `invalid params, context window exceeds limit` 中止（status ＝ 2）**、★而它正是**同时派出施工席与独立复核席的那一席** ⇒ 其中止后 **23.9 时 0 字节**｜★**通用形态**：★**恢复动作的第一问是「哪一个席死了」、★而不是默认「施工席没干活」** —— ★本轮若仍按默认去踢施工席、★就会把「调度链被掐断」误读成「施工席偷懒」
+- ★★**「席的角色」与「席的可达性」是两个对象** —— ★同一角色（Verifier）换一个 session id 就是另一个席、★旧席空闲且不可达时「重开同一角色」是合法路径、★而「在旧席上催办」结构上不可达｜★**配套**：★角色重复计数要看**角色 + 可达性**、★不要只看角色名、★也不要只看 session 是否存在（★`session get` 能读到 ≠ `communicate` 能送达 —— ★本轮实测 executor 与 Gate 两席均 `session get` 可读、★但 send 均被拒收）
+- ★★**「工程账分母」有两条权威、★禁用自己的口径静默替换尺子口径** —— ★冻结尺子 V0.3 §4 明写分母 ＝ A0–A5 共 6、★本席派工指令的分母 ＝ WP1–WP4 共 4、★两者对同一个量给出不同分母 ⇒ ★**任何单值都是把其中一条降格、★必须并列报出两个百分比**
+
+### 七、★**本席边界（本节全集）**
+★**0 写产品代码**｜★**0 合并任何分支（含 master）**｜★**0 代写独立 Reviewer 的 VERDICT**｜★**0 改 Issue #71 的 AC 判定**｜★**0 改尺子口径**（★`GOAL-CONTRACT.v3.8.json` 与 `MINIMAX-INDEPENDENT-SUPERVISOR.md` 全程只读）｜★**0 改 GM 名册**｜★**0 触碰施工方工作树**｜★**0 触碰他人已落字节**｜★**0 新建调度器**｜★**0 新建第二套监工**｜★**0 新建第二执行器**｜★**0 接触或输出明文凭据**｜★**0 关闭或改写任何 PR**｜★**0 触碰裁定索引**｜★**0 冒充 Windows 真实考试**
