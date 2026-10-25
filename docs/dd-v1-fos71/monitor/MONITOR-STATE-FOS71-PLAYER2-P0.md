@@ -24597,3 +24597,58 @@ PROBE exit code = 0
 ### 十二、★**下一空闲节号**
 
 ★**§309**（★取号一律执行点现算全文 `## §N` 标题行、★禁沿用本条、★禁按槽位推算、★禁字符串排序假 max；★本席本轮实测整卡 `## §N` 标题行 **189** 条、★唯一节号集合最大 **307**、★`## §308` 标题行**不存在** ⇒ ★**本节取 308、★下一空闲 309**）
+## §308 · FOS #71 考生2 P0 修复 · 独立监工巡检（号 308 · 2026-10-25T14:20Z 槽位独立监工席 · 本席 456232813466130（★cron task 455353976279398、★run_id 456232560415205）· 施工面 0 新字节 · 两账未动 · 活跃 BLOCKED · 该踢吗 NO · 0 spawn）
+
+★**本轮实际贡献 ＝ ①六态可达性由本席一手实跑复算 ②授权分支 tarball 与远端 tree 的内容寻址逐位互证 ③PR #81 三条独立裁定 VERDICT 原文一手现读 ④变更面三桶一手复算 ⑤本席探针缺陷自曝一则**
+
+### 一、★**本轮现读（取数时刻 2026-10-25T14:32:33ZZ · 槽位 scheduled_at 2026-10-25T14:20:00Z）**
+
+- ★**修复分支 tip** ＝ `622f297ac57d23cebdc20e3187010658c718ec47`（committer date `2026-10-24T03:12:42Z`、★author ＝ `Player2 Executor`、★单父 ＝ `973b8eee813a386c8f52925bf6b88374424f71d0`、★tree ＝ `44d10fef4578458bd93b64da2f698bf107aa517c`）｜★**静默 127191 秒 ＝ 35.33 时**（★本席现读时刻算得、★禁手写常量）
+- ★**master tip** ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（committer date `2026-10-23T11:01:06Z`）｜★**master 已从派工所记基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2` 前进**、★但**修复分支本轮未前进**
+- ★**PR #81**（考生2 P0）＝ open、★head ＝ 现读 tip `622f297ac57d23cebdc20e3187010658c718ec47`、★base ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`、★29 commits／59 files、★`updated_at` ＝ `2026-10-25T04:39:07Z`、★`mergeable_state` ＝ clean、★**check-run 6 条全 success**、★status 0 条
+- ★**PR #84**（考生2 R2-WP1）＝ closed、★merged_at `2026-10-23T15:49:53Z`、★**base ＝ `feat/71-player2-p0-fix-20261023`（★不是 master）**⇒ ★**该分支是并入本修复分支的一条来源分支、★不是第二个 Writer、★不构成双写者风险**
+- ★**GM 名册**（★`bog5d/cangjie-gm` `data/work_items.json`、★按**精确路径**定位、★489,942 B、★解码长度 ＝ 信封 size ✔）现读 `W-DD-V1-2026` ＝ `current_state` **BLOCKED**／`current_wp` **WP-R2**／`executor` **hermes**／`waiting_for_chairman` **true**／`next_action.action` ＝ **WAIT_CHAIRMAN**｜★**WP-R0 与 WP-R1 ＝ COMPLETED、★WP-R2 至 WP-R5 全 ＝ BLOCKED**｜★**名册 `updated_at` ＝ 2026-10-19T19:45:00+08:00 ⇒ 本轮 0 名册变更**
+- ★**cron 面**（★`view=list` 全量 3 条、★`view=runs` 近 20 条）＝ ★**本工程恰 1 条**巡检 cron（★task `455353976279398`、★`*/20 * * * *`、★enabled、★timezone `Asia/Shanghai`）｜★另两条属**别的工程**（★CF ＝ `455347827208431`、★INC3 ＝ `455164742488166`）⇒ ★**不是重复调度、★禁误判禁删除**｜★**本工程近 20 轮 run `status` 全 ＝ 1**、★**本轮 run_id `456232560415205` 的 session_id ＝ 本席 `456232813466130`**（★`view=list` 的 `last_run` 恒 0 ＝ 端点缺陷、★禁据此判死活）
+- ★**Issue #71**（5 条评论、★末条 `2026-10-22T12:41:23Z`）／**Issue #80**（8 条评论、★末条 `2026-10-22T04:44:21Z`、★标题「A3 封版 · 独立 Reviewer 第一轮裁定 PASS（工程进度 4/6）」）／**Issue #83**（4 条、★末条 `2026-10-23T11:14:51Z`）⇒ ★**本轮 0 新裁定、★0 新 Issue 评论**
+
+### 二、★**变更面三桶（自基线起、★三桶分列、★禁只看新增集合）**
+
+- ★**基点** ＝ `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`（★与派工所记基线同、★本席现读 merge_base 一致）｜★**head** ＝ `622f297ac57d23cebdc20e3187010658c718ec47`
+- ★**新增路径 34 ／ 删除路径 11 ／ 既有路径 blob 改写 14**（★合计 59 路径、★树条目数 895、★`truncated` ＝ false）
+- ★**正式入口在改写桶内**（★证明修复**不是**只改测试脚本）：★`tools/dd_v1_local_run.py` 22,761 → 30,918 B、★`tools/dd_team_channel.py` 31,346 → 37,307 B
+- ★**权威类型表在改写桶内**：★`backend/src/cangjie_fos/services/dd_v1_requirement_service.py` 50,009 → 52,618 B（★`_DOC_TYPE_RULES` 于 L144 起、★**恰 10 个规范 key** ＝ `audit_report`／`financial_statement`／`tax`／`license`／`charter`／`capital`／`resolution`／`ip`／`labor`／`contract`）
+- ★**★第三套类型表 ＝ 不存在（★本席一手判）**：★本席按「★键空间 ＋ 使用形态」两维现读仓内类型表 ＝ 权威表 `_DOC_TYPE_RULES`（★**逐条迭代消费** ＝ `for key, pat in _DOC_TYPE_RULES` 3 处）＋ `_DOC_TYPE_UNIQUENESS`（★**按 key 查表** ＝ 唯一性口径、★键全部取自那 10 个 key、★**不是第二份类型规则表**）＋ `_DOC_TYPE_PURPOSE_MAP`（★按 key 查表、★用途表）｜★`dd_v1_doc_type_service.py` 自陈「★本模块**不抄规则表**、★判断与解析一律走 `rq` 公开 API」且实现确实只调 `rq.parse_doc_type`／`rq.doc_type_search_terms` ⇒ ★**候选规则表恰 1 张、★无第三套**
+
+### 三、★**判据三（★六种原因、★禁统一伪装成 MISSING）**
+
+- ★**权威枚举** ＝ `NO_CANDIDATE_REASONS` ＝ **恰 6 项** ＝ `NO_MATERIAL`／`UNRESOLVED_DOC_TYPE`／`UNKNOWN_ENTITY`／`PERMISSION_BLOCKED`／`RETRIEVAL_EXHAUSTED`／`OTHER`（★**封闭**、★与派工单逐位相同、★未扩充）
+- ★**正交状态** ＝ `CANDIDATE_STATUSES` ＝ **恰 4 态** ＝ `OK`／`EXHAUSTED`／`PERIOD_OR_VERSION_MISMATCH`／`NO_CANDIDATE`（★**原因维度与状态维度是两个正交对象、★实现里是两个独立常量与两个独立字段**）
+- ★**★本席本轮一手实跑可达性探针（★不引任何他席自报数字）**：★探针 `tools/dd_v1_six_state_reachability_probe.py`（★blob `44dd769ed3019ff6edc6f3917846cf48f7fe75bd`、★17,176 B、★本席从**授权分支 tarball** 取回、★**内容寻址复算与远端 tree blob sha 逐位相等**）｜★**退出码 0、★判定 `OK`**｜★**实测可达 ＝ 4/6**（★`NO_MATERIAL`／`UNRESOLVED_DOC_TYPE`／`UNKNOWN_ENTITY`／`RETRIEVAL_EXHAUSTED`）｜★**不可达 2/6 各带构造性理由**（★`PERMISSION_BLOCKED` ＝ 两个 meta 生产者 `build_meta` 与 `cmd_scaffold` **都不写** `access`／`restricted`；★`OTHER` ＝ 兜底分支要 `read_errors>0`、★而 `local_material_snapshot` 对缺文件直接抛 `FileNotFoundError`）｜★**反差对照成立**（★同一库同一清单、★只差有没有登记权威主体 ⇒ `UNKNOWN_ENTITY` → `NO_MATERIAL`）｜★**禁宣称 6/6、★禁宣称 3/6**
+- ★**实现层佐证**：★`dd_v1_team_channel.py` 把 `no_candidate_reason` 随**正式入口**一起外送（★L495 起「★追加式：★候选为空时的**六态原因**与诊断随正式入口一起出去」）、★并在交卷件里**单独补一段**「★候选为空的义务（为什么没有候选）」
+
+### 四、★**两账（★互不换算、★只计 REAL_PASS）**
+
+- ★**工程账 · 派工口径**（★cron 派工「★已过独立 Gate 的 WP ／ WP1 至 WP4」）＝ **4/4**｜★分母 4｜★依据 ＝ 交卷件 `EVIDENCE-PLAYER2-P0.md` §1 的 WP 表（★本席逐行现读：★WP1 材料类型统一／WP2 正式入口修复／WP3 主体与证据过滤／WP4 全链路合成回归）＋ **PR #81 三条独立裁定 VERDICT 原文一手现读**：★`6358415604`（★2026-10-23T05:51:17Z、★VERDICT PASS、★十项判据全数成立无 blocker）＋ `6370738997`（★2026-10-23T17:25:18Z、★T4 独立 Gate、★VERDICT PASS）＋ `6393523806`（★2026-10-25T04:39:07Z、★T4 **重锚**裁定、★VERDICT PASS、★**锚在现读终态 head** `622f297ac57d23cebdc20e3187010658c718ec47`）｜★**三条裁定全部落在独立会话、★非施工者自评**
+- ★**工程账 · 尺子口径**（★`MINIMAX-INDEPENDENT-SUPERVISOR.md` V0.3 §4 原文「★工程进度 ＝ 新计划 A0–A5 独立 Reviewer PASS 数/6」）＝ **4/6**｜★分母 6｜★依据 ＝ Issue #80 评论 8 条逐条现读首行（★A0 至 A3 ＝ PASS、★A4 ＝ 待裁、★A5 ＝ 0）｜★**本席 0 代裁**
+- ★**效果账**（★只计 REAL_PASS、★MOCK 与合成不折算、★UNKNOWN 既不算 PASS 也不算已证伪）＝ **0/100**｜★`GOAL-CONTRACT.v3.8.json`（★blob `106699d2c8a3e8e4d00124070eee6d417038cb49`、★10,818 B、★**一手现读**）｜★五项权重 25／25／20／20／10 ＝ **100**（★`O1_REAL_FOS_CHAIN` 25／`O2_RECALL_CONTENT` 25／`O3_COMPLETENESS_AND_COPY` 20／`O4_WINDOWS_BLIND_EXAM` 20／`O5_UNATTENDED_NEXT_WP` 10）、★**五项 `verified_points` 全 0、★`status` 全 `UNKNOWN`**｜★`progress.outcome_verified_points` ＝ 0 ／ `outcome_total_points` ＝ 100
+- ★**★为什么 T4 重锚 PASS 不让任何一格分子进位**：★重锚是**同一被验对象**（WP1 至 WP4 那批字节）在终态 head 上的重锚复裁、★**不是第 5 格**；★其明列的未覆盖项（★Windows 真实考试、★浏览器交互、★doctor 三项、★落盘器写路径、★前端本地构建、★OCR 子链）**不含 O1 至 O5 任何一格的证据要件** ⇒ ★**0 代裁、★效果账不动**
+- ★**★注** ＝ ★`goal_alignment.progress.engineering_percent` ＝ **0**、★而其 `note` 明写「★原 FOS WP00 至 WP04 合并成果**另账统计**」⇒ ★**该字段不是本工程当前工程账、★禁与上列 4/6 混用**
+
+### 五、★**四件事（★分开判、★分开报）＋ 活跃态 ＋ 该踢吗**
+
+- ① ★**cron 是否运行 ＝ 是**：★本工程 1 条 cron 近 20 轮 run `status` 全 1、★本轮 run 的 session_id 就是本席
+- ② ★**监工是否工作 ＝ 是**：★本席一手现读远端字节 ＋ **一手实跑**六态探针 ＋ 独立回读落盘
+- ③ ★**开发者是否真正施工 ＝ 否（★本轮）**：★执行器席 `455705910747290`（★title「考生2修复」）的**末条 `finish_reason` ＝ `stop`**（★本席现读 session 消息、★非引他席自述）⇒ ★**会话已结清**、★**该席不在当前 peers 列表内**（★本席 `session list` 现读：★在册的全是 CF／INC3／CF125／本工程监工 cron 会话、★**无 FOS 施工或执行器席在飞**）
+- ④ ★**是否产生新的功能成果 ＝ 否**：★修复分支 0 新 commit、★0 新分支、★0 新 PR 活动、★0 新裁定、★0 新 Issue 评论
+- ★**活跃态 ＝ BLOCKED** —— ★GM 名册现读 `current_state` ＝ BLOCKED、`next_action.action` ＝ WAIT_CHAIRMAN、`waiting_for_chairman` ＝ true、★**WP-R2 至 WP-R5 全 BLOCKED**、★**名册自陈的 blocker 四条全落 Owner 域**（★执行器全灭／★Gold Set 未提供／★真实材料送外部模型未授权／★dsh 余额不足）
+- ★**该踢吗 ＝ NO**｜★**机械三条件**：★**A ＝ 远端 tip 未前进 ≥25 分钟 ＝ 成立**（★静默 127191 秒）｜★**B ＝ 工作树无新增改动 ＝ 远端可验证面成立**（★0 新 commit／0 新分支／0 新 PR 活动／0 新裁定／0 新 Issue 评论；★**施工方本地工作树不可得、★记「不可得」、★禁记「无」）**｜★**C ＝ 执行器末条非 toolUse ＝ 成立**（★`stop`、★会话已结清）｜★**但三条全中仍不触发恢复** —— ★**尺子 §3 第 4 项前置（★本席一手逐字现读原文）**：「★若空闲、★未到终局、★无有效竞争 Lease、★**已有合法下一 WP**且唤醒工具已实测、★则经授权接口唤醒原 session」｜★**「已有合法下一 WP」这一条不成立**（★GM 名册现读：★WP-R2 至 WP-R5 全 BLOCKED、★Gold Set 未提供、★真实材料送外部模型未授权、★`next_action` ＝ WAIT_CHAIRMAN）｜★**恢复计数**：★该 HEAD `622f297ac57d23cebdc20e3187010658c718ec47` 下恢复计数 ＝ 1、★**而那 1 次恢复产出的正是本 HEAD 本身** ⇒ ★**本 HEAD 无待恢复对象、★条款未触发**｜★**本轮 0 spawn、★0 新建第二执行器、★0 新建第二套监工、★0 催办**
+
+### 六、★**本席自曝（★红的全是本席的探针与稿、★远端对象全程正确、★0 字节误落、★0 处造成远端缺陷）**
+
+- ★★**本席首版探针把 `_DOC_TYPE_RULES` 当字典找、⇒ 读成「不存在」**：★权威表实为 **tuple**（★`= (` 起头）而本席首版正则只认 `{` 开头 ⇒ ★**假 0 命中**｜★**改正** ＝ ★改按 `= (` 形态匹配、★并把行号与条目逐条打印 ⇒ ★**改正后读出恰 10 个规范 key、★与派工单枚举逐位相同**｜★★**通用形态** ＝ ★**凡「★权威表在哪」的问题、★表容器的形态（dict／tuple／list）本身就是要判的一维** ⇒ ★**按某一种容器形态写死正则、★会把「★表是另一种容器」读成「★表不存在」** —— ★**它长得与「★权威表缺失」一模一样**
+- ★★**本席首版「★正式入口是否只改测试脚本」的判据选错了文件**：★首版在 `tools/dd_v1_local_run.py` 里按「六态字面」grep ⇒ ★**读出 0 命中**、★**差一步就报「★正式入口未接六态」**｜★**真相** ＝ ★`local_run.py` 的 `scaffold` 走的是 `dts.resolve_doc_type` 与 `rq.CURRENT_DOC_TYPES`（★类型归一落点）、★而**六态原因在语义层与 Team Channel 入口外送**、★**两个入口各管一段**、★**「★六态字面必须出现在 local_run.py」这个前提本身不成立**｜★★**通用形态** ＝ ★**「★某入口是否实现某能力」与「★该入口文件里是否出现该能力的字面量」是两个不同对象** —— ★**能力可以分层落在多个正式入口上、★字面量缺席不等于能力缺席**
+- ★★**本席的「★授权分支 tarball 与远端 tree 是否同一份字节」改成了内容寻址互证**：★本席取回 tarball 后对 5 个关键文件**逐个重算 `sha1("blob " ＋ len ＋ NUL ＋ bytes)`**、★与远端 tree 条目的 blob sha **逐位相等**（★`shape_probe.py` 6,438 B、★`dd_v1_six_state_reachability_probe.py` 17,176 B、★`dd_v1_local_run.py` 30,918 B、★`dd_team_channel.py` 37,307 B、★`dd_v1_requirement_service.py` 52,618 B）⇒ ★**本席的实跑与字节面同源、★不是各说各话**
+
+### 七、★**下一空闲节号**
+
+★**§309**（★取号一律执行点现算、★禁沿用本条、★禁按槽位推算、★禁字符串排序假 max）｜★**本席本轮一手扫描全文 `## §N` 标题行 ＝ 189 行、★唯一节号 94 个、★数值最大 ＝ 307、★`§308` 作为标题行出现 0 次** ⇒ ★**下一空闲节号 ＝ 308、★本席取 308**（★注 ＝ ★全文出现「§308」2 次但**都在散文里**、★**不构成标题占用**）
