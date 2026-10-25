@@ -22738,3 +22738,101 @@ blob甲 ＝ a2b5fd907554939420306e9a78d9477581a99a99；blob乙 ＝ 0ae978ed6922d
 ★**§294**（★取号一律执行点现算、★不按槽位推算、★不按本席原计划）
 
 ★**★由下一轮（★§294）只追加登记**（★**本段写作时本段自身尚未落远端、★禁预写未定的标识符**）｜★**读者对账入口** ＝ 台账分支 `monitor/fos71-player2-p0-fix` 的现读 tip ＋ §293 主节笔的 40 位全串
+
+## §294 （号 294）：★2026-10-25T08:40Z 槽位独立监工席 · 本席 `456149043703967`（★cron task `455353976279398`、★run_id `456147773526506`、★scheduled_at_ms `1792917600000` ↔ 2026-10-25T08:40:00Z、★取数时刻 2026-10-25T09:09:00Z–09:22:00Z）
+
+### 一、★**§293 两笔的落盘回执（★§293 追加段末节明写「★由下一轮（★§294）只追加登记」）**
+
+- ★**§293 主节笔** ＝ `2068994afd8b8ce9e87086646cf3dc75561c7127`｜★**单父** ＝ `29ac8a74da2ab5753a7ec440d4e08abbb74d1218`（★**快进 non-force**）｜★**tree** ＝ `6a3cc4b8c080f2d4435334726a75337bf1af2018`｜★**新台账 blob** ＝ `4df7a24938b9d511213087b993d0385a2a7b38c1`｜★**落款** ＝ 2026-10-25T09:12:13Z
+- ★**§293 追加段笔** ＝ `0730839be5ad99174266133e754a9724e8092cb7`｜★**单父** ＝ `2068994afd8b8ce9e87086646cf3dc75561c7127`｜★**tree** ＝ `0ccd407fd5c739bf38c057e948cacef29969a711`｜★**新台账 blob** ＝ `9a867ca630f7bf53c87aa88709d5c5be7cd5a904`｜★**台账字节** ＝ 5,688,884 B｜★**落款** ＝ 2026-10-25T09:16:18Z（★author 与 committer 同值 `Mavis-Cloud-Monitor <monitor@bog5d.local>`）
+- ★**本席现读复核**：★**远端回读解码长度 ＝ 5,688,884 ＝ 信封 `size`（逐位相等）**｜★**内容寻址复算** `sha1("blob " ＋ 长度 ＋ NUL ＋ 字节)` ＝ `9a867ca630f7bf53c87aa88709d5c5be7cd5a904` ＝ 远端 blob `sha`（★**逐位相等**、★按二进制读、★不取字符数）｜★**基座 5,680,174 B 是本席本地基座的严格前缀 ＝ True**（★**0 改写 §293 及前序任何已落字节**）
+- ★**★执行点取号（★本席开工时热层记忆记「★下一 §293」⇒ 已落后）**：★本席开工现读台账行首锚得 **max ＝ 292** ⇒ 取号 **§293**；★**落盘前再验一次基座 tip 时发现它已前进**（★29ac8a74da2ab5753a7ec440d4e08abbb74d1218 → 0730839be5ad99174266133e754a9724e8092cb7）⇒ ★**兄弟席 09:00Z 槽已先落 §293**（★其主节笔 2068994afd8b8ce9e87086646cf3dc75561c7127、★追加段笔 0730839be5ad99174266133e754a9724e8092cb7）⇒ ★**本席改取 §294**、★**0 撞号**｜★**机械判据** ＝ ★**「取号」与「基座」两项必须同一次现读、★且落盘前再验一次基座 tip** —— ★**取号在前、基座在后、两者之间台账被兄弟席推进 ⇒ 取号作废、★必须重取**
+
+### 二、★**本轮相对 §293 的变化（★逐面现读远端权威字节）**
+
+- ★**修复分支 tip** ＝ `622f297ac57d23cebdc20e3187010658c718ec47`（★落款 2026-10-24T03:12:42Z、★**0 前进**、★与 §293 现读值逐位相同）｜★**静默 106,368 秒 ≈ 29.55 时**（★以本席取数时刻 2026-10-25T09:09:00Z 计）
+- ★**master tip** ＝ `3781311c4b1157c68a0f891506b7c33ab327f7c4`（★0 前进、★与 §293 逐位相同）
+- ★**变更面（自基线 `d9bd8e89c1a35aa7f27893bfcd84be4713cf27d2`）＝ ADD 34 ／ DEL 11 ／ MOD 14（★合计 59 路径）**｜★**两路独立互证**：① REST compare 端点（★`ahead_by` ＝ 29、★`behind_by` ＝ 0、★`files` 59）② 树对树逐路径 blob sha 比对（★基座 tree 870 条目 ↔ tip tree 895 条目、★`truncated` 双向核对皆 False）｜★**与 §293 逐位相同**｜★**基座 blob 数 866 → tip 893（＋27）**
+- ★**分支面 37 条**｜★**本席改用「全 37 条逐条取 tip commit 落款」的全量扫法**（★不只扫 71-* 命名族）｜★**落款最新者 ＝ 台账分支 29ac8a74da2ab5753a7ec440d4e08abbb74d1218（2026-10-25T08:31:36Z）**、★**次新者 ＝ 授权修复分支 622f297ac57d23cebdc20e3187010658c718ec47（2026-10-24T03:12:42Z）**、★**第三新者 ＝ `feat/71-player2-r2-wp1-period-semantics`（2026-10-23T14:31:56Z）**｜★**非授权 71-* 分支全部早于授权 tip ⇒ 双 Writer 风险 0**、★**0 新增未授权分支**
+- ★**★双 Writer 风险的一处补层（★本席新加的判据、★在册口径未覆盖）**：★本席**未只看「分支落款先后」**、★另跑了 **compare 端点**核「该分支相对授权 tip 是祖先还是分叉」｜★**`feat/71-player2-r2-wp1-period-semantics`** ＝ compare 基座＝`feat/71-player2-p0-fix-20261023` 对 头＝`feat/71-player2-r2-wp1-period-semantics` ＝ **status `behind`、ahead_by 0、behind_by 16** ⇒ ★**它是授权 tip 的祖先、★不是平行分叉**｜★**机械判据** ＝ ★**「双 Writer 风险」要同时看两层**：★**① 落款先后**（★谁的笔更新）★**② 祖先关系**（★compare `ahead_by`／`behind_by`）—— ★**只看第 ① 层会漏判「同一 writer 的中途 waypoint 分支」**、★**只看第 ② 层会漏判「两支并行推进」**｜★**失败方向** ＝ ★**把「同 writer 的祖先 waypoint 分支」读成「第二个 writer」⇒ ★**会误报双 Writer 风险、★并可能诱发不必要的停工**
+- ★**PR #81** ＝ OPEN ／ merged False ／ mergeable_state **clean** ／ 29 commits ／ 59 files ／ `head.sha` ＝ `622f297ac57d23cebdc20e3187010658c718ec47`｜★**check-run 6 条全 success**（★逐条 `head_sha` ＝ 被验 head）｜★**0 新 PR 活动**
+- ★**独立 Gate（★reviews 面与 issue comment 面是两个对象、★分列）**：★**issue comment 面 9 条**、★**末条独立裁定仍 `6393523806`**（★created_at ＝ updated_at ＝ 2026-10-25T04:39:07Z、★正文 32,577 B、★首行逐字 `VERDICT: PASS`、★**重锚裁定**：★被验锚改绑到 PR #81 现读终态 head `622f297ac57d23cebdc20e3187010658c718ec47`、★tree `44d10fef4578458bd93b64da2f698bf107aa517c`、★**该席自跑** collected 1831／failures 0／errors 0／skipped 5、★退出码 0、★**六态生产路径可达 4/6**、★**明示「★禁宣称 6/6、★禁宣称 3/6」**、★出具席 ＝ 独立复核席 `456069720134365`、★**非施工者自评**）｜★**reviews 面 0 条**、★**行内 review comment 面 0 条**｜★**0 新裁定**
+- ★**GM 名册**（★`bog5d/cangjie-gm` 分支 `main`、★路径 `data/work_items.json`、★blob `0e8c65074f85db2d32efd9b3e580020a625cdb76`、★**远端回读解码长度 ＝ 489,942 ＝ 信封 size**、★42 条）→ ★**`W-DD-V1-2026`**：`current_state` ＝ **BLOCKED**、★`current_wp` ＝ WP-R2、★`executor` ＝ hermes、★`waiting_for_chairman` ＝ **true**、★`project_complete` ＝ false、★`next_action.action` ＝ **WAIT_CHAIRMAN**（★其 reason 逐字载明三条执行器路径实测全部不可用 ＋ Gold Set 未提供）、★`blockers` **4 条**、★`work_packages` **6 件**（★WP-R0／R1 ＝ COMPLETED、★WP-R2／R3／R4／R5 ＝ BLOCKED）｜★**与 §293 逐位相同**
+- ★**cron** ＝ 全表 **3 条**、★**本工程恰 1 条** `455353976279398`（★CF 的 `455347827208431` ／ INC3 的 `455164742488166` 属**他工程各有自己的 cron**、★**禁误判为重复调度、★禁删除**）｜★**view=runs 连续 21 条 status 1**、★每 20 分钟一次、★**本席 run_id ＝ `456147773526506`**、★next_run epoch 1792920000000 ↔ 2026-10-25T09:20:00Z
+- ★**执行席 `455705910747290`（★标题「考生2修复」）** ＝ status **0**、★`status_message` 为空｜★**本席一手现读末条 turn**（★`session messages`）：★末条 role ＝ assistant ／ **`finish_reason` ＝ `stop`**（★timestamp 1792811916023 ↔ **2026-10-24T03:18:36Z**）｜★**其前序 turn 亦为 `toolUse`、★再前一条为 `toolUse`** ⇒ ★**该席已正常收工、★非在飞、★非被平台中止**｜★**静默 106,284 秒 ≈ 29.52 时**
+- ★**A0–A5 裁定面（★Issue #80 issue comment 面 8 条、★本席逐条现读首行与判据数）**：★**A0** ＝ `6320359016`（★独立 Gate 第二轮 PASS）｜★**A1** ＝ `6325596616`（★独立 Reviewer 第四轮 PASS、★A1-1 至 A1-11 ＝ 11 PASS ／ R1-1 至 R1-7 ＝ 7 PASS ／ TF-1 至 TF-4 ＝ 4 PASS）｜★**A2** ＝ `6331480551`（★第三轮 PASS、★17 条全 PASS、★0 BLOCKER）｜★**A3** ＝ `6332913347`（★第一轮裁定 PASS、★A3-1 至 A3-13 ＝ 13 PASS ／ 0 FAIL、★其正文自报工程进度 4/6）｜★**A4 ＝ 待裁、★A5 ＝ 0**（★**本席 0 代裁、★只登记**）
+- ★**★一处登记口径差（★本席一手现读发现、★与 §293 记法不同、★两读数给同一处置）**：★§293 追加段把 A3 裁定记在 `6332913347`、★**本席逐条现读 Issue #80 全部 8 条首行**后确认 ＝ **同一 id**（★其首行逐字为「★A3 封版 · 独立 Reviewer 第一轮裁定 PASS（★工程进度 4/6）」）⇒ ★**0 差异**｜★**但本席另发现 Issue #80 上存在另一条易被误认的 A2 引用面**：★id `6332399861`（★2026-10-22T04:04:20Z、★首行「★监工第 27 条处置 · 口径裁定 + 标签归位 + 一处自曝泄漏」）★其正文引述的「★17 条判据 17 PASS」是**A2 的判据数**、★**该条本身不是 A3 的裁定** ⇒ ★**判据条数与包号对不上时、★先怀疑指针、再怀疑数字**
+
+### 三、★**★本轮唯一实质进展：★六态生产路径可达性由「不可得」升级为「★本席一手实测」（★跨席、★跨轮、★首次拿到一手运行件）**
+
+- ★**在册状态（★§292 与 §293 两席均记为「不可得」）**：★两席的登记均为「★`tools/dd_v1_six_state_reachability_probe.py` 需经 `cangjie_fos.schemas` 导入链取到第三方包 `pydantic`、★**PyPI 经本沙箱网关不可达**（★pip 连接被重置）⇒ 记「不可得」」｜★**两席的替代取证都是静态面**（★六态枚举恰 6 项、★六态均有赋值点、★`pool` 非空分支 `reason = None`、★正式入口本地写死字面量 0 命中、★`dd_team_channel.py` 从权威枚举取）｜★**运行口径 4/6 两席均标注「★出自 T4 独立 Gate 自跑、★他席一手、★禁当作本席复跑」**
+- ★**本席的破局点（★与两席的前提不同）**：★**本席开工时 PyPI 主体可达** —— ★`urllib` ＋ 沙箱 CA 束取 `https://pypi.org/simple/pydantic/` ＝ **HTTP 200**（★两席失败的是 `pip` 走**镜像源** `http://mirrors.cloud.aliyuncs.com/pypi/simple/` 的**明文 HTTP 通道**、★不是 PyPI 本身不可达）｜★**真因 ＝ 工具链的索引源与传输层不同、★不是「网络不可达」这一个对象**｜★**失败方向** ＝ ★**把「pip 装不上」读成「PyPI 不可达」⇒ ★**会连续多轮把一个可解的运行件记成「不可得」**｜★**机械判据** ＝ ★**凡「某依赖取不到」⇒ 须分别判「目标主机可达性」（★`urllib` 直取）与「工具链索引源可达性」（★`pip` 走镜像）两项、★不得合并成一个读数**
+- ★**本席的物化与依赖装配（★全程仓外、★0 改仓内任何字节）**：★**物化** ＝ `codeload` tarball 取 tip（★2,151,229 B）★**单独解包并断言文件数 ＝ 805**（★**与该 tip 的递归树 805 blobs 逐位相符**、★**0 缺件、★0 多余件**）｜★**依赖装配** ＝ 仓外 `site/` 目录、★**逐个直取 PyPI 官方 JSON API 拿 wheel**（★`pydantic` 2.14.1 ＋ `pydantic_core` 2.50.1 ＋ `typing_inspection` 0.4.4 ＋ `typing_extensions` 4.16.0 ＋ `annotated_types` 0.8.0 ＋ `langchain_core` 1.7.0 ＋ `langsmith` 0.1.63 ＋ `langgraph` 0.2.60 ＋ `langgraph_checkpoint` 2.0.21 ＋ `langgraph_prebuilt` 1.1.1 ＋ `msgpack` 1.2.3 ＋ `requests` 2.34.2 ＋ `urllib3` 2.8.0 ＋ `certifi` 2026.10.23 ＋ `charset_normalizer` 3.5.2 ＋ `idna` 3.20 ＋ `tenacity` 9.2.1 ＋ `jsonpatch` 1.37 ＋ `jsonpointer` 3.5 ＋ `orjson` 3.13.0 ＋ `httpx` 0.28.1 ＋ `httpcore` 1.0.9 ＋ `anyio` 4.15.1 ＋ `sniffio` 1.3.1 ＋ `h11` 0.16.0）｜★**版本冲突的两处自行纠正（★红的是本席的装配、★不是被验字节）**：★**① `pydantic` 1.10 + `langchain_core` 1.7 不兼容**（★`ImportError: cannot import name 'PydanticDeprecationWarning'`）⇒ ★**改取 `pydantic` 2.14.1 ＋ `pydantic_core` 2.50.1**；★**② `pydantic` 2.14.1 缺 `pydantic_core`**（★`ModuleNotFoundError: No module named 'pydantic_core'`）⇒ ★**补装编译轮**｜★**判据** ＝ ★**`pydantic` 2.x 的 wheel 本身不含 `pydantic_core`（★那是独立包）⇒ 只装 `pydantic` 必然半残**
+- ★**★一手运行读数（★对象 ＝ 被验 tip 上那一份探针、★非本席另写的一份、★退出码 0）**：
+
+```
+PROBE exit code = 0
+{
+  "caliber": "4/6",
+  "reachable_expected": ["NO_MATERIAL","RETRIEVAL_EXHAUSTED","UNKNOWN_ENTITY","UNRESOLVED_DOC_TYPE"],
+  "reachable_measured": ["NO_MATERIAL","RETRIEVAL_EXHAUSTED","UNKNOWN_ENTITY","UNRESOLVED_DOC_TYPE"],
+  "reachable_count": 4,
+  "six_states": ["NO_MATERIAL","UNRESOLVED_DOC_TYPE","UNKNOWN_ENTITY","PERMISSION_BLOCKED","RETRIEVAL_EXHAUSTED","OTHER"],
+  "unreachable_expected": ["OTHER","PERMISSION_BLOCKED"],
+  "unreachable_checks": [
+    {"state":"PERMISSION_BLOCKED","check":"build_meta 不写 access/restricted","passed":true},
+    {"state":"PERMISSION_BLOCKED","check":"cmd_scaffold 不写 access/restricted","passed":true},
+    {"state":"OTHER","check":"local_material_snapshot 对缺文件抛 FileNotFoundError","passed":true}
+  ],
+  "missing": [], "extra": [],
+  "contrast_without_authority": ["UNKNOWN_ENTITY"],
+  "contrast_with_authority": ["NO_MATERIAL"],
+  "contrast_ok": true,
+  "stubbed_package_import": true,
+  "verdict": "OK"
+}
+```
+
+- ★**★关键读数＝「★实测可达集与预期可达集逐位相等」**（★`reachable_measured` ＝ `reachable_expected`、★4 项、★`missing` 空、★`extra` 空、★`verdict` ＝ OK）｜★**探针自证通过**｜★**禁宣称 6/6、★禁宣称 3/6**｜★**与 T4 独立 Gate 的 4/6 读数同向、★但本席的来源是「★本席一手复跑」而非引述他席**
+- ★**★反差对照（本席一手、★机械证法）**：★**没登记权威主体 ⇒ `UNKNOWN_ENTITY`**；★**登记了权威主体 ⇒ `NO_MATERIAL`**（★同一库、★同一清单、★**只差有没有登记权威主体这一件**）⇒ ★**这正是「★把 `NO_MATERIAL` 说成不可达」那条旧口径被证伪的机械证**
+- ★**★六态外显走的是正式入口（★不是只跑测试脚本）**：★探针内部 `_run_entry` **实跑 `tools/dd_team_channel.py run`**（★`tc.main`、★`argv` ＝ `dd_team_channel run --library LIB --root ROOT --checklist CL --allow-real-material`）★并从产出的机读 `semantic_bridge` 取 `no_candidate_reason`｜★**`--verbose` 下本席一手读到的人读面逐字**：★原因分六类、★取值域 `NO_MATERIAL、UNRESOLVED_DOC_TYPE、UNKNOWN_ENTITY、PERMISSION_BLOCKED、RETRIEVAL_EXHAUSTED、OTHER`、★四态逐条「★权威主体已登记：False｜实测原因：见下一项」
+- ★**★静态面与运行面两路互证（★本席一手、★两路各自取数）**：★**静态面** ＝ 权威枚举 `NO_CANDIDATE_REASONS` 恰 **6 项**（★`dd_v1_semantic_retrieval_service.py` L66–L72）｜★**六态均有赋值点**（★L523 `UNRESOLVED_DOC_TYPE` ／ L525 `UNKNOWN_ENTITY` ／ L527 `OTHER` ／ L529 `PERMISSION_BLOCKED` ／ L531 `RETRIEVAL_EXHAUSTED` ／ L540 与 L544 `NO_MATERIAL`）｜★**反伪装在位**（★L532–L538：★`pool` 非空 ⇒ `reason = None`、★**绝不报 `NO_MATERIAL`**）｜★**运行面** ＝ 4/6 实测可达、★`reachable_measured` ＝ `reachable_expected` ⇒ ★**两路同向、★互不顶替**
+- ★**★「静态可写 6/6」与「生产路径可达 4/6」是两个对象（★禁混用）**：★`PERMISSION_BLOCKED` ＝ **无生产者**（★`build_meta` 与 `cmd_scaffold` 都不写 `access`／`restricted` 两个字段、★**逐条字节核过**）｜★`OTHER` ＝ **兜底分支到不了**（★`local_material_snapshot` 先校验文件存在、★缺文件直接抛 `FileNotFoundError`、★而 `PermissionError` 被语义层原样上抛不计数 ⇒ `read_errors` 恒 0）｜★**⇒ 4/6 与 6/6 自洽、★0 矛盾**
+- ★**★一处必须随读数一起登记的限定（★不写成已覆盖）**：★探针输出 `stubbed_package_import` ＝ **true** ⇒ ★**本席跑的是「★探针自带的替身化路径」**（★`cangjie_fos` 与 `cangjie_fos.services` 退化为只带 `__path__` 的命名空间壳、★**子模块照常按真实路径加载、★生产字节一个不动**）｜★**真因 ＝ 探针自带该设计**（★其 docstring 明写「★DD-V1 这条链只依赖标准库、★但 `services/__init__.py` 会再导出四个与本探针无关的服务、★那条链要 pydantic ⇒ 先试正常导入、★缺 pydantic 时走壳」）｜★**★该读数的可采信边界** ＝ ★**被验的六态判定链（★桥接／语义／认知卡／manifest／解析／义务）照常按真实路径加载、★生产字节未动；★而那四个与本探针无关的服务（★音频／差异／演化／音高图）**根本没被 import**（★**不是被假包顶住**）｜★**⇒ 本席 4/6 读数**不**被替身化污染**（★被测面是那六态判定链、★不是那四个再导出服务）｜★**通用形态（★跨项目可复用）** ＝ ★**「替身化／桩」的三层报法**：★**① 替身作用在哪一层**（★包层）★**② 被绕过了哪些模块**（★四个再导出服务）★**③ 缺包清单随环境变、★替身层与被绕过集合跨环境不变** ⇒ ★**凡报替身化必须给这三层、★禁只报「缺了几个包」**｜★**失败方向** ＝ ★**只报「缺 N 个包」⇒ 下一席会以为那是探针的固有属性、★并把本席的 4/6 与「缺 N 个包」绑在一起解读**
+- ★**★本席 0 做的事（★红线）**：★**0** 改仓内任何字节（★依赖全装在仓外 `site/`）｜★**0** 改探针字节（★跑的是 tip 上那一份）｜★**0** 改 `PYTHONPATH` 指向的仓内源码路径｜★**0** 写 `app/` ／ 产品源码｜★**0** 合并任何分支｜★**0** 代跑独立 Gate ｜★**0** 代写 VERDICT｜★**0** 把合成口径折算成效果分
+
+### 四、★**两条账（★互不换算、★三个分母并列不择一、★每账只认自己的权重表）**
+
+- ★**工程账 · 尺子口径**（★`MINIMAX-INDEPENDENT-SUPERVISOR.md` V0.3 §4 明写「★工程进度 ＝ 新计划 A0–A5 独立 Reviewer PASS 数/6」）＝ **4/6**（★A0–A3 独立 Reviewer PASS、★A4 待裁、★A5 ＝ 0）｜★**分母 6**（★**尺子口径**）
+- ★**工程账 · 派工口径**（★cron 派工「★已过独立 Gate 的 WP ／ WP1–WP4」）＝ **4/4**｜★**分母 4**（★**派工口径**）
+- ★**工程账 · GM 口径**（★`work_packages` 6 件中 COMPLETED）＝ **2/6**｜★**分母 6**（★**GM 名册口径**）
+- ★**效果账**（★`GOAL-CONTRACT.v3.8.json` 冻结尺子：★O1_REAL_FOS_CHAIN 25 ＋ O2_RECALL_CONTENT 25 ＋ O3_COMPLETENESS_AND_COPY 20 ＋ O4_WINDOWS_BLIND_EXAM 20 ＋ O5_UNATTENDED_NEXT_WP 10 ＝ 100、★**只计 REAL_PASS**）＝ **0/100**（★五项 `verified_points` 全 0、★`status` 全 **UNKNOWN**、★`evidence_refs` 全空）｜★**分母 100**（★**尺子口径**）
+- ★**硬门槛 9 项** ＝ **PASS 0 ／ FAIL 0 ／ UNKNOWN 9**（★ONE_WRITER ／ REAL_FOS_CALL ／ GOLD_ISOLATION ／ SENSITIVE_AUTH ／ FALSE_MATCH_GUARD ／ PRECISE_PACKAGING ／ INDEPENDENT_REVIEW ／ WINDOWS_REAL_E2E ／ UNATTENDED_HANDOFF）
+- ★**★本席一手跑到的 4/6 不进任何一账**：★★**六态生产路径可达性是工程正确性读数、★不是 GOAL-CONTRACT 的 outcome 指标** ⇒ ★**不折算成效果分、★不进工程分子**（★**分子只认「已过独立 Gate 的包数」**）｜★**UNKNOWN 既不算 PASS、★也不算已证伪**｜★**两账分母不同、★禁互相换算或择一**
+- ★**★本席 0 代裁 A4**：★A4（★Windows 真实盲测）仍**待独立 Reviewer 出裁定**、★**本席只登记、0 代裁**｜★**其未覆盖项在 T4 裁定书里已明写「★Windows 真实考试本轮全部在 Linux 沙箱跑的、★未在 Windows 复测、★不得把本地合成件当 Windows 真实考试」** ⇒ ★**A4 的 0 与硬门槛 `WINDOWS_REAL_E2E` 的 UNKNOWN 互洽**
+
+### 五、★**四件事（★分开判、★分开报）＋ 活跃态 ＋ 该踢吗**
+
+- ① **cron 是否运行 ＝ YES**（★本工程恰 1 条、★**enabled true**、★schedule `*/20 * * * *`、★连续 21 轮 status 1、★下一槽 09:20:00Z）
+- ② **监工是否工作 ＝ YES**（★09:00Z 席 `456155189846532` 的 2 笔已落远端、★末笔 `0730839be5ad99174266133e754a9724e8092cb7` 落款 2026-10-25T09:16:18Z、★其前序主节笔 `2068994afd8b8ce9e87086646cf3dc75561c7127`、★**单父链完整**、★**本席 08:40Z 槽在飞**）
+- ③ **开发者是否真正施工 ＝ NO**（★修复分支 0 新 commit 已 29.55 时、★执行席末条 `stop` 已正常收工 29.52 时）｜★**★注意** ＝ ★**「远端 tip 未前进」与「没在施工」是两个对象** —— ★本席的读数是「★远端字节面 29.55 时 0 前进」＋「★执行席会话层末条非 toolUse、★已正常收工」、★**施工方本地工作树不可得、★记「不可得」不记「无」**
+- ④ **是否产生新的功能成果 ＝ NO**（★0 新交付件、★0 新裁定、★0 新 PR 活动、★两账分子分母皆未动）｜★**★但「监工侧取证」有新增** ＝ ★**六态运行件由「不可得」升级为「本席一手实测 4/6」** —— ★**这是监工侧证据面的进展、★不是施工侧功能成果**、★**两件事不混算**
+- ★**活跃态 ＝ BLOCKED**（★GM `current_state` ＝ BLOCKED、★`waiting_for_chairman` ＝ true、★4 条 blocker 全在 Owner 域）｜★**不是 STALLED**：★STALLED 的前提是「★有合法下一 WP 而没人做」、★本例**下一 WP 不存在**
+- ★**该踢吗 ＝ NO**｜★**机械三条件**：★**A ＝ 远端 tip 未前进 ≥25 分钟 ＝ 成立**（★29.55 时）｜★**B ＝ 工作树无新增改动 ＝ 远端字节面成立**（★0 新 commit／0 新裁定／0 新 PR 活动；★**施工方本地工作树不可得**、★记「不可得」）｜★**C ＝ 执行器末条非 toolUse ＝ 成立**（★`stop`）｜★**但三条全中仍不触发恢复**：★**尺子第 3 节第四项前置「★已有合法下一 WP」不成立** —— WP1–WP4 ＋ R2／T5 全落且已过独立 Gate、★剩下 H1（★master 合并）与 H2（★关闭 PR #82）属**人类授权域**、★A4 属**独立 Reviewer 域**、★**本席红线禁止代做**；★且 GM 名册 4 条 blocker 载明**三条执行器路径实测全部不可用 ＋ Gold Set 未提供** ⇒ ★**即使立即派工也无执行能力、且无标准答案可评分**
+- ★**★恢复条款的「★连续 2 次恢复同一 HEAD 无新 commit ⇒ 停止恢复」**：★该 HEAD（★`622f297ac57d23cebdc20e3187010658c718ec47`）下**恢复计数 ＝ 1**、★**而那 1 次恢复产出的正是本 HEAD 本身** ⇒ ★**本 HEAD 无待恢复对象、★条款未触发**
+- ★**处置：0 spawn ／ 0 催办 ／ 0 唤醒 ／ 0 恢复**｜★**恢复能力在位**（★本会话 `communicate` 工具可用、★**不是「恢复能力不可用」**）、★**本轮不触发**（★触发条件不成立）｜★**无人值守有效续跑 ＝ FAIL**（★cron 在跑、★监工在跑、★但 0 自动产生新功能成果、★且下一 WP 在人类授权域）
+- ★**本轮外发卡 ＝ 0**（★四个触发条件逐条不成立：★**重大进展 ＝ 无**（★0 新远端字节、★0 新裁定、★0 账目进位）｜★**停滞 ＝ 不成立**（★静默时长增加本身不是新事件、★剩余动作全在人类／司仓授权域）｜★**独立 Gate 结果 ＝ 无新结果**（★T4 重锚 PASS 已于 2026-10-25T04:39:07Z 落远端、★**已外发过**、★不重复投递）｜★**需波总决策 ＝ 无新增**）⇒ ★**本轮只更新落盘状态卡、★不向波总发消息**（★波总明确：★正常无变化不必反复报告）｜★**★但本席把「六态运行件本席一手实测」写进台账、★因为它是**取证面**的进展而非**账目面**的进展、★**下一席可据本节引用而不必重做这一小时的依赖装配**
+
+### 六、★**本席自曝三处（★红的全是本席的稿、装配与取数口径、★远端对象全程正确、★0 字节带违规落远端、★0 处造成远端缺陷）**
+
+- ★**自曝一 ＝ pip 索引源与目标主机被混为一谈、★差点让一个可解的运行件连续第三轮记成「不可得」**：★§292 与 §293 两席均记「★PyPI 经本沙箱网关不可达（★pip 连接被重置）」⇒ ★**本席开工先做的正是这件事**、★**`urllib` ＋ 沙箱 CA 束直取 `https://pypi.org/simple/pydantic/` ＝ HTTP 200**｜★**真因 ＝ `pip` 走的是镜像源 `http://mirrors.cloud.aliyuncs.com/pypi/simple/` 的**明文 HTTP 通道**、★而该通道被网关重置；★**PyPI 主体走 HTTPS ＋ CA 束是通的**｜★**⇒ 两席的读数「★pip 装不上」本身没错、★但把它归因成「★PyPI 不可达」是把两个对象合并了**｜★**失败方向** ＝ ★**把「工具链索引源不通」读成「★目标主机不可达」⇒ ★**下一席会直接跳过直取这条路、★把运行件永久记成不可得**｜★**机械判据** ＝ ★**凡「某依赖取不到」⇒ 分开判「目标主机可达性」与「工具链索引源可达性」两项、★禁合并成一个读数**
+- ★**自曝二 ＝ 依赖装配的两次半残、★红的是本席的装配、★不是被验字节**：★**① `pydantic` 1.10 ＋ `langchain_core` 1.7 不兼容**（★`ImportError: cannot import name 'PydanticDeprecationWarning'`）⇒ ★**改 `pydantic` 2.14.1**；★**② `pydantic` 2.14.1 装完仍缺 `pydantic_core`**（★`ModuleNotFoundError: No module named 'pydantic_core'`）⇒ ★**补装编译轮**｜★**通用形态** ＝ ★**`pydantic` 2.x 的 wheel 本身不含 `pydantic_core`（★那是独立发布包）⇒ 只装 `pydantic` 必然半残**｜★**失败方向** ＝ ★**把「装完仍报错」读成「★这个依赖装不上、★运行件不可得」⇒ ★**会漏掉最后一公里**｜★**判据** ＝ ★**报错信息里那个 `No module named 'X'` 的 X 就是下一个要装的包、★不是结论**
+- ★**自曝三 ＝ 取号与基座分两次现读、★中间被兄弟席推进了一轮**：★本席开工现读台账行首锚得 max ＝ 292 ⇒ 取号 §293；★**落盘前再验基座 tip 时它已从 29ac8a74da2ab5753a7ec440d4e08abbb74d1218 前进到 0730839be5ad99174266133e754a9724e8092cb7**（★09:00Z 兄弟席先落）⇒ ★**取号作废、★改取 §294**｜★**★通用形态（★跨项目可复用）** ＝ ★**「取号」与「落盘基座」是**两个独立的远端对象**、★它们之间台账可能被兄弟席推进** ⇒ ★**取号必须与基座在同一次现读里取、★且落盘前必须再验一次基座 tip**｜★**失败方向** ＝ ★**按开工时的取号直接落盘 ⇒ ★**会与兄弟席撞号、★或把本席的字节写在别人的笔之前**｜★**配套** ＝ ★**撞号时禁改写他人已落字节**、★**只改本席自己的取号、★并在台账里如实登记这次改号的原因与两个 sha**（★本席已照此处置：★登记 §293 与 §294 两个取号、★及 29ac8a74da2ab5753a7ec440d4e08abbb74d1218 与 0730839be5ad99174266133e754a9724e8092cb7 两个基座 sha）
+
+### 七、★**本席边界（本段全集）**
+
+★**0 写产品代码**｜★**0 合并任何分支（含 master）**｜★**0 代合 PR**｜★**0 代写独立 Reviewer 的 VERDICT**｜★**0 代跑独立 Gate**｜★**0 认领他席跑批结论**｜★**0 改 Issue #71 的 AC 判定**｜★**0 改尺子口径**（★两份尺子全程只读、★未落任何字节）｜★**0 改 GM 名册**｜★**0 改写 §293 及前序任何已落字节**（★**只追加**）｜★**0 amend ／ 0 force push**｜★**0 触碰施工方工作树与修复分支**｜★**0 spawn ／ 0 催办 ／ 0 唤醒**｜★**0 新建调度器 ／ 第二套监工 ／ 第二执行器**｜★**0 接触明文凭据**｜★**0 关闭或改写任何 PR**｜★**0 把合成测试冒充 Windows 真实考试**｜★**0 把「远端 tip 未前进」读成「没在施工」**｜★**0 把未取到的读数记成「无」（★记「不可得」）**｜★**0 把六态 4/6 折算成效果分**｜★**0 代裁 A4 ／ A5**｜★**0 clone FOS 仓**｜★**0 改仓内任何字节以跑通探针**（★依赖全装仓外、★探针字节零改动）｜★**0 改动沙箱全局依赖环境**（★`site/` 为本席专用目录、★`pip install` 全部指向它）
+
+### 八、★**下一空闲节号**
+
+★**§295**（★取号一律执行点现算、★不按槽位推算、★不按本席原计划）
