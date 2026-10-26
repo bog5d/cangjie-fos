@@ -194,6 +194,24 @@ def _related_map(candidates: list[dict], db_path: Path | None = None) -> dict:
     return out
 
 
+def _candidate_type_map(candidates: list[dict], db_path: Path | None = None) -> dict:
+    """``file_id → 材料自己命中的全部规范类型``（★ P0-1 的类型闸输入）。
+
+    ★ **为什么必须是「材料自己的类型」**：组包链过去按**整段的类型归属**
+      给材料定类型 ⇒ 段内**可外发类**的材料被按另一类判定（PR #81 登记缺口 G5），
+      且**认不出类型**的材料（认知卡 doc_type 空）会被当成「看起来像」的答案
+      ⇒ 同一份无关材料被反复当成多条义务的答案。
+    ★ 类型口径**只有一份**：走 ``dd_v1_card_service.doc_types_key``
+      （旧卡无多值字段时自动退回单值主类型；认不出就是认不出 ⇒ 空列表）。
+    """
+    out: dict[str, list[str]] = {}
+    for c in candidates or []:
+        fid = str(c.get("file_id") or "")
+        if not fid or fid in out:
+            continue
+        card = cs.get_card(fid, db_path=db_path)
+        out[fid] = list(cs.doc_types_key(card) or [])
+    return out
 
 
 def _entity_display_map(rows: list[dict]) -> tuple[dict, dict]:
@@ -236,6 +254,11 @@ _BLOCKED_CATEGORIES = (
 
 
 
+def _yn(value) -> str:
+    """匹配标志 → 清单里的「是 / 否」（**不**写 1/0，避免与「未判定」混淆）。"""
+    if value is None or value == "":
+        return "未判定"
+    return "是" if int(value) else "否"
 
 
 def _blocked_category(reason: str) -> str:
@@ -389,7 +412,11 @@ def _build_rows(library_id: str, db_path: Path | None = None,
         st = ms.get_status(o["obligation_id"], db_path=db_path) or {}
         cands = ms.list_matches(o["obligation_id"], db_path=db_path)
         related = _related_map(cands, db_path) if o.get("needs_attachments") else {}
-        sel = selsvc.select_for_obligation(o, cands, related=related)
+        # ★ P0-1：把材料**自己**命中的类型集传进选中层
+        #   （类型闸要判「材料是不是那一类」，不能只看段落的类型归属）。
+        cand_types = _candidate_type_map(cands, db_path)
+        sel = selsvc.select_for_obligation(o, cands, related=related,
+                                           cand_types=cand_types)
         row = {
             "item_no": o.get("item_no") or "",
             "raw_text": o.get("raw_text") or "",
@@ -839,7 +866,7 @@ def package_approved(
                     {"file_id": p.get("file_id") or "",
                      "rel_path": p.get("rel_path") or "",
                      "role": p.get("role", "主件"),
-                     "role": p.get("role", "主件")}
+                     "match_evidence": p.get("match_evidence", "")}
                     for p in sel
                 ],
             })
@@ -910,6 +937,11 @@ def package_approved(
                 "dest_sha256": _sha256(dest),
                 "verdict": r["verdict"],
                 "role": p.get("role", "主件"),
+                # ★ P0-1：同一文件被 N 条义务引用时，**每一行**都要带可核的匹配证据
+                "match_evidence": p.get("match_evidence", ""),
+                "entity_ok": p.get("entity_ok", ""),
+                "period_ok": p.get("period_ok", ""),
+                "doctype_ok": p.get("doctype_ok", ""),
             })
 
     # hash 核验：复制件必须与源哈希一致，否则是交付事故
@@ -919,10 +951,12 @@ def package_approved(
 
     (out / "组包manifest.tsv").write_text(
         "机构编号\t原子义务\t交付路径\t源sha256\t副本sha256\t一致\t判定"
-        "机构编号\t原子义务\t交付路径\t源sha256\t副本sha256\t一致\t判定\n" +
+        "\t类型匹配\t主体匹配\t期间匹配\t匹配证据\n" +
         "\n".join(
             f"{e['item_no']}\t{e['obligation']}\t{e['dest']}\t{e['src_sha256']}\t"
             f"{e['dest_sha256']}\t{'是' if e['src_sha256']==e['dest_sha256'] else '否'}\t{e['verdict']}"
+            f"\t{_yn(e.get('doctype_ok'))}\t{_yn(e.get('entity_ok'))}\t{_yn(e.get('period_ok'))}"
+            f"\t{e.get('match_evidence', '')}"
             for e in exported), encoding="utf-8")
     (out / "被拦截清单.json").write_text(
         json.dumps(blocked, ensure_ascii=False, indent=2), encoding="utf-8")
