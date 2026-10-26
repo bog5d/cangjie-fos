@@ -912,6 +912,43 @@ def set_human_override(file_id: str, field: str, value: str,
         fields = {}
     evidence = [{"kind": "human_override", "note": note}]
     fields[field] = {"value": val, "provenance": FACT, "evidence": evidence}
+    # ★ P0-3：人工改写 ``doc_type`` 时，**多值字段 ``doc_types`` 必须同步**。
+    #   否则类型闸（``doc_types_key`` 读的就是那个多值字段）**看不到**人工的裁定
+    #   ⇒ 「人工已确认这就是营业执照」却仍被类型闸拦下（= 人工定级形同虚设）。
+    #   允许多值：``"license,charter"`` ⇒ 两种类型都保留。
+    if field == "doc_type":
+        types = [t.strip().lower() for t in val.split(",") if t.strip()]
+        fields["doc_types"] = {
+            "value": types,
+            "provenance": FACT,
+            "evidence": evidence + [{
+                "kind": "human_override_multi",
+                "note": f"人工改写材料类型为 {types}（与 doc_type 主类型同步，"
+                        f"使披露闸的类型闸看到人工的裁定）",
+            }],
+        }
+        # ★ P0-3：人工纠正了**机器推断**的类型 ⇒ 机器推断的**等级**必须随之重算。
+        #   否则「分类错」这条正解走不通：类型改对了，等级还停在旧类型推出来的
+        #   RESTRICTED 上 ⇒ 材料**仍然**被拦 ⇒ 人工改类型形同虚设。
+        #   ★ 重算只认**策略文件**的默认映射（``sensitivity_defaults``）⇒
+        #     仍是「策略是数据不是代码」，且 PUBLIC 必须有业务授权
+        #     （``public_defaults_authorized``）才可能生效。
+        #   ★ 人工**自己**定过的等级（provenance=FACT）**不动** —— 人的决定优先。
+        _sens_node = fields.get("sensitivity")
+        _sens_prov = (_sens_node or {}).get("provenance") if isinstance(_sens_node, dict) else None
+        if _sens_prov != FACT:
+            _pol = dpol.load_policy()
+            _level, _basis = _sensitivity_for_types(_pol, types)
+            fields["sensitivity"] = {
+                "value": _level,
+                "provenance": FACT if _level else UNKNOWN,
+                "evidence": evidence + [{
+                    "kind": "policy_default_after_human_type",
+                    "note": (f"人工把材料类型改写为 {types} ⇒ 按披露策略 "
+                             f"{_pol.version} 的默认映射重算等级 = {_level or '（留空）'}"
+                             f"（原等级为机器推断，已随人工的分类裁定失效）"),
+                }],
+            }
     conn.execute(
         "UPDATE dd_v1_material_cards SET fields_json=?, updated_at=? WHERE file_id=?",
         (json.dumps(fields, ensure_ascii=False), time.time(), file_id))
@@ -920,8 +957,91 @@ def set_human_override(file_id: str, field: str, value: str,
     conn.execute(
         f"UPDATE dd_v1_material_cards SET {col}=? WHERE file_id=?",
         (val, file_id))
+    # ★ P0-3：类型被人工纠正后，**重算出来的等级**也要同步到顶层列
+    #   （披露闸读的就是 ``card["sensitivity"]`` 顶层列）。
+    if field == "doc_type":
+        _new_level = str((fields.get("sensitivity") or {}).get("value") or "")
+        conn.execute(
+            "UPDATE dd_v1_material_cards SET sensitivity=? WHERE file_id=?",
+            (_new_level, file_id))
     conn.commit()
     return fields
+
+
+#: 认知卡上「**业务负责人逐份书面授权**」的字段名。
+#:
+#: ★ 依据：策略文件 ``dd_v1_disclosure_policy.json`` 登记的业务授权原文
+#:   「董事长 2026-10-21 授权『只放开营业执照/资质证照/工商公开登记信息三类，
+#:   其余八类不放开；**豁免需业务负责人逐份书面授权**』」
+#:   —— 这条**逐份书面授权**通道此前**只在纸面上登记、代码里没有实现**
+#:   ⇒ 合规的豁免路径走不通 ⇒ 只能「要么全放开、要么全不放」（P0-3 的病灶）。
+EXTERNAL_SEND_AUTH_FIELD = "external_send_authorization"
+
+
+def grant_external_send(file_id: str, granted_by: str, reason: str = "",
+                        *, db_path: Path | None = None) -> dict:
+    """业务负责人对**这一份**材料授予「可外发」的**逐份书面授权**（P0-3）。
+
+    ★ 授权**只**覆盖**这一份材料**（写在该材料的认知卡上），
+      **不是**全局规则、**不是**改策略文件 ⇒ 其余材料**不受影响**。
+    ★ 授权**不放宽**别的闸：敏感等级闸（等级必须在策略里 ``externally_sendable``）、
+      规则闸、``requires_review``、逐件人工复核与最终人工批准（HG1）**全部照旧**。
+    ★ 授权**必须**有授权人与理由（可追责）——「合规豁免」必须有据可查。
+    ★ 授权**可以撤销**：传 ``granted_by=""`` ⇒ 撤销该份授权。
+    """
+    granted = str(granted_by or "").strip()
+    why = str(reason or "").strip()
+    if granted and not why:
+        raise ValueError("reason 不能为空：逐份书面授权必须写明依据")
+    conn = _card_conn(db_path)
+    _ensure_schema(conn)
+    row = conn.execute(
+        "SELECT fields_json FROM dd_v1_material_cards WHERE file_id=?",
+        (file_id,)).fetchone()
+    if not row:
+        raise KeyError(f"卡片不存在：{file_id}")
+    try:
+        fields = json.loads(row[0] or "{}")
+    except Exception:  # noqa: BLE001
+        fields = {}
+    if not isinstance(fields, dict):
+        fields = {}
+    value = "GRANTED" if granted else "REVOKED"
+    fields[EXTERNAL_SEND_AUTH_FIELD] = {
+        "value": value,
+        "provenance": FACT,
+        "evidence": [{
+            "kind": "human_grant" if granted else "human_revoke",
+            "note": (f"业务负责人逐份书面授权：{granted}（依据：{why}）" if granted
+                     else f"撤销逐份书面授权（操作人：{granted or '未署名'}）"),
+        }],
+        "granted_by": granted,
+        "reason": why,
+        "granted_at": time.time(),
+    }
+    conn.execute(
+        "UPDATE dd_v1_material_cards SET fields_json=?, updated_at=? WHERE file_id=?",
+        (json.dumps(fields, ensure_ascii=False), time.time(), file_id))
+    conn.commit()
+    return fields[EXTERNAL_SEND_AUTH_FIELD]
+
+
+def external_send_authorization(card: dict | None) -> dict:
+    """读这份材料的**逐份书面授权**（没有 ⇒ 空 dict）。
+
+    返回 ``{"value": "GRANTED"/"REVOKED", "granted_by", "reason", "granted_at"}``。
+    """
+    if not card:
+        return {}
+    fields = card.get("fields")
+    node = None
+    if isinstance(fields, dict) and fields:
+        node = fields.get(EXTERNAL_SEND_AUTH_FIELD)
+    if node is None:
+        node = card.get(EXTERNAL_SEND_AUTH_FIELD)
+    if isinstance(node, dict):
+        return node
+    return {}
 
 
 def build_cards_for_library(

@@ -299,7 +299,8 @@ def load_policy(path: str | Path | None = None) -> DisclosurePolicy:
 
 
 def evaluate(policy: DisclosurePolicy, sensitivity: str,
-             doc_type="", entity: str = "") -> PolicyDecision:
+             doc_type="", entity: str = "",
+             authorized: bool = False) -> PolicyDecision:
     """判定一份材料能否对外交付。
 
     **空等级不是「最宽松」而是「不可判定」**——按最严处理并说明原因。
@@ -308,6 +309,16 @@ def evaluate(policy: DisclosurePolicy, sensitivity: str,
       材料自己命中的全部类型。类型闸按「**全部**类型都在清单内」判定
       （含一类不在清单内 ⇒ 整份材料不可外发，fail-closed）；
       规则按「命中任一类型即收紧」判定。单类型调用方的结论**逐位不变**。
+
+    ★ P0-3：``authorized=True`` ＝ **业务负责人对这一份材料的逐份书面授权**
+      （策略文件里登记的「豁免需业务负责人逐份书面授权」这条业务规则的落地）。
+      它的作用是**豁免「按类型收紧」这一层**（类型闸 ＋ 按 doc_type 收紧的规则闸）——
+      那两层本身就是在表达「哪些类型默认不外发」；
+      ★ **不放宽**别的闸：**等级闸**（人工补定的等级必须在策略里
+        ``externally_sendable``）、``requires_review``、逐件人工复核与
+        最终人工批准（HG1）**全部照旧**。
+      ⇒ 授权**不会**让「敏感等级未知」的材料变成可外发；
+      ⇒ 授权**只**覆盖**这一份**材料（写在它的认知卡上），其余材料**不受影响**。
     """
     # 1) 策略没生效 → 全部拒绝
     if not policy.loaded:
@@ -336,9 +347,13 @@ def evaluate(policy: DisclosurePolicy, sensitivity: str,
     spec = policy.levels[level]
 
     # 3) 规则可进一步收紧（取最严），但**不得放宽**基线判定
+    #    ★ P0-3：逐份书面授权豁免的正是「**按类型收紧**」这一层
+    #      （类型闸 ＋ 这段按 doc_type 收紧的规则闸）⇒ 授权下不收紧。
     final = level
     matched = ""
     for rule in policy.rules:
+        if authorized:
+            break
         if not _rule_hit(rule, doc_type, entity):
             continue
         cand = str(rule.get("level") or "").strip().upper()
@@ -365,6 +380,21 @@ def evaluate(policy: DisclosurePolicy, sensitivity: str,
         known = [t for t in tokens if t]
         blocked_by = [t for t in known if t not in allowed]
         if not known or blocked_by:
+            if authorized:
+                # ★ P0-3：业务负责人对**这一份**材料的逐份书面授权
+                #   ⇒ 豁免「按类型收紧」这一层（类型闸）。
+                #   ★ **不放宽**其它闸：等级闸 / requires_review 全部照旧。
+                final_spec = policy.levels.get(final, {"externally_sendable": False,
+                                                       "requires_review": True})
+                return PolicyDecision(
+                    level=final,
+                    externally_sendable=bool(spec["externally_sendable"]
+                                             and final_spec["externally_sendable"]),
+                    requires_review=bool(final_spec["requires_review"]),
+                    reason=(f"类型闸由**逐份书面授权**豁免"
+                            f"（材料类型 {_shown_of(known)} 不在放行清单 "
+                            f"{sorted(allowed)} 内；授权只覆盖本份材料）"),
+                    policy_version=policy.version, matched_rule=matched)
             final = policy.strictest(final, policy.default_level)
             _shown = known[0] if len(known) == 1 else (known or [""])
             return PolicyDecision(
@@ -387,6 +417,13 @@ def evaluate(policy: DisclosurePolicy, sensitivity: str,
         reason=f"声明等级={raw}" + (f"，规则收紧为 {final}" if matched else ""),
         policy_version=policy.version,
         matched_rule=matched)
+
+
+def _shown_of(known: list[str]) -> str:
+    """类型清单的可读写法（单值给单值，多值给列表）。"""
+    if len(known) == 1:
+        return repr(known[0])
+    return repr(known)
 
 
 def _doc_type_tokens(doc_type) -> list[str]:

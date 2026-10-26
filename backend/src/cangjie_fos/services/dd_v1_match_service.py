@@ -292,10 +292,20 @@ def evaluate_file(
         pol = dpol.load_policy()
         _own_types = cs.doc_types_key(card)
         _gate_types = _own_types or [obligation.get("doc_type") or ""]
+        # ★ P0-3：业务负责人对**这一份**材料的**逐份书面授权**
+        #   （策略文件登记的「豁免需业务负责人逐份书面授权」这条业务规则的落地）。
+        #   ★ 授权**只**替代**类型闸**；等级闸 / 规则闸 / requires_review 全部照旧
+        #   ⇒ 授权**不会**让「敏感等级未知」的材料变成可外发。
+        _auth = cs.external_send_authorization(card)
+        _authorized = str(_auth.get("value") or "").upper() == "GRANTED"
         dec = dpol.evaluate(pol, card.get("sensitivity") or "",
                              doc_type=_gate_types,
-                             entity=card.get("entity") or "")
+                             entity=card.get("entity") or "",
+                             authorized=_authorized)
         disclosure = dec.to_dict()
+        disclosure["external_send_authorized"] = _authorized
+        disclosure["authorization_granted_by"] = _auth.get("granted_by") or ""
+        disclosure["authorization_reason"] = _auth.get("reason") or ""
         if not dec.externally_sendable:
             deliverable = 0
             reasons.append(f"披露不可外发（等级={dec.level}）：{dec.reason}")
@@ -321,6 +331,177 @@ def evaluate_file(
         "seal_ok": seal_ok, "attachment_ok": attachment_ok,
         "deliverable": deliverable, "reasons": reasons,
         "disclosure": disclosure,
+    }
+
+
+# ── P0-3：披露**四方归因**（谁拦的、为什么拦）──────────────────────────────
+#: 披露判定的**四个维度**（四方）。归因只在这四个维度里选，**不新增第五个**。
+DISCLOSURE_DIMENSIONS = ("doc_type", "sensitivity", "parse_status", "policy")
+
+#: 拦截的**性质**（区分「按设计被拦」与「因误分类被误拦」）
+#:
+#: - ``按设计``：分类**正确**、策略**就是要拦**（例：章程 = RESTRICTED）
+#:   ⇒ 改它要改**业务授权**，不是改代码、也不是改授权清单；
+#: - ``误分类``：材料**认不出类型**（或类型认错）⇒ 判据本身失效，
+#:   正解是**人工补定类型**（``set_human_override``）或补**业务授权**
+#:   （``grant_external_send``），**不是**放宽放行清单；
+#: - ``等级不可判定`` / ``读取失败``：材料**本身**没定级或读不出来
+#:   ⇒ fail-closed，继续默认拒绝（可人工补级后放行）。
+BLOCK_KIND_AS_DESIGNED = "按设计被拦"
+BLOCK_KIND_MISCLASSIFIED = "误分类被拦"
+BLOCK_KIND_LEVEL_UNKNOWN = "敏感等级不可判定"
+BLOCK_KIND_UNREADABLE = "读取失败"
+BLOCK_KIND_NO_CARD = "无认知卡"
+BLOCK_KIND_OK = ""
+
+
+def diagnose_disclosure(
+    card: dict | None,
+    manifest_row: dict | None = None,
+    obligation: dict | None = None,
+) -> dict:
+    """披露**四方归因**：① 材料类型 ② 敏感等级 ③ 读取状态 ④ 披露规则。
+
+    返回一份**可审计**的归因结论：
+
+    - ``blocked_by`` ＝ 到底是**哪一方**拦的（``doc_type`` / ``sensitivity`` /
+      ``parse_status`` / ``policy`` / ``""``）；
+    - ``blocked_kind`` ＝ 拦的**性质**（按设计 / 误分类 / 等级不可判定 / 读取失败）；
+    - ``four_dimensions`` ＝ 四方各自的读数（**原样**留证，不加工）。
+
+    ★ 用途：把「正确候选被披露策略拦下」这类投诉**变成可核的四方读数**，
+      而不是靠猜（猜错就会去改不该改的东西——比如去动放行清单）。
+    """
+    obl = obligation or {}
+    pol = dpol.load_policy()
+    if card is None:
+        return {
+            "file_id": (manifest_row or {}).get("file_id") or "",
+            "rel_path": (manifest_row or {}).get("rel_path") or "",
+            "blocked_by": "policy",
+            "blocked_kind": BLOCK_KIND_NO_CARD,
+            "blocked_reason": "无材料认知卡，按不可判定处理，不得自动纳入对外交付",
+            "deliverable": False,
+            "four_dimensions": {
+                "doc_type": {"types": [], "basis": "UNKNOWN",
+                             "note": "无认知卡"},
+                "sensitivity": {"level": "", "basis": "UNKNOWN",
+                                "note": "无认知卡 ⇒ 等级不可判定"},
+                "parse_status": {"value": (manifest_row or {}).get("parse_status") or "",
+                                 "note": "无认知卡"},
+                "policy": {"version": pol.version, "loaded": pol.loaded,
+                           "sendable_doc_types": list(pol.sendable_doc_types or []),
+                           "note": "无认知卡 ⇒ 按最严处理"},
+            },
+            "external_send_authorized": False,
+        }
+
+    own_types = list(cs.doc_types_key(card) or [])
+    gate_types = own_types or [str(obl.get("doc_type") or "")]
+    sensitivity = str(card.get("sensitivity") or "")
+    parse_status = str((manifest_row or {}).get("parse_status") or "")
+    auth = cs.external_send_authorization(card)
+    authorized = str(auth.get("value") or "").upper() == "GRANTED"
+    dec = dpol.evaluate(pol, sensitivity, doc_type=gate_types,
+                         entity=card.get("entity") or "", authorized=authorized)
+
+    blocked_by = ""
+    blocked_kind = BLOCK_KIND_OK
+    reason = ""
+    _level_spec = (pol.levels or {}).get(str(sensitivity or "").strip().upper(), {})
+    _sens_node = card.get("sensitivity")
+    _sens_prov = (_sens_node or {}).get("provenance") \
+        if isinstance(_sens_node, dict) else None
+    if _sens_prov is None:
+        _f = card.get("fields") or {}
+        _sn = (_f.get("sensitivity") or {}) if isinstance(_f, dict) else {}
+        _sens_prov = _sn.get("provenance") if isinstance(_sn, dict) else None
+    if parse_status and parse_status not in (mf.PARSE_OK, mf.PARSE_PARTIAL):
+        blocked_by = "parse_status"
+        blocked_kind = BLOCK_KIND_UNREADABLE
+        reason = f"解析状态={parse_status}"
+    elif dec.externally_sendable:
+        # 四方都过了（可能含逐份书面授权）⇒ 没有被拦
+        blocked_by = ""
+        blocked_kind = BLOCK_KIND_OK
+        reason = dec.reason
+    elif not own_types:
+        # ★ 归因到**根因**：类型**认不出** ⇒ 等级留空只是它的**后果**
+        #   ⇒ 「谁拦的」答「材料类型」⇒ 正解是补类型 / 补授权，**不是**放宽。
+        blocked_by = "doc_type"
+        blocked_kind = BLOCK_KIND_MISCLASSIFIED
+        reason = (f"材料类型认不出（认知卡 doc_type 空）⇒ 敏感等级无法按类型判定"
+                  f"（留空 ⇒ 不可判定）⇒ 按最严处理，不得外发")
+    elif not sensitivity:
+        blocked_by = "sensitivity"
+        blocked_kind = BLOCK_KIND_LEVEL_UNKNOWN
+        reason = "敏感等级为空 = 不可判定，按安全默认处理；不得因留空就放行"
+    elif not _level_spec.get("externally_sendable", False):
+        # 等级**认得出**、但该级别在策略里**不可外发**
+        # ★ 归因要看等级的**出处**：
+        #   - 机器从**类型**推出来的（INFERRED）⇒ 根因是**类型**（收紧设计）
+        #   - 人工自己定的（FACT）⇒ 根因是**等级**（人的决定）
+        if _sens_prov == cs.FACT:
+            blocked_by = "sensitivity"
+            blocked_kind = BLOCK_KIND_AS_DESIGNED
+            reason = (f"敏感等级={sensitivity}（人工补定）在策略里不可外发"
+                      f"（externally_sendable=false）⇒ 按设计不放行")
+        else:
+            blocked_by = "policy"
+            blocked_kind = BLOCK_KIND_AS_DESIGNED
+            reason = (f"材料类型 {own_types} 属收紧类型 ⇒ 敏感等级按策略默认映射为 "
+                      f"{sensitivity}（该级别不可外发）⇒ 按设计不放行")
+    else:
+        # 等级可外发、类型认得出 ⇒ 是**类型闸**（收紧设计）拦的
+        blocked_by = "policy"
+        blocked_kind = BLOCK_KIND_AS_DESIGNED
+        reason = dec.reason
+
+    return {
+        "file_id": (manifest_row or {}).get("file_id") or card.get("file_id") or "",
+        "rel_path": card.get("rel_path") or (manifest_row or {}).get("rel_path") or "",
+        "blocked_by": blocked_by,
+        "blocked_kind": blocked_kind,
+        "blocked_reason": reason or dec.reason,
+        "deliverable": bool(dec.externally_sendable)
+        and not (parse_status and parse_status not in (mf.PARSE_OK, mf.PARSE_PARTIAL)),
+        "policy_version": dec.policy_version,
+        "external_send_authorized": authorized,
+        "authorization_granted_by": auth.get("granted_by") or "",
+        "authorization_reason": auth.get("reason") or "",
+        "four_dimensions": {
+            "doc_type": {
+                "types": own_types,
+                "gate_types": gate_types,
+                "basis": (card.get("doc_type") or {}).get("provenance")
+                if isinstance(card.get("doc_type"), dict) else "UNKNOWN",
+                "note": ("材料自己的类型" if own_types
+                         else "材料类型认不出 ⇒ 退回义务侧类型（遗留缺口 G5-bis）"),
+            },
+            "sensitivity": {
+                "level": sensitivity,
+                "basis": _sens_prov or "UNKNOWN",
+                "note": ("等级由类型默认映射或人工补定" if sensitivity
+                         else ("等级留空是「类型认不出」的**后果**（根因在类型那一维）"
+                               if not own_types
+                               else "等级留空 ⇒ 不可判定 ⇒ 不可外发（fail-closed）")),
+            },
+            "parse_status": {
+                "value": parse_status,
+                "note": ("可读" if parse_status in (mf.PARSE_OK, mf.PARSE_PARTIAL)
+                         else "不可读/解析失败 ⇒ 不可交付"),
+            },
+            "policy": {
+                "version": dec.policy_version,
+                "loaded": pol.loaded,
+                "level": dec.level,
+                "externally_sendable": dec.externally_sendable,
+                "requires_review": dec.requires_review,
+                "sendable_doc_types": list(pol.sendable_doc_types or []),
+                "matched_rule": dec.matched_rule,
+                "note": dec.reason,
+            },
+        },
     }
 
 

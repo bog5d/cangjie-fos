@@ -252,6 +252,30 @@ _BLOCKED_CATEGORIES = (
 )
 
 
+def _disclosure_diagnosis(file_id: str, row: dict, db_path: Path | None = None) -> dict:
+    """披露**四方归因**（★ P0-3）：谁拦的、为什么拦、按设计还是误分类。
+
+    ★ 复用判定层的 ``dd_v1_match_service.diagnose_disclosure``（**唯一**口径），
+      本模块**不另写**一套披露判定。
+    """
+    try:
+        card = cs.get_card(file_id, db_path=db_path)
+        conn = mf._connect(db_path)
+        mrow = conn.execute(
+            "SELECT * FROM dd_v1_manifest WHERE file_id=?", (file_id,)).fetchone()
+        return ms.diagnose_disclosure(card, dict(mrow) if mrow else None,
+                                      obligation={
+                                          "doc_type": row.get("doc_type") or "",
+                                      "obligation": row.get("obligation") or "",
+                                      "obligation_id": row.get("obligation_id") or "",
+                                      "entity_scope": row.get("entity_scope") or "",
+                                      "period_from": row.get("period_from") or 0,
+                                      "period_to": row.get("period_to") or 0,
+                                      "period_basis": row.get("period_basis") or "",
+                                      })
+    except Exception as exc:  # noqa: BLE001 — 归因失败**不得**阻断组包
+        logger.warning("披露归因失败（%s）：%s", file_id, exc)
+        return {"error": str(exc)}
 
 
 def _yn(value) -> str:
@@ -425,6 +449,8 @@ def _build_rows(library_id: str, db_path: Path | None = None,
             "entity_scope": o["entity_scope"],
             "entity_basis": o["entity_basis"],
             "period": f"{o['period_from']}-{o['period_to']}" if o["period_from"] else "",
+            "period_from": o.get("period_from") or 0,
+            "period_to": o.get("period_to") or 0,
             "period_basis": o["period_basis"],
             "doc_type": o["doc_type"],
             "doc_type_basis": o["doc_type_basis"],
@@ -848,6 +874,8 @@ def package_approved(
                 "rel_path": c["rel_path"],
                 "category": _blocked_category(ev),
                 "reason": ev or "受限/不可读/敏感等级未知",
+                # ★ P0-3：**四方归因**（谁拦的、为什么拦、按设计还是误分类）
+                "disclosure_diagnosis": _disclosure_diagnosis(c["file_id"], r, db_path),
             })
         sel = r.get("selected") or []
 
