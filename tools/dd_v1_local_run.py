@@ -22,6 +22,7 @@ import json
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -310,6 +311,55 @@ def _guard_material_output_not_in_repo(a, orig_material_root: Path) -> str | Non
     return None
 
 
+# GM:A4A:CLI:SIX-STATE
+def _six_state_rows(rec: dict) -> list[dict]:
+    """把语义层算出的**六态**摊平成 CLI 侧形态（机读三键：候选状态／原因／诊断）。
+
+    ★ 口径全部来自语义层（CLI 只透传）⇒ 入口**不另造一套原因表**，
+      **不把「候选为空」统一伪装成 MISSING**（原因不同 ⇒ 机器可区分）。
+    ★ 取值域只从语义层封闭枚举取（``sem.NO_CANDIDATE_REASONS``），CLI 不自己列一遍。
+    ★ 与薄入口（``tools/dd_team_channel.py``）**同口径**：那边是逐义务三键，
+      这边是逐义务三键 ⇒ 两端对齐，不再是「一边齐一边空」。
+    """
+    status = rec.get("evidence_status") or {}
+    hints = rec.get("rule_hints") or {}
+    rows: list[dict] = []
+    for oid, st in status.items():
+        st = st or {}
+        hint = hints.get(oid) or {}
+        rows.append({
+            "obligation_id": oid,
+            "candidate_status": st.get("candidate_status"),
+            "no_candidate_reason": st.get("no_candidate_reason"),
+            "diagnostics": st.get("diagnostics") or {},
+            "verdict": hint.get("verdict"),
+        })
+    return rows
+
+
+def _six_state_text(rows: list[dict]) -> list[str]:
+    """人读形态：候选为空的义务**逐条**写明六态原因（**不合并**成笼统的「缺材料」）。"""
+    six = "、".join(sem.NO_CANDIDATE_REASONS)
+    empty = [r for r in rows if r.get("no_candidate_reason")]
+    lines = ["## 候选为空的义务（为什么没有候选）", "",
+             "> 下面每条都**没有**候选材料。原因**分六类**，不合并成一个笼统的「缺材料」；"
+             f"取值域（语义层封闭枚举）：`{six}`。",
+             "> 本段只透传语义层算出的结论，CLI 不另造一套原因表。", ""]
+    if not empty:
+        lines += ["（本次运行没有「候选为空」的义务）", ""]
+        return lines
+    for r in empty:
+        dg = r.get("diagnostics") or {}
+        lines.append(f"- `{r['obligation_id']}`")
+        lines.append(f"    - 候选状态：`{r.get('candidate_status') or '—'}`"
+                     f"｜没有候选的原因：`{r.get('no_candidate_reason') or '—'}`"
+                     f"｜规则提示：{r.get('verdict') or '—'}")
+        if dg:
+            lines.append("    - 过滤诊断：" + "｜".join(f"{k}={v}" for k, v in sorted(dg.items())))
+        lines.append("")
+    return lines
+
+
 # GM:A4A:CLI:RUN-HEAD
 def cmd_run(a) -> int:
     # ★ 锚点先解析：**非法锚点在花任何模型调用之前就退出**（不静默忽略）。
@@ -395,13 +445,26 @@ def cmd_run(a) -> int:
                                period_anchor=anchor)
         calls_total += rec.get("calls_used", 1)
         v = rec["semantic_validation"]
+        rows = _six_state_rows(rec)
         summary.append({"group": tag, "adapter_status": rec["adapter"]["status"],
                         "elapsed_s": rec["adapter"]["elapsed_s"], "mode": v["mode"],
                         "accepted": len(v["accepted"]), "rejected": len(v["rejected"]),
-                        "uncovered": v["uncovered_obligations"], "degrade_reason": v["degrade_reason"]})
+                        "uncovered": v["uncovered_obligations"], "degrade_reason": v["degrade_reason"],
+                        # ★ 六态外显（机读）：原始容器 ＋ 逐义务三键
+                        #   （`evidence_status` ＝ 语义层原样容器；`obligations` ＝ 摊平后的三键）
+                        #   ⇒ 「候选为空」在 CLI 上**可区分六种原因**，不被压成同一个 MISSING。
+                        "evidence_status": rec.get("evidence_status") or {},
+                        "obligations": rows})
         print(json.dumps(summary[-1], ensure_ascii=False), flush=True)
     (out / "run_summary.json").write_text(json.dumps({"limits": limits, "calls_total": calls_total,
                                                       "groups": summary}, ensure_ascii=False, indent=1), "utf-8")
+    # ★ 六态的**人读面**（与薄入口同款口径：只透传语义层结论，不在入口另造原因表）。
+    #   落在输出目录里（不进 run-<tag> 工作目录：那里有 adapter 的白名单约束）。
+    (out / "six_state.md").write_text(
+        "\n".join(["# 六态（候选为空的原因）· DD-V1 本地运行器", "",
+                   f"- 取数时刻（UTC）：{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+                   ""] + _six_state_text([r for s in summary for r in (s.get("obligations") or [])])),
+        "utf-8")
     return 0 if any(s.get("mode") == "AGENT_SUGGESTION" for s in summary) else 2
 
 
