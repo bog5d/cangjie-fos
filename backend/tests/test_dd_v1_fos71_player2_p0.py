@@ -510,6 +510,18 @@ def test_full_synthetic_chain_to_authorized_package(tmp_path, monkeypatch):
         ], db_path=db)
         ms.match_library("lib-p0", db_path=db)
         rev = pkg.build_review_pack("lib-p0", institution="合成机构", db_path=db)
+        # ★ P0-2：这两条义务的判定是 ``UNCERTAIN``（不是 MATCHED）——
+        #   原因是认知卡的 ``entity`` 字段取的是**父目录名**，而本用例的材料树
+        #   刻意复刻了「法人/类型/文件」多级布局 ⇒ 父目录是**类型目录**
+        #   （如 ``2.营业执照``）⇒ 判定层按 G6 v2 判「主体未登记 ⇒ 改判 UNCERTAIN」。
+        #   （主体字段归一属**后续工作包**「主体匹配错误」，本轮只登记不修。）
+        #   ⇒ P0-2 的逐条交付闸默认只放行 MATCHED ⇒ 这里**人工逐条确认**
+        #   （= 人工已核对主体归属），再重新批准 ⇒ 走通「审核 → 交付」全链路。
+        for _obl in rq.list_obligations("lib-p0", db_path=db):
+            pkg.confirm_obligation(rev["review_id"], _obl["obligation_id"],
+                                    confirmed_by="波总",
+                                    reason="人工已核对主体归属（材料在本法人目录下）",
+                                    db_path=db)
         pkg.approve(rev["review_id"], approved_by="波总", db_path=db)
         res = pkg.package_approved(rev["review_id"], db_path=db)
 

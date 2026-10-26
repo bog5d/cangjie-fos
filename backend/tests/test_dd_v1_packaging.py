@@ -134,6 +134,12 @@ def test_package_without_approval_is_refused_and_copies_nothing(tmp_path):
 def test_package_after_approval_succeeds(tmp_path):
     lib, root = _setup(tmp_path, {"子公司甲/审计报告2023.txt": _audit(2023)})
     _unlock(lib, _db(tmp_path), "子公司甲/审计报告2023.txt")
+    # ★ P0-2：补登记主体（同本文件另外两条用例的做法）。
+    #   未登记主体时判定层按 A2-12 判 ``UNCERTAIN``（主体维度不可判定），
+    #   而 P0-2 的逐条交付闸**默认只放行 MATCHED** ⇒ 未过闸的义务**不进**交付包。
+    #   本用例要验的是「**批准后组包成功**」，故把主体登记上让判定为 MATCHED
+    #   （UNCERTAIN ⇒ 不进交付包 由 test_dd_v1_p0_delivery_gate.py 专门覆盖）。
+    _register_subject(tmp_path, lib)
     rq.ingest_checklist(lib, [{"item_no": "3.2.1", "raw_text": "请提供2023年度审计报告"}],
                         db_path=_db(tmp_path))
     ms.match_library(lib, db_path=_db(tmp_path))

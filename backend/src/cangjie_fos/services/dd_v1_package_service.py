@@ -11,6 +11,31 @@
 - 受限、不可读、解析失败、敏感等级未知的材料**一律不进交付目录**，
   即使人工勾选了也会被 Gate 拦下并记录原因（人可覆盖判定，但不能绕过受限事实）。
 
+## 第二重要的一条：审核通过 ≠ 每一条义务都通过（P0-2 · 逐条交付闸）
+
+**旧行为（有缺陷）**：``assert_approval()`` 只检查两件事——单据
+``status ∈ {approved, packaged}``、``approved_by`` 非空。于是
+**「人工批量批准」＝「全部放行」**：哪怕 26 条义务的判定**全部**是
+``UNCERTAIN``（证据不足以判定），程序照样把原件复制进正式交付包。
+
+**新行为（fail-closed）**：组包时逐条义务要过一道**交付闸**
+（:func:`_delivery_gate`）：
+
+1. **判定闸**：默认只有 ``MATCHED``（四维全覆盖且无冲突）能进正式交付包；
+   ``PARTIAL / MISSING / STALE / CONFLICT / UNCERTAIN / RESTRICTED``
+   **一律不进**（不确定 ⇒ 不进正式交付包，这是默认）。
+2. **人工逐条确认闸**：人可以对**具体某一条**义务写明确认人与理由
+   （:func:`confirm_obligation`）来放行它——**可追责、逐条、只落
+   ``review_id`` 维度**（一次确认**不得**升级为全局规则）。
+3. **披露闸**（取其严）：即便前两道过了，材料本身
+   **受限 / 不可读 / 敏感等级未知**时**仍然不进**交付包
+   ——人工确认**不能**绕过受限事实。
+
+⇒ **审核包与交付包严格隔离**：审核包（``build_review_pack()``）只读材料、
+**零复制**，并把每条义务的过闸结论写进核对表；交付包（``package_approved()``）
+**只装逐条过闸的件**。被拦的件**单独留痕**（「未过闸清单.tsv」＋
+「被拦截清单.json」里的独立分类），**不得**与「材料根本不存在」混同。
+
 ## 复用优先
 
 路径清洗与越界防护**直接复用** ``dd_export_service._within / _safe_filename /
@@ -88,7 +113,37 @@ CREATE TABLE IF NOT EXISTS dd_v1_review_edits (
     edited_at     REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_dd_v1_edits_review ON dd_v1_review_edits(review_id);
+
+-- ★ P0-2：逐条义务的**人工确认**（交付闸的第二道）。
+--   一次确认**只**落 review_id 维度 ⇒ 不得升级为全局规则（同 record_edit 的原则）。
+CREATE TABLE IF NOT EXISTS dd_v1_review_confirmations (
+    confirm_id    TEXT PRIMARY KEY,
+    review_id     TEXT NOT NULL,
+    obligation_id TEXT NOT NULL,
+    verdict       TEXT NOT NULL DEFAULT '',
+    confirmed_by  TEXT NOT NULL,
+    reason        TEXT NOT NULL,
+    created_at    REAL NOT NULL,
+    UNIQUE (review_id, obligation_id)
+);
+CREATE INDEX IF NOT EXISTS idx_dd_v1_confirm_review
+    ON dd_v1_review_confirmations(review_id);
 """
+
+
+#: 逐条义务判定 → **默认**可进正式交付包的取值集合。
+#:
+#: ★ 只有 ``MATCHED``（四维全覆盖且无冲突）默认放行。
+#:   PARTIAL（未齐套）/ MISSING（查无此物）/ STALE（版本或期间不对）/
+#:   CONFLICT（同主体同期冲突）/ UNCERTAIN（证据不足）/ RESTRICTED（受限）
+#:   ⇒ **一律不进**正式交付包（fail-closed：不确定 ⇒ 不进正式交付包）。
+#: ★ 例外**只有**一条：人工逐条确认（:func:`confirm_obligation`）——
+#:   写明确认人与理由、可追责；且**不能**绕过披露闸（受限事实仍然拦）。
+GATE_DEFAULT_PASS_VERDICTS = ("MATCHED",)
+
+#: 交付闸结论取值
+GATE_PASS = "PASS"
+GATE_BLOCKED = "BLOCKED"
 
 
 class ApprovalRequired(RuntimeError):
@@ -139,6 +194,8 @@ def _related_map(candidates: list[dict], db_path: Path | None = None) -> dict:
     return out
 
 
+
+
 def _entity_display_map(rows: list[dict]) -> tuple[dict, dict]:
     """主体范围 → **稳定代号**（★ H-3：审核包不得带出客户标识）。
 
@@ -171,7 +228,14 @@ _BLOCKED_CATEGORIES = (
     ("索引/目录件", "索引件（非材料）"),
     ("源文件已不存在", "源文件不存在"),
     ("目标越界", "越界拦截（安全跳过）"),
+    # ★ P0-2：逐条义务**未过交付闸**（判定非 MATCHED 且无人工逐条确认）
+    #   ⇒ 单独成一类，**不得**与「材料根本不存在」混同。
+    ("审核闸未通过", "审核闸未通过（逐条义务未过闸）"),
 )
+
+
+
+
 
 
 def _blocked_category(reason: str) -> str:
@@ -183,14 +247,138 @@ def _blocked_category(reason: str) -> str:
     return "受限/不可交付"
 
 
-def _build_rows(library_id: str, db_path: Path | None = None) -> list[dict]:
-    """逐义务算出：判定 + 候选 + **选中集合**。
+# ── P0-2：逐条义务的**交付闸** ────────────────────────────────────────────
+def _confirmations_map(review_id: str, db_path: Path | None = None) -> dict:
+    """``obligation_id → 人工逐条确认记录``（本审核单维度，跨审核单不通用）。"""
+    if not review_id:
+        return {}
+    conn = _conn(db_path)
+    out: dict[str, dict] = {}
+    for r in conn.execute(
+        "SELECT * FROM dd_v1_review_confirmations WHERE review_id=?", (review_id,)
+    ).fetchall():
+        out[str(r["obligation_id"])] = dict(r)
+    return out
+
+
+def _delivery_gate(row: dict, confirmations: dict) -> dict:
+    """一条义务**能不能进正式交付包**（逐条判定，不是一刀切）。
+
+    返回 ``{"gate", "gate_basis", "gate_reason"}``。
+
+    ★ 三道闸**取其严**（任一不过 ⇒ 不过）：
+
+    1. **判定闸**：默认只有 ``MATCHED`` 放行；其余判定（UNCERTAIN / PARTIAL /
+       MISSING / STALE / CONFLICT / RESTRICTED）**默认不进**正式交付包
+       ——「不确定 ⇒ 不进正式交付包」是**默认**，不是例外。
+    2. **人工逐条确认闸**：本审核单上若有人对该条义务写了确认人 + 理由，
+       则该条**可**放行（可追责、逐条、只落 review_id 维度）。
+       ★ 本函数**只管**前两道；**披露闸**（受限 / 不可读 / 敏感等级未知）
+         在复制那一层单独执行 ⇒ 人工确认**不能**绕过受限事实。
+    """
+    verdict = str(row.get("verdict") or "")
+    obl_id = str(row.get("obligation_id") or "")
+    if verdict in GATE_DEFAULT_PASS_VERDICTS:
+        return {
+            "gate": GATE_PASS,
+            "gate_basis": "verdict",
+            "gate_reason": f"判定={verdict}（四维全覆盖且无冲突）",
+        }
+    conf = (confirmations or {}).get(obl_id)
+    if conf:
+        return {
+            "gate": GATE_PASS,
+            "gate_basis": "human_confirmation",
+            "gate_reason": (f"人工逐条确认放行（确认人={conf.get('confirmed_by') or ''}，"
+                            f"理由={conf.get('reason') or ''}）"),
+        }
+    return {
+        "gate": GATE_BLOCKED,
+        "gate_basis": "",
+        "gate_reason": (f"逐条义务未过审核闸（判定={verdict or 'UNKNOWN'}）："
+                        f"不确定/未齐套 ⇒ 默认不进正式交付包"
+                        f"（需人工逐条确认后方可放行）"),
+    }
+
+
+def confirm_obligation(
+    review_id: str,
+    obligation_id: str,
+    confirmed_by: str,
+    reason: str = "",
+    db_path: Path | None = None,
+) -> dict:
+    """人工**逐条**确认一条义务可以进正式交付包（P0-2 的第二道闸）。
+
+    ★ 必须写明确认人与理由（可追责）——「不确定就放行」必须留下是谁放行的。
+    ★ 一次确认**只**落 ``review_id`` 维度 ⇒ **不**升级为全局规则
+      （与 ``record_edit`` 同原则；跨任务复用属 WP5 且必须经 Gate）。
+    ★ 记录确认会把单据打回 ``reviewed`` ⇒ **必须重新批准**才能组包
+      （「批完再改」是常见越权口子，见 ``test_editing_resets_approval``）。
+    ★ 本确认**不能**让受限材料进交付包——披露闸在复制那一层独立执行。
+    """
+    if not str(confirmed_by or "").strip():
+        raise ValueError("confirmed_by 不能为空：逐条确认必须有可追责的人")
+    if not str(reason or "").strip():
+        raise ValueError("reason 不能为空：逐条确认必须写明为什么可以放行")
+    conn = _conn(db_path)
+    row = conn.execute(
+        "SELECT * FROM dd_v1_reviews WHERE review_id=?", (review_id,)
+    ).fetchone()
+    if row is None:
+        raise KeyError(f"审核单不存在：{review_id}")
+    if row["status"] == ST_PACKAGED:
+        raise ValueError("已组包，不可再逐条确认")
+    obl = conn.execute(
+        "SELECT obligation_id FROM dd_v1_obligations WHERE obligation_id=?",
+        (obligation_id,)).fetchone()
+    if obl is None:
+        raise KeyError(f"义务不存在：{obligation_id}")
+    now = time.time()
+    conn.execute(
+        """INSERT INTO dd_v1_review_confirmations
+           (confirm_id, review_id, obligation_id, verdict, confirmed_by, reason, created_at)
+           VALUES (?,?,?,?,?,?,?)
+           ON CONFLICT(review_id, obligation_id) DO UPDATE SET
+             verdict=excluded.verdict, confirmed_by=excluded.confirmed_by,
+             reason=excluded.reason, created_at=excluded.created_at""",
+        (uuid.uuid4().hex, review_id, obligation_id,
+         str((ms.get_status(obligation_id, db_path=db_path) or {}).get("verdict") or ""),
+         str(confirmed_by).strip(), str(reason).strip(), now),
+    )
+    conn.execute(
+        "UPDATE dd_v1_reviews SET status=?, updated_at=? WHERE review_id=?",
+        (ST_REVIEWED, now, review_id))
+    conn.commit()
+    return {
+        "review_id": review_id,
+        "obligation_id": obligation_id,
+        "confirmed_by": str(confirmed_by).strip(),
+        "reason": str(reason).strip(),
+        "promoted_to_global_rule": False,
+    }
+
+
+def list_confirmations(review_id: str, db_path: Path | None = None) -> list[dict]:
+    """本审核单上的人工逐条确认清单（可审计）。"""
+    conn = _conn(db_path)
+    return [dict(r) for r in conn.execute(
+        "SELECT * FROM dd_v1_review_confirmations WHERE review_id=? ORDER BY created_at",
+        (review_id,))]
+
+
+def _build_rows(library_id: str, db_path: Path | None = None,
+                review_id: str = "") -> list[dict]:
+    """逐义务算出：判定 + 候选 + **选中集合** + **交付闸结论**。
 
     ★ 审核包（``build_review_pack``）与交付包（``package_approved``）
       **共用这一份计划** ⇒ 人工审阅的集合 = 实际交付的集合，
       不会出现「审的是 A、交的是 B」。
+    ★ ``review_id`` 传入时，人工逐条确认（``confirm_obligation``）才会生效；
+      审核包刚建出来时**还没有**任何确认 ⇒ 核对表里如实显示「未过闸」。
     """
     conn = _conn(db_path)
+    confirmations = _confirmations_map(review_id, db_path) if review_id else {}
     obl_rows = [dict(r) for r in conn.execute(
         "SELECT o.*, i.item_no, i.raw_text FROM dd_v1_obligations o "
         "LEFT JOIN dd_v1_checklist_items i ON i.item_uid=o.item_uid "
@@ -202,7 +390,7 @@ def _build_rows(library_id: str, db_path: Path | None = None) -> list[dict]:
         cands = ms.list_matches(o["obligation_id"], db_path=db_path)
         related = _related_map(cands, db_path) if o.get("needs_attachments") else {}
         sel = selsvc.select_for_obligation(o, cands, related=related)
-        rows.append({
+        row = {
             "item_no": o.get("item_no") or "",
             "raw_text": o.get("raw_text") or "",
             "obligation": o["obligation"],
@@ -238,7 +426,10 @@ def _build_rows(library_id: str, db_path: Path | None = None) -> list[dict]:
             "selection_rule": sel["rule"],
             "target_reason": sel["target_reason"],
             "count_pending": sel["count_pending"],
-        })
+        }
+        # ★ P0-2：逐条义务的**交付闸**结论（默认 fail-closed）
+        row.update(_delivery_gate(row, confirmations))
+        rows.append(row)
 
     codes, stats = _entity_display_map(rows)
     for r in rows:
@@ -263,7 +454,9 @@ def build_review_pack(
 
     # ★ A3（G-A3-2）：逐义务的「判定 + 候选 + 选中集合」由 _build_rows 统一算，
     #   审核包与交付包**共用同一份计划** ⇒ 审的 = 交的。
-    rows = _build_rows(library_id, db_path)
+    # ★ 传入本审核单的 review_id ⇒ 核对表里显示的交付闸结论与组包时**同一口径**
+    #   （刚建出来时还没有任何人工确认 ⇒ 非 MATCHED 的行如实显示「未过闸」）。
+    rows = _build_rows(library_id, db_path, review_id=review_id)
 
     out_dir = fos_paths.get_dd_v1_data_dir() / "reviews" / review_id
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -286,10 +479,16 @@ def build_review_pack(
         "status": ST_DRAFT,
         "obligations": len(rows),
         "by_verdict": tally,
+        # ★ P0-2：审核包里**如实**显示有几条义务过不了交付闸
+        #   （默认只有 MATCHED 能过 ⇒ 审核人一眼看出哪些需要逐条确认）。
+        "gate_passed": sum(1 for r in rows if r.get("gate") == GATE_PASS),
+        "gate_blocked": sum(1 for r in rows if r.get("gate") == GATE_BLOCKED),
         "pack_path": str(out_dir),
         "files": written,
         "copied_source_files": 0,
-        "note": "审核包只读材料、零复制；复制原件必须经 approve + package_approved",
+        "note": ("审核包只读材料、零复制；复制原件必须经 approve + package_approved；"
+                 "★ 未过交付闸的义务（默认只有 MATCHED 过）不进正式交付包，"
+                 "需人工逐条确认（confirm_obligation）后方可放行"),
     }
 
 
@@ -336,7 +535,9 @@ def _write_pack_files(out_dir: Path, review_id: str, rows: list[dict]) -> list[s
                    # ★ A3（G-A3-1 / G-A3-2）：份数与**选中集合**
                    #   主体范围列写的是**稳定代号**（H-3 脱敏），不写原值
                    "应有份数", "选中件数", "选中文件", "选中理由",
-                   "未选用文件", "未选用理由", "选中规则"]
+                   "未选用文件", "未选用理由", "选中规则",
+                   # ★ P0-2：逐条义务的**交付闸**结论（默认只有 MATCHED 过）
+                   "交付闸", "交付闸依据", "交付闸理由"]
         ws.append(headers)
         for r in rows:
             ws.append([
@@ -355,6 +556,9 @@ def _write_pack_files(out_dir: Path, review_id: str, rows: list[dict]) -> list[s
                 "; ".join(u["rel_path"] for u in (r.get("unselected") or [])),
                 "; ".join(u["reason"] for u in (r.get("unselected") or [])),
                 r.get("selection_rule", ""),
+                r.get("gate", ""),
+                r.get("gate_basis", ""),
+                r.get("gate_reason", ""),
             ])
         p = out_dir / "匹配核对表.xlsx"
         wb.save(p)
@@ -386,8 +590,20 @@ def _write_pack_files(out_dir: Path, review_id: str, rows: list[dict]) -> list[s
          "找到材料但版本/期间不满足当期要求"),
     )
     _gaps = [r for r in rows if r["verdict"] != "MATCHED"]
+    _gate_blocked = [r for r in rows if r.get("gate") == GATE_BLOCKED]
     _lines = ["以下义务未达完整状态，需人工处理。判定口径见 Goal Contract 硬门槛。",
               f"未达完整状态义务数：{len(_gaps)}（总义务 {len(rows)}）", ""]
+    # ★ P0-2：交付闸结论**单列**一段（与「材料不存在」严格分开）
+    _lines.append(f"## 零、逐条交付闸未通过的义务（{len(_gate_blocked)} 条）")
+    _lines.append("    默认只有判定=MATCHED 的义务能进正式交付包；"
+                  "以下义务**不会**被复制进交付包，"
+                  "需人工逐条确认（confirm_obligation）后方可放行。")
+    if not _gate_blocked:
+        _lines.append("    （无）")
+    for r in _gate_blocked:
+        _lines.append(f"  [{r['verdict']}] {r['item_no']} {r['obligation']}")
+        _lines.append(f"    交付闸：{r.get('gate_reason', '')}")
+    _lines.append("")
     for title, verdicts, blurb in _sections:
         bucket = [r for r in _gaps if r["verdict"] in verdicts]
         _lines.append(f"## {title}（{len(bucket)} 条）")
@@ -425,11 +641,16 @@ def _write_pack_files(out_dir: Path, review_id: str, rows: list[dict]) -> list[s
         "  不展开，判 UNCERTAIN**。\n"
         "- 必备附件与签章：认知卡字段目前恒 UNKNOWN，故这两个维度**必然不满足**——\n"
         "  这是已知缺口被如实暴露，不是数据问题。\n"
-        "- 交付资格：解析失败、不可读、或敏感等级未知的材料**不进入交付目录**。\n\n"
+        "- 交付资格：解析失败、不可读、或敏感等级未知的材料**不进入交付目录**。\n"
+        "- 逐条交付闸：默认**只有判定=MATCHED** 的义务能进正式交付包；\n"
+        "  UNCERTAIN / PARTIAL / MISSING / STALE / CONFLICT / RESTRICTED 一律不进。\n"
+        "  人工可对**具体某一条**义务写明确认人与理由来放行（confirm_obligation），\n"
+        "  但**不能**绕过披露闸（受限 / 不可读 / 敏感等级未知的材料仍然不进交付包）。\n\n"
         "## 逐条说明\n\n" +
         "\n".join(
             f"### {r['item_no']} {r['obligation']}\n\n"
             f"- 判定：**{r['verdict']}**\n"
+            f"- 交付闸：**{r.get('gate', '')}**（{r.get('gate_reason', '')}）\n"
             f"- 主体覆盖 {r['entity_cov']} / 期间覆盖 {r['period_cov']} / 类型覆盖 {r['doctype_cov']}\n"
             f"- 应有份数：{_count_label(r)}（{r.get('target_reason', '')}）\n"
             f"- 缺口：{r['missing_detail'] or '无'}\n"
@@ -572,10 +793,12 @@ def package_approved(
 
     exported: list[dict] = []
     blocked: list[dict] = []
+    gate_blocked_rows: list[dict] = []
 
     # ★ A3（G-A3-2）：交付集合 = **选中件** + 必备附件，**不是全部候选**。
     #   计划与审核包**共用**（_build_rows）⇒ 人工审阅的集合 = 实际交付的集合。
-    rows = _build_rows(review["library_id"], db_path)
+    # ★ P0-2：传入 review_id ⇒ 人工逐条确认在组包时生效。
+    rows = _build_rows(review["library_id"], db_path, review_id=review_id)
     unselected_rows: list[dict] = []
 
     for r in rows:
@@ -600,6 +823,39 @@ def package_approved(
                 "reason": ev or "受限/不可读/敏感等级未知",
             })
         sel = r.get("selected") or []
+
+        # ★★ P0-2：逐条义务的**交付闸** —— 不过闸 ⇒ **一件都不复制**。
+        #   「人工批量批准」≠「全部放行」：单据批准只是**单据级**放行，
+        #   逐条义务仍要各自过闸（默认只有 MATCHED 过）。
+        if r.get("gate") == GATE_BLOCKED:
+            gate_blocked_rows.append({
+                "item_no": r["item_no"] or "",
+                "obligation_id": r.get("obligation_id") or "",
+                "obligation": r["obligation"],
+                "verdict": r["verdict"],
+                "gate_reason": r.get("gate_reason") or "",
+                "would_deliver": len(sel),
+                "candidates": [
+                    {"file_id": p.get("file_id") or "",
+                     "rel_path": p.get("rel_path") or "",
+                     "role": p.get("role", "主件"),
+                     "role": p.get("role", "主件")}
+                    for p in sel
+                ],
+            })
+            # 被闸拦下的件**单独留痕**（分类与「不存在」「受限」都不同）
+            for p in sel:
+                blocked.append({
+                    "obligation": r["obligation"],
+                    "file_id": p["file_id"],
+                    "rel_path": p.get("rel_path", ""),
+                    "category": _blocked_category("审核闸未通过"),
+                    "reason": (f"审核闸未通过：{r.get('gate_reason', '')}"
+                               f"（判定={r['verdict']}）"),
+                })
+            # ★ 不建目录：未过闸的义务**不得**在交付包里留任何目录/文件
+            continue
+
         if not sel:
             # 没有选中件 ⇒ **不建目录**（空目录也是「同目录顺带复制」的残留）
             continue
@@ -662,6 +918,7 @@ def package_approved(
         logger.error("hash 核验不一致：%s", e["dest"])
 
     (out / "组包manifest.tsv").write_text(
+        "机构编号\t原子义务\t交付路径\t源sha256\t副本sha256\t一致\t判定"
         "机构编号\t原子义务\t交付路径\t源sha256\t副本sha256\t一致\t判定\n" +
         "\n".join(
             f"{e['item_no']}\t{e['obligation']}\t{e['dest']}\t{e['src_sha256']}\t"
@@ -669,6 +926,16 @@ def package_approved(
             for e in exported), encoding="utf-8")
     (out / "被拦截清单.json").write_text(
         json.dumps(blocked, ensure_ascii=False, indent=2), encoding="utf-8")
+    # ★ P0-2：**未过闸清单** —— 逐条义务层面的独立留痕。
+    #   与「材料根本不存在」严格分开（不得把「被拦」和「不存在」混同）。
+    (out / "未过闸清单.tsv").write_text(
+        "机构编号\t原子义务\tobligation_id\t判定\t交付闸结论\t交付闸理由\t本可交付件数\n" +
+        "\n".join(
+            f"{g['item_no']}\t{g['obligation']}\t{g['obligation_id']}\t{g['verdict']}\t"
+            f"{GATE_BLOCKED}\t{g['gate_reason']}\t{g['would_deliver']}"
+            for g in gate_blocked_rows), encoding="utf-8")
+    (out / "未过闸明细.json").write_text(
+        json.dumps(gate_blocked_rows, ensure_ascii=False, indent=2), encoding="utf-8")
     # ★ A3（G-A3-2）：**未选用清单**必须可审计——
     #   「不交」是决定，「不解释」是失职。逐条写明**为什么没选**。
     (out / "未选用清单.tsv").write_text(
@@ -697,6 +964,11 @@ def package_approved(
         #   交了几件、没交几件、没交的理由都在清单里。
         "unselected": len(unselected_rows),
         "unselected_manifest": str(out / "未选用清单.tsv"),
+        # ★ P0-2：交付闸的**分账**读数（与「被拦」「不存在」严格分开）
+        "gate_blocked_obligations": len(gate_blocked_rows),
+        "gate_blocked_detail": gate_blocked_rows[:20],
+        "gate_blocked_manifest": str(out / "未过闸清单.tsv"),
+        "gate_default_pass_verdicts": list(GATE_DEFAULT_PASS_VERDICTS),
         "selection_rule": ("可交付候选按「四维命中分 → 主体命中 → 期间命中 → "
                            "类型命中 → file_id 升序」确定性排序取前 N 份；"
                            "必备附件只认 related_files 显式列出的文件"),
