@@ -18,7 +18,7 @@
 |---|---|---|---|
 | ① 打开 | 双击仓库根目录的 **`安装并启动.ps1`**（或 `点击开始-仓颉FOS.bat`） | 黑色窗口 | 窗口不闪退、能看到「后端已启动」和 `http://127.0.0.1:8000` |
 | ② 自检 | 在仓库根目录开一个 PowerShell，跑 `python tools\doctor.py`（或双击 `诊断_打不开请运行我.bat`） | 终端输出 | 末尾没有红色 `FAIL`；`DD-V1` 相关项是 `OK` |
-| ③ 登记主体 | `python tools\dd_v1_manifest.py entity --library <库名> --id S1 --name <公司全称> --relation target --source "<权威依据>"` | 终端输出 | 打印「已登记」；★ **`--name` 的名字要和材料目录名对得上**（照 §0.1 办）；★ **不登记 ⇒ 主体维度判「无法判定」，不会拿目录名凑数** |
+| ③ 登记主体 | 母公司：`python tools\dd_v1_manifest.py entity --library <库名> --id E01 --name "<集团母公司全称>" --relation parent --group-root --source "<权威依据>"`<br>子公司：`python tools\dd_v1_manifest.py entity --library <库名> --id E02 --name "<子公司全称>" --relation subsidiary --parent E01 --source "<权威依据>"` | 终端输出 | 打印「已登记」；★ **`--name` 的名字要和材料目录名对得上**（照 §0.1 办）；★ **不登记 ⇒ 主体维度判「无法判定」，不会拿目录名凑数** |
 | ④ 跑组包 | `python tools\dd_team_channel.py run --library <库名> --root "<材料目录>" --checklist "<清单.tsv>" --institution "<机构名>" --by "<你>" --anchor-year 2024 --package --approved-by "<批准人>" --package-out "<交付目录>" --out "<报告目录>"` | 终端 + `<报告目录>` | 终端出现「✓ 交付包已生成」**且**「复制原件数 N」；若显示「⚠️ 已达候选上限」说明候选被截断（**不是**失败，照 §3 处理） |
 | ⑤ 看结果 | ① 交付目录：`<交付目录>`（正式交付包）<br>② 候选包：`<数据目录>\reviews\<review_id>\`（**非正式**，只读零复制）<br>③ 报告目录：`尽调报告-*.md` / `尽调结果-*.json` | 见左 | 交付目录里有 `01-输入需求清单.tsv` … `07-文件完整性校验结果.tsv` ＋ `组包manifest.tsv` ＋ `SHA256SUMS` ＋ `正式交付包-说明.md` |
 | ⑥ 核完整性 | `cd "<交付目录>" && certutil -hashfile "<某个交付文件>" SHA256`（或 `Get-FileHash`） | 终端 | 与 `组包manifest.tsv` 的「副本sha256」列**逐位相同**；`07-文件完整性校验结果.tsv` 里「结论」列全是「是」 |
@@ -38,6 +38,13 @@
 | ① | **`--name` 的名字要和材料目录名对得上** | `--name` 填**材料目录名**（材料所在的**法人那一级**目录名；多级布局 `法人\类型\文件` 时，**每一级**目录名都是主体线索）或**法人全称**。两边字符串要能对上。 |
 | ② | **法人全称 ≠ 材料目录名时**：把**材料目录名**登记成**别名** | `python tools\dd_v1_manifest.py alias --library <库名> --id <主体编号> --alias "<材料目录名>" --source "<权威依据出处>" --kind LEGAL` |
 | ③ | **主体登记必须先于第一次跑组包** | 清单摄取是**幂等**的：义务的「主体范围」在**首次摄取**时定死，**事后再登记、重跑也救不回来**（实测：库里 ≥2 个主体时，重跑仍判「无法判定」、交付 0 个原件）。 |
+
+★ **`--relation` 只认两个值：`parent` 与 `subsidiary`**（★**别写 `target`，也别用默认值 `other`**★）：
+`--relation parent` ＋ `--group-root` ＝ 集团根（母公司）；`--relation subsidiary` ＋
+`--parent E01` ＝ 子公司（`--parent` 填**母公司的 `--id`**）。
+★ **其它值会被存进库但永远不生效** —— 判定层只按这两个值过滤
+（`dd_v1_requirement_service.py` 的 `subsidiaries` / `parent_only` 两个 scope）
+⇒ 清单里写「XX 子公司」的要求**筛不出任何主体**，子公司材料选不中。
 
 ★ **别把别名登记成 `--kind DIRECTORY`**：`DIRECTORY` 型别名**按设计不参与主体归一**
 （那是「材料分类目录」维度，不是主体维度）⇒ 登记了主体维度照样认不出来，
@@ -136,8 +143,12 @@ uv pip install --python .\.venv\Scripts\python.exe pytest pytest-asyncio pydanti
 
 - 桥接层 `warnings` 多一条：「N 条义务的候选窗口已达上限，合计还有 M 份候选未看
   （MAX_FILES_PER_OBLIGATION=6）；未看部分**不得**当作「不存在」，如实记账」；
-- `evidence_status` 多四个字段：`candidate_cap` / `candidates_total` /
+- `evidence_status` 多**六个**字段：`candidate_cap` / `candidates_total` /
   `candidates_used` / `candidate_truncated` / `truncated_candidate_count` / `candidate_cap_note`。
+
+★ **这六个字段在 `packet["evidence_status"][该义务]` 里**（桥接层与 DSH 路径读的是**同一份**
+⇒ 两边口径一致）；★ **注意 `candidate_status` 仍报 `OK`**（候选不为空），
+⇒ ★**判断有没有漏检要看 `candidate_truncated`，不能只看 `candidate_status`**。
 
 ★ 「已达上限」**不是**失败信号：它表示**候选比窗口多**，结论只覆盖已进窗口的部分。
 

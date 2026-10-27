@@ -772,7 +772,21 @@ def build_semantic_packet(snapshot_dir: Path, meta: list[dict[str, str]],
         oid: {"no_candidate_reason": d["no_candidate_reason"],
               "candidate_status": d["candidate_status"],
               "period_spec": d.get("period_spec"),
-              "diagnostics": d["diagnostics"]}
+              "diagnostics": d["diagnostics"],
+              # ★★ WP3-d：候选窗口**触顶**的读数必须**透出到 packet**。
+              #   ★ 这 6 个键由 ``retrieve_minimal_evidence_detailed`` 算出，
+              #     ★ **本层曾经把它们丢掉**（只搬上面 4 个键）⇒
+              #       桥接层 ``dd_v1_bridge_service`` 读的 ``st.get("candidate_truncated")``
+              #       永远是 None ⇒ 「已达候选上限，还有 N 份未看」那条 warnings
+              #       **永不触发** ⇒ 语义层（默认触发的窗口 = 6）**静默漏检**；
+              #       DSH 路径（``dd_v1_local_run`` 读同一个 ``evidence_status``）同样读不到。
+              #   ⇒ 这里**只搬运、不重算**（口径与语义层同一个，不另造第二套）。
+              "candidate_cap": d.get("candidate_cap"),
+              "candidates_total": d.get("candidates_total"),
+              "candidates_used": d.get("candidates_used"),
+              "candidate_truncated": d.get("candidate_truncated"),
+              "truncated_candidate_count": d.get("truncated_candidate_count"),
+              "candidate_cap_note": d.get("candidate_cap_note")}
         for oid, d in detail.items()
     }
     # 摘录拒识（untrusted_excerpt 是不可信材料文本层，进 prompt 前必须脱敏）
