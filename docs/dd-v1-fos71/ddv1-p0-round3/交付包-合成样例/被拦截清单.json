@@ -1,0 +1,2914 @@
+[
+  {
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度社保缴纳证明",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度社保缴纳证明",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度社保缴纳证明",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度社保缴纳证明",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度社保缴纳证明",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度社保缴纳证明",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度社保缴纳证明",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度营业执照",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度营业执照",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度营业执照",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度营业执照",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度营业执照",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度营业执照",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度营业执照",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "214a0fae9b067aa4e8d62be3ca9b7551",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "9ecbe7e5f8c4805b1437d867636cc01f",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_正文补充.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "6e2f2f55b38b9d2076994d32d1e36ffe",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_草稿.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "aa91270e7a47da9065f16bd0d10fa532",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2024_附注.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+    "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "70d6aaea2383aa5a6f8f4fada2caada9",
+      "rel_path": "主体乙/Q-2024-07_案例乙机构_星海项目_审计报告_2024_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "file_id": "188ef246e5574290b5849c09082398d0",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "188ef246e5574290b5849c09082398d0",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_审计报告_2023_正文.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['audit_report'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "audit_report"
+          ],
+          "gate_types": [
+            "audit_report"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-AUDIT",
+          "note": "材料类型 'audit_report' 不在策略允许外发的类型清单 ['license'] 内；其中 ['audit_report'] 不在清单内；规则已收紧为 R1-AUDIT；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  },
+  {
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "file_id": "50a65d9872eb09648694d795608be0ae",
+    "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+    "category": "受限（披露策略判定不可外发）",
+    "reason": "披露不可外发（等级=RESTRICTED）：材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发",
+    "disclosure_diagnosis": {
+      "file_id": "50a65d9872eb09648694d795608be0ae",
+      "rel_path": "主体甲/Q-2024-07_案例甲机构_星海项目_社保缴纳证明_2024.txt",
+      "blocked_by": "policy",
+      "blocked_kind": "按设计被拦",
+      "blocked_reason": "材料类型 ['labor'] 属收紧类型 ⇒ 敏感等级按策略默认映射为 RESTRICTED（该级别不可外发）⇒ 按设计不放行",
+      "deliverable": false,
+      "policy_version": "a2-2026-10.3",
+      "external_send_authorized": false,
+      "authorization_granted_by": "",
+      "authorization_reason": "",
+      "four_dimensions": {
+        "doc_type": {
+          "types": [
+            "labor"
+          ],
+          "gate_types": [
+            "labor"
+          ],
+          "basis": "UNKNOWN",
+          "note": "材料自己的类型"
+        },
+        "sensitivity": {
+          "level": "RESTRICTED",
+          "basis": "INFERRED",
+          "note": "等级由类型默认映射或人工补定"
+        },
+        "parse_status": {
+          "value": "ok",
+          "note": "可读"
+        },
+        "policy": {
+          "version": "a2-2026-10.3",
+          "loaded": true,
+          "level": "RESTRICTED",
+          "externally_sendable": false,
+          "requires_review": true,
+          "sendable_doc_types": [
+            "license"
+          ],
+          "matched_rule": "R1-LABOR",
+          "note": "材料类型 'labor' 不在策略允许外发的类型清单 ['license'] 内；其中 ['labor'] 不在清单内；规则已收紧为 R1-LABOR；不可判定，按最严处理，不得外发"
+        }
+      }
+    }
+  }
+]

@@ -45,6 +45,7 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
 | DB fixture | `_isolate_db_per_test` autouse：每测试独立 SQLite。用 `@pytest.mark.real_db` 声明豁免 |
 | Push hook | `.git/hooks/pre-push` 自动跑 DB fixture 测试 |
+| 本轮（2026-10-27） | 分支 `feat/71-player2-p0-fix-20261023`（PR #81 待独立复核）：**第三轮 P0** —— 主体判定改**归一后逐字相等**（母子不混桶）、期间接**四态**（无年度标注 ⇒ 不可判定，不得臆造年份）、多文件显示**「应交 N / 找到 M / 缺 K」**、候选触顶**显式报数**（规则路径 ＋ 语义层）、WP5 **7 项交付产出**（含 `SHA256SUMS` 与追溯链）、候选包与正式交付包**物理隔离**、材料在审核后被改过 ⇒ **审核失效强制重审**、义务**稳定 ID**、P0-3 缺陷（机器重算的等级 provenance 改 `INFERRED`）修复。读数件与 Windows 交接包在 `docs/dd-v1-fos71/ddv1-p0-round3/`；新增专项测试 18 条（修前 12 红 ⇒ 修后全绿）；**业务效果账仍 0/100 REAL_PASS**（待刘江 Windows 实测） |
 | 本轮（2026-10-23） | 分支 `feat/71-player2-p0-fix-20261023`（PR 待独立复核）：材料类型取值空间在代码里收敛为 `dd_v1_requirement_service._DOC_TYPE_RULES` 的 10 个英文 key（语义层不再保留第二张 7 类中文表）；证据池比较前做 doc_type 归一；空候选返回结构化原因；正式入口 `tools/dd_v1_local_run.py` 的 `scaffold` 按**文件名**判类型。证据包 `docs/dd-v1-fos71/player2-p0-fix/`（**业务效果账待刘江 Windows 实测**）；**T2（2026-10-23）**：G5 四服务文件（`dd_v1_card_service`／`dd_v1_doc_type_service`／`dd_v1_match_service`／`dd_v1_policy_service`）自 PR #83 并入本分支 —— 组包链改按**材料自身命中的全部类型**驱动披露闸（`doc_type` 仍为单值主类型，新增多值 `doc_types`），随附 G5 回归用例 `backend/tests/test_dd_v1_g5_mixed_type_packaging.py` 与读数件 `docs/dd-v1-fos71/g5-mixed-type-packaging/FULL-RUN-READING.md`（★业务效果账仍 **0/100 REAL_PASS**，本轮**不**代表效果已验证） |
 
 ---
@@ -109,6 +110,28 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 | scan status DB fallback | 服务重启后 `get_scan_status` 降级查 `dd_asset_index`，返回 `source: "db_fallback"` |
 | 导出 guard | 单文件 >100MB 跳过，累计 >500MB 终止。在 `dd_export_service.py` 顶部 `MB_LIMIT_PER_FILE` / `MB_LIMIT_TOTAL` 可调节 |
 | 新增测试 | `tests/test_dd_v072.py`（5个）
+
+---
+
+## 2026-10-27 刚做的事（第三轮 P0 · 匹配不完整 ＋ 真实交付链）
+
+| 改了哪里 | 做了什么 |
+|---------|---------|
+| `backend/src/cangjie_fos/services/dd_v1_match_service.py` | 主体判定由「blob 子串」改为**归一后逐字相等**（`resolve_card_subject` / `_subject_clues`）⇒ 母子不混桶；**法人主体不一致 ⇒ 不得 MATCHED**；期间改走 `dd_v1_period_service.compatibility` **四态**（材料无年度标注 ⇒ **不可判定**，不得臆造年份）；候选触顶**显式报数**（`candidate_cap` / `truncated_candidate_count` / `candidate_cap_note`）；「应交/找到/缺」三段式读数落库 |
+| `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 新增 `parse_required_parts()` / `required_parts_of()`（**必备 part**：正文之外的组成部分，与「份数」是**两条轴**）＋ `obligation_key()`（**稳定义务 ID**，由内容算出、可复算）＋ `required_parts` 列 |
+| `backend/src/cangjie_fos/services/dd_v1_card_service.py` | 新增 `derive_part()` / `card_part()`（part 判定**全仓一份**，桥接层改为复用）；认知卡新增 `part` 字段；**P0-3 缺陷修复**：机器重算的敏感等级 provenance 由 `FACT` 改 **INFERRED**（⇒ 第二次类型纠正也会重算），「人工自定」判据改为 `_human_override()`；重建卡片时按**生效类型**重算并恢复人工的多值 `doc_types` |
+| `backend/src/cangjie_fos/services/dd_v1_selection_service.py` | 选中层支持**必备 part**（每个 part 各取一件，缺哪个逐个记明 ⇒ 找到正文**不等于**这条完成） |
+| `backend/src/cangjie_fos/services/dd_v1_package_service.py` | WP5 **7 项交付产出**（`01-`…`07-`）＋ `SHA256SUMS` ＋「正式交付包-说明.md」；候选包与正式交付包**物理隔离**（`<data_dir>/deliveries/<review_id>/`）＋各自标识；**审核失效预检**（材料在审核后被改过 ⇒ 强制重新审核、零复制）；候选材料保留**六件套**（原始路径/文件名/SHA256/主体/期间/类型）；放行与拦截**都**留规则依据；截断**必须报数** |
+| `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | 候选窗口触顶**显式报数**（顶层 `candidate_cap` / `candidate_truncated` / `truncated_candidate_count` / `candidate_cap_note`）—— 旧实现只记在 `diagnostics` 里、且候选 ≥ 上限时状态仍报 `OK` ⇒ **静默漏检** |
+| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | 透出候选窗口触顶读数 ＋ `warnings` 告警（与既有的主体分簇告警同形状）；part 判定改为复用认知卡层 |
+| `tools/dd_team_channel.py` | 终端显式报「实际考察候选 N 份｜触顶义务 M 条｜被上限挡掉 K 份」；正式交付包默认落在**与候选包平级**的目录；**审核失效**时明确拒绝并说明 |
+| `backend/tests/test_dd_v1_ddv1_p0_round3.py` | 第三轮 **18 条端到端**专项测试（每条走完「输入 → 检索 → 匹配 → 审核 → 组包」全链路），含独立 Reviewer 要求的 2 条 P0-3 回归（**修前必红、修后必绿**） |
+| `docs/dd-v1-fos71/ddv1-p0-round3/` | Windows 交接包（`WINDOWS-HANDOFF.md`，含**一页中文操作指南** ＋ 8 条测试的输入与预期 ＋ DSH 调用方式）＋ 证据件（`EVIDENCE.md`）＋ **合成交付包**（`交付包-合成样例/`，真实目录 ＋ 真实文件 ＋ `SHA256SUMS`，逐件复算） |
+
+★ 本轮**未改动任何既有测试文件**（`git diff --stat` 只含 8 个产品文件 ＋ 1 个新增测试文件 ＋ 文档）⇒ 无「把红改成绿」的口径问题。
+★ 本轮**新增专项测试读数**：修前（`7dd66b00` 独立 worktree）**12 failed / 6 passed** ⇒ 修后 **18 passed / 0 failed**。
+★ 全量回归：失败用例 ID 集合与基座**逐字相同**（6 条，全是缺 `OPENAI_API_KEY` 的既有环境失败）⇒ **零新增回归失败**；读数见 `docs/dd-v1-fos71/ddv1-p0-round3/EVIDENCE.md`。
+★ 业务效果账仍 **0/100 REAL_PASS**（真实材料库实测仍待刘江 Windows 侧完成）—— 本轮**不**代表效果已验证。
 
 ---
 

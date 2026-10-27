@@ -81,6 +81,13 @@ CREATE TABLE IF NOT EXISTS dd_v1_obligations (
     --   expected_count = N>0 ⇒ 权威份数 N（应有 N 份）
     expected_count    INTEGER DEFAULT 0,
     expected_count_basis TEXT NOT NULL DEFAULT 'UNKNOWN',
+    -- ★ WP3-c：必备 part（正文之外的组成部分；「（含附注）」这类要求）。
+    required_parts   TEXT NOT NULL DEFAULT '[]',
+    -- ★ WP1：义务的**稳定 ID**（可复算、不随排序变）。
+    --   obligation_id 仍是库内主键（旧库兼容）；obligation_key 是
+    --   **由内容算出**的稳定标识 ⇒ 独立 Reviewer 拿到 (库/机构/编号/原文/段序)
+    --   就能**复算**出同一条义务的 key，不依赖任何一次运行的中间状态。
+    obligation_key   TEXT NOT NULL DEFAULT '',
     fields_json      TEXT NOT NULL DEFAULT '{}',
     notes            TEXT NOT NULL DEFAULT '',
     created_at       REAL NOT NULL
@@ -139,6 +146,14 @@ _SEAL_ONLY = re.compile(r"(盖章|加盖.{0,4}公章|盖公章|签章)")
 _SIGN_ONLY = re.compile(r"(签字|签署|签名|法人签字)")
 # 允许「及其附件」「及附件」「附证明材料」等常见写法
 _ATTACH = re.compile(r"(?:其|本)?及?附件|附.{0,8}(?:证明|材料|文件|扫描件|清单)|连同|附件[:：]")
+# ★ WP3-c：**必备 part**（正文之外的组成部分）——「审计报告（含附注）」。
+#   ★ 这与「份数」（count 维）是**两条轴**：份数说的是「一式几份」，
+#     part 说的是「一件里有几个组成部分」。两条轴**分别算、合并显示**。
+#   ★ part 的**取值空间**只有三个（正文/附注/附录）——与认知卡侧的
+#     「part」字段同一口径（``dd_v1_card_service.derive_part``）。
+_REQUIRED_PART_NAMES = ("附注", "附录", "附件")
+_ATTACH_PART = re.compile(r"(?:含|附|带|连同|及)\s*("
+                           + "|".join(_REQUIRED_PART_NAMES) + r")")
 
 # ── 材料类型关键词（映射到认知卡 purpose 词典）──────────────────────────────
 _DOC_TYPE_RULES = (
@@ -215,7 +230,11 @@ def _ensure_columns(conn) -> None:
     except Exception:  # noqa: BLE001 — 表还不存在时无需补列
         return
     for name, ddl in (("expected_count", "INTEGER DEFAULT 0"),
-                      ("expected_count_basis", "TEXT NOT NULL DEFAULT 'UNKNOWN'")):
+                      ("expected_count_basis", "TEXT NOT NULL DEFAULT 'UNKNOWN'"),
+                      # ★ WP1：稳定义务 ID（可复算）
+                      ("obligation_key", "TEXT NOT NULL DEFAULT ''"),
+                      # ★ WP3-c：必备 part（JSON 数组文本）
+                      ("required_parts", "TEXT NOT NULL DEFAULT '[]'")):
         if name in have:
             continue
         try:
@@ -224,6 +243,25 @@ def _ensure_columns(conn) -> None:
             logger.info("已补齐列 dd_v1_obligations.%s", name)
         except Exception as exc:  # noqa: BLE001
             logger.warning("补列失败 dd_v1_obligations.%s：%s", name, exc)
+
+
+def obligation_key(library_id: str, institution: str, item_no: str,
+                   raw_text: str, seq: int, obligation_text: str) -> str:
+    """原子义务的**稳定 ID**（WP1）：**由内容算出**、可复算、不随排序变。
+
+    ★ 为什么要它：``obligation_id`` 是库内主键（历史上是随机 uuid），
+      独立 Reviewer 拿到交付清单**无法复算**同一条义务 ⇒ 追溯链断在第一环。
+    ★ 本 key 只由**内容**决定：库 / 机构 / 机构原编号 / 原文 / 段序 / 义务文本
+      ⇒ 同一份清单在任何机器、任何一次运行里算出的 key **逐位相同**。
+    ★ 段序（``seq``）取自**拆分后的段序**（不是排序位置）⇒ 与呈现顺序无关。
+    """
+    h = hashlib.sha256()
+    for part in (str(library_id or ""), str(institution or ""), str(item_no or ""),
+                 " ".join(str(raw_text or "").split()), str(int(seq or 0)),
+                 " ".join(str(obligation_text or "").split())):
+        h.update(part.encode("utf-8"))
+        h.update(b"\x1f")
+    return "OBL-" + h.hexdigest()[:24]
 
 
 @dataclass
@@ -246,6 +284,9 @@ class Obligation:
     # ★ A3（G-A3-1）：「应有几份」。0=未规定 / None=提及但不可判定 / N=权威份数。
     expected_count: int | None = 0
     expected_count_basis: str = UNKNOWN
+    # ★ WP3-c：必备 part（正文之外的组成部分；「（含附注）」这类要求）。
+    #   与 expected_count 是**两条轴**：份数＝一式几份，part＝一件里几部分。
+    required_parts: list = field(default_factory=list)
     notes: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -266,6 +307,7 @@ class Obligation:
             "disclosure": self.disclosure,
             "expected_count": self.expected_count,
             "expected_count_basis": self.expected_count_basis,
+            "required_parts": list(self.required_parts or []),
             "notes": self.notes,
         }
 
@@ -731,6 +773,44 @@ def parse_attachments(raw: str) -> tuple[int, str]:
     return 0, UNKNOWN
 
 
+def parse_required_parts(raw: str) -> list[str]:
+    """义务**要求哪些 part**（正文之外的组成部分）——WP3-c 的「应交 N 件」的第二个轴。
+
+    ★ 例：「2024年度审计报告（含附注）」⇒ ``["附注"]`` ⇒ 这条义务要交
+      **正文 ＋ 附注**两件 ⇒ 应交 2，而不是 1。
+    ★ **只认原文明文**（「含/附/带/连同/及 ＋ 附注|附录|附件」），
+      认不出就是空列表（**不猜**）。
+    ★ 与「份数」（count 维）是**两条轴**：份数＝一式几份，part＝一件里几部分。
+      展示层把两轴**合并报数**（应交 / 找到 / 缺），判定层**分别判**。
+    """
+    text = str(raw or "")
+    out: list[str] = []
+    for m in _ATTACH_PART.finditer(text):
+        name = m.group(1)
+        if name not in out:
+            out.append(name)
+    return out
+
+
+def required_parts_of(ob: dict) -> list[str]:
+    """从**义务行**取必备 part（库里存的是 JSON 数组文本）。
+
+    ★ **唯一**的取法（判定层 / 选中层 / 展示层共用）⇒ 不会各处各解一遍 JSON。
+    ★ 兼容两种形态：已是 list（内存态）或是 JSON 文本（DB 行）。
+    ★ 旧库没有这一列 ⇒ 取不到就是空列表（**不猜**）。
+    """
+    raw = (ob or {}).get("required_parts")
+    if isinstance(raw, list):
+        return [str(x) for x in raw if str(x).strip()]
+    if not raw:
+        return []
+    try:
+        out = json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+    return [str(x) for x in out if str(x).strip()] if isinstance(out, list) else []
+
+
 # ── 「应有几份」的份数口径（G-A3-1）────────────────────────────────────────
 #: 份数的**提及**形态：
 #:   ① 数字 + 份（「3 份」「一式两份」）
@@ -834,6 +914,8 @@ def build_obligations(
         ob.caliber, ob.caliber_basis = parse_caliber(part)
         ob.seal_required, _ = parse_seal(part)
         ob.needs_attachments, ob.attachment_basis = parse_attachments(part)
+        # ★ WP3-c：必备 part（正文之外的组成部分）——「（含附注）」这类要求。
+        ob.required_parts = parse_required_parts(part)
         # ★ A3（G-A3-1）：份数从**本段原文**解析（拆分后的每段各管各的份数）。
         ob.expected_count, ob.expected_count_basis = parse_expected_count(part)
         if ob.expected_count is None:
@@ -949,15 +1031,20 @@ def ingest_checklist(
                     entity_scope, entity_basis, period_from, period_to, period_basis,
                     doc_type, doc_type_basis, caliber, caliber_basis, seal_required,
                     needs_attachments, attachment_basis, disclosure,
-                    expected_count, expected_count_basis, fields_json,
-                    notes, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    expected_count, expected_count_basis, obligation_key,
+                    required_parts, fields_json, notes, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (uuid.uuid4().hex, item_uid, library_id, seq, ob.obligation,
                  ob.entity_scope, ob.entity_basis, ob.period_from, ob.period_to,
                  ob.period_basis, ob.doc_type, ob.doc_type_basis, ob.caliber,
                  ob.caliber_basis, ob.seal_required, ob.needs_attachments,
                  ob.attachment_basis, ob.disclosure,
                  ob.expected_count, ob.expected_count_basis,
+                 # ★ WP1：稳定 ID（由内容算出 ⇒ 可复算、不随排序变）
+                 obligation_key(library_id, institution,
+                                r.get("item_no") or "", raw, seq, ob.obligation),
+                 # ★ WP3-c：必备 part
+                 json.dumps(list(ob.required_parts or []), ensure_ascii=False),
                  json.dumps(payload, ensure_ascii=False),
                  "; ".join(ob.notes), now),
             )

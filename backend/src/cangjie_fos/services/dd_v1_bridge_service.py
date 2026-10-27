@@ -81,6 +81,19 @@ _YEAR_RE = re.compile(r"^\d{4}")
 _ATTACH_RE = re.compile(r"附注|附件|附录|appendix", re.I)
 #: 英文命名的附注文件（fixture 用 ``*_notes.txt``；``body``/``memo`` 不算附件）
 _ATTACH_RE_EN = re.compile(r"(^|[_\-])notes([_\-.]|$)", re.I)
+
+
+def _part_of(rel_path: str, file_name: str = "") -> str:
+    """part 判定：**唯一**口径在认知卡层（``dd_v1_card_service.derive_part``）。
+
+    ★ 桥接层**不再**自己写一份 part 规则 ⇒ 全仓只有一份 part 判定。
+      英文 ``*_notes.txt`` 形态仍单独识别（fixture 约定），与中文口径合并。
+    """
+    from cangjie_fos.services import dd_v1_card_service as cs  # noqa: PLC0415
+    part = cs.derive_part(rel_path, file_name)
+    if part == cs.PART_MAIN and _ATTACH_RE_EN.search(rel_path or ""):
+        return "附注"
+    return part
 _DRAFT_RE = re.compile(r"草稿|征求意见|draft", re.I)
 #: 与入口 B 的 ``scaffold`` 保持一致的「当前有效」类材料（执照/章程无年度）。
 #: ★ 取值空间来自 requirement service（``rq.CURRENT_DOC_TYPES``）—— **不另抄一份**。
@@ -208,8 +221,9 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
             "entity_basis": ent_basis or "CARD_INFERRED",
             "period": _material_period(card, dt),
             "doc_type": dt,
-            "part": "附注" if (_ATTACH_RE.search(row.get("rel_path") or "")
-                                  or _ATTACH_RE_EN.search(row.get("rel_path") or "")) else "正文",
+            # ★ part 口径**全仓只有一份**：复用认知卡层的 ``derive_part``
+            #   （``dd_v1_card_service``）—— 桥接层与规则层同一口径，不分叉。
+            "part": _part_of(row.get("rel_path") or "", row.get("file_name") or ""),
             "version_status": "DRAFT" if _DRAFT_RE.search(row.get("rel_path") or "") else "EFFECTIVE",
         })
     stats = {
@@ -429,6 +443,13 @@ def bridge_library(
                 "no_candidate_reason": st.get("no_candidate_reason"),
                 "candidate_status": st.get("candidate_status"),
                 "diagnostics": st.get("diagnostics") or {},
+                # ★★ WP3-d：候选窗口**触顶**的读数（禁静默漏检）
+                "candidate_cap": st.get("candidate_cap"),
+                "candidates_total": st.get("candidates_total"),
+                "candidates_used": st.get("candidates_used"),
+                "candidate_truncated": st.get("candidate_truncated"),
+                "truncated_candidate_count": st.get("truncated_candidate_count"),
+                "candidate_cap_note": st.get("candidate_cap_note"),
             },
             "advisory_only": True,
             "review_required": True,
@@ -465,6 +486,22 @@ def bridge_library(
         warnings.append(
             f"{obl_stats['entity_clusters_truncated']} 个主体分簇因超过上限被截断"
             f"（MAX_ENTITY_CLUSTERS={MAX_ENTITY_CLUSTERS}）；被截断的主体未被覆盖，如实记账")
+    # ★★ WP3-d：**候选窗口触顶**必须显式告警（禁静默漏检）。
+    #   旧实现只把截断数记在 diagnostics 里 ⇒ 用户侧看到的是「一切正常」，
+    #   而实际上还有 N 份候选**没看** ⇒ 那 N 份可能被当成「不存在」。
+    #   ⇒ 形状与上面的主体分簇告警一致（同一仓内现成样板）。
+    _trunc_total = 0
+    _trunc_obl = 0
+    for _o in obligations_out:
+        _st = _o.get("evidence_status") or {}
+        if _st.get("candidate_truncated"):
+            _trunc_obl += 1
+            _trunc_total += int(_st.get("truncated_candidate_count") or 0)
+    if _trunc_obl:
+        warnings.append(
+            f"{_trunc_obl} 条义务的候选窗口已达上限，合计还有 {_trunc_total} 份候选未看"
+            f"（MAX_FILES_PER_OBLIGATION={sem.MAX_FILES_PER_OBLIGATION}）；"
+            f"未看部分**不得**当作「不存在」，如实记账")
 
     return {
         "bridge_version": BRIDGE_VERSION,

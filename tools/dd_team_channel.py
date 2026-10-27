@@ -197,6 +197,14 @@ def cmd_run(a) -> int:
     _hr("第 6 步 / 共 6 步：逐条匹配并算完整性")
     res = ms.match_library(lib, candidate_cap=a.cap)
     print(f"  ✓ {res['obligations']} 条要求判定完成（候选上限 {res['candidate_cap']}，可调）")
+    # ★ WP3-d：**候选上限必须显式报数**（禁静默漏检）——
+    #   旧实现只印「候选上限 20，可调」⇒ 用户不知道实际查了多少、
+    #   还有多少**没看** ⇒ 触顶时那段结论被当成全量结论。
+    print(f"  · 实际考察候选 {res.get('candidates_seen', 0)} 份"
+          f"｜触顶义务 {res.get('capped_obligations', 0)} 条"
+          f"｜被上限挡掉 {res.get('truncated_candidate_count', 0)} 份")
+    if res.get("capped_obligations"):
+        print(f"  ⚠️ {res['candidate_cap_note']}")
     _print_verdicts(res["by_verdict"])
 
     # ── 输入快照 ID（G-A3-7：让「输入快照 ID 可复核」有真字段）────────────
@@ -349,8 +357,12 @@ def _run_package(pack: dict, a) -> int:
         return EXIT_FAIL
     p = pack["result"]
     review_id = p["review_id"]
+    # ★ WP2：正式交付包默认落在**与候选包平级**的另一个目录 ⇒ 物理隔离。
+    #   （旧默认是候选包目录下的「交付包」子目录 ⇒ 候选件与正式件混在一棵树里。）
+    _data_plane = os.environ.get("CANGJIE_DD_V1_DATA_DIR") or str(
+        _BACKEND / "data" / "dd_v1")
     out_dir = (Path(a.package_out) if getattr(a, "package_out", "")
-               else Path(p["pack_path"]) / "交付包")
+               else Path(_data_plane) / "deliveries" / review_id)
     approver = str(getattr(a, "approved_by", "") or "").strip()
     if not approver:
         print("  ✗ 已拒绝：未提供**人工批准人**（--approved-by）。")
@@ -368,9 +380,27 @@ def _run_package(pack: dict, a) -> int:
         print(f"    交付目录：{out_dir}（文件数 {_count_files(out_dir)}）")
         print("    本次**未复制任何原件**。")
         return EXIT_FAIL
+    # ★ WP2：审核失效（材料在审核后被改过）⇒ **不得**产出正式交付件。
+    if res.get("review_invalidated"):
+        print("  ✗ 已拒绝：**审核失效**（材料在审核后发生变化，SHA256 与审核时不一致）。")
+        print(f"    失效材料 {res.get('stale_material_count', 0)} 份"
+              f"（清单见「审核失效清单.tsv」）")
+        print("    之前的审核结论已不成立 ⇒ **必须重新核对并重新批准**后才能组包。")
+        print(f"    交付目录：{res.get('output_dir') or out_dir}"
+              f"（文件数 {_count_files(Path(res.get('output_dir') or out_dir))}）")
+        print("    本次**未复制任何原件**、**未产出正式交付件**。")
+        return EXIT_FAIL
     print(f"  ✓ 交付包已生成：{res.get('output_dir') or out_dir}")
     print(f"  · 复制原件数 {res.get('exported', 0)}｜受阻 {res.get('blocked', 0)}"
           f"｜hash 不一致 {res.get('hash_mismatched', 0)}")
+    # ★ WP1/WP5：逐件复算的完整性校验读数
+    print(f"  · 完整性校验：{res.get('hash_verified', 0)}/{res.get('hash_verified_total', 0)}"
+          f" 份逐件复算通过（SHA256SUMS：{res.get('sha256sums') or '（无）'}）")
+    # ★ WP3-d：截断必须显式报数
+    if res.get("blocked_truncated"):
+        print(f"  ⚠️ {res.get('blocked_truncation_note')}")
+    if res.get("gate_blocked_truncated"):
+        print(f"  ⚠️ {res.get('gate_blocked_truncation_note')}")
     print(f"  · 批准人：{approver}")
     return EXIT_OK
 

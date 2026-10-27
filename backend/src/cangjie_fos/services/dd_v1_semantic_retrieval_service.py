@@ -78,6 +78,15 @@ NO_CANDIDATE_REASONS = (
 #: ｜ ``NO_CANDIDATE`` 候选为空（原因见 ``no_candidate_reason``）。
 #: ★ **判定顺序写死**（实现里就是这个顺序，四态**互斥**）：
 #: ``OK`` → ``EXHAUSTED`` → ``PERIOD_OR_VERSION_MISMATCH`` → ``NO_CANDIDATE``。
+#:
+#: ★★ WP3-d（重要口径澄清）：``OK`` **只表示「有可用候选」，不表示「看全了」**。
+#:   候选数 ≥ ``MAX_FILES_PER_OBLIGATION`` 时，状态仍是 ``OK``
+#:   （有可用候选这件事是真的），但**确实有候选没进证据窗口** ⇒
+#:   「没看全」这件事**必须**由**配套字段**表达，不能靠状态枚举：
+#:   ``candidate_truncated``（布尔）＋ ``truncated_candidate_count``（真数）
+#:   ＋ ``candidate_cap_note``（人话：「已达候选上限 X，还有 N 份未看」）。
+#:   ★ 这三件是**闭枚举之外的补充**，不改 ``CANDIDATE_STATUSES`` 的取值域
+#:     （改它会破坏 R4 校验层的契约）。
 CANDIDATE_STATUSES = ("OK", "EXHAUSTED", "PERIOD_OR_VERSION_MISMATCH", "NO_CANDIDATE")
 
 #: 两类材料命中之间、**构成可分离**的连接词 / 标点（纯汉字连接词不在此列）。
@@ -559,9 +568,29 @@ def retrieve_minimal_evidence_detailed(snapshot_dir: Path, meta: list[dict[str, 
         ob["period_spec"] = ob_spec
     except TypeError:      # 不可变的映射类型 ⇒ 跳过（不影响判定）
         pass
+    # ★★ WP3-d：**触顶必须显式报数**（禁静默漏检）。
+    #   旧实现把截断数只记在 ``diagnostics`` 里，**用户侧看不到**「已达上限」；
+    #   且候选 ≥ 上限时 ``candidate_status`` 仍报 ``OK`` ⇒ **静默漏检**。
+    #   ⇒ 现在把「上限 / 已看 / 未看 / 停止条件」**提到返回值的顶层**，
+    #     桥接层、CLI、核对表三处都读得到。
+    _truncated = int(diagnostics.get("truncated_candidate_count") or 0)
+    _cap_note = ""
+    if _truncated > 0:
+        _cap_note = (
+            f"已达候选上限 {MAX_FILES_PER_OBLIGATION}（MAX_FILES_PER_OBLIGATION），"
+            f"还有 {_truncated} 份候选未看；"
+            f"本次证据只覆盖已进入窗口的 {len(out)} 份，"
+            f"未看部分**不得**当作「不存在」（停止条件：同主体+同类型的候选窗口上限）")
     return {"evidence": out, "no_candidate_reason": reason,
             "candidate_status": candidate_status, "diagnostics": diagnostics,
-            "period_spec": ob_spec}
+            "period_spec": ob_spec,
+            # ★ WP3-d：截断的**顶层**读数（用户可见，不再只藏在 diagnostics 里）
+            "candidate_cap": MAX_FILES_PER_OBLIGATION,
+            "candidates_total": int(diagnostics.get("candidates_total") or 0),
+            "candidates_used": int(diagnostics.get("candidates_used") or 0),
+            "candidate_truncated": bool(_truncated > 0),
+            "truncated_candidate_count": _truncated,
+            "candidate_cap_note": _cap_note}
 
 
 def _obligation_period_status(spec: dict[str, Any], evidence: list[dict[str, Any]]) -> str:

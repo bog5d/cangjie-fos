@@ -68,6 +68,9 @@ from __future__ import annotations
 
 import logging
 
+# ★ 义务侧口径（份数 / 必备 part）——**唯一来源**，本模块不另抄一份。
+from cangjie_fos.services import dd_v1_requirement_service as rq
+
 logger = logging.getLogger(__name__)
 
 #: 未规定份数时的去冗余份数（**不是**「认定应有 1 份」）
@@ -338,6 +341,44 @@ def select_for_obligation(
                     "doctype_ok": ev.get("doctype_ok", 0),
                 })
 
+    # ── ★ WP3-c：必备 **part**（正文之外的组成部分，如「（含附注）」）──────
+    #   ★ 与「份数」是**两条轴**：份数＝一式几份（取前 N 份主件），
+    #     part＝一件里有几个组成部分（每个 part **各要一件**）。
+    #   ★ 找不到的 part **不静默**：记进 ``missing_parts`` ⇒ 展示层报「缺 N」，
+    #     判定层据此**不得**判这条完成。
+    # ★ 必备 part 的取法**只有一处**（requirement_service 的 ``required_parts_of``）
+    #   —— 库里存的是 JSON 数组文本，各处自己解一遍迟早会解错。
+    _req_parts = rq.required_parts_of(obl)
+    missing_parts: list[str] = []
+    if _req_parts:
+        _by_part: dict[str, dict] = {}
+        for c in eligible:
+            _pt = str(c.get("material_part") or "")
+            if _pt and _pt not in _by_part:
+                _by_part[_pt] = c
+        for _want in _req_parts:
+            _c = _by_part.get(_want)
+            if _c is None:
+                missing_parts.append(_want)
+                continue
+            if _c.get("file_id") in chosen_ids:
+                continue
+            chosen_ids.add(_c.get("file_id") or "")
+            ev = ev_by_id.get(_c.get("file_id") or "") or {}
+            picked.append({
+                "file_id": _c.get("file_id") or "",
+                "rel_path": _c.get("card_rel_path") or _c.get("rel_path") or "",
+                "title": _c.get("card_title") or "",
+                "score": float(_c.get("score") or 0.0),
+                "role": "必备组成",
+                "reason": f"必备组成：义务原文要求「{_want}」⇒ 该件是本条义务的组成部分",
+                "match_evidence": ev.get("evidence_text", ""),
+                "entity_ok": ev.get("entity_ok", 0),
+                "period_ok": ev.get("period_ok", 0),
+                "doctype_ok": ev.get("doctype_ok", 0),
+                "part": _want,
+            })
+
     picked_ids = {p["file_id"] for p in picked}
     unselected = []
     for c in eligible:
@@ -372,10 +413,16 @@ def select_for_obligation(
         "expected_count": obl.get("expected_count"),
         "count_pending": obl.get("expected_count") is None,
         "obligation_types": obl_types,
+        # ★ WP3-c：必备 part 的**要求 / 已找到 / 缺**（与份数是两条轴）
+        "required_parts": _req_parts,
+        "found_parts": [p.get("part") for p in picked if p.get("role") == "必备组成"],
+        "missing_parts": missing_parts,
         "rule": ("选中规则：★ 先过**匹配证据闸**（主体/期间/类型对不对得上，"
                  "对不上 ⇒ 连可选都不是）；"
                  "再按「四维命中分 → 主体命中 → 期间命中 → 类型命中 → "
                  "file_id 升序」确定性排序，取前 N 份为主件；"
                  "必备附件只认 related_files 显式列出的文件；"
+                 "必备组成（正文之外的附注/附录）按义务原文要求各取一件，"
+                 "缺哪个逐个记明；"
                  "其余候选一律不复制并逐条留痕"),
     }
