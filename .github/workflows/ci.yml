@@ -28,6 +28,56 @@ jobs:
         working-directory: backend
         run: uv sync --extra dev
 
+      - name: Install OCR toolchain (tesseract + Chinese fonts)
+        # 为什么需要这一步（真实失败证据，不是推测）：
+        #   DD-V1 本地 OCR 链（backend/tests/test_dd_v1_ocr.py）在**本机**调用
+        #   tesseract(chi_sim+eng)，并用 Pillow 渲染中文字体。
+        #   GitHub 托管 runner（ubuntu-24.04 / image 20261012.334.1）**不预装
+        #   tesseract，也不含任何中文字体** ⇒ 该文件 9 条用例在 runner 上以
+        #   「本机缺少 tesseract」/「本机没有可用的中文字体」**真实失败**。
+        #   实测：run 39904416668 / job 120252959849，step 7 失败，
+        #   失败 ID 全集 10 条，全部落在 tests/test_dd_v1_ocr.py。
+        # 修法是**补齐运行环境**——不是跳过测试、不是弱化断言、不是 xfail。
+        # 本步骤在装完的当下**自证**环境到位：环境没到位就在**这一步**红，
+        # 而不是让下游 9 条 OCR 用例以误导性的断言信息红。
+        run: |
+          set -euo pipefail
+          # Ubuntu 24.04 (noble) 把 tesseract 系列放进了 **universe** 仓库
+          # （实测：noble/main 无 tesseract-ocr；noble/universe 有 tesseract-ocr 5.3.4-1build5
+          #   与 tesseract-ocr-chi-sim/eng 1:4.1.0-2；fonts-noto-cjk 在 main，
+          #   fonts-wqy-zenhei 在 universe）。
+          # runner 镜像的 sources.list 默认已含 universe，但**显式补一条说明**，
+          # 免得镜像源配置变化时静默装不上、错误信息被误读为「包不存在」。
+          #
+          # ★ ubuntu-latest 正在从 24.04 迁移到 26.04（GitHub 官方公告：2026-10-19 起
+          #   rollout、11-19 完成）。已逐个核实 Ubuntu 26.04 (resolute) 的包索引：
+          #   **五个包名全部存在、一字未改**（tesseract-ocr 5.5.0-1build1、
+          #   tesseract-ocr-chi-sim/eng 1:4.1.0-2build1、fonts-noto-cjk
+          #   1:20240730+repack1-1build1、fonts-wqy-zenhei 0.9.45-8build1），
+          #   且**两条字体落点路径一字未改** ⇒ 本步骤不会因镜像迁移而失效。
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            tesseract-ocr \
+            tesseract-ocr-chi-sim \
+            tesseract-ocr-eng \
+            fonts-noto-cjk \
+            fonts-wqy-zenhei
+          sudo fc-cache -f || true
+          # —— 自证（缺一即本步失败）——
+          command -v tesseract
+          tesseract --version | head -1
+          tesseract --list-langs | grep -qx chi_sim
+          tesseract --list-langs | grep -qx eng
+          # 字体落点与 backend/tests/test_dd_v1_ocr.py 的 FONT_CANDIDATES 逐字一致
+          # （已按 noble 的 .deb 文件清单逐个核实）：
+          #   fonts-noto-cjk   -> /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+          #   fonts-wqy-zenhei -> /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc
+          for f in /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc \
+                   /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc; do
+            [ -f "$f" ] || { echo "❌ 缺中文字体：$f"; exit 1; }
+          done
+          echo "OCR toolchain OK: tesseract + chi_sim/eng + 中文字体就位"
+
       - name: Create data directory
         run: mkdir -p backend/data/audio backend/data/html_reports
 
@@ -93,6 +143,50 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: uv sync --extra dev
+
+      - name: Install OCR toolchain (tesseract + Chinese fonts)
+        # 与主 job **逐字相同**的步骤（同一个问题、同一个修法）。
+        # 本 job 是 master 分支保护 required_status_checks 里的历史上下文名
+        # 兼容别名（见本文件下方注释）：它跑的是同一套全量测试、同样的 ≥440 门槛，
+        # 只是 job 名沿用旧名。**环境也必须一致**——否则主 job 绿了、别名 job 红，
+        # required check 照样不过（与 2026-10-23 05:11Z 那次红灯同因）。
+        run: |
+          set -euo pipefail
+          # Ubuntu 24.04 (noble) 把 tesseract 系列放进了 **universe** 仓库
+          # （实测：noble/main 无 tesseract-ocr；noble/universe 有 tesseract-ocr 5.3.4-1build5
+          #   与 tesseract-ocr-chi-sim/eng 1:4.1.0-2；fonts-noto-cjk 在 main，
+          #   fonts-wqy-zenhei 在 universe）。
+          # runner 镜像的 sources.list 默认已含 universe，但**显式补一条说明**，
+          # 免得镜像源配置变化时静默装不上、错误信息被误读为「包不存在」。
+          #
+          # ★ ubuntu-latest 正在从 24.04 迁移到 26.04（GitHub 官方公告：2026-10-19 起
+          #   rollout、11-19 完成）。已逐个核实 Ubuntu 26.04 (resolute) 的包索引：
+          #   **五个包名全部存在、一字未改**（tesseract-ocr 5.5.0-1build1、
+          #   tesseract-ocr-chi-sim/eng 1:4.1.0-2build1、fonts-noto-cjk
+          #   1:20240730+repack1-1build1、fonts-wqy-zenhei 0.9.45-8build1），
+          #   且**两条字体落点路径一字未改** ⇒ 本步骤不会因镜像迁移而失效。
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            tesseract-ocr \
+            tesseract-ocr-chi-sim \
+            tesseract-ocr-eng \
+            fonts-noto-cjk \
+            fonts-wqy-zenhei
+          sudo fc-cache -f || true
+          # —— 自证（缺一即本步失败）——
+          command -v tesseract
+          tesseract --version | head -1
+          tesseract --list-langs | grep -qx chi_sim
+          tesseract --list-langs | grep -qx eng
+          # 字体落点与 backend/tests/test_dd_v1_ocr.py 的 FONT_CANDIDATES 逐字一致
+          # （已按 noble 的 .deb 文件清单逐个核实）：
+          #   fonts-noto-cjk   -> /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+          #   fonts-wqy-zenhei -> /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc
+          for f in /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc \
+                   /usr/share/fonts/truetype/wqy/wqy-zenhei.ttc; do
+            [ -f "$f" ] || { echo "❌ 缺中文字体：$f"; exit 1; }
+          done
+          echo "OCR toolchain OK: tesseract + chi_sim/eng + 中文字体就位"
 
       - name: Create data directory
         run: mkdir -p backend/data/audio backend/data/html_reports
