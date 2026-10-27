@@ -390,7 +390,22 @@ def _run_package(pack: dict, a) -> int:
               f"（文件数 {_count_files(Path(res.get('output_dir') or out_dir))}）")
         print("    本次**未复制任何原件**、**未产出正式交付件**。")
         return EXIT_FAIL
-    print(f"  ✓ 交付包已生成：{res.get('output_dir') or out_dir}")
+    # ★★ WP2：**0 件不得说成「已交付」**。
+    #   独立 Reviewer 终局复核抓到：`package_approved` 返回后这里**无条件**印
+    #   「✓ 交付包已生成」⇒ ★**即使 exported==0（一件原件都没复制）**，
+    #   ★**终端仍显示「✓ 交付包已生成」** ⇒ **把「未产出正式交付件」说成了「已交付」**。
+    #   ★ WP2 原话：「允许生成供人工检查的候选包，但**必须明确标注为非正式交付**。
+    #     **不得把候选包冒充正式交付包。**」
+    #   ★ 措辞沿用**本文件自己的词汇表**（见上方「审核失效」分支：「未复制任何原件」、
+    #     「未产出正式交付件」）⇒ **不新造第二套说法**。
+    _exported = int(res.get("exported", 0) or 0)
+    if _exported > 0:
+        print(f"  ✓ 交付包已生成：{res.get('output_dir') or out_dir}")
+    else:
+        print(f"  ⚠ **未产出正式交付件**（复制原件数 0）：{res.get('output_dir') or out_dir}")
+        print("    本次**未复制任何原件**、**未产出正式交付件**。")
+        print("    目录里的清单与台账**仅供人工检查**，**不是正式交付**；"
+              "如需正式交付件，须先解决未过闸项并重新审核批准。")
     print(f"  · 复制原件数 {res.get('exported', 0)}｜受阻 {res.get('blocked', 0)}"
           f"｜hash 不一致 {res.get('hash_mismatched', 0)}")
     # ★ WP1/WP5：逐件复算的完整性校验读数
