@@ -221,12 +221,17 @@ def cmd_run(a) -> int:
                 # ★ 「落到 0 条」**不得**打 ✓（独立 Reviewer 增量复核）：
                 #   库里的义务可能已经带着**上一场**契约的范围 ⇒ 看着像生效、实际没生效。
                 _stale = _ap.get("stale_scopes") or []
+                _same = int(_ap.get("skipped_named") or 0)
                 if _stale:
                     print(f"  ⚠️ **本次声明未生效**：库里 {len(_stale)} 条义务仍带着"
                           f"上一场契约的范围（{', '.join(_stale)[:120]}）"
                           f"，与本次声明（{_ap.get('scope_keyword')}）不同")
                     print(f"    ⇒ 那些义务**不会**用本次声明的主体范围判定；"
                           f"如需换范围，请换一个库（或清掉那 {len(_stale)} 条的旧声明）")
+                elif _same:
+                    # 库里已有的范围**与本次声明一致** ⇒ 声明早已生效过（本次无需改写）
+                    print(f"  ✓ 考场契约声明的主体范围（{_ap.get('scope_keyword')}）"
+                          f"**已在库里生效**（{_same} 条义务带着该范围，本次无需改写）")
                 else:
                     print(f"  · 考场契约未声明主体范围（或声明的主体在权威名单里不存在）"
                           f"⇒ 未指名主体的义务仍判「无法判定」（不擅自放行）")

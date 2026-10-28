@@ -10,6 +10,7 @@
 ## 0. 一句话结论
 
 **开发面四组测试全绿、全量回归零新增失败；合成考场跑出真实分数（64.5 分）；**
+**独立 Reviewer 三轮增量复核：第三轮裁定 PASS（锚点 `b20f8f0`，其自跑子集 86 passed / 0 failed / 0 ERROR）。**
 **真实 42 题的业务成绩仍是 `NOT_SCORABLE`** —— 原因不是系统没能力，
 而是**标准答案包至今未交付**（`#74` 于 2026-10-22 按波总意见暂停），
 **「未接入」≠「不存在」**，本版**没有**补造任何历史分数。
@@ -59,21 +60,31 @@ python docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py
 
 ## 2. 全量回归（与基线同方法、同范围对照）
 
-| 项 | 基线 `abc4627`（**同环境复跑**） | 本分支 `5095b3c`（同环境） | 判词 |
+| 项 | 基线 `abc4627`（**同环境复跑**） | 本分支（**读数取自本文件所在提交**） | 判词 |
 |---|---|---|---|
 | 跑的范围 | `backend/tests/`（`--ignore=tests/test_ui_smoke_gk.py`） | 同左 | ★ 同方法同范围 |
 | 依赖版本 | ★ 与 `uv.lock` 对齐（`openai==2.32.0`） | 同左 | ★ 同环境 ⇒ 数字可比 |
-| 用例总数 | **1887** | **1972**（本版新增 85 条：75＋8＋2 条 Reviewer 处置回归） | — |
-| passed | **1886** | **1971** | — |
+| 用例总数 | **1887** | **1973**（本版新增 **86** 条：20+19+15+13+10+9） | — |
+| passed | **1886** | **1972** | — |
 | failed | **1** | **1** | ★ **失败集合逐条同源** ⇒ **零新增失败** |
 | ERROR | **0** | **0** | ★ ERROR≠FAIL：缺依赖才算 ERROR |
+
+★ **本分支的确数是 `--junitxml` 取的（机器可读）**，不是数进度字符：
+`pytest tests/ -p no:cacheprovider --ignore=tests/test_ui_smoke_gk.py --tb=no -q --junitxml=<file>`
+⇒ `<file>` 的 `testsuite` 属性：`tests=1973 failures=1 errors=0 skipped=0`（耗时 692.7s），
+唯一失败 `test_doctor_script.py::test_doctor_script_exits_zero`。
+★ **为什么以前数不出总数（口径更正，Reviewer 第四轮查实）**：
+**不是**「重定向到文件时 pytest 不写最后那行」—— 管道给 `cat` 一样没有那行；
+真因是仓内 `backend/pyproject.toml` 的 `addopts = "-q --ignore=tests/test_ui_smoke.py"` **已带一个 `-q`**，
+命令行再给一个 ⇒ **双 `-q`** ⇒ pytest 抑制了「N passed」那行（`short test summary info` 段仍在）。
+⇒ 实测 `-o addopts="" -q` ⇒ 那行会出现。★ **结论：用 `--junitxml` 取确数才是可靠的**（已改）。
 
 ★ **独立 Reviewer 自跑的同环境对照**（`/workspace/verify/VERIF_{base,branch}_full.log`）：
 基线 **1887 / 1886 passed / 1 failed / 0 ERROR**；本分支 **1970 / 1969 / 1 / 0**
 （他复核 `a7eaaa6` 时的字节），失败集合**逐条同源**＝`tests/test_doctor_script.py::test_doctor_script_exits_zero`
 ⇒ 与我自己的读数一致（差异仅为他复核时比我少 2 条新回归测试）。
 
-★ **依赖对齐后的终局读数**：本分支全量回归 = **1972 条：1971 passed / 1 failed / 0 ERROR**
+★ **依赖对齐后的终局读数**：本分支全量回归 = **1973 条：1972 passed / 1 failed / 0 ERROR**
 （Reviewer 处置后复跑；处置前是 1969/1968/1/0），
 唯一那条是 `test_doctor_script.py::test_doctor_script_exits_zero`（沙箱缺 `.env` / `node_modules` / 后端依赖
 ⇒ doctor 报 3 个问题 ⇒ 退出码 1；★ **CI 本身就显式 `--ignore=tests/test_doctor_script.py`**
@@ -134,7 +145,7 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 ② **安全闸命中 1 条 `WRONG_ENTITY`** ⇒ 总分**封顶 59**（见下）。
 
 ★ ★ **安全闸与「选材问题」分开记**（独立 Reviewer 增量复核的重要发现）：
-合成考场里，规则链为「**主体乙**那道题」**选中**了 **3 份主体甲**的材料 ⇒ **交错了法人**。
+合成考场里，规则链为「**主体乙**那道题」**多选（未交付）**了 **3 份主体甲**的材料 ⇒ **选错了法人**。
 ★ 但这 3 份**从未被交付**（实际交付只有 1 件，而且是对的）⇒
 **「交付了错主体的材料」＝ 交付事故（进安全闸、封顶 59）**；
 **「只是选中、没交付」＝ 选材质量问题（单列 `selection_mismatches`、不封顶）**。
@@ -200,6 +211,27 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 | **⑥ 测试文件尾部留着被证伪的旧断言** | ★ **已修**：测试头部改成「只验**自洽性**，**不证伪『这是规则脚本』**」 |
 | **⑦ EVIDENCE §2 表格仍是混环境对照** | ★ **已修**：改成「基线与本分支**同环境**（依赖对齐到 `uv.lock`）复跑」的对照，并列出 Reviewer 自跑的同环境数字作旁证 |
 | **⑧ 候选行 `doc_type` 空 / 成绩单不落 `leak_report` / `examinee_mode` 是 UNKNOWN** | ★ **已修**：候选行补 `doc_type`；成绩单**没有泄漏时也落** `leak_report`（`leaked=false`）；`examinee_mode` 在桥接路径按选材来源推断（RULE_ONLY / AGENT_SUGGESTION） |
+
+### 6.3 第三轮增量复核（**Reviewer 裁定：PASS**）与残余 4 条次要的处置
+
+★ **第三轮裁定原文结论**：「上一轮 9 条 PASS 全部仍成立；本轮 5 条收口清单逐条闭合且我用**自己的探针**复验过」⇒ **VERDICT = PASS**
+（锚点 `b20f8f0`；Reviewer 核了 5 个关键文件的 blob SHA 逐个相同；子集 **86 passed / 0 failed / 0 ERROR**；
+合成考场 64.5 / 安全闸 PASS / `selection_mismatches=3` / `delivered_files=1` / `RULE_ONLY`，与我的读数**逐项一致**）。
+★ 完整报告：`/workspace/verify/REVIEW-INCREMENTAL2-PR86.md`（Reviewer 自跑，**未改动本仓库任何文件**）。
+
+| 第三轮残余的 4 条「次要」（不阻塞） | 我的处置 |
+|---|---|
+| **① `selection_mismatch_detail` 的 `delivered` 写死 `False`** ⇒ 既选中又交付的件，成绩单会出现两行互相矛盾的话 | ★ **已修**：selected 循环先查该 file_id 是否在 delivered 集合里 ⇒ 如实标 `delivered=true/false`，文案随之区分。**新增断言**（回归测试里直接核这条） |
+| **② EVIDENCE §2 的本分支条数比当前 head 少 1、表头 SHA 陈旧** | ★ **已修**：在**最新字节**上重跑全量（带 `--junitxml` 出**机器可读的确数**）后改成实际数字并更新 SHA（见 §2 表） |
+| **③ 「⚠️ 本次声明未生效」分支不可达（死代码）** | ★ **已修**：补上「库里已有的范围**与本次声明一致** ⇒ 声明早已生效过（本次无需改写）」分支（现在三种情形都有话说：已生效 / 替换了旧的 / 未声明主体） |
+| **④ 「期间一律不比」还差半步**：选中层的期间差异仍进单列指标 | ★ **已按 Reviewer 给的两个选项之一处置**：**保留**单列（`WRONG_PERIOD`，**不进安全闸、不封顶**），并把文档措辞改成「**期间只影响单列指标**；**主体**才是进安全闸封顶的那一项」⇒ 既满足 #85「错年份一律单列」的红线，又不冤枉机器 |
+
+★ **`check_gccseg.py --require-v3-8` 的可复跑出处**（Reviewer 第三轮问「该脚本不在仓内也不在工作区」）：
+该脚本属**上游规范仓** `bog5d/grill-to-spec`，路径 `scripts/check_gccseg.py`，
+blob `af715407fd9c6cd7a5f63296f4bc9127cdbfbe86`，该仓 main tip `d14327c6de89e1afa2fca081f7bf984577a7e5ca`
+（本次实跑所用副本 sha256 `c2eadcfcdb4aacf7f7f62416f14cc6e129d1de3b6c22786754927d1f85ccb5ef`）⇒
+复跑命令：`python scripts/check_gccseg.py --require-v3-8 <本仓>/docs/dd-v1-fos71/ddv1-exam-v1/GOAL-CONTRACT.json`
+⇒ 本仓实跑结果：**PASS**（GCCSEG structural + goal alignment contract）。
 | **③ 「AI 真语义 vs 规则脚本」的机器可验分界不成立**（纯规则脚本能通过自洽性检查） | ★ **表述收紧**：测试头部与本文件都改成「只验**自洽性**，**不证伪『这是规则脚本』**」；GOAL-CONTRACT 的 M02 加注 |
 | **④ 三个新服务模块生产零调用方** | ★ **诚实降级**：`entity_scope_service` **已接线**（①）；`entity_resolution_service`（多源分级完整实现）与 `candidate_expansion_service`（分批扩展）**本版未接线** ⇒ GOAL-CONTRACT 的 **M03 判 `PARTIAL`**，本文件与交接文档都**不宣称**这两项已生效 |
 | **⑤ 预检顶层 status 把「未提供」写成「未映射」** | ★ **已修**：`status` 改为 `TEST_BLOCKED_GOLD_<STATE>`，四态一一对应 |

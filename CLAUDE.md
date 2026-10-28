@@ -504,11 +504,11 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 
 | 文件 | 覆盖 |
 |------|------|
-| `backend/tests/test_dd_v1_exam_scoring.py` | 18 条：权重/HR-0/HR-1/HR-2/HR-3/泄漏/内容寻址/版本对比 |
+| `backend/tests/test_dd_v1_exam_scoring.py` | 20 条：权重/HR-0/HR-1/HR-2/HR-3/泄漏/内容寻址/版本对比/**安全闸「交付 vs 选中」两条** |
 | `backend/tests/test_dd_v1_exam_preflight.py` | 13 条：契约校验/四类阻塞/指纹不符/主体范围 |
-| `backend/tests/test_dd_v1_doc_type_resolution.py` | 13 条：**模型必须提出 `proposed_doc_type`** 且与所选文件类型自洽（规则脚本冒充不了） |
-| `backend/tests/test_dd_v1_entity_resolution.py` ＋ `test_dd_v1_candidate_expansion.py` | 29 条：多源分级/三态/停止条件 |
-| `backend/tests/test_dd_v1_exam_e2e.py` | 7 条：合成考场端到端（组包 → 答卷 → 阅卷 → 对比） |
+| `backend/tests/test_dd_v1_doc_type_resolution.py` | 13 条：必须提出 `proposed_doc_type` 且与所选文件类型**自洽**（★ **只验自洽性，不证伪『这是规则脚本』** —— Reviewer 构造的纯规则脚本能过） |
+| `backend/tests/test_dd_v1_entity_resolution.py` ＋ `test_dd_v1_candidate_expansion.py` | 29 条：多源分级/三态/停止条件（★ 这两个模块**本版未接线** ⇒ M03 判 PARTIAL） |
+| `backend/tests/test_dd_v1_exam_e2e.py` | 9 条：合成考场端到端（组包 → 答卷 → 阅卷 → 对比） |
 
 ### 改动（既有文件，**加法式**）
 

@@ -1,7 +1,7 @@
 {
   "schema_version": "dd_v1_answer_sheet.v1",
   "exam_id": "EX-A4A-SYNTHETIC",
-  "generated_at": "2026-10-29T02:39:34+08:00",
+  "generated_at": "2026-10-29T03:08:29+08:00",
   "delivered": [
     {
       "file_id": "ba22dff5d64703ba313c9590244d2efe",
@@ -26,8 +26,8 @@
   },
   "obligations": [
     {
-      "obligation_id": "05188919759244c5b743ab5108b92626",
-      "item_id": "05188919759244c5b743ab5108b92626",
+      "obligation_id": "17da88b525a843ffb09227dcdcd5c45a",
+      "item_id": "17da88b525a843ffb09227dcdcd5c45a",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -157,8 +157,8 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "116046c4b7b64fd986b635d4d013166a",
-      "item_id": "116046c4b7b64fd986b635d4d013166a",
+      "obligation_id": "266c8b2553964279a78593c60fd90e4b",
+      "item_id": "266c8b2553964279a78593c60fd90e4b",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -288,8 +288,8 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "57d5a175c6f240f4870c4fcfceb37971",
-      "item_id": "57d5a175c6f240f4870c4fcfceb37971",
+      "obligation_id": "2c1fa777a3474a709d0c3280c66e9ad5",
+      "item_id": "2c1fa777a3474a709d0c3280c66e9ad5",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -419,270 +419,8 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "9945670a512f44859a7772cdc83f6bdc",
-      "item_id": "9945670a512f44859a7772cdc83f6bdc",
-      "text": "",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "主体甲",
-        "entity_basis": "AUTHORITY",
-        "period": "2024",
-        "required_parts": [],
-        "text": "",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [
-        {
-          "file_id": "241aa18509bf90620009a2b6c31a98b2",
-          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
-          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
-          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "附注",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "f3d9d691bd63041fecd4c757bf4f9cdd",
-          "sha256": "b1efd478dbe1b37242af44c0c70780128016db2099f28867f451c0a3249fabab",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_草稿.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "DRAFT",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "20823ed79b38579435ffd54b49da5b83",
-          "sha256": "1f8c032515aa14696f041ca85d94081a47e14547e255bfce42ac69caa017a8f1",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2023_正文.txt",
-          "entity": "主体甲",
-          "period": "2023",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 5,
-      "selected": [
-        {
-          "file_id": "241aa18509bf90620009a2b6c31a98b2",
-          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
-          "locator": "L2-L6",
-          "match_reason": "MATCH",
-          "entity": "主体甲",
-          "period": "2024"
-        },
-        {
-          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
-          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
-          "locator": "L2-L6",
-          "match_reason": "MATCH",
-          "entity": "主体甲",
-          "period": "2024"
-        },
-        {
-          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
-          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
-          "locator": "L2-L6",
-          "match_reason": "MATCH",
-          "entity": "主体甲",
-          "period": "2024"
-        }
-      ],
-      "selected_count": 3,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 5,
-        "checked": 5,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "a5e477f29b184409abb178ff4e289763",
-      "item_id": "a5e477f29b184409abb178ff4e289763",
-      "text": "",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "主体甲",
-        "entity_basis": "AUTHORITY",
-        "period": "2024",
-        "required_parts": [],
-        "text": "",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [
-        {
-          "file_id": "241aa18509bf90620009a2b6c31a98b2",
-          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
-          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
-          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "附注",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "f3d9d691bd63041fecd4c757bf4f9cdd",
-          "sha256": "b1efd478dbe1b37242af44c0c70780128016db2099f28867f451c0a3249fabab",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_草稿.txt",
-          "entity": "主体甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "DRAFT",
-          "locator": "L2-L6",
-          "period_status": ""
-        },
-        {
-          "file_id": "20823ed79b38579435ffd54b49da5b83",
-          "sha256": "1f8c032515aa14696f041ca85d94081a47e14547e255bfce42ac69caa017a8f1",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2023_正文.txt",
-          "entity": "主体甲",
-          "period": "2023",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L2-L6",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 5,
-      "selected": [
-        {
-          "file_id": "241aa18509bf90620009a2b6c31a98b2",
-          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
-          "locator": "L2-L6",
-          "match_reason": "MATCH",
-          "entity": "主体甲",
-          "period": "2024"
-        },
-        {
-          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
-          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
-          "locator": "L2-L6",
-          "match_reason": "MATCH",
-          "entity": "主体甲",
-          "period": "2024"
-        },
-        {
-          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
-          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
-          "locator": "L2-L6",
-          "match_reason": "MATCH",
-          "entity": "主体甲",
-          "period": "2024"
-        }
-      ],
-      "selected_count": 3,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 5,
-        "checked": 5,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "cb74836dac18492c82e7f3ae7c7c4184",
-      "item_id": "cb74836dac18492c82e7f3ae7c7c4184",
+      "obligation_id": "43e6c5580185468bba1be1b604ef3f07",
+      "item_id": "43e6c5580185468bba1be1b604ef3f07",
       "text": "",
       "interpretation": {
         "doc_type": "labor",
@@ -746,8 +484,81 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "dcfa46a59f834f8ba3e77a5e02f5c713",
-      "item_id": "dcfa46a59f834f8ba3e77a5e02f5c713",
+      "obligation_id": "a4780db706da463abd77055653ea17b2",
+      "item_id": "a4780db706da463abd77055653ea17b2",
+      "text": "",
+      "interpretation": {
+        "doc_type": "license",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "CURRENT",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [
+        {
+          "file_id": "ba22dff5d64703ba313c9590244d2efe",
+          "sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+          "entity": "主体甲",
+          "period": "CURRENT",
+          "doc_type": "license",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 1,
+      "selected": [
+        {
+          "file_id": "ba22dff5d64703ba313c9590244d2efe",
+          "sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+          "locator": "L2-L6",
+          "match_reason": "MATCH",
+          "entity": "主体甲",
+          "period": "CURRENT"
+        }
+      ],
+      "selected_count": 1,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [
+        {
+          "file_id": "ba22dff5d64703ba313c9590244d2efe",
+          "delivered_path": "R6/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+          "source_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+          "copy_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+          "hash_match": true
+        }
+      ],
+      "delivered_count": 1,
+      "candidate_window": {
+        "cap": 6,
+        "found": 1,
+        "checked": 1,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "ac3a3271e7274b1381e8c9865b7e0097",
+      "item_id": "ac3a3271e7274b1381e8c9865b7e0097",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -877,17 +688,17 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "e27fe62f0bd741cf91561acbaf9af823",
-      "item_id": "e27fe62f0bd741cf91561acbaf9af823",
+      "obligation_id": "de8b8381e7f34e7e80dffe01209b4a4f",
+      "item_id": "de8b8381e7f34e7e80dffe01209b4a4f",
       "text": "",
       "interpretation": {
-        "doc_type": "license",
+        "doc_type": "audit_report",
         "doc_type_label": "",
         "doc_type_source": "RULE",
         "doc_type_unresolved": false,
         "entity": "主体甲",
         "entity_basis": "AUTHORITY",
-        "period": "CURRENT",
+        "period": "2024",
         "required_parts": [],
         "text": "",
         "split_method": "REQUIREMENT_SERVICE",
@@ -895,31 +706,97 @@
       },
       "candidates": [
         {
-          "file_id": "ba22dff5d64703ba313c9590244d2efe",
-          "sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
           "entity": "主体甲",
-          "period": "CURRENT",
-          "doc_type": "license",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
+          "entity": "主体甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
+          "entity": "主体甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "附注",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "f3d9d691bd63041fecd4c757bf4f9cdd",
+          "sha256": "b1efd478dbe1b37242af44c0c70780128016db2099f28867f451c0a3249fabab",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_草稿.txt",
+          "entity": "主体甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "DRAFT",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "20823ed79b38579435ffd54b49da5b83",
+          "sha256": "1f8c032515aa14696f041ca85d94081a47e14547e255bfce42ac69caa017a8f1",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2023_正文.txt",
+          "entity": "主体甲",
+          "period": "2023",
+          "doc_type": "audit_report",
           "part": "正文",
           "version_status": "EFFECTIVE",
           "locator": "L2-L6",
           "period_status": ""
         }
       ],
-      "candidate_count": 1,
+      "candidate_count": 5,
       "selected": [
         {
-          "file_id": "ba22dff5d64703ba313c9590244d2efe",
-          "sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
-          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
           "locator": "L2-L6",
           "match_reason": "MATCH",
           "entity": "主体甲",
-          "period": "CURRENT"
+          "period": "2024"
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
+          "locator": "L2-L6",
+          "match_reason": "MATCH",
+          "entity": "主体甲",
+          "period": "2024"
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
+          "locator": "L2-L6",
+          "match_reason": "MATCH",
+          "entity": "主体甲",
+          "period": "2024"
         }
       ],
-      "selected_count": 1,
+      "selected_count": 3,
       "selection_source": "RULE_HINT",
       "verdict": "MATCH",
       "confidence": null,
@@ -928,20 +805,143 @@
       "warnings": [],
       "rejected": false,
       "rejected_reason": "",
-      "delivered": [
-        {
-          "file_id": "ba22dff5d64703ba313c9590244d2efe",
-          "delivered_path": "R6/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
-          "source_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
-          "copy_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
-          "hash_match": true
-        }
-      ],
-      "delivered_count": 1,
+      "delivered": [],
+      "delivered_count": 0,
       "candidate_window": {
         "cap": 6,
-        "found": 1,
-        "checked": 1,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "e0aed07a24104a9bacf184297289d8fa",
+      "item_id": "e0aed07a24104a9bacf184297289d8fa",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+          "entity": "主体甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
+          "entity": "主体甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
+          "entity": "主体甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "附注",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "f3d9d691bd63041fecd4c757bf4f9cdd",
+          "sha256": "b1efd478dbe1b37242af44c0c70780128016db2099f28867f451c0a3249fabab",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_草稿.txt",
+          "entity": "主体甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "DRAFT",
+          "locator": "L2-L6",
+          "period_status": ""
+        },
+        {
+          "file_id": "20823ed79b38579435ffd54b49da5b83",
+          "sha256": "1f8c032515aa14696f041ca85d94081a47e14547e255bfce42ac69caa017a8f1",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2023_正文.txt",
+          "entity": "主体甲",
+          "period": "2023",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L2-L6",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 5,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+          "locator": "L2-L6",
+          "match_reason": "MATCH",
+          "entity": "主体甲",
+          "period": "2024"
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "fa4680b743e40a00e7b635ed135de82162b9853b5144de66492bcb4e2a31df68",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文补充.txt",
+          "locator": "L2-L6",
+          "match_reason": "MATCH",
+          "entity": "主体甲",
+          "period": "2024"
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
+          "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
+          "locator": "L2-L6",
+          "match_reason": "MATCH",
+          "entity": "主体甲",
+          "period": "2024"
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
         "unchecked": 0,
         "truncated": false,
         "stop_reason": ""

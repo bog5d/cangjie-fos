@@ -306,6 +306,11 @@ class TestSafetyGate:
         assert gate["status"] == "FAIL", gate
         assert gate["by_kind"].get("WRONG_ENTITY") == 1, gate
         assert card["scores"]["total_score"] <= 59, card["scores"]
+        # ★ 独立 Reviewer 第三轮残余①：**既选中又交付**的件，单列那条必须如实标
+        #   delivered=True（否则成绩单会出现「闸内：交付材料…」与「单列：选中但未交付…」互相矛盾）
+        _same = [m for m in gate.get("selection_mismatch_detail", [])
+                 if m.get("file_id") == "F1"]
+        assert _same and _same[0].get("delivered") is True, gate.get("selection_mismatch_detail")
 
     def test_wrong_entity_selected_but_not_delivered_does_not_cap(self):
         """★ 「选中但**未交付**」的错主体 ⇒ **单列、不封顶**（不是交付事故）。"""

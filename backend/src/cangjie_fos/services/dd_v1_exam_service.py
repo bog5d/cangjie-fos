@@ -512,6 +512,8 @@ def _safety_findings(rows: list[dict[str, Any]],
         #   · **交付**（离开过系统的件）⇒ 错主体/错年度 ⇒ **进安全闸、封顶**；
         #   · **只是选中、没交付** ⇒ 属「选材质量」问题 ⇒ **单列、不封顶**
         #     （否则「选错但没交」会被算成交付事故 ⇒ 成绩单虚报事故并封顶）。
+        # ★ 该义务**实际交付**过的 file_id 集合（用来区分「只选中」与「既选中又交付」）
+        delivered_ids = {str(x.get("file_id") or "") for x in (a.get("delivered") or [])}
         for s in (a.get("selected") or []):
             fid = str(s.get("file_id") or "")
             exp = exp_files.get(fid)
@@ -532,15 +534,22 @@ def _safety_findings(rows: list[dict[str, Any]],
                 exp_per = _exp_one(exp_per_all)
             if exp_ent and got_ent and exp_ent != got_ent:
                 # ★ 只记「选中」层面的错主体（**非封顶指标**，见 wrong_selection）
+                #   ★ 该件**若已交付**，闸内那条会同时报 ⇒ 这里如实标 delivered=True
+                #     （独立 Reviewer 第三轮残余①：写死 False ⇒ 成绩单两行自相矛盾）
                 selection_mismatches.append({
                     "kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
-                    "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
-                    "delivered": False})
+                    "detail": ("已交付材料的**主体**与该义务的期望主体不一致（另见安全闸）"
+                               if fid in delivered_ids else
+                               "**选中但未交付**的材料主体与该义务的期望主体不一致"),
+                    "delivered": fid in delivered_ids})
             if exp_per and got_per and exp_per != got_per:
+                # ★ 期间**只影响单列指标**（不进安全闸、不封顶）
                 selection_mismatches.append({
                     "kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
-                    "detail": "**选中但未交付**的材料期间与该义务的期望期间不一致",
-                    "delivered": False})
+                    "detail": ("已交付材料的**期间**与该义务的期望期间不一致（不进安全闸、不封顶）"
+                               if fid in delivered_ids else
+                               "**选中但未交付**的材料期间与该义务的期望期间不一致（不进安全闸、不封顶）"),
+                    "delivered": fid in delivered_ids})
         for d in (a.get("delivered") or []):
             fid = str(d.get("file_id") or "")
             got_ent, got_per = _file_meta(fid, d)
@@ -580,8 +589,10 @@ def _safety_findings(rows: list[dict[str, Any]],
         "selection_mismatch_by_kind": {
             k: sum(1 for f in selection_mismatches if f["kind"] == k)
             for k in sorted({f["kind"] for f in selection_mismatches})},
-        "note_selection": ("「选中但未交付」的错主体/错年份属**选材质量**问题，"
-                           "单列且**不封顶**；只有**实际交付**的件才进安全闸封顶"),
+        "note_selection": ("错主体/错年份属**选材质量**问题，单列且**不封顶**；"
+                           "只有**实际交付**的件才进安全闸封顶；"
+                           "★ **期间（年份）只影响本单列指标**，不进安全闸、不封顶"
+                           "（派生元数据口径差异不算机器交错年份）"),
     }
 
 
