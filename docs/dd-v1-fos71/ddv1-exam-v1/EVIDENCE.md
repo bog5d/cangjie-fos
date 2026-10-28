@@ -231,6 +231,12 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 **本轮未发现新缺陷、无新增阻塞项**」（报告：`/workspace/verify/REVIEW-FAST4-PR86.md`）。
 ★ Reviewer 给的期望读数 **1973 / 1972 passed / 1 failed / 0 ERROR** 与我用 `--junitxml` 取到的确数**逐项一致**。
 
+★ **Reviewer 收口后核验（PASS 维持，锚点 `896139a`）**：本目录三个 blob 逐个核过
+（`最终报告.md`＝`22d27f88410a`、`SHA256SUMS`＝`1ad9bf49d38b`（**15 条**，`sha256sum -c` ⇒ **15 OK / 0 FAILED / 0 missing**，覆盖含 `证据/` 子目录）、
+`版本锚点.md`＝`b3b757a9da2a`）；`ddv1-exam-v1/` 下 16 个条目 blob sha 逐个相同；`tools/dd_team_channel.py` mode 仍 **100755** ✔。
+★ **唯一未核**：**交接包 zip 本体不在共享工作区** ⇒ Reviewer 记 **NOT_MEASURED（Reviewer 未核）**；
+我自跑：解包后逐件复算 **19/19 通过、0 失败**。⇒ 故 G10 的依据在最终报告里**拆成两句**（仓内 ✔／包体 Reviewer 未核）。
+
 ★ **`check_gccseg.py --require-v3-8` 的可复跑出处**（Reviewer 第三轮问「该脚本不在仓内也不在工作区」）：
 该脚本属**上游规范仓** `bog5d/grill-to-spec`，路径 `scripts/check_gccseg.py`，
 blob `af715407fd9c6cd7a5f63296f4bc9127cdbfbe86`，该仓 main tip `d14327c6de89e1afa2fca081f7bf984577a7e5ca`
