@@ -67,7 +67,11 @@ python docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py
 | 失败 | 7 条（`openai` 3.40.0 造成） | **1 条**（`test_doctor_script.py`） | ★ 依赖对齐后**只剩环境那 1 条** |
 | ERROR | 0 | **0** | ★ ERROR≠FAIL：缺依赖才算 ERROR |
 
-★ **依赖对齐后的终局读数**：本分支全量回归 = **1969 条：1968 passed / 1 failed / 0 ERROR**，
+★ **依赖对齐后的终局读数**：本分支全量回归 = **1972 条：1971 passed / 1 failed / 0 ERROR**
+（Reviewer 处置后复跑；处置前是 1969/1968/1/0），
+唯一那条是 `test_doctor_script.py::test_doctor_script_exits_zero`（沙箱缺 `.env` / `node_modules` / 后端依赖
+⇒ doctor 报 3 个问题 ⇒ 退出码 1；★ **CI 本身就显式 `--ignore=tests/test_doctor_script.py`**
+（见 `.github/workflows/ci.yml`）⇒ 沙箱这 1 条**不计入**代码质量。
 唯一那条是 `test_doctor_script.py::test_doctor_script_exits_zero`（沙箱缺 `.env` / `node_modules` / 后端依赖
 ⇒ doctor 报 3 个问题 ⇒ 退出码 1）——★ **CI 本身就显式 `--ignore=tests/test_doctor_script.py`**
 （见 `.github/workflows/ci.yml`）⇒ 沙箱这 1 条**不计入**代码质量。
