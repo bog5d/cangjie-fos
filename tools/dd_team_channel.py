@@ -207,14 +207,30 @@ def cmd_run(a) -> int:
             _c = json.loads(Path(_contract_path).read_text(encoding="utf-8"))
             _contract_scope_applied = esc.apply_contract_scope(
                 lib, _c.get("entity_scope") or {})
-            if _contract_scope_applied.get("applied"):
-                print(f"  ✓ 已按考场契约声明的主体范围（{_contract_scope_applied.get('scope_keyword')}）"
-                      f"落到 {_contract_scope_applied.get('updated')} 条未指名主体的义务"
-                      f"（{_contract_scope_applied.get('skipped_named')} 条已指名的未动）")
+            _ap = _contract_scope_applied
+            if _ap.get("replaced"):
+                print(f"  ✓ 已按考场契约声明的主体范围（{_ap.get('scope_keyword')}）"
+                      f"落到 {_ap.get('updated')} 条未指名主体的义务，"
+                      f"并**替换**了 {_ap.get('replaced')} 条上一场契约留下的范围"
+                      f"（{', '.join(_ap.get('stale_scopes') or [])[:120]}）")
+            elif _ap.get("updated"):
+                print(f"  ✓ 已按考场契约声明的主体范围（{_ap.get('scope_keyword')}）"
+                      f"落到 {_ap.get('updated')} 条未指名主体的义务"
+                      f"（{_ap.get('skipped_named')} 条已指名的未动）")
             else:
-                print(f"  · 考场契约未声明主体范围（或声明的主体在权威名单里不存在）"
-                      f"⇒ 未指名主体的义务仍判「无法判定」（不擅自放行）")
-                print(f"    {_contract_scope_applied.get('note')}")
+                # ★ 「落到 0 条」**不得**打 ✓（独立 Reviewer 增量复核）：
+                #   库里的义务可能已经带着**上一场**契约的范围 ⇒ 看着像生效、实际没生效。
+                _stale = _ap.get("stale_scopes") or []
+                if _stale:
+                    print(f"  ⚠️ **本次声明未生效**：库里 {len(_stale)} 条义务仍带着"
+                          f"上一场契约的范围（{', '.join(_stale)[:120]}）"
+                          f"，与本次声明（{_ap.get('scope_keyword')}）不同")
+                    print(f"    ⇒ 那些义务**不会**用本次声明的主体范围判定；"
+                          f"如需换范围，请换一个库（或清掉那 {len(_stale)} 条的旧声明）")
+                else:
+                    print(f"  · 考场契约未声明主体范围（或声明的主体在权威名单里不存在）"
+                          f"⇒ 未指名主体的义务仍判「无法判定」（不擅自放行）")
+                print(f"    {_ap.get('note')}")
         except Exception as exc:  # noqa: BLE001
             print(f"  ⚠️ 考场契约里的主体范围没生效：{type(exc).__name__}: {exc}")
 
@@ -585,6 +601,7 @@ def _bridge_json(bridge, *, config_anchor: dict | None = None) -> dict:
                     {"file_id": e["file_id"], "sha256": e["sha256"],
                      "locator": e["locator"], "relative_path": e["relative_path"],
                      "entity": e["entity"], "period": e.get("period") or "",
+                     "doc_type": e.get("doc_type") or "",
                      "subject_verified": e["subject_verified"],
                      "version_status": e["version_status"], "part": e["part"]}
                     for e in o["evidence"]

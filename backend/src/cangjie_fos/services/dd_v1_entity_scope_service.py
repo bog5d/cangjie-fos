@@ -96,9 +96,28 @@ def apply_contract_scope(library_id: str,
         member_ids = [str(x) for x in (scope or {}).get("entity_ids") or []]
 
     updated = 0
+    replaced = 0
     skipped = 0
+    stale: list[str] = []
     for r in rows:
         named = str(r.get("entity_scope") or "").strip()
+        basis = str(r.get("entity_basis") or "").strip()
+        if named and basis == "CONTRACT_SCOPE":
+            # ★ **上一场契约粘在库里**（独立 Reviewer 增量复核的重要发现）：
+            #   契约是**按场次**的 ⇒ 换一场声明不同范围时，旧的 CONTRACT_SCOPE 行
+            #   必须**可替换**，否则会静默沿用上一场的主体范围。
+            if named == kw:
+                skipped += 1
+                continue
+            replaced += 1
+            stale.append(named)
+            if dry_run:
+                continue
+            conn.execute(
+                "UPDATE dd_v1_obligations SET entity_scope=?, entity_basis=? "
+                "WHERE library_id=? AND obligation_id=?",
+                (kw, "CONTRACT_SCOPE", library_id, r["obligation_id"]))
+            continue
         if named:
             skipped += 1
             continue
@@ -112,14 +131,18 @@ def apply_contract_scope(library_id: str,
         updated += 1
     if not dry_run:
         conn.commit()
+    touched = updated + replaced
     return {
-        "applied": True,
+        "applied": touched > 0,
         "scope_keyword": kw,
         "updated": updated,
+        "replaced": replaced,
+        "stale_scopes": stale[:20],
         "skipped_named": skipped,
         "members": member_ids,
-        "note": (f"已把契约声明的主体范围（{kw}）应用到 {updated} 条未指名主体的义务；"
-                 f"{skipped} 条已指名主体的义务未动"),
+        "note": (f"已把契约声明的主体范围（{kw}）应用到 {updated} 条未指名主体的义务"
+                 + (f"，并替换了 {replaced} 条**上一场**契约留下的范围" if replaced else "")
+                 + f"；{skipped} 条已指名主体的义务未动"),
     }
 
 

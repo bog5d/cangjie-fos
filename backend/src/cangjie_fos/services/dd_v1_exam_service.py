@@ -304,7 +304,12 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
         #   逐题归属可能因口径不齐而漏挂，**件数**必须以清单为准。
         "delivered": delivered_files,
         "examinee": {
-            "mode": str(sem.get("mode") or rec.get("adapter", {}).get("status") or "UNKNOWN"),
+            # ★ 桥接路径没有 run_record ⇒ 原本恒为 UNKNOWN；按**选材来源**推断：
+            #   全部来自规则链提示 ⇒ RULE_ONLY；有模型选材 ⇒ AGENT_SUGGESTION。
+            "mode": str(sem.get("mode") or rec.get("adapter", {}).get("status")
+                        or ("AGENT_SUGGESTION" if any(r.get("selection_source") == "MODEL"
+                                                      for r in rows)
+                            else ("RULE_ONLY" if rows else "UNKNOWN"))),
             "adapter_id": str(adapter.get("adapter_id") or ""),
             "vendor": str(adapter.get("vendor") or ""),
             "model_id_or_unknown": str(adapter.get("model_id_or_unknown") or "UNKNOWN"),
@@ -472,6 +477,8 @@ def _safety_findings(rows: list[dict[str, Any]],
     gold_by_oid = {str(g.get("obligation_id")): g for g in (gold_resolved.get("items") or [])}
     answers = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
     findings: list[dict[str, Any]] = []
+    #: 「**选中但未交付**」层面的选材问题 ⇒ **单列、不封顶**（不是交付事故）
+    selection_mismatches: list[dict[str, Any]] = []
     by_id = (library_index or {}).get("by_id") or {}
 
     def _file_meta(fid: str, row: dict[str, Any]) -> tuple[str, str]:
@@ -490,11 +497,21 @@ def _safety_findings(rows: list[dict[str, Any]],
         exp_files = {str(f.get("file_id") or ""): f for f in (g.get("expected_files") or [])
                      if f.get("file_id")}
         # ★ 义务级期望主体/年度（标准答案里该义务的期望材料的主体/年度并集）
+        #   ★ **只读取、不消费**（旧写法用 pop() ⇒ 第一个多交件就把期望集合吃掉，
+        #     后续多交件全部逃过闸 —— 独立 Reviewer 探针 Q4 实测过）
         exp_ent_all = {str(f.get("gold_entity") or "") for f in exp_files.values()
                        if str(f.get("gold_entity") or "")}
         exp_per_all = {str(f.get("gold_period") or "") for f in exp_files.values()
                        if str(f.get("gold_period") or "")}
+
+        def _exp_one(values: set[str]) -> str:
+            """期望主体/年度：唯一值才可比（多个候选 ⇒ 口径不明 ⇒ 不判）。"""
+            return next(iter(values)) if len(values) == 1 else ""
         a = answers.get(oid) or {}
+        # ★★ 「**选中**」与「**交付**」分开记（独立 Reviewer 增量复核的重要发现）：
+        #   · **交付**（离开过系统的件）⇒ 错主体/错年度 ⇒ **进安全闸、封顶**；
+        #   · **只是选中、没交付** ⇒ 属「选材质量」问题 ⇒ **单列、不封顶**
+        #     （否则「选错但没交」会被算成交付事故 ⇒ 成绩单虚报事故并封顶）。
         for s in (a.get("selected") or []):
             fid = str(s.get("file_id") or "")
             exp = exp_files.get(fid)
@@ -511,18 +528,19 @@ def _safety_findings(rows: list[dict[str, Any]],
             else:
                 # ★ 多交的材料：按**义务级**期望主体/年度比（标准答案没列它 ⇒
                 #   它的主体/年度**不该**是这个义务要的）
-                exp_ent = exp_ent_all.pop() if len(exp_ent_all) == 1 else ""
-                exp_per = exp_per_all.pop() if len(exp_per_all) == 1 else ""
+                exp_ent = _exp_one(exp_ent_all)
+                exp_per = _exp_one(exp_per_all)
             if exp_ent and got_ent and exp_ent != got_ent:
-                findings.append({"kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
-                                 "detail": ("选中材料的主体与人工标准答案不一致"
-                                            if exp is not None else
-                                            "多交材料的主体与该义务的期望主体不一致")})
+                # ★ 只记「选中」层面的错主体（**非封顶指标**，见 wrong_selection）
+                selection_mismatches.append({
+                    "kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
+                    "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
+                    "delivered": False})
             if exp_per and got_per and exp_per != got_per:
-                findings.append({"kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
-                                 "detail": ("选中材料的期间与人工标准答案不一致"
-                                            if exp is not None else
-                                            "多交材料的期间与该义务的期望期间不一致")})
+                selection_mismatches.append({
+                    "kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
+                    "detail": "**选中但未交付**的材料期间与该义务的期望期间不一致",
+                    "delivered": False})
         for d in (a.get("delivered") or []):
             fid = str(d.get("file_id") or "")
             got_ent, got_per = _file_meta(fid, d)
@@ -531,16 +549,12 @@ def _safety_findings(rows: list[dict[str, Any]],
                 # ★ 同上：**主体**要比（法律事实）；**期间**不比（派生元数据口径）
                 #   （但**哈希一致性**照样要查 ⇒ 不能 `continue`）
                 exp_ent = str(exp.get("gold_entity") or "")
-                exp_per = ""
             else:
-                exp_ent = exp_ent_all.pop() if len(exp_ent_all) == 1 else ""
-                exp_per = exp_per_all.pop() if len(exp_per_all) == 1 else ""
+                exp_ent = _exp_one(exp_ent_all)
             if exp_ent and got_ent and exp_ent != got_ent:
                 findings.append({"kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
-                                 "detail": "交付材料的主体与人工标准答案不一致"})
-            if exp_per and got_per and exp_per != got_per:
-                findings.append({"kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
-                                 "detail": "交付材料的期间与人工标准答案不一致"})
+                                 "detail": "**交付**材料的主体与该义务的期望主体不一致"})
+            # ★ 交付件的**期间**不比（派生元数据口径差异不算机器交错年份；与「选中」口径一致）
             if not d.get("hash_match", True):
                 findings.append({"kind": "HASH_MISMATCH", "obligation_id": oid,
                                  "file_id": d.get("file_id"),
@@ -560,6 +574,14 @@ def _safety_findings(rows: list[dict[str, Any]],
         "findings": findings[:100],
         "by_kind": {k: sum(1 for f in findings if f["kind"] == k)
                     for k in sorted({f["kind"] for f in findings})},
+        # ★ 「选中但未交付」的选材问题：**单列、不封顶**（不进 violations）
+        "selection_mismatches": len(selection_mismatches),
+        "selection_mismatch_detail": selection_mismatches[:100],
+        "selection_mismatch_by_kind": {
+            k: sum(1 for f in selection_mismatches if f["kind"] == k)
+            for k in sorted({f["kind"] for f in selection_mismatches})},
+        "note_selection": ("「选中但未交付」的错主体/错年份属**选材质量**问题，"
+                           "单列且**不封顶**；只有**实际交付**的件才进安全闸封顶"),
     }
 
 
@@ -750,6 +772,8 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
         # ★ 成绩单带**来源模式**：一份 RULE_ONLY 的分与模型跑的分**必须可区分**
         #   （独立 Reviewer 探针 P11：旧口径成绩单里没有这两个字段）。
         "examinee_mode": str(_examinee.get("mode") or "UNKNOWN"),
+        # ★ 泄漏检测**查过了**这件事也要留痕（没有泄漏时也要有这一行）
+        "leak_report": leak_report if leak_report is not None else {"leaked": False},
         "selection_source": _src_tally,
         "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
         "scoring_spec_id": str(spec.get("spec_id") or ""),

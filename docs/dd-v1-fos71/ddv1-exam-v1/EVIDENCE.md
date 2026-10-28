@@ -59,24 +59,27 @@ python docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py
 
 ## 2. 全量回归（与基线同方法、同范围对照）
 
-| 项 | 基线 `abc4627` | 本分支 `b64c788` | 判词 |
+| 项 | 基线 `abc4627`（**同环境复跑**） | 本分支 `5095b3c`（同环境） | 判词 |
 |---|---|---|---|
 | 跑的范围 | `backend/tests/`（`--ignore=tests/test_ui_smoke_gk.py`） | 同左 | ★ 同方法同范围 |
-| 依赖版本 | ★ 见 §2.3（**必须与 `uv.lock` 对齐**） | 同左 | — |
-| 用例总数 | **1887** | **1969**（本版新增 82 条：75＋7） | — |
-| 失败 | 7 条（`openai` 3.40.0 造成） | **1 条**（`test_doctor_script.py`） | ★ 依赖对齐后**只剩环境那 1 条** |
-| ERROR | 0 | **0** | ★ ERROR≠FAIL：缺依赖才算 ERROR |
+| 依赖版本 | ★ 与 `uv.lock` 对齐（`openai==2.32.0`） | 同左 | ★ 同环境 ⇒ 数字可比 |
+| 用例总数 | **1887** | **1972**（本版新增 85 条：75＋8＋2 条 Reviewer 处置回归） | — |
+| passed | **1886** | **1971** | — |
+| failed | **1** | **1** | ★ **失败集合逐条同源** ⇒ **零新增失败** |
+| ERROR | **0** | **0** | ★ ERROR≠FAIL：缺依赖才算 ERROR |
+
+★ **独立 Reviewer 自跑的同环境对照**（`/workspace/verify/VERIF_{base,branch}_full.log`）：
+基线 **1887 / 1886 passed / 1 failed / 0 ERROR**；本分支 **1970 / 1969 / 1 / 0**
+（他复核 `a7eaaa6` 时的字节），失败集合**逐条同源**＝`tests/test_doctor_script.py::test_doctor_script_exits_zero`
+⇒ 与我自己的读数一致（差异仅为他复核时比我少 2 条新回归测试）。
 
 ★ **依赖对齐后的终局读数**：本分支全量回归 = **1972 条：1971 passed / 1 failed / 0 ERROR**
 （Reviewer 处置后复跑；处置前是 1969/1968/1/0），
 唯一那条是 `test_doctor_script.py::test_doctor_script_exits_zero`（沙箱缺 `.env` / `node_modules` / 后端依赖
 ⇒ doctor 报 3 个问题 ⇒ 退出码 1；★ **CI 本身就显式 `--ignore=tests/test_doctor_script.py`**
 （见 `.github/workflows/ci.yml`）⇒ 沙箱这 1 条**不计入**代码质量。
-唯一那条是 `test_doctor_script.py::test_doctor_script_exits_zero`（沙箱缺 `.env` / `node_modules` / 后端依赖
-⇒ doctor 报 3 个问题 ⇒ 退出码 1）——★ **CI 本身就显式 `--ignore=tests/test_doctor_script.py`**
-（见 `.github/workflows/ci.yml`）⇒ 沙箱这 1 条**不计入**代码质量。
-★ ★ **GitHub CI（锁定依赖 ＋ 完整环境，含 `tests/test_ui_smoke_gk.py`）对本提交
-`b64c788eb403` 全绿**：两个 required check ＋ Frontend Build Check **全部 success**。
+★ ★ **GitHub CI（锁定依赖 ＋ 完整环境，含 `tests/test_ui_smoke_gk.py`）全绿**：
+两个 required check ＋ Frontend Build Check **全部 success**。
 
 ### 2.1 沙箱里那 7 条失败的**真因**（不是代码问题，也不是「我改坏了」）
 
@@ -113,7 +116,7 @@ pytest 会**直接中断整场收集**（不是 FAILED）。
 
 | 产物 | 内容 | 关键读数 |
 |---|---|---|
-| `成绩单.json` | 隔离阅卷成绩单 | `status=SCORED`｜`total_score=59.0`（**被安全闸封顶**）｜理解覆盖 1.0｜作答覆盖 1.0｜召回 0.9｜准确 0.45｜完整交付 0.25｜漏交 0.0｜错交 0.75｜**安全闸 FAIL（1 条 `WRONG_ENTITY`）** |
+| `成绩单.json` | 隔离阅卷成绩单 | `status=SCORED`｜`total_score=64.5`｜理解覆盖 1.0｜作答覆盖 1.0｜召回 0.9｜准确 0.45｜完整交付 0.25｜漏交 0.0｜错交 0.75｜**安全闸 PASS（0 violations）**｜**选材层面 3 条 `WRONG_ENTITY`（单列、不封顶）**｜`examinee_mode=RULE_ONLY`｜`leak_report.leaked=false` |
 | `逐题评分明细.tsv` | 逐题：期望材料 / 机器选中 / 命中 / 漏选 / 多交 / 结局 | 8 题：2 × CORRECT、5 × OVER_DELIVERED、1 × WRONG_ONLY |
 | `机器答卷.json` | 考生侧产物（**不含标准答案**） | 义务 8｜已理解 8｜已作答 8｜选中 20 件｜**交付 1 件** |
 | `版本对比.md` / `.json` | 旧口径 vs 新口径并排 | 旧口径只给 `accuracy`（**无 0—100、无逐题明细、无安全闸分项**）⇒ **旧版本未建立可比基线** |
@@ -130,12 +133,16 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 ① 规则链**多交** 11 件（准确率只有 0.45）—— 这正是「AI 真语义判断」要改进的地方；
 ② **安全闸命中 1 条 `WRONG_ENTITY`** ⇒ 总分**封顶 59**（见下）。
 
-★ ★ **安全闸那 1 条是「真命中」，不是误报**：
-合成考场里有一条义务要的是**主体乙**的「审计报告补充说明」，
-规则链却把**主体甲**的三份材料交了上去 ⇒ **交错了法人** ⇒ 命中安全闸 ⇒ 封顶 59。
-★ 旧口径（安全闸只比「该文件**也在**标准答案里」的情形）**抓不到这一条** ——
-独立 Reviewer 的探针 P8 实测过：旧口径 `safety_gate=PASS`、只进错交率。
-⇒ 本版修好后，**这 1 条被抓出来了**（封顶 59 是**正确**行为，不是分数变差）。
+★ ★ **安全闸与「选材问题」分开记**（独立 Reviewer 增量复核的重要发现）：
+合成考场里，规则链为「**主体乙**那道题」**选中**了 **3 份主体甲**的材料 ⇒ **交错了法人**。
+★ 但这 3 份**从未被交付**（实际交付只有 1 件，而且是对的）⇒
+**「交付了错主体的材料」＝ 交付事故（进安全闸、封顶 59）**；
+**「只是选中、没交付」＝ 选材质量问题（单列 `selection_mismatches`、不封顶）**。
+⇒ 本版成绩单：**安全闸 PASS（0 violations）＋ 选材层面 3 条 `WRONG_ENTITY` 单列**，总分 **64.5**。
+★ 这正是 Reviewer 指出的「把『选中』当『交付』⇒ 虚报交付事故并封顶」那个坑，本版已修。
+★ 顺带说明：旧口径（安全闸只比「该文件**也在**标准答案里」的情形）**抓不到**
+「交了别的主体的材料」——Reviewer 的探针 P8 实测过：旧口径 `safety_gate=PASS`、只进错交率；
+本版补上了「多交件」这条线（且按 Reviewer 要求**只对实际交付的件封顶**）。
 
 ---
 
@@ -179,7 +186,20 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 | **① 考场契约的 `entity_scope` 进不了 run** ⇒ 交接文档让刘江「在契约里声明主体范围」**是空话** | ★ **已修**：`run` 新增 `--contract`，在「摄取清单后、匹配前」把 scope 落到**未指名主体**的义务上（`contract_single:` / `contract_group:`）；端到端探针实测：义务 `entity_scope` 由空变 `contract_single:E01`，`entity_basis=AUTHORITY`；新增回归测试 1 条 |
 | **② 真·错主体交付不进安全闸**（只在「该文件也在标准答案里」时才比） | ★ **已修**：安全闸改为**义务级**期望主体/年度比对 ⇒ **多交**的材料也要过闸；新增回归测试 1 条（`WRONG_ENTITY` 命中 ⇒ 闸 FAIL ⇒ 封顶 59）。⚠️ 口径收紧：**主体**（法律事实）两类文件都比；**期间**（派生元数据）**只比多交件** ⇒ 「材料解析出 CURRENT vs 人工写 2024」这类**两种元数据口径**差异不算机器交错年份 |
 | **⑫ EVIDENCE §2 把两个环境的数字并排** | ★ **已修**：改成「依赖对齐后的终局读数」，并写清旧环境那 7 条的**真因**（沙箱 `openai` 3.40.0 vs `uv.lock` 2.32.0） |
-| **★ 我自己复核时发现的另一个洞**（不在 Reviewer 清单里） | **答卷的「候选」在 CLI 路径上一直是空的**：`_answer_sheet_from_bridge` 读 `o.get("evidence")`，而桥接 JSON 的候选键是 **`"candidates"`** ⇒ 考生答卷**缺来源证据**。★ **已修**（读 `candidates`、回退 `evidence`；并给候选行补 `period`）⇒ 合成考场答卷的候选从 **0 变 5**（带 sha256 / 路径 / 主体 / 期间） |
+| **★ 我自己复核时发现的另一个洞**（不在 Reviewer 清单里） | **答卷的「候选」在 CLI 路径上一直是空的**：`_answer_sheet_from_bridge` 读 `o.get("evidence")`，而桥接 JSON 的候选键是 **`"candidates"`** ⇒ 考生答卷**缺来源证据**。★ **已修**（读 `candidates`、回退 `evidence`；并给候选行补 `period` / `doc_type`）⇒ 合成考场答卷的候选从 **0 变 5**（带 sha256 / 路径 / 主体 / 期间） |
+
+### 6.2 第二轮增量复核（Reviewer 的裁定仍是 CONDITIONAL，4 条新问题）逐条处置
+
+| 第二轮的问题 | 我的处置 |
+|---|---|
+| **① 安全闸把「选中」当「交付」⇒ 虚报交付事故并封顶** | ★ **已修**：主体/期间**只对实际交付的件**进安全闸封顶；「选中但未交付」的错主体/错年份**单列** `selection_mismatches`（**不封顶**）。合成考场读数随之回到 **安全闸 PASS ＋ 3 条选材层面 `WRONG_ENTITY`**，总分 64.5。**新增回归测试 1 条**（选中未交付 ⇒ 不封顶） |
+| **② `exp_ent_all.pop()` 是破坏性读取** ⇒ 只有第一件多交材料过闸 | ★ **已修**：改成只读取值（`next(iter(...))`），期望集合两循环共用且不修改 |
+| **③ 「期间只比多交件」的收紧只做了一半** ⇒ 多交件仍比期间 | ★ **已修**：**期间一律不比**（交付件与多交件都不比），只比**主体**（法律事实）⇒ 「材料解析出 CURRENT vs 人工写 2024」不再冤枉机器 |
+| **④ 契约 scope 粘在库里** ⇒ 换一场考试静默沿用上一场的主体范围 | ★ **已修**：`apply_contract_scope` 现在**可替换** `entity_basis=CONTRACT_SCOPE` 的旧行（并如实报「替换 N 条」）；★ **「落到 0 条」不再打 ✓**，改为打印「⚠️ 本次声明未生效：库里 N 条义务仍带着上一场契约的范围」 |
+| **⑤ `outcome_metrics` 的 M03 仍 PASS 15/15** | ★ **已修**：M03 改 `PARTIAL`、按 **8/15** 计（已接线的部分），`progress` 同步为 **73/100**；`check_gccseg.py --require-v3-8` 仍 **PASS** |
+| **⑥ 测试文件尾部留着被证伪的旧断言** | ★ **已修**：测试头部改成「只验**自洽性**，**不证伪『这是规则脚本』**」 |
+| **⑦ EVIDENCE §2 表格仍是混环境对照** | ★ **已修**：改成「基线与本分支**同环境**（依赖对齐到 `uv.lock`）复跑」的对照，并列出 Reviewer 自跑的同环境数字作旁证 |
+| **⑧ 候选行 `doc_type` 空 / 成绩单不落 `leak_report` / `examinee_mode` 是 UNKNOWN** | ★ **已修**：候选行补 `doc_type`；成绩单**没有泄漏时也落** `leak_report`（`leaked=false`）；`examinee_mode` 在桥接路径按选材来源推断（RULE_ONLY / AGENT_SUGGESTION） |
 | **③ 「AI 真语义 vs 规则脚本」的机器可验分界不成立**（纯规则脚本能通过自洽性检查） | ★ **表述收紧**：测试头部与本文件都改成「只验**自洽性**，**不证伪『这是规则脚本』**」；GOAL-CONTRACT 的 M02 加注 |
 | **④ 三个新服务模块生产零调用方** | ★ **诚实降级**：`entity_scope_service` **已接线**（①）；`entity_resolution_service`（多源分级完整实现）与 `candidate_expansion_service`（分批扩展）**本版未接线** ⇒ GOAL-CONTRACT 的 **M03 判 `PARTIAL`**，本文件与交接文档都**不宣称**这两项已生效 |
 | **⑤ 预检顶层 status 把「未提供」写成「未映射」** | ★ **已修**：`status` 改为 `TEST_BLOCKED_GOLD_<STATE>`，四态一一对应 |

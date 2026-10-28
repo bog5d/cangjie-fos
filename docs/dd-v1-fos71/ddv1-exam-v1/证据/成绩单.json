@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "EX-A4A-SYNTHETIC",
   "status": "SCORED",
-  "graded_at": "2026-10-29T02:25:13+08:00",
+  "graded_at": "2026-10-29T02:39:34+08:00",
   "scores": {
     "question_understanding_coverage": 1.0,
     "question_answer_coverage": 1.0,
@@ -11,7 +11,7 @@
     "complete_delivery_ratio": 0.25,
     "miss_rate": 0.0,
     "wrong_rate": 0.75,
-    "total_score": 59.0
+    "total_score": 64.5
   },
   "counts": {
     "obligations": 8,
@@ -29,8 +29,8 @@
   },
   "rows": [
     {
-      "obligation_id": "751c45f06fa043b2bc3710e7f52e4d33",
-      "item_no": "751c45f06fa043b2bc3710e7f52e4d33",
+      "obligation_id": "a5e477f29b184409abb178ff4e289763",
+      "item_no": "a5e477f29b184409abb178ff4e289763",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2",
@@ -59,8 +59,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "994293698ba541d38ceb7913da033d98",
-      "item_no": "994293698ba541d38ceb7913da033d98",
+      "obligation_id": "dcfa46a59f834f8ba3e77a5e02f5c713",
+      "item_no": "dcfa46a59f834f8ba3e77a5e02f5c713",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -88,8 +88,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "09d078b22a5f45ae941d105e86b960ba",
-      "item_no": "09d078b22a5f45ae941d105e86b960ba",
+      "obligation_id": "9945670a512f44859a7772cdc83f6bdc",
+      "item_no": "9945670a512f44859a7772cdc83f6bdc",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -117,8 +117,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "9dc55eeb19bb4b029d22f5d0daa1a244",
-      "item_no": "9dc55eeb19bb4b029d22f5d0daa1a244",
+      "obligation_id": "116046c4b7b64fd986b635d4d013166a",
+      "item_no": "116046c4b7b64fd986b635d4d013166a",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -146,8 +146,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "ae08f0ca6ff84b84981bdab0213ee1da",
-      "item_no": "ae08f0ca6ff84b84981bdab0213ee1da",
+      "obligation_id": "cb74836dac18492c82e7f3ae7c7c4184",
+      "item_no": "cb74836dac18492c82e7f3ae7c7c4184",
       "outcome": "CORRECT",
       "expected_files": [
         "f656bcddc8c19bae202365c3ba6655a0"
@@ -170,8 +170,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
-      "item_no": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
+      "obligation_id": "e27fe62f0bd741cf91561acbaf9af823",
+      "item_no": "e27fe62f0bd741cf91561acbaf9af823",
       "outcome": "CORRECT",
       "expected_files": [
         "ba22dff5d64703ba313c9590244d2efe"
@@ -196,8 +196,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "ca7df73fcb6041f7b5e03cc69b7511eb",
-      "item_no": "ca7df73fcb6041f7b5e03cc69b7511eb",
+      "obligation_id": "05188919759244c5b743ab5108b92626",
+      "item_no": "05188919759244c5b743ab5108b92626",
       "outcome": "WRONG_ONLY",
       "expected_files": [
         "d40a24fd68ada3a30ee3dfd90fc8dda4"
@@ -226,8 +226,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "90efcfd22d42495ba1fc8cf16e172f0e",
-      "item_no": "90efcfd22d42495ba1fc8cf16e172f0e",
+      "obligation_id": "57d5a175c6f240f4870c4fcfceb37971",
+      "item_no": "57d5a175c6f240f4870c4fcfceb37971",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2",
@@ -257,28 +257,47 @@
     }
   ],
   "safety_gate": {
-    "violations": 1,
-    "findings": [
+    "violations": 0,
+    "findings": [],
+    "by_kind": {},
+    "selection_mismatches": 3,
+    "selection_mismatch_detail": [
       {
         "kind": "WRONG_ENTITY",
-        "obligation_id": "ca7df73fcb6041f7b5e03cc69b7511eb",
+        "obligation_id": "05188919759244c5b743ab5108b92626",
         "file_id": "241aa18509bf90620009a2b6c31a98b2",
-        "detail": "多交材料的主体与该义务的期望主体不一致"
+        "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
+        "delivered": false
+      },
+      {
+        "kind": "WRONG_ENTITY",
+        "obligation_id": "05188919759244c5b743ab5108b92626",
+        "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
+        "delivered": false
+      },
+      {
+        "kind": "WRONG_ENTITY",
+        "obligation_id": "05188919759244c5b743ab5108b92626",
+        "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+        "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
+        "delivered": false
       }
     ],
-    "by_kind": {
-      "WRONG_ENTITY": 1
+    "selection_mismatch_by_kind": {
+      "WRONG_ENTITY": 3
     },
-    "status": "FAIL",
-    "note": "安全闸独立计分；命中任一 ⇒ 总分封顶（业务高分不得抵消安全失败）"
+    "note_selection": "「选中但未交付」的错主体/错年份属**选材质量**问题，单列且**不封顶**；只有**实际交付**的件才进安全闸封顶",
+    "status": "PASS",
+    "note": "未发现安全闸违规"
   },
   "gold_resolution": {
     "gold_pack_id": "GOLD-A4A-SYNTHETIC",
     "exam_id": "EX-A4A-SYNTHETIC",
     "items": [
       {
-        "obligation_id": "751c45f06fa043b2bc3710e7f52e4d33",
-        "item_no": "751c45f06fa043b2bc3710e7f52e4d33",
+        "obligation_id": "a5e477f29b184409abb178ff4e289763",
+        "item_no": "a5e477f29b184409abb178ff4e289763",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -312,8 +331,8 @@
         "note": ""
       },
       {
-        "obligation_id": "994293698ba541d38ceb7913da033d98",
-        "item_no": "994293698ba541d38ceb7913da033d98",
+        "obligation_id": "dcfa46a59f834f8ba3e77a5e02f5c713",
+        "item_no": "dcfa46a59f834f8ba3e77a5e02f5c713",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -335,8 +354,8 @@
         "note": ""
       },
       {
-        "obligation_id": "09d078b22a5f45ae941d105e86b960ba",
-        "item_no": "09d078b22a5f45ae941d105e86b960ba",
+        "obligation_id": "9945670a512f44859a7772cdc83f6bdc",
+        "item_no": "9945670a512f44859a7772cdc83f6bdc",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -358,8 +377,8 @@
         "note": ""
       },
       {
-        "obligation_id": "9dc55eeb19bb4b029d22f5d0daa1a244",
-        "item_no": "9dc55eeb19bb4b029d22f5d0daa1a244",
+        "obligation_id": "116046c4b7b64fd986b635d4d013166a",
+        "item_no": "116046c4b7b64fd986b635d4d013166a",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -381,8 +400,8 @@
         "note": ""
       },
       {
-        "obligation_id": "ae08f0ca6ff84b84981bdab0213ee1da",
-        "item_no": "ae08f0ca6ff84b84981bdab0213ee1da",
+        "obligation_id": "cb74836dac18492c82e7f3ae7c7c4184",
+        "item_no": "cb74836dac18492c82e7f3ae7c7c4184",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -404,8 +423,8 @@
         "note": ""
       },
       {
-        "obligation_id": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
-        "item_no": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
+        "obligation_id": "e27fe62f0bd741cf91561acbaf9af823",
+        "item_no": "e27fe62f0bd741cf91561acbaf9af823",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -427,8 +446,8 @@
         "note": ""
       },
       {
-        "obligation_id": "ca7df73fcb6041f7b5e03cc69b7511eb",
-        "item_no": "ca7df73fcb6041f7b5e03cc69b7511eb",
+        "obligation_id": "05188919759244c5b743ab5108b92626",
+        "item_no": "05188919759244c5b743ab5108b92626",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -450,8 +469,8 @@
         "note": ""
       },
       {
-        "obligation_id": "90efcfd22d42495ba1fc8cf16e172f0e",
-        "item_no": "90efcfd22d42495ba1fc8cf16e172f0e",
+        "obligation_id": "57d5a175c6f240f4870c4fcfceb37971",
+        "item_no": "57d5a175c6f240f4870c4fcfceb37971",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -494,7 +513,13 @@
       "no_fingerprint": 0
     }
   },
-  "examinee_mode": "UNKNOWN",
+  "examinee_mode": "RULE_ONLY",
+  "leak_report": {
+    "leaked": false,
+    "leak_count": 0,
+    "leaks": [],
+    "note": "Gold 泄漏 ⇒ 安全失败，不得进入正式评分；本检测只覆盖结构面，不覆盖进程级隔离"
+  },
   "selection_source": {
     "RULE_HINT": 8
   },

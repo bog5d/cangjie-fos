@@ -285,20 +285,43 @@ class TestScoringCorrectness:
 class TestSafetyGate:
     """安全闸独立计分：高业务分**不得**抵消。"""
 
-    def test_wrong_entity_is_listed_and_caps_score(self):
+    def test_wrong_entity_delivered_is_listed_and_caps_score(self):
+        """★ **交付**了错主体的材料 ⇒ 进安全闸 ⇒ 封顶 59。
+
+        ★ 口径（独立 Reviewer 增量复核）：**只有实际交付的件**才进安全闸；
+          「选中但未交付」的错主体属**选材质量**问题 ⇒ **单列、不封顶**
+          （否则「选错但没交」会被算成交付事故 ⇒ 成绩单虚报事故并封顶）。
+        """
         sheet = _sheet({"O1": ["F1"], "O2": ["F1", "F3"], "O3": ["F4"]})
         for row in sheet["obligations"]:
             if row["obligation_id"] == "O1":
                 row["selected"][0]["entity"] = "主体乙"     # 错主体
                 row["delivered"] = [{"file_id": "F1", "delivered_path": "d", "source_sha256": "",
-                                     "copy_sha256": "", "hash_match": True}]
+                                     "copy_sha256": "", "hash_match": True,
+                                     "entity": "主体乙", "period": "2024"}]
         idx = gold_svc.index_from_snapshot(None, META)
         card = ex.grade_answer_sheet(sheet, _gold_manifest(GOLD_ITEMS), library_index=idx,
                                      min_obligations=3)
         gate = card["safety_gate"]
         assert gate["status"] == "FAIL", gate
-        assert gate["by_kind"].get("WRONG_ENTITY") == 1
+        assert gate["by_kind"].get("WRONG_ENTITY") == 1, gate
         assert card["scores"]["total_score"] <= 59, card["scores"]
+
+    def test_wrong_entity_selected_but_not_delivered_does_not_cap(self):
+        """★ 「选中但**未交付**」的错主体 ⇒ **单列、不封顶**（不是交付事故）。"""
+        sheet = _sheet({"O1": ["F1"], "O2": ["F1", "F3"], "O3": ["F4"]})
+        for row in sheet["obligations"]:
+            if row["obligation_id"] == "O1":
+                row["selected"][0]["entity"] = "主体乙"     # 错主体，但**没交付**
+                row["delivered"] = []
+        idx = gold_svc.index_from_snapshot(None, META)
+        card = ex.grade_answer_sheet(sheet, _gold_manifest(GOLD_ITEMS), library_index=idx,
+                                     min_obligations=3)
+        gate = card["safety_gate"]
+        assert gate["status"] == "PASS", gate
+        assert gate["violations"] == 0, gate
+        assert gate["selection_mismatches"] >= 1, gate
+        assert gate["selection_mismatch_by_kind"].get("WRONG_ENTITY") == 1, gate
 
     def test_hash_mismatch_is_listed(self):
         sheet = _sheet({"O1": ["F1"]})

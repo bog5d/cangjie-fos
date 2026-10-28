@@ -180,7 +180,7 @@
     ],
     "progress": {
       "engineering_percent": 100,
-      "outcome_verified_points": 80,
+      "outcome_verified_points": 73,
       "outcome_total_points": 100
     },
     "next_goal_gap": "真实业务成绩尚未产生：历史人工交付包（#74）未交付 ⇒ 阅卷端客观不可评分。剩余 20 分必须由刘江在授权 Windows 环境补测。",
@@ -206,12 +206,13 @@
       {
         "id": "M03",
         "weight": 15,
-        "verified_points": 15,
-        "status": "PASS",
+        "verified_points": 8,
+        "status": "PARTIAL",
         "evidence_refs": [
           "backend/tests/test_dd_v1_entity_resolution.py",
           "backend/tests/test_dd_v1_candidate_expansion.py"
-        ]
+        ],
+        "note": "★ 独立 Reviewer（2026-10-29 两轮）复核后降级：**契约声明的主体范围已接线并端到端验证**（run --contract ⇒ 未指名主体的义务落到 contract_single:/contract_group: ⇒ 主体维度不再不可判定）；但**多源主体分级的完整实现**（dd_v1_entity_resolution_service）与**候选分批扩展**（dd_v1_candidate_expansion_service）**本版未接线**（只有单测覆盖，生产链路零调用方）⇒ 这两项**不计入本版能力**（按 8/15 计）。"
       },
       {
         "id": "M04",
