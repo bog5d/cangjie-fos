@@ -516,10 +516,10 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 |------|---------|
 | `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 新增 `CONTRACT_SINGLE_PREFIX`/`CONTRACT_GROUP_PREFIX` 两种 `resolve_entities` 分支、`_group_members`、`checklist_digest`、`CURRENT_DOC_TYPE_KEYS`（权威 10 类，**全仓唯一一份**） |
 | `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | 新增**独立分区** `doc_type_resolution`（类型待判定）、`resolve_doc_type` 开关（**默认关**）、类型提案校验（`DOC_TYPE_PROPOSAL_*`）；**主分区的六态口径一字未改** |
-| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | `build_meta` **补 `sha256` 内容指纹**（原先没有 ⇒ 标准答案永远对不上）；新增 `doc_type_unresolved` **标记**（分簇口径未动）、`resolve_doc_type` 开关 |
+| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | `build_meta` **补 `sha256` 内容指纹**（取 Manifest 的 `content_hash`，＝完整 64 位，**不重算**）；新增 `doc_type_unresolved` **标记**（分簇口径未动）、`resolve_doc_type` 开关 |
 | `backend/src/cangjie_fos/services/dd_v1_agent_result_service.py` | `proposed_doc_type` 改成**可选**字段（`OPTIONAL_RESULT_FIELDS`），不在 `required` 里 |
 | `backend/src/cangjie_fos/services/dd_v1_agent_result.v1.schema.json` | `proposed_doc_type` 进 `properties`（限权威 10 类）、**不在 `required`** |
-| `tools/dd_team_channel.py` | 新增 5 个子命令：`preflight` / `answer` / `grade` / `compare` / `contract-template`；`run` 加 `--resolve-doc-type`；`main(argv)` 可测 |
+| `tools/dd_team_channel.py` | 新增 5 个子命令：`preflight` / `answer` / `grade` / `compare` / `contract-template`；`run` 加 `--resolve-doc-type` 与 **`--contract`（把契约声明的主体范围落到未指名主体的义务上）**；`answer` 的 `--bridge-json` **支持目录/通配**（PowerShell 不做通配展开）；`main(argv)` 可测 |
 | `tools/dd_v1_local_run.py` | 新增 `--resolve-doc-type` |
 | `tools/dd_v1_manifest.py` | `main(argv)` 可测（**只改签名，不改行为**） |
 | `tools/doctor.py` | 修 npm 裸名崩溃；端口 8000 被**本仓后端**占用时判 OK（不再误杀用户进程） |

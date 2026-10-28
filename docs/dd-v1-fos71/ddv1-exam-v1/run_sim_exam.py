@@ -63,8 +63,8 @@ def _library_index(library_id: str, material_root: Path) -> dict:
 
     ★ ``file_id`` 必须用**库里的真实 file_id**（Manifest 以内容哈希命名），
       否则考生答卷里的 file_id 会被误判成「库外文件」⇒ 误报泄漏。
-    ★ ``sha256`` 用**磁盘实算的完整 64 位**（Manifest 里的 ``content_hash``
-      是**截断到 32 位**的展示值 ⇒ 与标准答案侧的完整指纹**不同口径**，不能混用）。
+    ★ ``sha256`` 取 Manifest 的 ``content_hash``（实测＝磁盘实算的**完整 64 位** sha256，
+      10/10 逐件相同）⇒ 与标准答案侧**同口径**。
     """
     from cangjie_fos.services import dd_v1_bridge_service as br
     meta, _stats = br.build_meta(library_id)

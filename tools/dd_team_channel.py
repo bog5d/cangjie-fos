@@ -193,6 +193,31 @@ def cmd_run(a) -> int:
               "  python tools/dd_v1_manifest.py entity --library <库> "
               "--id <编号> --name <主体名> --relation subsidiary --source <权威依据>")
 
+    # ── 5b 考场契约声明的主体范围 → 落到**未指名主体**的义务上 ──────────
+    # ★ 这一步**必须**在「摄取清单」之后、「匹配」之前：
+    #   义务先存在，scope 才落得上；scope 落完，匹配才解析得到主体。
+    # ★ 契约没声明 ⇒ **一条都不改**（保留「不可判定」，不擅自放行）。
+    # ★ 这条接线是 `#108` 实测「91 条义务全 UNCERTAIN、0 交付」的**补救入口**：
+    #   没接线时，交接文档让业务方「在契约里声明主体范围」是**空话**。
+    _contract_scope_applied = None
+    _contract_path = str(getattr(a, "contract", "") or "").strip()
+    if _contract_path:
+        try:
+            from cangjie_fos.services import dd_v1_entity_scope_service as esc
+            _c = json.loads(Path(_contract_path).read_text(encoding="utf-8"))
+            _contract_scope_applied = esc.apply_contract_scope(
+                lib, _c.get("entity_scope") or {})
+            if _contract_scope_applied.get("applied"):
+                print(f"  ✓ 已按考场契约声明的主体范围（{_contract_scope_applied.get('scope_keyword')}）"
+                      f"落到 {_contract_scope_applied.get('updated')} 条未指名主体的义务"
+                      f"（{_contract_scope_applied.get('skipped_named')} 条已指名的未动）")
+            else:
+                print(f"  · 考场契约未声明主体范围（或声明的主体在权威名单里不存在）"
+                      f"⇒ 未指名主体的义务仍判「无法判定」（不擅自放行）")
+                print(f"    {_contract_scope_applied.get('note')}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  ⚠️ 考场契约里的主体范围没生效：{type(exc).__name__}: {exc}")
+
     # ── 6 匹配 ────────────────────────────────────────────────────────
     _hr("第 6 步 / 共 6 步：逐条匹配并算完整性")
     res = ms.match_library(lib, candidate_cap=a.cap)
@@ -559,7 +584,8 @@ def _bridge_json(bridge, *, config_anchor: dict | None = None) -> dict:
                 "candidates": [
                     {"file_id": e["file_id"], "sha256": e["sha256"],
                      "locator": e["locator"], "relative_path": e["relative_path"],
-                     "entity": e["entity"], "subject_verified": e["subject_verified"],
+                     "entity": e["entity"], "period": e.get("period") or "",
+                     "subject_verified": e["subject_verified"],
                      "version_status": e["version_status"], "part": e["part"]}
                     for e in o["evidence"]
                 ],
@@ -899,7 +925,9 @@ def _answer_sheet_from_bridge(bridge: dict):
             "required_parts": list(o.get("required_parts") or []),
             "split_method": "REQUIREMENT_SERVICE",
         })
-        evidence[oid] = list(o.get("evidence") or [])
+        # ★ 桥接 JSON 里候选的键是 **"candidates"**（不是 "evidence"）
+        #   ⇒ 读错键 ⇒ 答卷的「候选」永远为空 ⇒ 考生答卷缺来源证据。
+        evidence[oid] = list(o.get("candidates") or o.get("evidence") or [])
         st = o.get("evidence_status") or {}
         ev_status[oid] = st
         # ★ 规则链提示也带过来：**没接模型**时，「机器选了什么」取它（标 RULE_HINT）。
@@ -918,7 +946,30 @@ def cmd_answer(a) -> int:
         rec, pkt = _answer_sheet_from_run_dir(Path(a.run_dir))
         delivered = None
     elif getattr(a, "bridge_json", ""):
-        raw = json.loads(Path(a.bridge_json).read_text(encoding="utf-8"))
+        # ★ 支持**目录或通配**：PowerShell 对原生命令参数**不做通配展开**，
+        #   `--bridge-json "<目录>\尽调结果-*.json"` 会把 `*` 原样传进来 ⇒ FileNotFoundError。
+        #   ⇒ 这里自己解析：命中 1 个用它；命中多个取**最新**那个并如实说明。
+        _bj = str(a.bridge_json)
+        _bj_path = Path(_bj)
+        if any(ch in _bj for ch in "*?["):
+            _cands = sorted(Path(_bj).parent.glob(Path(_bj).name),
+                            key=lambda q: q.stat().st_mtime)
+            if not _cands:
+                print(f"[错误] 通配没有命中任何文件：{_bj}", file=sys.stderr)
+                return EXIT_USAGE
+            _bj_path = _cands[-1]
+            if len(_cands) > 1:
+                print(f"  · 通配命中 {len(_cands)} 个文件 ⇒ 取**最新**的那个：{_bj_path.name}")
+        elif _bj_path.is_dir():
+            _cands = sorted(_bj_path.glob("尽调结果-*.json"),
+                            key=lambda q: q.stat().st_mtime)
+            if not _cands:
+                print(f"[错误] 目录里没有 尽调结果-*.json：{_bj_path}", file=sys.stderr)
+                return EXIT_USAGE
+            _bj_path = _cands[-1]
+            if len(_cands) > 1:
+                print(f"  · 目录里有 {len(_cands)} 个结果文件 ⇒ 取**最新**的那个：{_bj_path.name}")
+        raw = json.loads(_bj_path.read_text(encoding="utf-8"))
         bridge = raw.get("semantic_bridge") or raw.get("bridge") or raw
         rec, pkt = {}, _answer_sheet_from_bridge(bridge)
         delivered = raw.get("delivered")
@@ -962,7 +1013,21 @@ def cmd_grade(a) -> int:
     gold_path = getattr(a, "gold", "") or (contract.get("gold") or {}).get("manifest_path", "")
     if gold_path and Path(gold_path).is_file():
         manifest = gold_svc.load_gold_manifest(gold_path)
-    leak = ex.detect_gold_leak(sheet, idx)
+    # ★ 泄漏检测的第 3 条判据（义务 id 既不在考卷也不在 Gold）需要这两个集合
+    #   ⇒ 在 CLI 路径上**必须传**，否则该判据恒不命中（独立 Reviewer 发现）。
+    _lib_obl_ids: set[str] = set()
+    try:
+        from cangjie_fos.services import dd_v1_requirement_service as rq
+        _lib_obl_ids = {str(o.get("obligation_id") or "")
+                        for o in rq.list_obligations(library_id)}
+    except Exception:  # noqa: BLE001
+        _lib_obl_ids = set()
+    _gold_obl_ids: set[str] = set()
+    if manifest is not None:
+        _gold_obl_ids = {str(i.get("obligation_id") or "") for i in (manifest.get("items") or [])}
+    leak = ex.detect_gold_leak(sheet, idx,
+                               library_obligation_ids=_lib_obl_ids or None,
+                               gold_obligation_ids=_gold_obl_ids or None)
     spec = ex.load_scoring_spec(getattr(a, "scoring_spec", "") or None)
     card = ex.grade_answer_sheet(
         sheet, manifest, library_index=idx, scoring_spec=spec,
@@ -1053,6 +1118,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="跳过语义层桥接（本次输出与未接桥接时完全一致）")
     r.add_argument("--allow-real-material", action="store_true",
                    help="材料库不是仓库内合成 fixture 时必须给（=真实材料，仅限本机）")
+    r.add_argument("--contract", default="",
+                   help="考场契约 JSON（把其中声明的 entity_scope 落到未指名主体的义务上；"
+                        "不声明 ⇒ 一条都不改）")
     r.add_argument("--resolve-doc-type", action="store_true",
                    help="打开「规则层解析不出材料类型 ⇒ 交给模型判定」这条通道"
                         "（默认关闭：既有六态口径与既有成本纪律一字不变；"

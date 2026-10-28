@@ -149,13 +149,15 @@
         "work_item_id": "WP2-QUESTION-UNDERSTANDING",
         "goal_metric_id": "M02",
         "expected_change": "类型待判定的题目不再被丢弃，由模型提出类型且提案自洽可验",
-        "verified_change": "PASS"
+        "verified_change": "PASS",
+        "verified_note": "★ 独立 Reviewer（2026-10-29）复核后**收紧表述**：本项的机器可验部分只到「提案 ∈ 权威 10 类 ∧ 提案 == 所选文件自身类型」的**自洽性**；**不证伪「这是规则脚本」**（Reviewer 构造的纯规则脚本能通过自洽性检查）⇒ 「AI 真语义判断」**不是**本项能机器判定的，真实效果仍 NOT_MEASURED（沙箱无外部模型）。"
       },
       {
         "work_item_id": "WP3-ENTITY-AND-CANDIDATE",
         "goal_metric_id": "M03",
         "expected_change": "主体可由多源认领、范围按契约显式声明、候选触顶可继续扩展并如实报数",
-        "verified_change": "PASS"
+        "verified_change": "PARTIAL",
+        "verified_note": "★ 独立 Reviewer（2026-10-29）复核后降级：**契约声明的主体范围已接线并端到端验证**（run --contract ⇒ 未指名主体的义务落到 contract_single:/contract_group: ⇒ 主体维度不再不可判定）；但**多源主体分级的完整实现**（dd_v1_entity_resolution_service）与**候选分批扩展**（dd_v1_candidate_expansion_service）**本版未接线**（只有单测覆盖，生产链路零调用方）⇒ 这两项**不计入本版能力**。既有链路里已生效的是：材料侧主体认领（卡片主体/别名/权威名单）与候选触顶**如实报数**（candidate_cap / truncated_candidate_count）。"
       },
       {
         "work_item_id": "WP4-ANSWER-SHEET-AND-GRADE",
@@ -183,19 +185,92 @@
     },
     "next_goal_gap": "真实业务成绩尚未产生：历史人工交付包（#74）未交付 ⇒ 阅卷端客观不可评分。剩余 20 分必须由刘江在授权 Windows 环境补测。",
     "outcome_metrics": [
-      { "id": "M01", "weight": 10, "verified_points": 10, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_preflight.py"] },
-      { "id": "M02", "weight": 15, "verified_points": 15, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_doc_type_resolution.py"] },
-      { "id": "M03", "weight": 15, "verified_points": 15, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_entity_resolution.py", "backend/tests/test_dd_v1_candidate_expansion.py"] },
-      { "id": "M04", "weight": 30, "verified_points": 30, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_scoring.py"] },
-      { "id": "M05", "weight": 10, "verified_points": 10, "status": "PASS", "evidence_refs": ["docs/dd-v1-fos71/ddv1-exam-v1/WINDOWS-HANDOFF.md"] },
-      { "id": "M06", "weight": 20, "verified_points": 0, "status": "UNKNOWN", "evidence_refs": [] }
+      {
+        "id": "M01",
+        "weight": 10,
+        "verified_points": 10,
+        "status": "PASS",
+        "evidence_refs": [
+          "backend/tests/test_dd_v1_exam_preflight.py"
+        ]
+      },
+      {
+        "id": "M02",
+        "weight": 15,
+        "verified_points": 15,
+        "status": "PASS",
+        "evidence_refs": [
+          "backend/tests/test_dd_v1_doc_type_resolution.py"
+        ]
+      },
+      {
+        "id": "M03",
+        "weight": 15,
+        "verified_points": 15,
+        "status": "PASS",
+        "evidence_refs": [
+          "backend/tests/test_dd_v1_entity_resolution.py",
+          "backend/tests/test_dd_v1_candidate_expansion.py"
+        ]
+      },
+      {
+        "id": "M04",
+        "weight": 30,
+        "verified_points": 30,
+        "status": "PASS",
+        "evidence_refs": [
+          "backend/tests/test_dd_v1_exam_scoring.py"
+        ]
+      },
+      {
+        "id": "M05",
+        "weight": 10,
+        "verified_points": 10,
+        "status": "PASS",
+        "evidence_refs": [
+          "docs/dd-v1-fos71/ddv1-exam-v1/WINDOWS-HANDOFF.md"
+        ]
+      },
+      {
+        "id": "M06",
+        "weight": 20,
+        "verified_points": 0,
+        "status": "UNKNOWN",
+        "evidence_refs": []
+      }
     ],
     "hard_gates": [
-      { "id": "H-GOLD-ISOLATION", "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_gold_leak_is_safety_failure"] },
-      { "id": "H-ZERO-IS-ZERO", "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_all_wrong_gives_zero"] },
-      { "id": "H-NO-FAKE-BUSINESS-SCORE", "status": "PASS", "evidence_refs": ["docs/dd-v1-fos71/ddv1-exam-v1/WINDOWS-HANDOFF.md §3"] },
-      { "id": "H-INDEPENDENT-REVIEW", "status": "UNKNOWN", "evidence_refs": [] },
-      { "id": "H-REAL-EXAM", "status": "UNKNOWN", "evidence_refs": [] }
+      {
+        "id": "H-GOLD-ISOLATION",
+        "status": "PASS",
+        "evidence_refs": [
+          "backend/tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_gold_leak_is_safety_failure"
+        ]
+      },
+      {
+        "id": "H-ZERO-IS-ZERO",
+        "status": "PASS",
+        "evidence_refs": [
+          "backend/tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_all_wrong_gives_zero"
+        ]
+      },
+      {
+        "id": "H-NO-FAKE-BUSINESS-SCORE",
+        "status": "PASS",
+        "evidence_refs": [
+          "docs/dd-v1-fos71/ddv1-exam-v1/WINDOWS-HANDOFF.md §3"
+        ]
+      },
+      {
+        "id": "H-INDEPENDENT-REVIEW",
+        "status": "UNKNOWN",
+        "evidence_refs": []
+      },
+      {
+        "id": "H-REAL-EXAM",
+        "status": "UNKNOWN",
+        "evidence_refs": []
+      }
     ],
     "goal_state": "PARTIAL"
   }

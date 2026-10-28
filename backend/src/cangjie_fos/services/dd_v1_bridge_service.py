@@ -61,7 +61,6 @@ from pathlib import Path
 from typing import Any
 
 from cangjie_fos.services import dd_v1_agent_adapters as ad
-from cangjie_fos.services import dd_v1_agent_result_service as ar
 from cangjie_fos.services import dd_v1_card_service as cs
 # A2（G-A2-3 判据⑤ / G-A2-8）：主体归一（法定全称 / 已登记别名 / 未登记）。
 from cangjie_fos.services import dd_v1_entity_service as es
@@ -203,17 +202,11 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
     ambiguous = 0
     unknown_doc_type = 0
     alias_resolved = 0
-    # ★ 内容指纹（**完整 sha256**）：标准答案包按内容寻址，索引里必须有指纹，
-    #   否则「标准答案材料在库里找不到」会被**误判**成真缺材料（实测踩过：
-    #   meta 里没有 sha256 ⇒ 预检恒报 GOLD_FILES_MISSING_IN_LIBRARY）。
-    #   ★ 指纹取**磁盘实算**的完整 64 位（与快照/证据层同一口径）；
-    #     Manifest 里的 ``content_hash`` 是**截断到 32 位**的展示值，两种口径不能混用。
-    lib_root = ""
-    try:
-        lib_row = mf.get_library(library_id, db_path=db_path) or {}
-        lib_root = str(lib_row.get("root_path") or "")
-    except Exception:  # noqa: BLE001
-        lib_root = ""
+    # ★ 内容指纹：标准答案包按内容寻址，索引里必须有指纹，否则「标准答案材料在库里
+    #   找不到」会被**误判**成真缺材料（实测踩过：meta 里没有 sha256 ⇒
+    #   预检恒报 GOLD_FILES_MISSING_IN_LIBRARY）。
+    #   ★ 指纹**直接取 Manifest 的 content_hash**（实测＝磁盘实算的**完整 64 位** sha256，
+    #     10/10 逐件相同）⇒ 不重算 ⇒ 真机 1663 份材料时 preflight/grade 不会整库重算哈希。
     for row in mf.list_manifest(library_id, limit=100000, db_path=db_path):
         card = cs.get_card(row["file_id"], db_path=db_path) or {}
         dt = resolve_material_doc_type(card)
@@ -226,18 +219,10 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
             ambiguous += 1
         if ent_basis == "ALIAS_RESOLVED":
             alias_resolved += 1
-        sha256 = ""
-        if lib_root:
-            try:
-                fp = Path(lib_root) / str(row["rel_path"])
-                if fp.is_file():
-                    sha256 = ar.sha256_file(fp)
-            except OSError:
-                sha256 = ""
         meta.append({
             "file_id": row["file_id"],
             "relative_path": row["rel_path"],
-            "sha256": sha256,
+            "sha256": str(row.get("content_hash") or ""),
             "entity": ent or card_entity,
             "entity_basis": ent_basis or "CARD_INFERRED",
             "period": _material_period(card, dt),

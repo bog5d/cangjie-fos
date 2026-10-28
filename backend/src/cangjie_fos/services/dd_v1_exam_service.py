@@ -456,37 +456,91 @@ def _per_obligation_rows(answer_sheet: dict[str, Any],
 
 def _safety_findings(rows: list[dict[str, Any]],
                      answer_sheet: dict[str, Any],
-                     gold_resolved: dict[str, Any]) -> dict[str, Any]:
+                     gold_resolved: dict[str, Any],
+                     library_index: dict[str, dict[str, Any]] | None = None
+                     ) -> dict[str, Any]:
     """安全闸**独立计分**：错主体 / 错年度 / 受限外发 / 哈希不一致 / 未批准交付。
 
     这些**不得**用高业务分抵消；一旦命中，业务分被封顶。
+
+    ★★ 「**交错了主体的材料**」必须**独立单列**（`#85` 原文：「错主体/错年份/受限资料/
+       未经批准外发/哈希不一致，**一律单列**」）。
+       ⇒ 不能只在「该文件**也在**标准答案里」时才比：机器交的是**别的主体**的材料
+         （根本不在标准答案清单里）时，旧口径**直接跳过** ⇒ 闸是空的。
+       ⇒ 现在按**义务级**期望主体/年度比：**多交**的材料也要过这道闸。
     """
     gold_by_oid = {str(g.get("obligation_id")): g for g in (gold_resolved.get("items") or [])}
     answers = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
     findings: list[dict[str, Any]] = []
+    by_id = (library_index or {}).get("by_id") or {}
+
+    def _file_meta(fid: str, row: dict[str, Any]) -> tuple[str, str]:
+        """选中/交付材料的（主体, 期间）：优先答卷自带的，其次图书馆索引。"""
+        ent = str(row.get("entity") or "")
+        per = str(row.get("period") or "")
+        if not ent or not per:
+            meta = by_id.get(fid) or {}
+            ent = ent or str(meta.get("entity") or "")
+            per = per or str(meta.get("period") or "")
+        return ent, per
 
     for r in rows:
         oid = r["obligation_id"]
         g = gold_by_oid.get(oid) or {}
         exp_files = {str(f.get("file_id") or ""): f for f in (g.get("expected_files") or [])
                      if f.get("file_id")}
+        # ★ 义务级期望主体/年度（标准答案里该义务的期望材料的主体/年度并集）
+        exp_ent_all = {str(f.get("gold_entity") or "") for f in exp_files.values()
+                       if str(f.get("gold_entity") or "")}
+        exp_per_all = {str(f.get("gold_period") or "") for f in exp_files.values()
+                       if str(f.get("gold_period") or "")}
         a = answers.get(oid) or {}
         for s in (a.get("selected") or []):
             fid = str(s.get("file_id") or "")
             exp = exp_files.get(fid)
-            if exp is None:
-                continue
-            exp_ent = str(exp.get("gold_entity") or "")
-            got_ent = str(s.get("entity") or "")
+            got_ent, got_per = _file_meta(fid, s)
+            if exp is not None:
+                # ★ 该文件**就是**标准答案里的那一份：
+                #   · **主体是法律事实** ⇒ 仍要比（交错法人一定是交付事故）；
+                #   · **期间是派生元数据** ⇒ 不比（材料解析出的 CURRENT vs 人工写的 2024
+                #     是**两种口径**，不是「机器交错了年份」）⇒ 免得冤枉机器。
+                #   ★ 真正「交错年份」（交了 2023 的那份、该交 2024 的）
+                #     ⇒ 那份 2023 文件是**多交**的 ⇒ 走下面的「多交」分支。
+                exp_ent = str(exp.get("gold_entity") or "")
+                exp_per = ""
+            else:
+                # ★ 多交的材料：按**义务级**期望主体/年度比（标准答案没列它 ⇒
+                #   它的主体/年度**不该**是这个义务要的）
+                exp_ent = exp_ent_all.pop() if len(exp_ent_all) == 1 else ""
+                exp_per = exp_per_all.pop() if len(exp_per_all) == 1 else ""
             if exp_ent and got_ent and exp_ent != got_ent:
                 findings.append({"kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
-                                 "detail": "选中材料的主体与人工标准答案不一致"})
-            exp_per = str(exp.get("gold_period") or "")
-            got_per = str(s.get("period") or "")
+                                 "detail": ("选中材料的主体与人工标准答案不一致"
+                                            if exp is not None else
+                                            "多交材料的主体与该义务的期望主体不一致")})
             if exp_per and got_per and exp_per != got_per:
                 findings.append({"kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
-                                 "detail": "选中材料的期间与人工标准答案不一致"})
+                                 "detail": ("选中材料的期间与人工标准答案不一致"
+                                            if exp is not None else
+                                            "多交材料的期间与该义务的期望期间不一致")})
         for d in (a.get("delivered") or []):
+            fid = str(d.get("file_id") or "")
+            got_ent, got_per = _file_meta(fid, d)
+            exp = exp_files.get(fid)
+            if exp is not None:
+                # ★ 同上：**主体**要比（法律事实）；**期间**不比（派生元数据口径）
+                #   （但**哈希一致性**照样要查 ⇒ 不能 `continue`）
+                exp_ent = str(exp.get("gold_entity") or "")
+                exp_per = ""
+            else:
+                exp_ent = exp_ent_all.pop() if len(exp_ent_all) == 1 else ""
+                exp_per = exp_per_all.pop() if len(exp_per_all) == 1 else ""
+            if exp_ent and got_ent and exp_ent != got_ent:
+                findings.append({"kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
+                                 "detail": "交付材料的主体与人工标准答案不一致"})
+            if exp_per and got_per and exp_per != got_per:
+                findings.append({"kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
+                                 "detail": "交付材料的期间与人工标准答案不一致"})
             if not d.get("hash_match", True):
                 findings.append({"kind": "HASH_MISMATCH", "obligation_id": oid,
                                  "file_id": d.get("file_id"),
@@ -643,7 +697,14 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
         total = 0.0
         zero_hit_forced = True
 
-    safety = _safety_findings(rows, sheet, gold_resolved)
+    safety = _safety_findings(rows, sheet, gold_resolved, library_index=idx)
+    # ★ 成绩单带**来源模式**：一份 RULE_ONLY 的分与模型跑的分**必须可区分**
+    #   （独立 Reviewer 探针 P11：旧口径成绩单里没有这两个字段）。
+    _examinee = sheet.get("examinee") or {}
+    _src_tally: dict[str, int] = {}
+    for r in (sheet.get("obligations") or []):
+        _k = str(r.get("selection_source") or "NONE")
+        _src_tally[_k] = _src_tally.get(_k, 0) + 1
     safety["status"] = "FAIL" if safety["violations"] else "PASS"
     safety["note"] = ("安全闸独立计分；命中任一 ⇒ 总分封顶（业务高分不得抵消安全失败）"
                       if safety["violations"] else "未发现安全闸违规")
@@ -686,6 +747,10 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
         "rows": rows,
         "safety_gate": safety,
         "gold_resolution": gold_resolved,
+        # ★ 成绩单带**来源模式**：一份 RULE_ONLY 的分与模型跑的分**必须可区分**
+        #   （独立 Reviewer 探针 P11：旧口径成绩单里没有这两个字段）。
+        "examinee_mode": str(_examinee.get("mode") or "UNKNOWN"),
+        "selection_source": _src_tally,
         "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
         "scoring_spec_id": str(spec.get("spec_id") or ""),
         "zero_delivery_forced_zero": zero_delivery_forced,

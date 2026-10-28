@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "EX-A4A-SYNTHETIC",
   "status": "SCORED",
-  "graded_at": "2026-10-29T01:59:01+08:00",
+  "graded_at": "2026-10-29T02:25:13+08:00",
   "scores": {
     "question_understanding_coverage": 1.0,
     "question_answer_coverage": 1.0,
@@ -11,7 +11,7 @@
     "complete_delivery_ratio": 0.25,
     "miss_rate": 0.0,
     "wrong_rate": 0.75,
-    "total_score": 64.5
+    "total_score": 59.0
   },
   "counts": {
     "obligations": 8,
@@ -29,8 +29,8 @@
   },
   "rows": [
     {
-      "obligation_id": "af0f7e7ea3fe4f3eb269914dece85fc0",
-      "item_no": "af0f7e7ea3fe4f3eb269914dece85fc0",
+      "obligation_id": "751c45f06fa043b2bc3710e7f52e4d33",
+      "item_no": "751c45f06fa043b2bc3710e7f52e4d33",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2",
@@ -59,8 +59,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "e6117c68765743278d812209b7494ce3",
-      "item_no": "e6117c68765743278d812209b7494ce3",
+      "obligation_id": "994293698ba541d38ceb7913da033d98",
+      "item_no": "994293698ba541d38ceb7913da033d98",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -88,8 +88,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "860cce6eb8b6451eb8504a92c05e2f31",
-      "item_no": "860cce6eb8b6451eb8504a92c05e2f31",
+      "obligation_id": "09d078b22a5f45ae941d105e86b960ba",
+      "item_no": "09d078b22a5f45ae941d105e86b960ba",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -117,8 +117,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "3828025e602e48028335e9074cd3d1a8",
-      "item_no": "3828025e602e48028335e9074cd3d1a8",
+      "obligation_id": "9dc55eeb19bb4b029d22f5d0daa1a244",
+      "item_no": "9dc55eeb19bb4b029d22f5d0daa1a244",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -146,8 +146,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "bf8576729a844461a21b0b226e09e155",
-      "item_no": "bf8576729a844461a21b0b226e09e155",
+      "obligation_id": "ae08f0ca6ff84b84981bdab0213ee1da",
+      "item_no": "ae08f0ca6ff84b84981bdab0213ee1da",
       "outcome": "CORRECT",
       "expected_files": [
         "f656bcddc8c19bae202365c3ba6655a0"
@@ -170,8 +170,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "1b8c759473bf4de4808d21434f4bf067",
-      "item_no": "1b8c759473bf4de4808d21434f4bf067",
+      "obligation_id": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
+      "item_no": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
       "outcome": "CORRECT",
       "expected_files": [
         "ba22dff5d64703ba313c9590244d2efe"
@@ -196,8 +196,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "8fdfea49eac140a7841d37aed7b089e6",
-      "item_no": "8fdfea49eac140a7841d37aed7b089e6",
+      "obligation_id": "ca7df73fcb6041f7b5e03cc69b7511eb",
+      "item_no": "ca7df73fcb6041f7b5e03cc69b7511eb",
       "outcome": "WRONG_ONLY",
       "expected_files": [
         "d40a24fd68ada3a30ee3dfd90fc8dda4"
@@ -226,8 +226,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "7888a4eb8f1a4ce781c67464c79104df",
-      "item_no": "7888a4eb8f1a4ce781c67464c79104df",
+      "obligation_id": "90efcfd22d42495ba1fc8cf16e172f0e",
+      "item_no": "90efcfd22d42495ba1fc8cf16e172f0e",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2",
@@ -257,19 +257,28 @@
     }
   ],
   "safety_gate": {
-    "violations": 0,
-    "findings": [],
-    "by_kind": {},
-    "status": "PASS",
-    "note": "未发现安全闸违规"
+    "violations": 1,
+    "findings": [
+      {
+        "kind": "WRONG_ENTITY",
+        "obligation_id": "ca7df73fcb6041f7b5e03cc69b7511eb",
+        "file_id": "241aa18509bf90620009a2b6c31a98b2",
+        "detail": "多交材料的主体与该义务的期望主体不一致"
+      }
+    ],
+    "by_kind": {
+      "WRONG_ENTITY": 1
+    },
+    "status": "FAIL",
+    "note": "安全闸独立计分；命中任一 ⇒ 总分封顶（业务高分不得抵消安全失败）"
   },
   "gold_resolution": {
     "gold_pack_id": "GOLD-A4A-SYNTHETIC",
     "exam_id": "EX-A4A-SYNTHETIC",
     "items": [
       {
-        "obligation_id": "af0f7e7ea3fe4f3eb269914dece85fc0",
-        "item_no": "af0f7e7ea3fe4f3eb269914dece85fc0",
+        "obligation_id": "751c45f06fa043b2bc3710e7f52e4d33",
+        "item_no": "751c45f06fa043b2bc3710e7f52e4d33",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -303,8 +312,8 @@
         "note": ""
       },
       {
-        "obligation_id": "e6117c68765743278d812209b7494ce3",
-        "item_no": "e6117c68765743278d812209b7494ce3",
+        "obligation_id": "994293698ba541d38ceb7913da033d98",
+        "item_no": "994293698ba541d38ceb7913da033d98",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -326,8 +335,8 @@
         "note": ""
       },
       {
-        "obligation_id": "860cce6eb8b6451eb8504a92c05e2f31",
-        "item_no": "860cce6eb8b6451eb8504a92c05e2f31",
+        "obligation_id": "09d078b22a5f45ae941d105e86b960ba",
+        "item_no": "09d078b22a5f45ae941d105e86b960ba",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -349,8 +358,8 @@
         "note": ""
       },
       {
-        "obligation_id": "3828025e602e48028335e9074cd3d1a8",
-        "item_no": "3828025e602e48028335e9074cd3d1a8",
+        "obligation_id": "9dc55eeb19bb4b029d22f5d0daa1a244",
+        "item_no": "9dc55eeb19bb4b029d22f5d0daa1a244",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -372,8 +381,8 @@
         "note": ""
       },
       {
-        "obligation_id": "bf8576729a844461a21b0b226e09e155",
-        "item_no": "bf8576729a844461a21b0b226e09e155",
+        "obligation_id": "ae08f0ca6ff84b84981bdab0213ee1da",
+        "item_no": "ae08f0ca6ff84b84981bdab0213ee1da",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -395,8 +404,8 @@
         "note": ""
       },
       {
-        "obligation_id": "1b8c759473bf4de4808d21434f4bf067",
-        "item_no": "1b8c759473bf4de4808d21434f4bf067",
+        "obligation_id": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
+        "item_no": "a6fdfd0a3bd6409ca7be95cb0302fdc0",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -418,8 +427,8 @@
         "note": ""
       },
       {
-        "obligation_id": "8fdfea49eac140a7841d37aed7b089e6",
-        "item_no": "8fdfea49eac140a7841d37aed7b089e6",
+        "obligation_id": "ca7df73fcb6041f7b5e03cc69b7511eb",
+        "item_no": "ca7df73fcb6041f7b5e03cc69b7511eb",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -441,8 +450,8 @@
         "note": ""
       },
       {
-        "obligation_id": "7888a4eb8f1a4ce781c67464c79104df",
-        "item_no": "7888a4eb8f1a4ce781c67464c79104df",
+        "obligation_id": "90efcfd22d42495ba1fc8cf16e172f0e",
+        "item_no": "90efcfd22d42495ba1fc8cf16e172f0e",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -484,6 +493,10 @@
       "ambiguous_content": 0,
       "no_fingerprint": 0
     }
+  },
+  "examinee_mode": "UNKNOWN",
+  "selection_source": {
+    "RULE_HINT": 8
   },
   "scoring_spec_fingerprint": "bd02ad8ba4ee71f19f13fdb8027ae52c08000e2e6b904bc5d77b378fe3d7bd9e",
   "scoring_spec_id": "DDV1-EXAM-SCORING-V1",

@@ -356,3 +356,25 @@ class TestScoringSpec:
         b = ex.scoring_spec_fingerprint(json.loads(json.dumps(spec)))
         assert a == b
         assert len(a) == 64
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# ★ 回归守卫：「交了**别的主体**的材料」必须**独立单列**（安全闸不许空）
+# ────────────────────────────────────────────────────────────────────────────
+
+def test_wrong_entity_delivery_is_listed_in_safety_gate():
+    """机器交的是**别的主体**的材料（根本不在标准答案清单里）⇒ 安全闸必须报。
+
+    ★ `#85` 原文：「错主体/错年份/受限资料/未经批准外发/哈希不一致，**一律单列**」。
+      旧口径只在「该文件**也在**标准答案里」时才比主体/年度 ⇒ 机器交**别的主体**时
+      **直接跳过** ⇒ 闸是空的（独立 Reviewer 探针 P8 实测：`safety_gate=PASS`）。
+    ★ 现在的口径：**多交**的材料也要过「义务级期望主体/年度」这道闸。
+    """
+    # O1 的期望材料是「主体甲 2024」；机器却交了「主体乙 2023」的 F4（不在标准答案里）
+    card = _grade({"O1": ["F4"], "O2": ["F1", "F3"], "O3": ["F4"]},
+                  delivered={"O1": ["F4"], "O2": ["F1", "F3"], "O3": ["F4"]})
+    safety = card["safety_gate"]
+    assert safety["status"] == "FAIL", safety
+    assert safety["by_kind"].get("WRONG_ENTITY", 0) >= 1, safety
+    # ★ 安全闸命中 ⇒ 总分封顶（业务分不得抵消安全失败）
+    assert card["scores"]["total_score"] <= 59.0, card["scores"]

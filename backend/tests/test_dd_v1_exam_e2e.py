@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -297,3 +298,61 @@ def test_stale_delivery_manifest_is_not_counted_as_this_run_delivery(tmp_path):
     os.utime(manifest, None)
     rows = tc._read_run_delivery_manifest(_A(), pack, since=time.time() - 5)
     assert rows and rows[0]["file_id"] == "F00001", rows
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# ★ 回归守卫：**考场契约声明的主体范围**必须真的落到义务上
+# ────────────────────────────────────────────────────────────────────────────
+
+def test_contract_entity_scope_reaches_the_obligations(tmp_path):
+    """契约里的 ``entity_scope`` ⇒ 落进库内义务的 ``entity_scope`` 列。
+
+    ★ `#108` 实测「91 条义务全 UNCERTAIN、0 交付」的补救入口就在这里：
+      交接文档让业务方「在考场契约里声明主体范围」——**如果这条线没接线**，
+      照做也**不产生任何作用**（独立 Reviewer 抓到的接线缺口）。
+    ★ 判据：跑完 ``run --contract`` 后，**未指名主体**的义务的
+      ``entity_scope`` 必须变成 ``contract_single:<主体编号>``。
+    """
+    import json
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+    import dd_team_channel as tc
+    import dd_v1_manifest as dm
+    from cangjie_fos.services import dd_v1_requirement_service as rq
+
+    data_dir = tmp_path / "_plane"
+    os.environ["CANGJIE_DD_V1_DATA_DIR"] = str(data_dir)
+    mat = tmp_path / "材料"
+    (mat / "主体甲").mkdir(parents=True)
+    (mat / "主体甲" / "审计报告2024.txt").write_text(
+        "审计报告\n本报告为2024年度财务审计结论，由主体甲出具。\n", encoding="utf-8")
+    cl = tmp_path / "清单.tsv"
+    cl.write_text("1\t提供2024年度审计报告\n", encoding="utf-8")   # ★ 不指名主体
+    dm.main(["register", "--library", "SCOPE-LIB", "--root", str(mat),
+             "--authorized-by", "T"])
+    dm.main(["entity", "--library", "SCOPE-LIB", "--id", "E01", "--name", "主体甲",
+             "--relation", "parent", "--group-root", "--source", "合成登记"])
+    contract = {
+        "schema_version": "dd_v1_exam_contract.v1", "exam_id": "EX-SCOPE",
+        "name": "接线探针", "institution": "Institution_XX",
+        "checklist": {"checklist_id": "CL", "library_id": "SCOPE-LIB",
+                      "sha256": "", "item_count": 1},
+        "library": {"library_id": "SCOPE-LIB", "material_root": str(mat),
+                    "fingerprint": "", "material_count": 1},
+        "gold": {"gold_pack_id": "G", "manifest_path": "", "provided": False},
+        "entity_scope": {"scope_mode": "SINGLE_ENTITY", "group_root_id": "",
+                         "entity_ids": ["E01"], "declared_by": "T",
+                         "declared_at": "2026-10-29T00:00:00+08:00"},
+    }
+    cp = tmp_path / "契约.json"
+    cp.write_text(json.dumps(contract, ensure_ascii=False), encoding="utf-8")
+
+    rc = tc.main(["run", "--library", "SCOPE-LIB", "--root", str(mat),
+                  "--checklist", str(cl), "--institution", "Institution_XX",
+                  "--by", "T", "--contract", str(cp), "--allow-real-material"])
+    assert rc == 0, rc
+    obl = rq.list_obligations("SCOPE-LIB")
+    assert obl, "义务没产出"
+    scopes = [str(o.get("entity_scope") or "") for o in obl]
+    assert any(s.startswith(rq.CONTRACT_SINGLE_PREFIX) for s in scopes), \
+        f"契约声明的主体范围没落到义务上：{scopes}"

@@ -24,14 +24,14 @@
     "material_count": 10,
     "declared_fingerprint": "",
     "actual_fingerprint": "5119dab354c95c4edb8b402c5cfe04f6563e89c8d27f9ef9cd483005e41d0300",
-    "material_root": "/tmp/ddv1-sim-u7x4iy82/material"
+    "material_root": "/tmp/ddv1-sim-508uekwy/material"
   },
   "gold": {
     "state": "FOUND",
     "detail": "标准答案已找到、映射完成、人工已确认 ⇒ 具备正式评分条件",
     "problems": [],
     "gold_pack_id": "GOLD-A4A-SYNTHETIC",
-    "manifest_path": "/tmp/ddv1-sim-u7x4iy82/gold_pack/gold_manifest.json",
+    "manifest_path": "/tmp/ddv1-sim-508uekwy/gold_pack/gold_manifest.json",
     "confirmed_by": "合成测试（非人工批准）",
     "confirmed_at": "2026-10-28T20:00:00+08:00",
     "resolution": {
@@ -48,7 +48,7 @@
       "checklist_fingerprint_declared": "",
       "library_fingerprint_declared": ""
     },
-    "gold_fingerprint": "9966636bc144d1b2581f22b97589f5c10cef5e82d8e810c6f732bc75ffc35614"
+    "gold_fingerprint": "a4c72926f06a7901b4d04f8580f16bea690cf1d3c76334e0eff9a1e655c76bbd"
   },
   "entity_scope": {
     "state": "DECLARED",
@@ -60,7 +60,7 @@
     "declared_by": "合成测试",
     "declared_at": "2026-10-28T20:00:00+08:00",
     "entities_registered": 2,
-    "unnamed_obligations": 8,
+    "unnamed_obligations": 0,
     "problems": [],
     "notes": []
   },

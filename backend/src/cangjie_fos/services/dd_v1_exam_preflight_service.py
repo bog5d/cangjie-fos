@@ -230,8 +230,14 @@ def _check_entity_scope(contract: dict[str, Any], entities_registered: int,
     notes: list[str] = []
     unnamed = 0
     for ob in obligations or []:
-        if not str(ob.get("entity") or "").strip():
-            unnamed += 1
+        if str(ob.get("entity") or "").strip():
+            continue
+        # ★ 原文里已经指名了（`entity_hint:主体甲`）⇒ **算「已指名」**：
+        #   否则会把「已指名」的义务算成「未指名」⇒ 默认模板下**误拦**。
+        scope_hint = str(ob.get("entity_scope") or "").strip()
+        if scope_hint.startswith("entity_hint:") and scope_hint.split(":", 1)[1].strip():
+            continue
+        unnamed += 1
     if mode == "UNSCOPED":
         if entities_registered > 1 and unnamed:
             problems.append(
@@ -320,9 +326,13 @@ def run_preflight(contract: dict[str, Any], *,
 
     ready = (checklist["state"] == "FOUND" and lib["state"] == "FOUND"
              and gold["state"] == "FOUND" and not blockers)
+    # ★ 四态**一一对应**：`TEST_BLOCKED_GOLD_<STATE>`（`#85` 要求「四种状态分开报」）。
+    #   旧写法把 `NOT_PROVIDED`（业务方**从未交付**）与 `NOT_MAPPED`（交付了但没对上）
+    #   合并成 `TEST_BLOCKED_GOLD_NOT_MAPPED` ⇒ **把「没提供」说成「没映射」**（同类反向问题）。
     status = ("READY_FOR_FORMAL_SCORING" if ready
-              else ("TEST_BLOCKED_GOLD_NOT_MAPPED"
-                    if gold["state"] in ("NOT_PROVIDED", "NOT_MAPPED")
+              else (f"TEST_BLOCKED_GOLD_{gold['state']}"
+                    if str(gold.get("state") or "") in
+                    ("NOT_PROVIDED", "NOT_MAPPED", "NOT_CONFIRMED", "BROKEN")
                     else "TEST_BLOCKED"))
     return {
         "schema_version": "dd_v1_exam_preflight.v1",
