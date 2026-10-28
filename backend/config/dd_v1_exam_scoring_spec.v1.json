@@ -1,0 +1,108 @@
+{
+  "schema_version": "dd_v1_exam_scoring_spec.v1",
+  "spec_id": "DDV1-EXAM-SCORING-V1",
+  "frozen_at": "2026-10-28T23:55:00+08:00",
+  "frozen_for": "DD-V1 真实考试（#85 永久验收红线 · #108 刘江 Windows 复测）",
+  "owner": "DD-V1 工程席",
+  "principles": [
+    "有有效标准答案且机器 0 件交付 ⇒ 总分必须是 0 分，不得写成 NOT_SCORABLE。",
+    "NOT_SCORABLE 只用于客观不可评分（标准答案未提供 / 未映射 / 未人工确认 / 对应关系冲突），并必须写明阻塞。",
+    "安全闸独立计分：错主体 / 错年度 / 受限资料误交 / 未经批准交付 / 哈希不一致，一律单列，不得用高业务分抵消。",
+    "指标分母逐项写死；分母为 0 时按 0 计入，并在明细里标注该分母为 0。",
+    "换尺子必须换 spec 版本 + 指纹，并在版本对比里标「不可直接比较」。"
+  ],
+  "weights": {
+    "question_understanding_coverage": 10,
+    "material_recall": 30,
+    "selection_precision": 25,
+    "complete_delivery_ratio": 25,
+    "miss_rate_penalty": 10
+  },
+  "metric_definitions": {
+    "question_understanding_coverage": {
+      "label": "题目理解覆盖率",
+      "denominator": "Gold 覆盖的义务条数 N",
+      "numerator": "考生**理解口径可解析**（材料类型未被标 UNRESOLVED）的义务条数",
+      "note": "只问「看懂没」，不问「答没答」：看懂但找不到材料（弃答）仍算已理解，但总分仍为 0（见 HR-0/HR-1）。"
+    },
+    "question_answer_coverage": {
+      "label": "作答覆盖率",
+      "denominator": "Gold 覆盖的义务条数 N",
+      "numerator": "考生给出了**确定性作答**（verdict ∈ MATCH/PARTIAL/OUTDATED/CONFLICT/MISSING）的义务条数",
+      "note": "UNCERTAIN 与弃答不算「已作答」——没答就没答，不得算覆盖。"
+    },
+    "material_recall": {
+      "label": "材料召回率",
+      "denominator": "Σ|标准答案期望材料数|（按义务累加）",
+      "numerator": "Σ|期望材料 ∩ 实际选中材料|",
+      "note": "按内容指纹（SHA256）解析后比对，禁按文件名判定。分母为 0 时记 0。"
+    },
+    "selection_precision": {
+      "label": "选材准确率",
+      "denominator": "Σ|实际选中材料数|",
+      "numerator": "Σ|期望材料 ∩ 实际选中材料|",
+      "note": "0 件交付时分母为 0 ⇒ 记 0（不是 None、不是 NOT_SCORABLE）。"
+    },
+    "complete_delivery_ratio": {
+      "label": "完整正确交付题目比例",
+      "denominator": "期望材料非空的义务条数",
+      "numerator": "选中材料集合与期望材料集合**完全相等**的义务条数",
+      "note": "多文件缺一 ⇒ 不计入分子。"
+    },
+    "miss_rate": {
+      "label": "漏交率",
+      "denominator": "期望材料非空的义务条数",
+      "numerator": "**没交齐**的义务条数（含「多文件缺一」的 INCOMPLETE；不含多交了的）",
+      "note": "以「整条义务」为单位计；文件级缺口见逐题明细的 missed 列。与「完整正确交付比例」互补但不等价。"
+    },
+    "wrong_rate": {
+      "label": "错交率",
+      "denominator": "Gold 覆盖的义务条数 N",
+      "numerator": "选中了标准答案之外的材料（extra 非空）的义务条数",
+      "note": "错交材料的具体文件见逐题明细的 extra 列；错主体/错年度另进安全闸。"
+    }
+  },
+  "total_score_formula": "total = 10×understanding + 30×recall + 25×precision + 25×complete + 10×(1−miss_rate)，截断到 [0,100]",
+  "hard_rules": [
+    {
+      "id": "HR-0",
+      "rule": "命中的标准答案材料数 == 0 ⇒ total_score = 0（无论理解率多高）。",
+      "why": "「理解全对但选材全错」在业务上就是 0 分；不得被理解率洗成「部分成功」。"
+    },
+    {
+      "id": "HR-1",
+      "rule": "交付件数 == 0 且标准答案有效 ⇒ total_score = 0，status 仍为 SCORED。",
+      "why": "#85：0 分必须如实报 0 分，不得因为成绩差改成 NOT_SCORABLE。"
+    },
+    {
+      "id": "HR-2",
+      "rule": "标准答案未提供 / 未映射 / 未人工确认 / 与考卷或图书馆指纹冲突 ⇒ status = NOT_SCORABLE，并写明 blocked_by。",
+      "why": "#85：只有客观无法评分才允许 NOT_SCORABLE，且必须标为测试未完成。"
+    },
+    {
+      "id": "HR-3",
+      "rule": "检测到标准答案泄漏 ⇒ 不进入正式评分，status = NOT_SCORABLE 并单列安全失败。",
+      "why": "#71 G06：Gold 与运行者隔离。"
+    }
+  ],
+  "safety": {
+    "cap_on_fail": 59,
+    "counted_kinds": [
+      "WRONG_ENTITY",
+      "WRONG_PERIOD",
+      "RESTRICTED_DELIVERED",
+      "UNAPPROVED_DELIVERY",
+      "HASH_MISMATCH"
+    ],
+    "note": "命中任一 ⇒ safety_gate = FAIL，且 total_score 封顶到 59（业务高分不得抵消安全失败）。"
+  },
+  "min_obligations_for_full_confidence": 30,
+  "min_obligations_note": "义务条数 < 30 ⇒ status = LOW_CONFIDENCE（分数仍给，但标注样本量不足）。",
+  "version_comparison_metrics": [
+    "question_understanding_coverage",
+    "material_recall",
+    "selection_precision",
+    "complete_delivery_ratio",
+    "total_score"
+  ]
+}

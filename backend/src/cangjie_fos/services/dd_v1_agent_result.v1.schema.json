@@ -100,6 +100,22 @@
               "UNCERTAIN"
             ]
           },
+          "proposed_doc_type": {
+            "type": "string",
+            "enum": [
+              "audit_report",
+              "financial_statement",
+              "tax",
+              "license",
+              "charter",
+              "capital",
+              "resolution",
+              "ip",
+              "labor",
+              "contract"
+            ],
+            "description": "仅当该义务的 doc_type 为空（规则层解析不出）时必填：由模型判定该题要哪一类材料。取值限权威 10 类。判断不出来就 UNCERTAIN + abstain_reason，不许猜。"
+          },
           "confidence_or_uncertain": {
             "type": [
               "number",

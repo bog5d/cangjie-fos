@@ -174,6 +174,10 @@ _DOC_TYPE_RULES = (
 #:   语义层、桥接层、正式入口的「期间 = CURRENT」判定都从这里取。
 CURRENT_DOC_TYPES = ("license", "charter")
 
+#: 权威材料类型取值域（**从 ``_DOC_TYPE_RULES`` 派生，不是第二份表**）。
+#: 语义层「模型提出材料类型」时只能取这些 key。
+CURRENT_DOC_TYPE_KEYS = tuple(k for k, _pat in _DOC_TYPE_RULES)
+
 
 # ── 材料类型的**唯一性口径**（G-A2-10）────────────────────────────────
 # 与上面的 ``_DOC_TYPE_RULES`` **不是同一维度**：
@@ -428,6 +432,10 @@ _SUBJECT_HINT_MARKERS = (
 
 #: 主体前缀 scope 的**唯一**前缀常量（仓内只有这一处定义）。
 ENTITY_HINT_PREFIX = "entity_hint:"
+#: ★ 考场契约声明的**单主体**范围（`contract_single:<entity_id>`）
+CONTRACT_SINGLE_PREFIX = "contract_single:"
+#: ★ 考场契约声明的**集团**范围（`contract_group:<root_entity_id>`）
+CONTRACT_GROUP_PREFIX = "contract_group:"
 
 #: 主体前缀在**文案**里的统一脱敏标签（客户标识 ⇒ 原文不得外露）。
 ENTITY_HINT_LABEL = "义务指名的主体（简称）"
@@ -1221,7 +1229,68 @@ def resolve_entities(
         return [r for r in rows if r["relation"] == "parent"]
     if scope == "self":
         return [r for r in rows if r["is_group_root"]]
+
+    # ★★ 考场契约声明的主体范围（`#108` 实测 P0-1 的正解）。
+    #
+    #   义务**没有指名主体**时，若考场契约里**明确声明**了范围（单主体 / 集团），
+    #   就按声明解析 ⇒ 主体维度**不再不可判定** ⇒ 不会全盘 UNCERTAIN、0 交付。
+    #
+    #   ★ 这**不是**「题目没写主体 ⇒ 集团所有公司都符合要求」：
+    #     名单来自**权威主体登记**（`dd_v1_entities`）＋ **契约里的显式声明**，
+    #     没有声明就没有这两个分支 ⇒ 仍然返回空 ⇒ 仍然判「不可判定」。
+    #
+    #   ★ 两个既有分支（group_and_subs 等）语义**一字未改**。
+    if scope.startswith(CONTRACT_SINGLE_PREFIX):
+        eid = scope.split(":", 1)[1].strip()
+        if not eid:
+            return []
+        return [r for r in rows if str(r.get("entity_id") or "") == eid]
+    if scope.startswith(CONTRACT_GROUP_PREFIX):
+        root_id = scope.split(":", 1)[1].strip()
+        if not root_id:
+            return []
+        members = _group_members(rows, root_id)
+        return [r for r in rows if str(r.get("entity_id") or "") in members]
     return []
+
+
+def _group_members(rows: list[dict], root_id: str) -> set[str]:
+    """集团成员 ＝ 根 ＋ 沿 ``parent_id`` 链向下的全部后代（**按登记结构**，不按目录名）。"""
+    by_parent: dict[str, list[str]] = {}
+    for r in rows:
+        pid = str(r.get("parent_id") or "").strip()
+        eid = str(r.get("entity_id") or "").strip()
+        if pid and eid:
+            by_parent.setdefault(pid, []).append(eid)
+    out: set[str] = {root_id}
+    frontier = [root_id]
+    while frontier:
+        cur = frontier.pop()
+        for child in by_parent.get(cur, []):
+            if child not in out:
+                out.add(child)
+                frontier.append(child)
+    return out
+
+
+def checklist_digest(library_id: str, db_path: Path | None = None) -> str:
+    """本库**当前**清单的内容指纹（与 ``ingest_checklist`` 返回的 ``checklist_fingerprint`` 同口径）。
+
+    用于考场预检：把「契约声明的考卷指纹」与「库内实际清单指纹」逐位对比。
+    """
+    conn = mf._connect(db_path)
+    _ensure_schema(conn)
+    rows = [dict(r) for r in conn.execute(
+        "SELECT item_no, raw_text, institution FROM dd_v1_checklist_items WHERE library_id=?",
+        (library_id,))]
+    fps = [_checklist_fingerprint(library_id, str(r.get("institution") or ""),
+                                  str(r.get("item_no") or ""), str(r.get("raw_text") or ""))
+           for r in rows]
+    if not fps:
+        # ★ 空清单**不产出指纹**（空串）—— 否则「没摄取清单」会被误读成
+        #   「清单指纹 = sha256(空)」这样一个看起来合法的非空值。
+        return ""
+    return _checklist_digest(fps)
 
 
 def entities_registered(library_id: str, db_path: Path | None = None) -> int:

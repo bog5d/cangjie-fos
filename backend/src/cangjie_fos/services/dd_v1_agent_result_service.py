@@ -36,6 +36,11 @@ RESULT_FIELDS = (
     "confidence_or_uncertain", "abstain_reason", "warnings", "elapsed",
     "token_usage_or_UNKNOWN",
 )
+#: ★ WP2：规则层解析不出材料类型时，由**模型**提出该题要哪一类材料。
+#:   **可选**字段（schema 里在 ``properties``、不在 ``required``）；
+#:   取值域限权威 10 类（``dd_v1_requirement_service.CURRENT_DOC_TYPE_KEYS``），
+#:   域外值在语义层被拒（``DOC_TYPE_PROPOSAL_MISMATCH`` 等）。
+OPTIONAL_RESULT_FIELDS = ("proposed_doc_type",)
 EVIDENCE_VERDICTS = ("MATCH", "PARTIAL", "OUTDATED")
 CANDIDATE_FIELDS = ("file_id", "relative_path", "sha256", "locator", "entity", "period", "match_reason")
 
@@ -173,11 +178,12 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
     if not isinstance(r, dict):
         return ["RESULT_NOT_OBJECT"]
     errs: list[str] = []
-    missing = [k for k in RESULT_FIELDS if k not in r]
+    required = [k for k in RESULT_FIELDS if k not in OPTIONAL_RESULT_FIELDS]
+    missing = [k for k in required if k not in r]
     if missing:
         errs.append("MISSING_FIELDS:" + ",".join(missing))
         return errs
-    extra = sorted(set(r) - set(RESULT_FIELDS))
+    extra = sorted(set(r) - set(RESULT_FIELDS) - set(OPTIONAL_RESULT_FIELDS))
     if extra:  # schema additionalProperties:false（复核 N1）
         errs.append("UNKNOWN_FIELDS:" + ",".join(extra))
     ob = obligations.get(r["obligation_id"])

@@ -1,0 +1,573 @@
+{
+  "schema_version": "dd_v1_answer_sheet.v1",
+  "exam_id": "EX-A4A-SYNTHETIC",
+  "generated_at": "2026-10-29T01:27:40+08:00",
+  "delivered": [
+    {
+      "file_id": "ba22dff5d64703ba313c9590244d2efe",
+      "delivered_path": "R6/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+      "source_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+      "copy_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+      "hash_match": true,
+      "obligation_key": "OBL-e31e5512d4dd68b6640105a6",
+      "obligation_text": "提供主体甲2024年度营业执照",
+      "verdict": "MATCHED",
+      "gate": "PASS"
+    }
+  ],
+  "examinee": {
+    "mode": "UNKNOWN",
+    "adapter_id": "",
+    "vendor": "",
+    "model_id_or_unknown": "UNKNOWN",
+    "prompt_version": "",
+    "source_snapshot_id": "",
+    "degrade_reason": ""
+  },
+  "obligations": [
+    {
+      "obligation_id": "015186379d6f4b2481dbef8491d433d3",
+      "item_id": "015186379d6f4b2481dbef8491d433d3",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "232788cc4916407ba08d1a5209789c96",
+      "item_id": "232788cc4916407ba08d1a5209789c96",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "5bf7ee85250f401ba7739a1170888add",
+      "item_id": "5bf7ee85250f401ba7739a1170888add",
+      "text": "",
+      "interpretation": {
+        "doc_type": "license",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "CURRENT",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "ba22dff5d64703ba313c9590244d2efe",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 1,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [
+        {
+          "file_id": "ba22dff5d64703ba313c9590244d2efe",
+          "delivered_path": "R6/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+          "source_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+          "copy_sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+          "hash_match": true
+        }
+      ],
+      "delivered_count": 1,
+      "candidate_window": {
+        "cap": 6,
+        "found": 1,
+        "checked": 1,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "6a61c5a4cb39414eb5b3a5c8a34de425",
+      "item_id": "6a61c5a4cb39414eb5b3a5c8a34de425",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "d1c9a36161e5474188d38ab618006c97",
+      "item_id": "d1c9a36161e5474188d38ab618006c97",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "d3e76be7d8f9438aacca9d2e98c538f1",
+      "item_id": "d3e76be7d8f9438aacca9d2e98c538f1",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "e6f9d06678a5489a96323960e2975c7d",
+      "item_id": "e6f9d06678a5489a96323960e2975c7d",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "f3d89a1971e541f9bd9015e3033ce26f",
+      "item_id": "f3d89a1971e541f9bd9015e3033ce26f",
+      "text": "",
+      "interpretation": {
+        "doc_type": "labor",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "f656bcddc8c19bae202365c3ba6655a0",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 1,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 1,
+        "checked": 1,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    }
+  ],
+  "summary": {
+    "obligations": 8,
+    "understood": 8,
+    "answered": 8,
+    "abstained": 0,
+    "selected_files": 20,
+    "delivered_files": 1,
+    "delivered_files_attributed": 1,
+    "truncated_obligations": 0,
+    "unresolved_doc_type_obligations": 0
+  },
+  "note": "机器答卷只含考生可见信息；标准答案不在本文件内，也不在考生可读路径内"
+}

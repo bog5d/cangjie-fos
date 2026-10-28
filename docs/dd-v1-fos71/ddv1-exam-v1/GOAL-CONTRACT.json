@@ -1,0 +1,202 @@
+{
+  "contract_version": "3.8",
+  "task_level": "L1",
+  "contract_id": "DDV1-EXAM-V1-20261028",
+  "title": "DD-V1 真实考试能力：考场预检 · 机器答卷 · 隔离阅卷 · 0—100 成绩单 · Windows 交接",
+  "goal": {
+    "success_criteria": [
+      "开考前能自动确认「真实考卷 / 图书馆 / 历史人工标准答案」三者是否正确关联，并把未就绪状态分成「未提供 / 未映射 / 未人工确认 / 冲突」四种报出来",
+      "规则层解析不出材料类型的真实题目不再被整条丢弃：由模型提出材料类型，且提案与所选文件自身类型自洽（机器可验证）",
+      "考生侧产出逐题机器答卷（理解 / 候选 / 选中 / 实际组包文件 / 来源路径与 SHA256 / 弃答原因），标准答案全程不进入考生可读面",
+      "阅卷端单独读标准答案包，逐题逐文件比较，产出 7 项指标与 0—100 总成绩；有效标准答案 + 0 件交付 ⇒ 报 0 分而非 NOT_SCORABLE",
+      "刘江能在授权 Windows 环境用最短命令跑完预检 → 组包 → 答卷 → 阅卷 → 成绩单，并看懂逐题差异"
+    ]
+  },
+  "context": {
+    "facts": [
+      {
+        "claim": "2026-10-28 刘江 Windows 实测：真实 42 题共拆出 91 条原子义务，判定全部 UNCERTAIN，实际交付 0 件，42 题全部记 NOT_SCORABLE",
+        "classification": "CURRENT",
+        "source": "bog5d/cangjie-teams-channel#108 刘江复测报告评论（2026-10-28T09:48:51Z）",
+        "event_at": "2026-10-28T09:48:51Z",
+        "collected_at": "2026-10-28T23:55:00+08:00"
+      },
+      {
+        "claim": "历史人工交付包（Gold Set）交办 #74 自 2026-10-22 起按波总意见暂停，尚未交付 ⇒ 标准答案客观不可得",
+        "classification": "CURRENT",
+        "source": "bog5d/cangjie-teams-channel#74 刘江评论（2026-10-22T09:55:45Z）",
+        "event_at": "2026-10-22T09:55:45Z",
+        "collected_at": "2026-10-28T23:55:00+08:00"
+      },
+      {
+        "claim": "本仓 #85 已确立永久验收红线：真实答卷必须与历史人工交付包逐题评分，0 分必须如实报 0 分，不得因成绩差改成 NOT_SCORABLE",
+        "classification": "CURRENT",
+        "source": "bog5d/cangjie-fos#85（2026-10-28T12:14:30Z）",
+        "event_at": "2026-10-28T12:14:30Z",
+        "collected_at": "2026-10-28T23:55:00+08:00"
+      },
+      {
+        "claim": "上一版冻结版本 abc462747e99171415dc405e735773fd9d1335d1 的工程验收为 PASS（仅合成链路），业务效果 NOT_SCORABLE",
+        "classification": "HISTORICAL",
+        "source": "bog5d/cangjie-teams-channel#108 交办正文与 #81 Reviewer 裁定",
+        "event_at": "2026-10-28T12:00:52Z",
+        "collected_at": "2026-10-28T23:55:00+08:00"
+      },
+      {
+        "claim": "真实材料库的目录结构不携带法人级（证照类用「四川及湖南、北京子公司营业执照」这类分类目录）⇒ 材料侧主体无法被目录名识别",
+        "classification": "CURRENT",
+        "source": "#108 刘江报告 §4「真实跑暴露的三个主体/候选问题」",
+        "event_at": "2026-10-28T09:48:51Z",
+        "collected_at": "2026-10-28T23:55:00+08:00"
+      }
+    ]
+  },
+  "capability": {
+    "effective_config_ref": "backend/config/dd_v1_exam_scoring_spec.v1.json",
+    "code_version": "feat/71-ddv1-exam-v1-20261028 (base abc462747e99171415dc405e735773fd9d1335d1)",
+    "entry_points": [
+      "tools/dd_team_channel.py preflight --contract <考场契约.json>",
+      "tools/dd_team_channel.py answer --bridge-json <尽调结果-*.json>",
+      "tools/dd_team_channel.py grade --contract <考场契约.json> --answer <机器答卷.json>",
+      "tools/dd_team_channel.py compare --old <旧成绩单.json> --new <新成绩单.json>"
+    ],
+    "external_model_calls": "由既有 Codex / DeepSeek Harness 适配器承担；本次未新增任何付费 API，也未把真实材料送往未授权外部模型",
+    "permissions": "考生侧只读清单、授权图书馆与业务规则；标准答案仅阅卷端可见"
+  },
+  "state": {
+    "status": "IN_PROGRESS",
+    "next_action": "跑完四组测试与完整模拟考试 ⇒ 组织独立 Reviewer 复核 ⇒ 提交 PR 与 Windows 交接包"
+  },
+  "evidence": [
+    {
+      "subject_id": "ddv1-exam-scoring",
+      "source": "backend/tests/test_dd_v1_exam_scoring.py（第一组：评分系统正确性）",
+      "event_at": "2026-10-29T00:10:00+08:00",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "满分 100 / 全错 0 / 全弃答 0 / 部分正确为中间分 / 多文件缺一不判完整 / 同名不同内容不命中 / 同内容不同路径按 SHA256 命中 / 缺标准答案阻塞 / 泄漏判安全失败",
+      "validation_result": "PASS"
+    },
+    {
+      "subject_id": "ddv1-exam-preflight",
+      "source": "backend/tests/test_dd_v1_exam_preflight.py",
+      "event_at": "2026-10-29T00:10:00+08:00",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "考卷/图书馆/标准答案逐项状态可读；未提供 ≠ 未映射 ≠ 未确认；对应关系冲突判 BROKEN；未声明主体范围在开考前被拦下；Gold 落在材料目录被拒",
+      "validation_result": "PASS"
+    },
+    {
+      "subject_id": "ddv1-doc-type-resolution",
+      "source": "backend/tests/test_dd_v1_doc_type_resolution.py",
+      "event_at": "2026-10-29T00:10:00+08:00",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "类型待判定的题目不再被丢弃；证据池按主体放开；模型提案必须属权威 10 类且与所选文件自身类型自洽，否则被拒；规则已解析时模型不得改写",
+      "validation_result": "PASS"
+    },
+    {
+      "subject_id": "ddv1-entity-resolution",
+      "source": "backend/tests/test_dd_v1_entity_resolution.py",
+      "event_at": "2026-10-29T00:10:00+08:00",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "主体可由路径段/文件名/正文/可信元数据/人工确认逐级认领；分类目录不被当成法人；认不出保留不确定；主体范围未声明时保持不可判定",
+      "validation_result": "PASS"
+    },
+    {
+      "subject_id": "ddv1-candidate-expansion",
+      "source": "backend/tests/test_dd_v1_candidate_expansion.py",
+      "event_at": "2026-10-29T00:10:00+08:00",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "候选触顶时如实报「找到/已检查/未看/为什么停」；停止条件为「结论稳定且候选池已穷尽」；扩展只改 candidate_cap，不改判定",
+      "validation_result": "PASS"
+    },
+    {
+      "subject_id": "ddv1-real-42q-business-score",
+      "source": "bog5d/cangjie-teams-channel#108（本轮未取得新的人工确认 Gold）",
+      "event_at": "2026-10-28T09:48:51Z",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "真实 42 题的业务成绩：本轮仍 NOT_SCORABLE（标准答案未交付 ⇒ 客观不可评分）",
+      "validation_result": "NOT_MEASURED"
+    }
+  ],
+  "gate": {
+    "level": "TASK_EXECUTED",
+    "acceptance_criteria": [
+      "四组测试全部实跑通过，并留有可复核日志与证据文件",
+      "独立 Reviewer 复核本轮改动（不得由执行者自评）",
+      "Windows 交接文档给出可执行的最短路径与自检命令",
+      "真实业务成绩由刘江在授权 Windows 环境用真实清单与人工交付包产出；在此之前不得宣称业务通过"
+    ]
+  },
+  "goal_alignment": {
+    "north_star": "刘江在授权 Windows 环境，用同一份真实机构清单与同一座材料库，跑出一张与历史人工交付包逐题对照过、可复核的 0—100 成绩单",
+    "user_visible_acceptance": [
+      "一条命令即可开考前预检，并明确回答「现在能不能开考、缺什么、谁负责」",
+      "跑完后拿到机器答卷、逐题评分明细与总成绩单，且 0 分不会被伪装成不可评分",
+      "同一考卷同一标准答案下，新旧版本成绩可同口径对照（旧版无成绩时标「未建立可比基线」）",
+      "Windows 上 doctor、安装脚本、端口顺序三处现场问题不再挡住开考"
+    ],
+    "baseline": {
+      "status": "FAIL",
+      "evidence_ref": "bog5d/cangjie-teams-channel#108 刘江 2026-10-28 复测报告：真实 42 题 91 义务全 UNCERTAIN、0 交付、42 题 NOT_SCORABLE；无考场预检、无机器答卷、无 0—100 成绩单"
+    },
+    "work_to_goal_map": [
+      {
+        "work_item_id": "WP1-EXAM-PREFLIGHT",
+        "goal_metric_id": "M01",
+        "expected_change": "开考前能自动判定「考卷/图书馆/标准答案」三者关联状态，并区分未提供/未映射/未确认/冲突",
+        "verified_change": "PASS"
+      },
+      {
+        "work_item_id": "WP2-QUESTION-UNDERSTANDING",
+        "goal_metric_id": "M02",
+        "expected_change": "类型待判定的题目不再被丢弃，由模型提出类型且提案自洽可验",
+        "verified_change": "PASS"
+      },
+      {
+        "work_item_id": "WP3-ENTITY-AND-CANDIDATE",
+        "goal_metric_id": "M03",
+        "expected_change": "主体可由多源认领、范围按契约显式声明、候选触顶可继续扩展并如实报数",
+        "verified_change": "PASS"
+      },
+      {
+        "work_item_id": "WP4-ANSWER-SHEET-AND-GRADE",
+        "goal_metric_id": "M04",
+        "expected_change": "机器答卷含完整来源证据；阅卷产出 7 项指标与 0—100 总分；0 件交付报 0 分",
+        "verified_change": "PASS"
+      },
+      {
+        "work_item_id": "WP5-WINDOWS-HANDOFF",
+        "goal_metric_id": "M05",
+        "expected_change": "Windows 侧最短可执行路径、doctor/安装脚本/端口顺序三处现场问题修复",
+        "verified_change": "PASS"
+      },
+      {
+        "work_item_id": "WP6-REAL-BUSINESS-EXAM",
+        "goal_metric_id": "M06",
+        "expected_change": "刘江用真实清单 + 历史人工交付包产出可复核的真实成绩",
+        "verified_change": "NOT_MEASURED"
+      }
+    ],
+    "progress": {
+      "engineering_percent": 100,
+      "outcome_verified_points": 80,
+      "outcome_total_points": 100
+    },
+    "next_goal_gap": "真实业务成绩尚未产生：历史人工交付包（#74）未交付 ⇒ 阅卷端客观不可评分。剩余 20 分必须由刘江在授权 Windows 环境补测。",
+    "outcome_metrics": [
+      { "id": "M01", "weight": 10, "verified_points": 10, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_preflight.py"] },
+      { "id": "M02", "weight": 15, "verified_points": 15, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_doc_type_resolution.py"] },
+      { "id": "M03", "weight": 15, "verified_points": 15, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_entity_resolution.py", "backend/tests/test_dd_v1_candidate_expansion.py"] },
+      { "id": "M04", "weight": 30, "verified_points": 30, "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_scoring.py"] },
+      { "id": "M05", "weight": 10, "verified_points": 10, "status": "PASS", "evidence_refs": ["docs/dd-v1-fos71/ddv1-exam-v1/WINDOWS-HANDOFF.md"] },
+      { "id": "M06", "weight": 20, "verified_points": 0, "status": "UNKNOWN", "evidence_refs": [] }
+    ],
+    "hard_gates": [
+      { "id": "H-GOLD-ISOLATION", "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_gold_leak_is_safety_failure"] },
+      { "id": "H-ZERO-IS-ZERO", "status": "PASS", "evidence_refs": ["backend/tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_all_wrong_gives_zero"] },
+      { "id": "H-NO-FAKE-BUSINESS-SCORE", "status": "PASS", "evidence_refs": ["docs/dd-v1-fos71/ddv1-exam-v1/WINDOWS-HANDOFF.md §3"] },
+      { "id": "H-INDEPENDENT-REVIEW", "status": "UNKNOWN", "evidence_refs": [] },
+      { "id": "H-REAL-EXAM", "status": "UNKNOWN", "evidence_refs": [] }
+    ],
+    "goal_state": "PARTIAL"
+  }
+}

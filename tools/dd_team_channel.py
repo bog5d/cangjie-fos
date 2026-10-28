@@ -250,8 +250,13 @@ def cmd_run(a) -> int:
 
     # ── 8 交付原件（G-A3-9：只有显式 --package 才走这条路径）──────────────
     rc = EXIT_OK
+    delivered: list[dict] = []
     if getattr(a, "package", False):
         rc = _run_package(pack, a)
+        # ★★ 实际交付清单必须进机读产物：否则「机器答卷」拿不到交付件数
+        #   ⇒ HR-1（0 交付强制 0 分）会**误伤**成 0 分（真机上就是「明明交了却 0 分」）。
+        from cangjie_fos.services import dd_v1_exam_service as ex
+        delivered = ex.read_delivery_manifest(_delivery_manifest_path(a, pack))
 
     # ── 报告 ──────────────────────────────────────────────────────────
     _hr("输出")
@@ -260,7 +265,8 @@ def cmd_run(a) -> int:
     ts = time.strftime("%Y%m%d-%H%M%S")
     md = outdir / f"尽调报告-{lib}-{ts}.md"
     js = outdir / f"尽调结果-{lib}-{ts}.json"
-    _write_reports(md, js, lib, a, res, q, cov, parsed, scan, bridge, snap)
+    _write_reports(md, js, lib, a, res, q, cov, parsed, scan, bridge, snap,
+                   delivered=delivered)
 
     print(f"  人看的报告：{md}")
     print(f"  机读结果  ：{js}")
@@ -434,7 +440,9 @@ def _run_bridge(lib, root: Path, a) -> dict:
         from cangjie_fos.services import dd_v1_bridge_service as br
         res = br.bridge_library(
             lib, material_root=root, db_path=None,
-            allow_real_material=bool(getattr(a, "allow_real_material", False)))
+            allow_real_material=bool(getattr(a, "allow_real_material", False)),
+            # ★ 类型待判定通道：**显式打开**才生效（默认关闭 ⇒ 既有六态口径一字不变）。
+            resolve_doc_type=bool(getattr(a, "resolve_doc_type", False)))
         return {"ok": True, "result": res}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
@@ -568,8 +576,16 @@ def _print_verdicts(tally: dict) -> None:
         print(f"    {names.get(k, k):<10} {v} 条")
 
 
+def _delivery_manifest_path(a, pack: dict) -> Path:
+    """定位本次组包的 ``组包manifest.tsv``（**实际交付**的权威清单）。"""
+    p = pack.get("result") or {}
+    out_dir = (Path(a.package_out) if getattr(a, "package_out", "")
+               else Path(_exam_data_dir()) / "deliveries" / str(p.get("review_id") or ""))
+    return out_dir / "组包manifest.tsv"
+
+
 def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge=None,
-                   snap=None) -> None:
+                   snap=None, delivered=None) -> None:
     from cangjie_fos.services import (dd_v1_match_service as ms,
                                       dd_v1_policy_service as P,
                                       dd_v1_requirement_service as rq)
@@ -702,6 +718,8 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
         "understanding_quality": q["by_dimension"],
         "card_provenance": cov["by_provenance"],
         "semantic_bridge": _bridge_json(bridge, config_anchor=_config_anchor(a)),
+        # ★ 实际交付清单（组包复制了哪些原件）——「机器答卷」据此判交付件数。
+        "delivered": list(delivered or []),
         "obligations": [
             {"obligation": o["obligation"],
              "verdict": (ms.get_status(o["obligation_id"]) or {}).get("verdict", ""),
@@ -710,6 +728,281 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
             for o in obl
         ],
     }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _exam_data_dir() -> str:
+    """考场产物目录（数据面，**不进 Git**）。"""
+    return os.environ.setdefault("CANGJIE_DD_V1_DATA_DIR",
+                                 str(_BACKEND / "data" / "dd_v1"))
+
+
+def _exam_out_dir(a) -> Path:
+    out = Path(getattr(a, "out", "") or "") if getattr(a, "out", "") else \
+        Path(_exam_data_dir()) / "考场"
+    out.mkdir(parents=True, exist_ok=True)
+    return out
+
+
+def _exam_ts() -> str:
+    return time.strftime("%Y%m%d-%H%M%S")
+
+
+def _load_contract(a):
+    from cangjie_fos.services import dd_v1_exam_preflight_service as pf
+    return pf.load_exam_contract(a.contract)
+
+
+def _library_context(library_id: str):
+    """取库 + 材料 meta + 义务 + 登记主体数（预检 / 阅卷共用）。"""
+    from cangjie_fos.services import (dd_v1_bridge_service as br,
+                                      dd_v1_manifest_service as mf,
+                                      dd_v1_requirement_service as rq)
+    lib = mf.get_library(library_id) if library_id else None
+    meta: list = []
+    obligations: list = []
+    entities = 0
+    if lib:
+        try:
+            meta, _stats = br.build_meta(library_id)
+        except Exception:  # noqa: BLE001
+            meta = []
+        obligations = rq.list_obligations(library_id)
+        entities = rq.entities_registered(library_id)
+    return lib, meta, obligations, entities
+
+
+def cmd_preflight(a) -> int:
+    """**开考前 Gate**：考卷 / 图书馆 / 标准答案 三者是否正确关联。"""
+    from cangjie_fos.services import dd_v1_exam_preflight_service as pf
+
+    contract = _load_contract(a)
+    library_id = getattr(a, "library", "") or (contract.get("checklist") or {}).get("library_id", "")
+    lib, meta, obligations, entities = _library_context(library_id)
+    material_root = None
+    if lib:
+        material_root = Path(lib.get("root_path") or "")
+    forbidden = tuple(Path(p) for p in (getattr(a, "forbid", "") or "").split(";") if p)
+    rep = pf.run_preflight(contract, library=lib, meta=meta, obligations=obligations,
+                           material_root=material_root, forbidden_dirs=forbidden,
+                           entities_registered=entities)
+    out = _exam_out_dir(a)
+    stem = f"预检-{contract.get('exam_id')}-{_exam_ts()}"
+    (out / f"{stem}.json").write_text(json.dumps(rep, ensure_ascii=False, indent=2), "utf-8")
+    md = pf.preflight_markdown(rep)
+    (out / f"{stem}.md").write_text(md, "utf-8")
+    print(md)
+    print(f"\n[落盘] {out / (stem + '.json')}")
+    print(f"[落盘] {out / (stem + '.md')}")
+    if not rep.get("scoring_ready"):
+        print("\n[结论] **不具备正式评分条件** —— 只能做诊断试跑，且结果必须标「非正式评分」。")
+        for b in rep.get("blockers") or []:
+            print(f"  - {b['code']}：{b['detail']}")
+        return EXIT_FAIL
+    print("\n[结论] 具备正式评分条件。")
+    return EXIT_OK
+
+
+def _answer_sheet_from_run_dir(run_dir: Path):
+    """从 ``dd_v1_local_run`` 的 run 目录读 **全部** run_record + packet。
+
+    ★ ``local_run run`` 默认**按清单条目逐条跑** ⇒ 一个 run 目录下有**多份**
+      ``run_record.json``（每个条目一份）⇒ 只读第一份会**漏掉绝大部分题目**
+      （实测：8 条条目只读到 1 条 ⇒ 成绩单全错）。
+      ⇒ 这里把多份记录的 ``accepted`` **合并**成一份答卷。
+    """
+    rec_paths = sorted(run_dir.rglob("run_record.json"))
+    if not rec_paths:
+        raise FileNotFoundError(f"RUN_RECORD_NOT_FOUND:{run_dir}")
+    merged: dict = {}
+    accepted: list = []
+    rejected: list = []
+    uncovered: list = []
+    mode = "RULE_ONLY"
+    degrade = ""
+    for p in rec_paths:
+        rec = json.loads(p.read_text(encoding="utf-8"))
+        if not merged:
+            merged = {k: v for k, v in rec.items() if k not in ("semantic_validation",)}
+        v = rec.get("semantic_validation") or {}
+        accepted.extend(v.get("accepted") or [])
+        rejected.extend(v.get("rejected") or [])
+        uncovered.extend(v.get("uncovered_obligations") or [])
+        if v.get("mode") == "AGENT_SUGGESTION":
+            mode = "AGENT_SUGGESTION"
+        degrade = degrade or str(v.get("degrade_reason") or "")
+    merged["semantic_validation"] = {
+        "mode": mode, "degrade_reason": degrade,
+        "uncovered_obligations": sorted(set(uncovered)),
+        "accepted": accepted, "rejected": rejected, "warnings": [],
+    }
+    merged["authoritative_validation"] = "semantic_validation"
+    merged["_merged_run_records"] = [str(p.relative_to(run_dir)) for p in rec_paths]
+    packets = sorted(run_dir.rglob("packet.json"))
+    pkt = json.loads(packets[0].read_text(encoding="utf-8")) if packets else {}
+    # 多份 packet 的义务与证据要**合并**（每个条目一个包）
+    if len(packets) > 1:
+        obs: list = []
+        evidence: dict = {}
+        status: dict = {}
+        for p in packets:
+            pk = json.loads(p.read_text(encoding="utf-8"))
+            obs.extend(pk.get("obligations") or [])
+            evidence.update(pk.get("evidence") or {})
+            status.update(pk.get("evidence_status") or {})
+        pkt = {**pkt, "obligations": obs, "evidence": evidence, "evidence_status": status}
+    return merged, pkt
+
+
+def _answer_sheet_from_bridge(bridge: dict):
+    """从 ``dd_team_channel run`` 的桥接结果重建 packet 形状（结构一致，口径同一个）。"""
+    obs = []
+    evidence = {}
+    ev_status = {}
+    rule_hints = {}
+    for o in bridge.get("obligations") or []:
+        oid = str(o.get("obligation_id") or "")
+        obs.append({
+            "obligation_id": oid,
+            "item_id": str(o.get("source_obligation_id") or oid),
+            "text": str(o.get("text") or ""),
+            "entity": str(o.get("entity") or ""),
+            "entity_basis": str(o.get("entity_basis") or ""),
+            "period": str(o.get("period") or ""),
+            "doc_type": str(o.get("doc_type") or ""),
+            "doc_type_unresolved": bool(o.get("doc_type_unresolved")),
+            "doc_type_source": str(o.get("doc_type_source") or ""),
+            "required_parts": list(o.get("required_parts") or []),
+            "split_method": "REQUIREMENT_SERVICE",
+        })
+        evidence[oid] = list(o.get("evidence") or [])
+        st = o.get("evidence_status") or {}
+        ev_status[oid] = st
+        # ★ 规则链提示也带过来：**没接模型**时，「机器选了什么」取它（标 RULE_HINT）。
+        rh = o.get("rule_hint") or {}
+        if rh:
+            rule_hints[oid] = rh
+    return {"obligations": obs, "evidence": evidence, "evidence_status": ev_status,
+            "rule_hints": rule_hints}
+
+
+def cmd_answer(a) -> int:
+    """产出**机器答卷**（逐题：理解 / 候选 / 选中 / 交付 / 弃答原因）。"""
+    from cangjie_fos.services import dd_v1_exam_service as ex
+
+    if getattr(a, "run_dir", ""):
+        rec, pkt = _answer_sheet_from_run_dir(Path(a.run_dir))
+        delivered = None
+    elif getattr(a, "bridge_json", ""):
+        raw = json.loads(Path(a.bridge_json).read_text(encoding="utf-8"))
+        bridge = raw.get("semantic_bridge") or raw.get("bridge") or raw
+        rec, pkt = {}, _answer_sheet_from_bridge(bridge)
+        delivered = raw.get("delivered")
+    else:
+        print("[错误] 必须给 --run-dir 或 --bridge-json", file=sys.stderr)
+        return EXIT_USAGE
+    # ★★ 「实际交付」以**组包 manifest** 为准（人工也是拿它逐件核哈希的那一份）。
+    #   给了 --delivered 就以它为准；没给就用机读产物里那份。
+    _dl = str(getattr(a, "delivered", "") or "").strip()
+    if _dl:
+        delivered = ex.read_delivery_manifest(_dl)
+        if not delivered:
+            print(f"[警告] 交付清单读不到或为空：{_dl}"
+                  "（本次按「0 件交付」计 ⇒ 阅卷会按 HR-1 强制 0 分）")
+    sheet = ex.build_answer_sheet(rec, pkt, exam_id=getattr(a, "exam_id", "") or "",
+                                  delivered=delivered)
+    out = _exam_out_dir(a)
+    stem = f"机器答卷-{_exam_ts()}"
+    (out / f"{stem}.json").write_text(json.dumps(sheet, ensure_ascii=False, indent=2), "utf-8")
+    s = sheet.get("summary") or {}
+    print("机器答卷已生成：")
+    print(f"  义务 {s.get('obligations')}｜已理解 {s.get('understood')}｜已作答 {s.get('answered')}"
+          f"｜选中 {s.get('selected_files')} 件｜交付 {s.get('delivered_files')} 件"
+          f"｜候选触顶 {s.get('truncated_obligations')} 条")
+    print(f"[落盘] {out / (stem + '.json')}")
+    return EXIT_OK
+
+
+def cmd_grade(a) -> int:
+    """**隔离阅卷**：机器答卷 × 历史人工标准答案 ⇒ 逐题明细 + 0—100 成绩单。"""
+    from cangjie_fos.services import dd_v1_exam_service as ex
+    from cangjie_fos.services import dd_v1_gold_service as gold_svc
+
+    sheet = json.loads(Path(a.answer).read_text(encoding="utf-8"))
+    contract = _load_contract(a) if getattr(a, "contract", "") else {}
+    library_id = getattr(a, "library", "") or (contract.get("checklist") or {}).get("library_id", "")
+    lib, meta, _obl, _ents = _library_context(library_id)
+    idx = gold_svc.index_from_snapshot((lib or {}).get("snapshot") or {}, meta)
+
+    manifest = None
+    gold_path = getattr(a, "gold", "") or (contract.get("gold") or {}).get("manifest_path", "")
+    if gold_path and Path(gold_path).is_file():
+        manifest = gold_svc.load_gold_manifest(gold_path)
+    leak = ex.detect_gold_leak(sheet, idx)
+    spec = ex.load_scoring_spec(getattr(a, "scoring_spec", "") or None)
+    card = ex.grade_answer_sheet(
+        sheet, manifest, library_index=idx, scoring_spec=spec,
+        gold_provided=manifest is not None,
+        gold_state="NOT_PROVIDED" if manifest is None else "",
+        gold_state_reason="未提供标准答案包" if manifest is None else "",
+        exam_id=str(contract.get("exam_id") or ""),
+        leak_report=leak)
+    out = _exam_out_dir(a)
+    stem = f"成绩单-{_exam_ts()}"
+    (out / f"{stem}.json").write_text(json.dumps(card, ensure_ascii=False, indent=2), "utf-8")
+    if card.get("status") == "NOT_SCORABLE":
+        print(f"[不可评分] {'；'.join(card.get('blocked_by') or [])}")
+        print(f"[落盘] {out / (stem + '.json')}")
+        return EXIT_FAIL
+    sc = card.get("scores") or {}
+    cn = card.get("counts") or {}
+    print("=" * 66)
+    print(f"  DD-V1 成绩单 · {card.get('exam_id') or '(未命名考场)'}")
+    print("=" * 66)
+    print(f"  题目理解覆盖率      : {sc.get('question_understanding_coverage')}")
+    print(f"  材料召回率          : {sc.get('material_recall')}")
+    print(f"  选材准确率          : {sc.get('selection_precision')}")
+    print(f"  完整正确交付题目比例: {sc.get('complete_delivery_ratio')}")
+    print(f"  漏交率              : {sc.get('miss_rate')}")
+    print(f"  错交率              : {sc.get('wrong_rate')}")
+    print(f"  ── 总成绩           : {sc.get('total_score')} / 100")
+    print(f"  状态                : {card.get('status')}"
+          f"｜安全闸 {((card.get('safety_gate') or {}).get('status'))}"
+          f"（违规 {((card.get('safety_gate') or {}).get('violations'))}）")
+    print(f"  义务 {cn.get('obligations')} 条｜期望材料 {cn.get('expected_files')} 件"
+          f"｜选中 {cn.get('selected_files')} 件｜交付 {cn.get('delivered_files')} 件")
+    if card.get("zero_delivery_forced_zero"):
+        print("  ★ 有效标准答案 + 0 件交付 ⇒ 总分强制 0（不是 NOT_SCORABLE）")
+    print(f"[落盘] {out / (stem + '.json')}")
+    return EXIT_OK
+
+
+def cmd_compare(a) -> int:
+    """同口径版本比较（**旧版没有真实成绩 ⇒ 标「未建立可比基线」**）。"""
+    from cangjie_fos.services import dd_v1_exam_service as ex
+    old = json.loads(Path(a.old).read_text(encoding="utf-8")) if getattr(a, "old", "") else None
+    new = json.loads(Path(a.new).read_text(encoding="utf-8")) if getattr(a, "new", "") else None
+    cmp = ex.compare_scorecards(old, new,
+                                old_label=getattr(a, "old_label", "") or "旧版本",
+                                new_label=getattr(a, "new_label", "") or "新版本")
+    md = ex.compare_markdown(cmp)
+    out = _exam_out_dir(a)
+    stem = f"版本对比-{_exam_ts()}"
+    (out / f"{stem}.md").write_text(md, "utf-8")
+    (out / f"{stem}.json").write_text(json.dumps(cmp, ensure_ascii=False, indent=2), "utf-8")
+    print(md)
+    print(f"\n[落盘] {out / (stem + '.md')}")
+    return EXIT_OK
+
+
+def cmd_contract_template(a) -> int:
+    """打印考场契约模板（操作员填写用；**不含任何真实业务内容**）。"""
+    from cangjie_fos.services import dd_v1_exam_preflight_service as pf
+    out = _exam_out_dir(a)
+    p = out / "考场契约-模板.json"
+    p.write_text(json.dumps(pf.exam_contract_template(), ensure_ascii=False, indent=2), "utf-8")
+    print(p.read_text(encoding="utf-8"))
+    print(f"[落盘] {p}")
+    return EXIT_OK
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -735,6 +1028,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="跳过语义层桥接（本次输出与未接桥接时完全一致）")
     r.add_argument("--allow-real-material", action="store_true",
                    help="材料库不是仓库内合成 fixture 时必须给（=真实材料，仅限本机）")
+    r.add_argument("--resolve-doc-type", action="store_true",
+                   help="打开「规则层解析不出材料类型 ⇒ 交给模型判定」这条通道"
+                        "（默认关闭：既有六态口径与既有成本纪律一字不变；"
+                        "真实清单里类型待判定的题需要显式打开）")
     r.add_argument("--package", action="store_true",
                    help="显式走「复制原件」路径（必须同时给 --approved-by；"
                         "未批准 ⇒ 拒绝且零复制；无自动批准开关）")
@@ -746,6 +1043,46 @@ def build_parser() -> argparse.ArgumentParser:
 
     st = sp.add_parser("policy", help="查看披露策略是否生效")
     st.set_defaults(func=lambda a: (_print_policy(), EXIT_OK)[1])
+
+    # ── 考场四步（#85 永久验收红线）────────────────────────────────────────
+    pf = sp.add_parser("preflight", help="开考前 Gate：考卷/图书馆/标准答案 三者是否正确关联")
+    pf.add_argument("--contract", required=True, help="考场契约 JSON 路径")
+    pf.add_argument("--library", default="", help="材料库标识（不给则取契约里的）")
+    pf.add_argument("--out", default="", help="输出目录（不给则落数据面 <data>/考场）")
+    pf.add_argument("--forbid", default="",
+                    help="额外禁止目录（分号分隔），用于把材料/运行目录列为 Gold 禁区")
+    pf.set_defaults(func=cmd_preflight)
+
+    an = sp.add_parser("answer", help="产出机器答卷（逐题：理解/候选/选中/交付/弃答原因）")
+    an.add_argument("--run-dir", default="", help="dd_v1_local_run 的 run 目录（含 run_record.json）")
+    an.add_argument("--bridge-json", default="", help="团队入口产出的 尽调结果-*.json")
+    an.add_argument("--delivered", default="",
+                    help="组包manifest.tsv（**实际交付**清单）；"
+                         "给了它就以它为准（阅卷的「实际交付件数」只看这一份）")
+    an.add_argument("--exam-id", default="", help="考场标识")
+    an.add_argument("--out", default="", help="输出目录")
+    an.set_defaults(func=cmd_answer)
+
+    gr = sp.add_parser("grade", help="隔离阅卷：机器答卷 × 历史人工标准答案 ⇒ 0—100 成绩单")
+    gr.add_argument("--answer", required=True, help="机器答卷 JSON 路径")
+    gr.add_argument("--contract", default="", help="考场契约 JSON 路径")
+    gr.add_argument("--gold", default="", help="标准答案包清单路径（不给则取契约里的）")
+    gr.add_argument("--library", default="", help="材料库标识（不给则取契约里的）")
+    gr.add_argument("--scoring-spec", default="", help="冻结评分口径（不给则用仓内默认）")
+    gr.add_argument("--out", default="", help="输出目录")
+    gr.set_defaults(func=cmd_grade)
+
+    cp = sp.add_parser("compare", help="同口径版本比较（旧版无成绩 ⇒ 标「未建立可比基线」）")
+    cp.add_argument("--old", default="", help="旧版成绩单 JSON")
+    cp.add_argument("--new", default="", help="新版成绩单 JSON")
+    cp.add_argument("--old-label", default="", help="旧版标签")
+    cp.add_argument("--new-label", default="", help="新版标签")
+    cp.add_argument("--out", default="", help="输出目录")
+    cp.set_defaults(func=cmd_compare)
+
+    ct = sp.add_parser("contract-template", help="打印考场契约模板")
+    ct.add_argument("--out", default="", help="输出目录")
+    ct.set_defaults(func=cmd_contract_template)
     return p
 
 
@@ -753,8 +1090,9 @@ def _print_policy() -> None:
     _policy_note()
 
 
-def main() -> int:
-    a = build_parser().parse_args()
+def main(argv: list[str] | None = None) -> int:
+    """``argv`` 可选（默认取 ``sys.argv``）—— 便于测试**直接调用真实入口**。"""
+    a = build_parser().parse_args(argv)
     if not getattr(a, "by", ""):
         a.by = os.environ.get("USER") or os.environ.get("USERNAME") or "未署名"
     try:

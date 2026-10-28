@@ -479,3 +479,58 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 - ✅ 清单分块解析（4000字/块）、大材料库预筛（top-50）、Session历史恢复、批量确认、手动文件替换
 - ✅ 机构名联动：创建Session时自动推进机构Pipeline阶段到"DD"
 - ✅ GitHub自动同步：导出后推送到 `analytics/{tenant}/dd/`
+
+---
+
+## DD-V1 考场 V1 改动文件清单（接手必读，2026-10-28/29）
+
+> 交办单：`cangjie-fos#85`（永久验收红线）＋ `cangjie-teams-channel#108`（正式交办）。
+> 分支 `feat/71-ddv1-exam-v1-20261028`，基线 `abc462747e99171415dc405e735773fd9d1335d1`。
+> ★ 本版**没有改动任何既有测试断言**；既有 `dd_v1_*` 既有测试全部保持绿。
+
+### 新增（服务层）
+
+| 文件 | 干什么 |
+|------|--------|
+| `backend/src/cangjie_fos/services/dd_v1_gold_service.py` | 标准答案包（`dd_v1_gold_manifest.v1`）解析、**SHA256 内容寻址**解析、五态（`NOT_PROVIDED`/`NOT_MAPPED`/`NOT_CONFIRMED`/`BROKEN`/`FOUND`）、**隔离闸**（仓内 Gold 一律拒） |
+| `backend/src/cangjie_fos/services/dd_v1_exam_service.py` | 机器答卷构建、**Gold 泄漏检测**、评分口径加载与**指纹**、逐题评分、7 项指标 + 0—100 总分、硬规则 HR-0/HR-1、版本对比 |
+| `backend/src/cangjie_fos/services/dd_v1_exam_preflight_service.py` | 考场契约（`dd_v1_exam_contract.v1`）、**开考前 Gate**（考卷/图书馆/标准答案/主体范围）、预检报告 |
+| `backend/src/cangjie_fos/services/dd_v1_entity_resolution_service.py` | 主体识别**多源分级**（人工确认 > 路径/文件名 > 别名 > 正文 > 元数据 > 认不出），7 档 `MATCHED_BY` 证据 |
+| `backend/src/cangjie_fos/services/dd_v1_entity_scope_service.py` | 契约声明的主体范围（`contract_single:` / `contract_group:`）、集团成员展开 |
+| `backend/src/cangjie_fos/services/dd_v1_candidate_expansion_service.py` | 候选分批扩展、**停止条件**（「结论稳定 **且** 候选池已穷尽」）、四态停止原因 |
+| `backend/config/dd_v1_exam_scoring_spec.v1.json` | **冻结**评分口径：权重 10/30/25/25/10、HR-0 零命中零分、HR-1 零交付零分、HR-2 不可评分、HR-3 泄漏失败、安全闸封顶 59 |
+
+### 新增（测试）
+
+| 文件 | 覆盖 |
+|------|------|
+| `backend/tests/test_dd_v1_exam_scoring.py` | 18 条：权重/HR-0/HR-1/HR-2/HR-3/泄漏/内容寻址/版本对比 |
+| `backend/tests/test_dd_v1_exam_preflight.py` | 13 条：契约校验/四类阻塞/指纹不符/主体范围 |
+| `backend/tests/test_dd_v1_doc_type_resolution.py` | 13 条：**模型必须提出 `proposed_doc_type`** 且与所选文件类型自洽（规则脚本冒充不了） |
+| `backend/tests/test_dd_v1_entity_resolution.py` ＋ `test_dd_v1_candidate_expansion.py` | 29 条：多源分级/三态/停止条件 |
+| `backend/tests/test_dd_v1_exam_e2e.py` | 7 条：合成考场端到端（组包 → 答卷 → 阅卷 → 对比） |
+
+### 改动（既有文件，**加法式**）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 新增 `CONTRACT_SINGLE_PREFIX`/`CONTRACT_GROUP_PREFIX` 两种 `resolve_entities` 分支、`_group_members`、`checklist_digest`、`CURRENT_DOC_TYPE_KEYS`（权威 10 类，**全仓唯一一份**） |
+| `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | 新增**独立分区** `doc_type_resolution`（类型待判定）、`resolve_doc_type` 开关（**默认关**）、类型提案校验（`DOC_TYPE_PROPOSAL_*`）；**主分区的六态口径一字未改** |
+| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | `build_meta` **补 `sha256` 内容指纹**（原先没有 ⇒ 标准答案永远对不上）；新增 `doc_type_unresolved` **标记**（分簇口径未动）、`resolve_doc_type` 开关 |
+| `backend/src/cangjie_fos/services/dd_v1_agent_result_service.py` | `proposed_doc_type` 改成**可选**字段（`OPTIONAL_RESULT_FIELDS`），不在 `required` 里 |
+| `backend/src/cangjie_fos/services/dd_v1_agent_result.v1.schema.json` | `proposed_doc_type` 进 `properties`（限权威 10 类）、**不在 `required`** |
+| `tools/dd_team_channel.py` | 新增 5 个子命令：`preflight` / `answer` / `grade` / `compare` / `contract-template`；`run` 加 `--resolve-doc-type`；`main(argv)` 可测 |
+| `tools/dd_v1_local_run.py` | 新增 `--resolve-doc-type` |
+| `tools/dd_v1_manifest.py` | `main(argv)` 可测（**只改签名，不改行为**） |
+| `tools/doctor.py` | 修 npm 裸名崩溃；端口 8000 被**本仓后端**占用时判 OK（不再误杀用户进程） |
+| `安装并启动.ps1` / `点击开始-仓颉FOS.bat` | 编码修正（PS1 加 UTF-8 BOM；bat 由 GBK 转 UTF-8） |
+
+### 新增（文档与证据）
+
+| 路径 | 内容 |
+|------|------|
+| `docs/dd-v1-fos71/ddv1-exam-v1/WINDOWS-HANDOFF.md` | 刘江侧 Windows 交接（**一页操作指南** + 三个实测坑） |
+| `docs/dd-v1-fos71/ddv1-exam-v1/GOAL-CONTRACT.json` | 目标契约（`check_gccseg.py --require-v3-8` = PASS） |
+| `docs/dd-v1-fos71/ddv1-exam-v1/SKILLS-REVIEW.md` | 技能复用复盘（检索 478｜命中 3｜复用 2｜候选 1） |
+| `docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py` | **合成考场**完整模拟考试（零外部调用、零费用） |
+| `docs/dd-v1-fos71/ddv1-exam-v1/证据/` | 模拟考场的实跑产物（成绩单/逐题明细/机器答卷/版本对比/预检报告） |

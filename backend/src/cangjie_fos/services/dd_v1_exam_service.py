@@ -1,0 +1,775 @@
+"""DD-V1 考场服务：机器答卷 · 隔离阅卷 · 冻结评分口径 · 版本对比。
+
+对应 `cangjie-fos#85`（永久验收红线）与 `cangjie-teams-channel#108`（刘江 Windows 复测）。
+
+**四件事**：
+
+1. ``build_answer_sheet`` —— **机器答卷**：逐题记录「AI 理解了什么 / 看了哪些候选 /
+   最终选了什么 / 实际交付了什么 / 来源路径与 SHA256 / 是否弃答及原因」。
+   考生**看不到**标准答案：本模块只消费 run_record 与 packet，不接触 Gold。
+
+2. ``grade_answer_sheet`` —— **隔离阅卷**：阅卷端单独读标准答案包，逐题逐文件比较，
+   产出 7 项指标 + 0—100 总成绩单。**有有效标准答案而机器 0 件交付 ⇒ 报 0 分
+   （不是 NOT_SCORABLE）**；只有客观不可评分时才 NOT_SCORABLE，并写明阻塞。
+
+3. ``load_scoring_spec`` —— **冻结评分口径**：公式、权重、分母在开考前冻结，
+   冻结件带内容指纹；换尺子必须换版本并留差异说明。
+
+4. ``compare_scorecards`` —— **版本成绩比较**：同口径下输出「旧版 → 新版 → 变化」。
+
+红线：
+- **不得**把真实 0 分伪装成 NOT_SCORABLE（`#85` 明文）。
+- **不得**用高业务分抵消安全闸失败（错主体/错年度/受限外发/哈希不一致/未批准交付）。
+- **不得**让考生读取标准答案：阅卷与作答是**两个进程级分离**的入口，
+  且本模块对考生侧产物做**泄漏检测**。
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from cangjie_fos.services import dd_v1_gold_service as gold_svc
+
+#: 机器答卷版本
+ANSWER_SHEET_SCHEMA = "dd_v1_answer_sheet.v1"
+#: 成绩单版本
+SCORECARD_SCHEMA = "dd_v1_scorecard.v1"
+#: 冻结评分口径的默认文件名（放在 backend/config/）
+DEFAULT_SCORING_SPEC_FILENAME = "dd_v1_exam_scoring_spec.v1.json"
+
+#: 确定性作答（**UNCERTAIN 与弃答不算「已理解」** —— 没答就没答，不得算覆盖）
+DETERMINATE_VERDICTS = ("MATCH", "PARTIAL", "OUTDATED", "CONFLICT", "MISSING")
+#: 考生侧**绝对不允许**出现的字段（出现即判泄漏）
+GOLD_ONLY_KEYS = ("expected_files", "expected_verdict", "confirmed_by", "confirmed_at",
+                  "gold_pack_id", "answer_key")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. 机器答卷
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _candidate_rows(evidence_rows: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """候选材料（**含来源路径与 SHA256** —— 答卷必须能自证选了哪份原件）。"""
+    out: list[dict[str, Any]] = []
+    for e in evidence_rows or []:
+        out.append({
+            "file_id": str(e.get("file_id") or ""),
+            "sha256": str(e.get("sha256") or ""),
+            "relative_path": str(e.get("relative_path") or ""),
+            "entity": str(e.get("entity") or ""),
+            "period": str(e.get("period") or ""),
+            "doc_type": str(e.get("doc_type") or ""),
+            "part": str(e.get("part") or ""),
+            "version_status": str(e.get("version_status") or ""),
+            "locator": str(e.get("locator") or ""),
+            "period_status": str(e.get("period_status") or ""),
+        })
+    return out
+
+
+def _interpretation(ob: dict[str, Any] | None) -> dict[str, Any]:
+    """考生对一条义务的**理解**（材料类型 / 主体口径 / 期间口径 / 附件要求）。
+
+    ``doc_type_source``：
+    - ``RULE`` —— 规则引擎从原文解析出材料类型；
+    - ``SEMANTIC`` —— 规则解析不出、**由模型**提出（见 ``proposed_doc_type``）；
+    - ``UNRESOLVED`` —— 谁都没解析出 ⇒ 该题**未理解**。
+    """
+    ob = ob or {}
+    dt = str(ob.get("doc_type") or "")
+    src = str(ob.get("doc_type_source") or "")
+    if not src:
+        src = "RULE" if dt else "UNRESOLVED"
+    unresolved = bool(ob.get("doc_type_unresolved")) or (not dt and src == "UNRESOLVED")
+    return {
+        "doc_type": dt,
+        "doc_type_label": str(ob.get("doc_type_label") or ""),
+        "doc_type_source": src,
+        "doc_type_unresolved": unresolved,
+        "entity": str(ob.get("entity") or ""),
+        "entity_basis": str(ob.get("entity_basis") or ""),
+        "period": str(ob.get("period") or ""),
+        "required_parts": list(ob.get("required_parts") or []),
+        "text": str(ob.get("text") or ""),
+        "split_method": str(ob.get("split_method") or ""),
+        "resolved": (not unresolved),
+    }
+
+
+
+def read_delivery_manifest(manifest_path: Path | str) -> list[dict[str, Any]]:
+    """读 ``组包manifest.tsv`` ⇒ **实际交付清单**（file_id / 路径 / 源与副本 SHA256）。
+
+    ★ 这是「实际交付」的**权威来源**（人工也是拿它逐件核哈希的那一份）。
+    ★ 缺文件 / 坏行 ⇒ 返回空清单并**不抛异常**（调用方据此判「0 件交付」，
+      而不是把异常当成「有交付」）。
+    """
+    import csv
+
+    path = Path(manifest_path)
+    if not path.is_file():
+        return []
+    out: list[dict[str, Any]] = []
+    try:
+        with path.open(encoding="utf-8") as fh:
+            for row in csv.DictReader(fh, delimiter="\t"):
+                fid = str(row.get("file_id") or "").strip()
+                if not fid:
+                    continue
+                same = str(row.get("一致") or "").strip()
+                out.append({
+                    "file_id": fid,
+                    "delivered_path": str(row.get("交付路径") or "").strip(),
+                    "source_sha256": str(row.get("源sha256") or "").strip(),
+                    "copy_sha256": str(row.get("副本sha256") or "").strip(),
+                    "hash_match": same in ("是", "True", "true", "1"),
+                    "obligation_key": str(row.get("义务ID") or "").strip(),
+                    "obligation_text": str(row.get("原子义务") or "").strip(),
+                    "verdict": str(row.get("判定") or "").strip(),
+                    "gate": str(row.get("审核结论") or "").strip(),
+                })
+    except (OSError, UnicodeDecodeError, csv.Error):
+        return []
+    return out
+
+def build_answer_sheet(run_record: dict[str, Any] | None,
+                       packet: dict[str, Any] | None,
+                       *,
+                       exam_id: str = "",
+                       delivered: list[dict[str, Any]] | None = None,
+                       gold_resolution: dict[str, Any] | None = None,
+                       ) -> dict[str, Any]:
+    """由 run_record + packet 产出**机器答卷**。
+
+    ``delivered``：实际组包交付清单（``file_id`` / 交付路径 / 源 SHA256 / 副本 SHA256）。
+    ``gold_resolution``：**不参与**本函数（考生侧不读 Gold）——保留形参只为让调用方
+    在同一处传参时不会误以为它生效；阅卷在 ``grade_answer_sheet`` 里单独做。
+    """
+    rec = run_record or {}
+    pkt = packet or {}
+    obligations = {str(o.get("obligation_id")): o for o in (pkt.get("obligations") or [])}
+    evidence = pkt.get("evidence") or {}
+    evidence_status = pkt.get("evidence_status") or {}
+    sem = rec.get("semantic_validation") or {}
+    accepted: dict[str, dict[str, Any]] = {}
+    for a in sem.get("accepted") or []:
+        accepted[str(a.get("obligation_id"))] = a
+    rejected = {str(a.get("obligation_id")): a for a in (sem.get("rejected") or [])}
+    # ★★ RULE_ONLY（**没接模型**）时，「机器选了什么」只能取**规则链的提示**
+    #   （bridge 的 rule_hint：可交付候选 + 规则判定）——
+    #   否则答卷里「选中 0 件」⇒ 召回恒 0 ⇒ 考的是「模型跑没跑」，不是「选得对不对」。
+    rule_hints = pkt.get("rule_hints") or {}
+    adapter = rec.get("adapter") or {}
+    delivered_by_file: dict[str, dict[str, Any]] = {}
+    for d in delivered or []:
+        fid = str(d.get("file_id") or "")
+        if fid:
+            delivered_by_file[fid] = d
+
+    rows: list[dict[str, Any]] = []
+    for oid in sorted(obligations):
+        ob = obligations[oid]
+        ans = accepted.get(oid) or {}
+        rejected_row = rejected.get(oid) or {}
+        interp = _interpretation(ob)
+        cands = _candidate_rows(evidence.get(oid) or [])
+        selected: list[dict[str, Any]] = []
+        for c in (ans.get("candidate_files") or []):
+            fid = str(c.get("file_id") or "")
+            src = next((x for x in cands if x["file_id"] == fid), None)
+            selected.append({
+                "file_id": fid,
+                "sha256": str(c.get("sha256") or (src or {}).get("sha256") or ""),
+                "relative_path": str(c.get("relative_path") or (src or {}).get("relative_path") or ""),
+                "locator": str(c.get("locator") or ""),
+                "match_reason": str(c.get("match_reason") or ""),
+                "entity": str(c.get("entity") or (src or {}).get("entity") or ""),
+                "period": str(c.get("period") or (src or {}).get("period") or ""),
+            })
+        verdict = str(ans.get("proposed_verdict") or "")
+        selection_source = "MODEL" if ans else ""
+        if not selected:
+            # ★ 规则链兜底：取 rule_hint 的可交付候选（**标出来源**，不冒充模型判断）
+            hint = rule_hints.get(oid) or {}
+            for fid in (hint.get("files") or []):
+                src = next((x for x in cands if x["file_id"] == str(fid)), None)
+                selected.append({
+                    "file_id": str(fid),
+                    "sha256": str((src or {}).get("sha256") or ""),
+                    "relative_path": str((src or {}).get("relative_path") or ""),
+                    "locator": str((src or {}).get("locator") or ""),
+                    "match_reason": str(hint.get("verdict") or ""),
+                    "entity": str((src or {}).get("entity") or ""),
+                    "period": str((src or {}).get("period") or ""),
+                })
+            if selected:
+                selection_source = "RULE_HINT"
+                if not verdict:
+                    verdict = str(hint.get("verdict") or "")
+        abstain_reason = ans.get("abstain_reason")
+        abstained = bool(verdict == "UNCERTAIN" or (abstain_reason and not selected))
+        # ★ 「实际交付」是**事实**（组包复制了哪些原件），不是模型的自我声明 ⇒
+        #   按 **file_id** 认（选中 ∪ 候选），**不**只看模型选中那几件。
+        #   否则「规则链交付了、模型没选中」会被算成 0 交付 ⇒ HR-1 误伤成 0 分。
+        deliv: list[dict[str, Any]] = []
+        seen_deliv: set[str] = set()
+        for s in list(selected) + list(cands):
+            fid = str(s.get("file_id") or "")
+            if not fid or fid in seen_deliv:
+                continue
+            d = delivered_by_file.get(fid)
+            if not d:
+                continue
+            seen_deliv.add(fid)
+            deliv.append({
+                "file_id": fid,
+                "delivered_path": str(d.get("delivered_path") or d.get("relative_path") or ""),
+                "source_sha256": str(d.get("source_sha256") or s.get("sha256") or ""),
+                "copy_sha256": str(d.get("copy_sha256") or ""),
+                "hash_match": bool(d.get("hash_match", True)),
+            })
+        st = evidence_status.get(oid) or {}
+        row = {
+            "obligation_id": oid,
+            "item_id": str(ob.get("item_id") or ""),
+            "text": interp["text"],
+            "interpretation": interp,
+            "candidates": cands,
+            "candidate_count": len(cands),
+            "selected": selected,
+            "selected_count": len(selected),
+            # ★ 选材来源：MODEL（模型真的判了）｜RULE_HINT（**没接模型**，取规则链提示）
+            "selection_source": selection_source,
+            "verdict": verdict,
+            "confidence": ans.get("confidence_or_uncertain"),
+            "abstained": abstained,
+            "abstain_reason": str(abstain_reason or ""),
+            "warnings": list(ans.get("warnings") or []),
+            "rejected": bool(rejected_row),
+            "rejected_reason": str(rejected_row.get("reason") or rejected_row.get("errors") or ""),
+            "delivered": deliv,
+            "delivered_count": len(deliv),
+            "candidate_window": {
+                "cap": st.get("candidate_cap"),
+                "found": st.get("candidates_total"),
+                "checked": st.get("candidates_used"),
+                "unchecked": st.get("truncated_candidate_count"),
+                "truncated": bool(st.get("candidate_truncated")),
+                "stop_reason": str(st.get("candidate_cap_note") or ""),
+            },
+            "no_candidate_reason": st.get("no_candidate_reason"),
+            "candidate_status": st.get("candidate_status"),
+        }
+        rows.append(row)
+
+    # ★ 交付件数取**交付清单本身**（组包的事实）∪ **逐行归集到的交付件**：
+    #   · 只取清单 ⇒ 清单外、但行内有据的交付件会被漏掉；
+    #   · 只取行内 ⇒ 挂不上义务的交付件会被漏掉（口径不齐时会出现）。
+    #   ⇒ 取**并集**（按 file_id 去重）⇒ 两边都不漏，且件数与清单一致。
+    _by_fid: dict[str, dict[str, Any]] = {}
+    for d in list(delivered or []):
+        fid = str(d.get("file_id") or "")
+        if fid:
+            _by_fid.setdefault(fid, dict(d))
+    for r in rows:
+        for d in r.get("delivered") or []:
+            fid = str(d.get("file_id") or "")
+            if fid:
+                _by_fid.setdefault(fid, dict(d))
+    delivered_files = list(_by_fid.values())
+    summary = {
+        "obligations": len(rows),
+        "understood": sum(1 for r in rows if r["interpretation"]["resolved"]),
+        "answered": sum(1 for r in rows if r["verdict"] in DETERMINATE_VERDICTS),
+        "abstained": sum(1 for r in rows if r["abstained"]),
+        "selected_files": sum(r["selected_count"] for r in rows),
+        "delivered_files": len(delivered_files),
+        "delivered_files_attributed": sum(len(r["delivered"]) for r in rows),
+        "truncated_obligations": sum(1 for r in rows if r["candidate_window"]["truncated"]),
+        "unresolved_doc_type_obligations": sum(1 for r in rows
+                                              if r["interpretation"]["doc_type_unresolved"]),
+    }
+    return {
+        "schema_version": ANSWER_SHEET_SCHEMA,
+        "exam_id": exam_id,
+        "generated_at": _now(),
+        # ★ 交付清单**原件**也留在答卷里（阅卷端据此判「实际交付件数」）：
+        #   逐题归属可能因口径不齐而漏挂，**件数**必须以清单为准。
+        "delivered": delivered_files,
+        "examinee": {
+            "mode": str(sem.get("mode") or rec.get("adapter", {}).get("status") or "UNKNOWN"),
+            "adapter_id": str(adapter.get("adapter_id") or ""),
+            "vendor": str(adapter.get("vendor") or ""),
+            "model_id_or_unknown": str(adapter.get("model_id_or_unknown") or "UNKNOWN"),
+            "prompt_version": str(rec.get("prompt_version") or ""),
+            "source_snapshot_id": str(rec.get("source_snapshot_id") or ""),
+            "degrade_reason": str(sem.get("degrade_reason") or ""),
+        },
+        "obligations": rows,
+        "summary": summary,
+        "note": "机器答卷只含考生可见信息；标准答案不在本文件内，也不在考生可读路径内",
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. 泄漏检测（考生 ↔ 标准答案 隔离）
+# ─────────────────────────────────────────────────────────────────────────────
+
+def detect_gold_leak(answer_sheet: dict[str, Any] | None,
+                     library_index: dict[str, dict[str, Any]] | None,
+                     *,
+                     library_obligation_ids: set[str] | None = None,
+                     gold_obligation_ids: set[str] | None = None) -> dict[str, Any]:
+    """检测考生侧产物是否**沾到**标准答案。
+
+    三条判据：
+    1. 答卷里出现**图书馆索引之外**的 ``file_id`` ⇒ 引用了库外文件（可能是被注入的答案）；
+    2. 答卷里出现 **Gold 专有字段**（``expected_files`` 等）⇒ 结构性泄漏；
+    3. 答卷里的义务 id 既不在考卷义务集合、也不在 Gold 义务集合 ⇒ 来路不明的义务。
+
+    **任一命中 ⇒ 安全失败**，不得进入正式评分。
+    """
+    sheet = answer_sheet or {}
+    idx = library_index or {"by_id": {}, "by_sha": {}}
+    leaks: list[dict[str, Any]] = []
+
+    blob = json.dumps(sheet, ensure_ascii=False)
+    for key in GOLD_ONLY_KEYS:
+        if f'"{key}"' in blob:
+            leaks.append({"kind": "GOLD_ONLY_FIELD", "detail": key})
+
+    known = set(idx["by_id"].keys())
+    for r in sheet.get("obligations") or []:
+        oid = str(r.get("obligation_id") or "")
+        for c in (r.get("candidates") or []) + (r.get("selected") or []):
+            fid = str(c.get("file_id") or "")
+            if fid and fid not in known:
+                leaks.append({"kind": "FILE_OUTSIDE_LIBRARY", "detail": f"{oid}:{fid}"})
+        if library_obligation_ids is not None and gold_obligation_ids is not None:
+            if oid and oid not in library_obligation_ids and oid not in gold_obligation_ids:
+                leaks.append({"kind": "OBLIGATION_OUTSIDE_EXAM", "detail": oid})
+
+    return {
+        "leaked": bool(leaks),
+        "leak_count": len(leaks),
+        "leaks": leaks[:50],
+        "note": "Gold 泄漏 ⇒ 安全失败，不得进入正式评分；本检测只覆盖结构面，不覆盖进程级隔离",
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. 冻结评分口径
+# ─────────────────────────────────────────────────────────────────────────────
+
+def default_scoring_spec_path() -> Path:
+    """冻结口径文件的默认位置：``backend/config/dd_v1_exam_scoring_spec.v1.json``。"""
+    return Path(__file__).resolve().parents[3] / "config" / DEFAULT_SCORING_SPEC_FILENAME
+
+
+def load_scoring_spec(path: str | Path | None = None) -> dict[str, Any]:
+    """读**冻结**的评分口径（公式 / 权重 / 分母 / 安全上限）。"""
+    p = Path(path) if path else default_scoring_spec_path()
+    raw = json.loads(Path(p).read_text(encoding="utf-8"))
+    if str(raw.get("schema_version") or "") != "dd_v1_exam_scoring_spec.v1":
+        raise ValueError(f"SCORING_SPEC_SCHEMA_MISMATCH:{raw.get('schema_version')!r}")
+    for key in ("weights", "metric_definitions"):
+        if key not in raw:
+            raise ValueError(f"SCORING_SPEC_MISSING_FIELD:{key}")
+    return raw
+
+
+def scoring_spec_fingerprint(spec: dict[str, Any]) -> str:
+    """评分口径的**内容指纹**（只含口径本身，不含时间戳等易变字段）。
+
+    同一场比赛的两次评分必须指纹一致 ⇒ 否则「不可比」。
+    """
+    payload = {
+        "weights": spec.get("weights"),
+        "metric_definitions": spec.get("metric_definitions"),
+        "safety": spec.get("safety"),
+    }
+    blob = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. 隔离阅卷
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _per_obligation_rows(answer_sheet: dict[str, Any],
+                         gold_resolved: dict[str, Any]) -> list[dict[str, Any]]:
+    """逐题比较：机器答卷 × 人工标准答案。"""
+    answers = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
+    rows: list[dict[str, Any]] = []
+    for g in gold_resolved.get("items") or []:
+        oid = str(g.get("obligation_id"))
+        exp = set(g.get("resolved_file_ids") or [])
+        a = answers.get(oid)
+        sel = {str(x.get("file_id") or "") for x in ((a or {}).get("selected") or [])}
+        deliv = {str(x.get("file_id") or "") for x in ((a or {}).get("delivered") or [])}
+        verdict = str((a or {}).get("verdict") or "")
+        interp = (a or {}).get("interpretation") or {}
+        hit = exp & sel
+        extra = sel - exp
+        missed = exp - sel
+        if not exp:
+            outcome = "EXPECTED_NONE"
+        elif not a:
+            outcome = "NO_ANSWER"
+        elif sel == exp:
+            outcome = "CORRECT"
+        elif hit and extra:
+            outcome = "OVER_DELIVERED"
+        elif hit and missed:
+            outcome = "INCOMPLETE"
+        elif extra:
+            outcome = "WRONG_ONLY"
+        else:
+            outcome = "MISSED"
+        rows.append({
+            "obligation_id": oid,
+            "item_no": g.get("item_no"),
+            "outcome": outcome,
+            "expected_files": sorted(exp),
+            "selected_files": sorted(sel),
+            "delivered_files": sorted(deliv),
+            "hit": sorted(hit),
+            "extra": sorted(extra),
+            "missed": sorted(missed),
+            "expected_verdict": g.get("expected_verdict"),
+            "agent_verdict": verdict,
+            "answered": verdict in DETERMINATE_VERDICTS,
+            "understood": bool(interp.get("resolved")),
+            "doc_type_source": interp.get("doc_type_source"),
+            "abstain_reason": (a or {}).get("abstain_reason"),
+            "resolution_state": g.get("resolution_state"),
+        })
+    return rows
+
+
+def _safety_findings(rows: list[dict[str, Any]],
+                     answer_sheet: dict[str, Any],
+                     gold_resolved: dict[str, Any]) -> dict[str, Any]:
+    """安全闸**独立计分**：错主体 / 错年度 / 受限外发 / 哈希不一致 / 未批准交付。
+
+    这些**不得**用高业务分抵消；一旦命中，业务分被封顶。
+    """
+    gold_by_oid = {str(g.get("obligation_id")): g for g in (gold_resolved.get("items") or [])}
+    answers = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
+    findings: list[dict[str, Any]] = []
+
+    for r in rows:
+        oid = r["obligation_id"]
+        g = gold_by_oid.get(oid) or {}
+        exp_files = {str(f.get("file_id") or ""): f for f in (g.get("expected_files") or [])
+                     if f.get("file_id")}
+        a = answers.get(oid) or {}
+        for s in (a.get("selected") or []):
+            fid = str(s.get("file_id") or "")
+            exp = exp_files.get(fid)
+            if exp is None:
+                continue
+            exp_ent = str(exp.get("gold_entity") or "")
+            got_ent = str(s.get("entity") or "")
+            if exp_ent and got_ent and exp_ent != got_ent:
+                findings.append({"kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
+                                 "detail": "选中材料的主体与人工标准答案不一致"})
+            exp_per = str(exp.get("gold_period") or "")
+            got_per = str(s.get("period") or "")
+            if exp_per and got_per and exp_per != got_per:
+                findings.append({"kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
+                                 "detail": "选中材料的期间与人工标准答案不一致"})
+        for d in (a.get("delivered") or []):
+            if not d.get("hash_match", True):
+                findings.append({"kind": "HASH_MISMATCH", "obligation_id": oid,
+                                 "file_id": d.get("file_id"),
+                                 "detail": "交付副本与源件 SHA256 不一致"})
+
+    # 受限资料误交 / 未批准交付：由交付侧清单的标志位判定（若有）
+    for r in (answer_sheet.get("obligations") or []):
+        for d in (r.get("delivered") or []):
+            if d.get("restricted"):
+                findings.append({"kind": "RESTRICTED_DELIVERED", "obligation_id": r.get("obligation_id"),
+                                 "file_id": d.get("file_id"), "detail": "受限材料进入交付"})
+            if d.get("approved") is False:
+                findings.append({"kind": "UNAPPROVED_DELIVERY", "obligation_id": r.get("obligation_id"),
+                                 "file_id": d.get("file_id"), "detail": "未经人工批准即交付"})
+    return {
+        "violations": len(findings),
+        "findings": findings[:100],
+        "by_kind": {k: sum(1 for f in findings if f["kind"] == k)
+                    for k in sorted({f["kind"] for f in findings})},
+    }
+
+
+def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
+                       gold_manifest: dict[str, Any] | None,
+                       *,
+                       library_index: dict[str, dict[str, Any]] | None = None,
+                       scoring_spec: dict[str, Any] | None = None,
+                       gold_provided: bool = True,
+                       gold_state: str = "",
+                       gold_state_reason: str = "",
+                       exam_id: str = "",
+                       leak_report: dict[str, Any] | None = None,
+                       min_obligations: int = 30,
+                       ) -> dict[str, Any]:
+    """**隔离阅卷**：机器答卷 × 人工标准答案 ⇒ 逐题明细 + 7 项指标 + 0—100 总成绩。
+
+    状态语义（`#85` 硬要求）：
+    - 有有效标准答案（已映射 + 已人工确认）⇒ **必出分**；机器 0 件交付 ⇒ **0 分**，
+      状态 ``SCORED``，**不得**写成 NOT_SCORABLE。
+    - 只有客观不可评分（未提供 / 未映射 / 未确认 / 对应关系冲突）⇒ ``NOT_SCORABLE``，
+      并写明 ``blocked_by``。
+    """
+    spec = scoring_spec or load_scoring_spec()
+    sheet = answer_sheet or {}
+    if leak_report and leak_report.get("leaked"):
+        return {
+            "schema_version": SCORECARD_SCHEMA,
+            "exam_id": exam_id,
+            "status": "NOT_SCORABLE",
+            "blocked_by": ["GOLD_LEAK_DETECTED:考生侧产物出现标准答案内容或库外文件"],
+            "scores": None,
+            "leak_report": leak_report,
+            "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
+            "note": "安全失败：标准答案泄漏 ⇒ 不进入正式评分",
+        }
+
+    if not gold_provided or gold_manifest is None:
+        return {
+            "schema_version": SCORECARD_SCHEMA,
+            "exam_id": exam_id,
+            "status": "NOT_SCORABLE",
+            "blocked_by": [f"GOLD_{gold_state or 'NOT_PROVIDED'}:" + (gold_state_reason or "标准答案不可得")],
+            "scores": None,
+            "rows": [],
+            "safety_gate": {"status": "NOT_EVALUATED", "violations": 0, "findings": [],
+                            "by_kind": {}},
+            "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
+            "note": "客观不可评分（标准答案不可得）⇒ NOT_SCORABLE；**这不等于 0 分**",
+        }
+
+    idx = library_index or {"by_id": {}, "by_sha": {}}
+    gold_resolved = gold_svc.resolve_gold_files(gold_manifest, idx)
+    corr = gold_svc.check_correspondence(gold_manifest, gold_resolved)
+    state, reason = gold_svc.gold_state(gold_manifest, corr, provided=True)
+    if state in ("NOT_CONFIRMED", "BROKEN"):
+        return {
+            "schema_version": SCORECARD_SCHEMA,
+            "exam_id": exam_id,
+            "status": "NOT_SCORABLE",
+            "blocked_by": [f"GOLD_{state}:{reason}"],
+            "scores": None,
+            "rows": [],
+            "gold_resolution": gold_resolved,
+            "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
+            "note": "客观不可评分（标准答案未确认 / 对应关系冲突）⇒ NOT_SCORABLE；**这不等于 0 分**",
+        }
+
+    rows = _per_obligation_rows(sheet, gold_resolved)
+    n = len(rows)
+    weights = spec.get("weights") or {}
+
+    exp_total = sum(len(r["expected_files"]) for r in rows)
+    hit_total = sum(len(r["hit"]) for r in rows)
+    sel_total = sum(len(r["selected_files"]) for r in rows)
+    extra_total = sum(len(r["extra"]) for r in rows)
+    with_exp = [r for r in rows if r["expected_files"]]
+    n_with_exp = len(with_exp)
+    understood = sum(1 for r in rows if r["understood"])
+    answered = sum(1 for r in rows if r["answered"])
+    complete = sum(1 for r in with_exp if r["outcome"] == "CORRECT")
+    wrong_ob = sum(1 for r in rows if r["extra"])
+
+    # ★ 题目理解覆盖率 ＝ **理解口径可解析**的义务占比（看懂没）
+    # ★ 作答覆盖率       ＝ **给出了确定性作答**的义务占比（答没答）
+    #   两者**刻意分开**：看懂但找不到材料（弃答）⇒ 理解率 1.0、作答率低、**总分 0**。
+    understanding = round(understood / n, 6) if n else 0.0
+    answer_coverage = round(answered / n, 6) if n else 0.0
+    recall = round(hit_total / exp_total, 6) if exp_total else 0.0
+    precision = round(hit_total / sel_total, 6) if sel_total else 0.0
+    complete_ratio = round(complete / n_with_exp, 6) if n_with_exp else 0.0
+    # 漏交率：**有期望材料但没交齐**的义务占比（含「多文件缺一」）。
+    # ★ 与「完整正确交付比例」互补但**不等价**：多交了的义务不算漏交（算错交）。
+    missed_ob = sum(1 for r in with_exp if r["outcome"] in ("MISSED", "INCOMPLETE"))
+    wrong_ob = sum(1 for r in rows if r["extra"])
+    miss_rate = round(missed_ob / n_with_exp, 6) if n_with_exp else 0.0
+    wrong_rate = round(wrong_ob / n, 6) if n else 0.0
+
+    business = (
+        float(weights.get("question_understanding_coverage", 0)) * understanding
+        + float(weights.get("material_recall", 0)) * recall
+        + float(weights.get("selection_precision", 0)) * precision
+        + float(weights.get("complete_delivery_ratio", 0)) * complete_ratio
+        + float(weights.get("miss_rate_penalty", 0)) * (1.0 - miss_rate)
+    )
+    total = round(max(0.0, min(100.0, business)), 2)
+
+    # ★ 交付件数 ＝ **顶层交付清单 ∪ 逐行归集到的交付件**（按 file_id 去重）：
+    #   · 只取顶层 ⇒ 老答卷（只有逐行）会漏；
+    #   · 只取逐行 ⇒ 挂不上义务的交付件会漏。
+    #   ⇒ 取并集 ⇒ 两边都不漏；与答卷侧的口径**同一个**。
+    _dfids: set[str] = set()
+    _dl = sheet.get("delivered")
+    if isinstance(_dl, list):
+        for d in _dl:
+            fid = str((d or {}).get("file_id") or "")
+            if fid:
+                _dfids.add(fid)
+    for r in (sheet.get("obligations") or []):
+        for d in (r.get("delivered") or []):
+            fid = str((d or {}).get("file_id") or "")
+            if fid:
+                _dfids.add(fid)
+    delivered_files = len(_dfids)
+    # ★★ 冻结硬口径 HR-0 / HR-1（`#85`：0 分必须如实报 0 分）：
+    #   - HR-1：交付件数 == 0 ⇒ 总分 = 0（**不是** NOT_SCORABLE）；
+    #   - HR-0：命中的标准答案材料数 == 0 ⇒ 总分 = 0
+    #     （「理解全对但选材全错」在业务上就是 0 分 —— 不得被理解率洗成「部分成功」）。
+    zero_delivery_forced = False
+    zero_hit_forced = False
+    if delivered_files == 0:
+        total = 0.0
+        zero_delivery_forced = True
+    if hit_total == 0:
+        total = 0.0
+        zero_hit_forced = True
+
+    safety = _safety_findings(rows, sheet, gold_resolved)
+    safety["status"] = "FAIL" if safety["violations"] else "PASS"
+    safety["note"] = ("安全闸独立计分；命中任一 ⇒ 总分封顶（业务高分不得抵消安全失败）"
+                      if safety["violations"] else "未发现安全闸违规")
+    cap = float((spec.get("safety") or {}).get("cap_on_fail", 59))
+    if safety["violations"] and total > cap:
+        total = cap
+    safety_status = safety["status"]
+
+    status = "LOW_CONFIDENCE" if n < int(min_obligations) else "SCORED"
+    scores = {
+        "question_understanding_coverage": understanding,
+        "question_answer_coverage": answer_coverage,
+        "material_recall": recall,
+        "selection_precision": precision,
+        "complete_delivery_ratio": complete_ratio,
+        "miss_rate": miss_rate,
+        "wrong_rate": wrong_rate,
+        "total_score": total,
+    }
+    return {
+        "schema_version": SCORECARD_SCHEMA,
+        "exam_id": exam_id,
+        "status": status,
+        "graded_at": _now(),
+        "scores": scores,
+        "counts": {
+            "obligations": n,
+            "obligations_with_expected_files": n_with_exp,
+            "expected_files": exp_total,
+            "selected_files": sel_total,
+            "hit_files": hit_total,
+            "extra_files": extra_total,
+            "delivered_files": delivered_files,
+            "understood": understood,
+            "answered": answered,
+            "complete": complete,
+            "missed": missed_ob,
+            "wrong": wrong_ob,
+        },
+        "rows": rows,
+        "safety_gate": safety,
+        "gold_resolution": gold_resolved,
+        "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
+        "scoring_spec_id": str(spec.get("spec_id") or ""),
+        "zero_delivery_forced_zero": zero_delivery_forced,
+        "zero_hit_forced_zero": zero_hit_forced,
+        "note": ("有效标准答案 + 0 件交付 ⇒ 总分强制 0（不是 NOT_SCORABLE）"
+                 if zero_delivery_forced else
+                 ("命中标准答案材料 0 件 ⇒ 总分强制 0（不得被理解率洗成部分成功）"
+                  if zero_hit_forced else "按冻结口径计算")),
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. 版本成绩比较
+# ─────────────────────────────────────────────────────────────────────────────
+
+COMPARE_METRICS = (
+    ("question_understanding_coverage", "题目理解率"),
+    ("material_recall", "材料召回率"),
+    ("selection_precision", "选材准确率"),
+    ("complete_delivery_ratio", "完整交付率"),
+    ("total_score", "总分"),
+)
+
+
+def compare_scorecards(old: dict[str, Any] | None,
+                       new: dict[str, Any] | None,
+                       *,
+                       old_label: str = "旧版本",
+                       new_label: str = "新版本") -> dict[str, Any]:
+    """同口径版本比较 ⇒ 「指标 | 旧版 | 新版 | 变化」。
+
+    **旧版本没有真实成绩时标「未建立可比基线」**——**禁补造历史分数**。
+    """
+    def _scores(card: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not card:
+            return None
+        s = card.get("scores")
+        return s if isinstance(s, dict) else None
+
+    o, n = _scores(old), _scores(new)
+    baseline_established = o is not None
+    rows: list[dict[str, Any]] = []
+    for key, label in COMPARE_METRICS:
+        ov = o.get(key) if o else None
+        nv = n.get(key) if n else None
+        if ov is None or nv is None:
+            delta = None
+            note = "未建立可比基线" if ov is None else "新版本未出分"
+        else:
+            delta = round(float(nv) - float(ov), 6)
+            note = ""
+        rows.append({"metric": key, "label": label, "old": ov, "new": nv,
+                     "delta": delta, "note": note})
+    comparable = baseline_established and n is not None
+    return {
+        "old_label": old_label,
+        "new_label": new_label,
+        "baseline_established": baseline_established,
+        "comparable": comparable,
+        "old_status": (old or {}).get("status"),
+        "new_status": (new or {}).get("status"),
+        "old_spec_fingerprint": (old or {}).get("scoring_spec_fingerprint"),
+        "new_spec_fingerprint": (new or {}).get("scoring_spec_fingerprint"),
+        "same_scoring_spec": ((old or {}).get("scoring_spec_fingerprint")
+                              == (new or {}).get("scoring_spec_fingerprint")
+                              and (old or {}).get("scoring_spec_fingerprint") is not None),
+        "rows": rows,
+        "note": ("两版评分口径指纹不同 ⇒ 分数不可直接比较" if comparable and not
+                 ((old or {}).get("scoring_spec_fingerprint")
+                  == (new or {}).get("scoring_spec_fingerprint"))
+                 else "同口径比较"),
+    }
+
+
+def compare_markdown(cmp: dict[str, Any]) -> str:
+    """版本比较的 Markdown 表（可直接贴进交接文档 / Issue）。"""
+    lines = ["| 指标 | %s | %s | 变化 |" % (cmp.get("old_label"), cmp.get("new_label")),
+             "|---|---:|---:|---:|"]
+    for r in cmp.get("rows") or []:
+        ov = "未建立可比基线" if r["old"] is None else f"{float(r['old']):.4f}"
+        nv = "未出分" if r["new"] is None else f"{float(r['new']):.4f}"
+        d = "—" if r["delta"] is None else f"{float(r['delta']):+.4f}"
+        lines.append(f"| {r['label']} | {ov} | {nv} | {d} |")
+    if not cmp.get("baseline_established"):
+        lines.append("")
+        lines.append("> **旧版本未建立可比基线** —— 本表不构成「提升」结论。")
+    return "\n".join(lines)

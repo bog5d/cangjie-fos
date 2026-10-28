@@ -442,7 +442,8 @@ def cmd_run(a) -> int:
                 return 3
         rec = sem.run_semantic(_adapter(a), snap_dir, meta, g, budget, workdir=wd,
                                obligations=obs_g, text_root=text_root,
-                               period_anchor=anchor)
+                               period_anchor=anchor,
+                               resolve_doc_type=bool(getattr(a, "resolve_doc_type", False)))
         calls_total += rec.get("calls_used", 1)
         v = rec["semantic_validation"]
         rows = _six_state_rows(rec)
@@ -575,6 +576,11 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--timeout", type=float, default=600.0); r.add_argument("--max-calls", type=int, default=2)
     r.add_argument("--per-item", action="store_true", help="（已是默认，保留兼容）")
     r.add_argument("--single-pack", action="store_true", help="把所有条目合成一个包跑（小清单才用）")
+    r.add_argument("--resolve-doc-type", action="store_true",
+                   help="★ 打开「规则层拆不出材料类型 ⇒ 交给模型判定」这条通道："
+                        "这类条目会额外产出一条「类型待判定」义务送模型，模型须给出 "
+                        "proposed_doc_type（权威 10 类）或诚实弃答。"
+                        "默认关闭：拆不出就不调用模型（不浪费付费调用）")
 # GM:A4A:CLI:ARG-RUN
     r.add_argument("--resume", action="store_true", help="跳过已有 run_record.json 的条目")
     r.add_argument("--blind-material-out", default=None,
