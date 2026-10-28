@@ -26,7 +26,7 @@ python -m pytest -q tests/test_dd_v1_exam_scoring.py \
   tests/test_dd_v1_entity_resolution.py tests/test_dd_v1_candidate_expansion.py
 ```
 
-**结果：75 passed / 0 failed**（评分 18＋预检 13＋类型判定 13＋主体识别/候选扩展 31）
+**结果：75 passed / 0 failed**（评分 18＋预检 13＋类型判定 15＋主体识别 19＋候选扩展 10）
 
 ### 第 2 组 · 既有 DD-V1 链路回归（语义检索 / 桥接 / 本地跑 / 六态入口 / 别名）
 
@@ -45,7 +45,7 @@ python -m pytest -q tests/test_dd_v1_semantic_retrieval.py tests/test_dd_v1_brid
 python -m pytest -q tests/test_dd_v1_exam_e2e.py
 ```
 
-**结果：7 passed / 0 failed**
+**结果：8 passed / 0 failed**（含「上一轮残留交付清单」回归守卫）
 
 ### 第 4 组 · 模拟考场实跑（合成数据、零外部调用）
 
