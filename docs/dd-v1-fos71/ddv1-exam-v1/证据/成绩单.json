@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "EX-A4A-SYNTHETIC",
   "status": "SCORED",
-  "graded_at": "2026-10-29T01:27:40+08:00",
+  "graded_at": "2026-10-29T01:59:01+08:00",
   "scores": {
     "question_understanding_coverage": 1.0,
     "question_answer_coverage": 1.0,
@@ -29,8 +29,8 @@
   },
   "rows": [
     {
-      "obligation_id": "d3e76be7d8f9438aacca9d2e98c538f1",
-      "item_no": "d3e76be7d8f9438aacca9d2e98c538f1",
+      "obligation_id": "af0f7e7ea3fe4f3eb269914dece85fc0",
+      "item_no": "af0f7e7ea3fe4f3eb269914dece85fc0",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2",
@@ -59,8 +59,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "e6f9d06678a5489a96323960e2975c7d",
-      "item_no": "e6f9d06678a5489a96323960e2975c7d",
+      "obligation_id": "e6117c68765743278d812209b7494ce3",
+      "item_no": "e6117c68765743278d812209b7494ce3",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -88,8 +88,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "d1c9a36161e5474188d38ab618006c97",
-      "item_no": "d1c9a36161e5474188d38ab618006c97",
+      "obligation_id": "860cce6eb8b6451eb8504a92c05e2f31",
+      "item_no": "860cce6eb8b6451eb8504a92c05e2f31",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -117,8 +117,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "232788cc4916407ba08d1a5209789c96",
-      "item_no": "232788cc4916407ba08d1a5209789c96",
+      "obligation_id": "3828025e602e48028335e9074cd3d1a8",
+      "item_no": "3828025e602e48028335e9074cd3d1a8",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2"
@@ -146,8 +146,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "f3d89a1971e541f9bd9015e3033ce26f",
-      "item_no": "f3d89a1971e541f9bd9015e3033ce26f",
+      "obligation_id": "bf8576729a844461a21b0b226e09e155",
+      "item_no": "bf8576729a844461a21b0b226e09e155",
       "outcome": "CORRECT",
       "expected_files": [
         "f656bcddc8c19bae202365c3ba6655a0"
@@ -170,8 +170,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "5bf7ee85250f401ba7739a1170888add",
-      "item_no": "5bf7ee85250f401ba7739a1170888add",
+      "obligation_id": "1b8c759473bf4de4808d21434f4bf067",
+      "item_no": "1b8c759473bf4de4808d21434f4bf067",
       "outcome": "CORRECT",
       "expected_files": [
         "ba22dff5d64703ba313c9590244d2efe"
@@ -196,8 +196,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "015186379d6f4b2481dbef8491d433d3",
-      "item_no": "015186379d6f4b2481dbef8491d433d3",
+      "obligation_id": "8fdfea49eac140a7841d37aed7b089e6",
+      "item_no": "8fdfea49eac140a7841d37aed7b089e6",
       "outcome": "WRONG_ONLY",
       "expected_files": [
         "d40a24fd68ada3a30ee3dfd90fc8dda4"
@@ -226,8 +226,8 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "6a61c5a4cb39414eb5b3a5c8a34de425",
-      "item_no": "6a61c5a4cb39414eb5b3a5c8a34de425",
+      "obligation_id": "7888a4eb8f1a4ce781c67464c79104df",
+      "item_no": "7888a4eb8f1a4ce781c67464c79104df",
       "outcome": "OVER_DELIVERED",
       "expected_files": [
         "241aa18509bf90620009a2b6c31a98b2",
@@ -268,8 +268,8 @@
     "exam_id": "EX-A4A-SYNTHETIC",
     "items": [
       {
-        "obligation_id": "d3e76be7d8f9438aacca9d2e98c538f1",
-        "item_no": "d3e76be7d8f9438aacca9d2e98c538f1",
+        "obligation_id": "af0f7e7ea3fe4f3eb269914dece85fc0",
+        "item_no": "af0f7e7ea3fe4f3eb269914dece85fc0",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -303,8 +303,8 @@
         "note": ""
       },
       {
-        "obligation_id": "e6f9d06678a5489a96323960e2975c7d",
-        "item_no": "e6f9d06678a5489a96323960e2975c7d",
+        "obligation_id": "e6117c68765743278d812209b7494ce3",
+        "item_no": "e6117c68765743278d812209b7494ce3",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -326,8 +326,8 @@
         "note": ""
       },
       {
-        "obligation_id": "d1c9a36161e5474188d38ab618006c97",
-        "item_no": "d1c9a36161e5474188d38ab618006c97",
+        "obligation_id": "860cce6eb8b6451eb8504a92c05e2f31",
+        "item_no": "860cce6eb8b6451eb8504a92c05e2f31",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -349,8 +349,8 @@
         "note": ""
       },
       {
-        "obligation_id": "232788cc4916407ba08d1a5209789c96",
-        "item_no": "232788cc4916407ba08d1a5209789c96",
+        "obligation_id": "3828025e602e48028335e9074cd3d1a8",
+        "item_no": "3828025e602e48028335e9074cd3d1a8",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -372,8 +372,8 @@
         "note": ""
       },
       {
-        "obligation_id": "f3d89a1971e541f9bd9015e3033ce26f",
-        "item_no": "f3d89a1971e541f9bd9015e3033ce26f",
+        "obligation_id": "bf8576729a844461a21b0b226e09e155",
+        "item_no": "bf8576729a844461a21b0b226e09e155",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -395,8 +395,8 @@
         "note": ""
       },
       {
-        "obligation_id": "5bf7ee85250f401ba7739a1170888add",
-        "item_no": "5bf7ee85250f401ba7739a1170888add",
+        "obligation_id": "1b8c759473bf4de4808d21434f4bf067",
+        "item_no": "1b8c759473bf4de4808d21434f4bf067",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -418,8 +418,8 @@
         "note": ""
       },
       {
-        "obligation_id": "015186379d6f4b2481dbef8491d433d3",
-        "item_no": "015186379d6f4b2481dbef8491d433d3",
+        "obligation_id": "8fdfea49eac140a7841d37aed7b089e6",
+        "item_no": "8fdfea49eac140a7841d37aed7b089e6",
         "expected_verdict": "MATCH",
         "expected_files": [
           {
@@ -441,8 +441,8 @@
         "note": ""
       },
       {
-        "obligation_id": "6a61c5a4cb39414eb5b3a5c8a34de425",
-        "item_no": "6a61c5a4cb39414eb5b3a5c8a34de425",
+        "obligation_id": "7888a4eb8f1a4ce781c67464c79104df",
+        "item_no": "7888a4eb8f1a4ce781c67464c79104df",
         "expected_verdict": "MATCH",
         "expected_files": [
           {

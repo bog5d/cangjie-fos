@@ -255,3 +255,45 @@ class TestExaminerGraderSeparation:
         pkt = sem.build_semantic_packet(EXAMINER, meta, ITEMS)
         assert pkt["obligations"]
         assert pkt["evidence"]
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# ★ 回归守卫：**上一轮残留的交付清单**不得被当成本轮交付
+# ────────────────────────────────────────────────────────────────────────────
+
+def test_stale_delivery_manifest_is_not_counted_as_this_run_delivery(tmp_path):
+    """交付目录里残留**上一轮**的 ``组包manifest.tsv`` ⇒ 本轮读数必须是 **0 件**。
+
+    ★ 场景：本次 ``--package`` 被拒（没复制任何原件），但交付目录里还留着上一轮的清单。
+      若按目录读清单 ⇒ 答卷会带上**旧交付** ⇒ 阅卷时 HR-1（0 交付强制 0 分）**不触发**
+      ⇒ **把「本轮 0 交付」谎报成「有交付」** ⇒ 违反 `#85` 的「0 分必须如实报 0 分」。
+    """
+    import os
+    import time
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+    import dd_team_channel as tc
+
+    delivery = tmp_path / "交付目录"
+    delivery.mkdir()
+    manifest = delivery / "组包manifest.tsv"
+    manifest.write_text(
+        "机构编号\t义务ID\t原子义务\tfile_id\t原始材料路径\t文件名\t交付路径"
+        "\t源sha256\t副本sha256\t一致\t判定\t审核结论\n"
+        "1\tOBL-X\t提供审计报告\tF00001\t材料/a.txt\ta.txt\t交付/a.txt"
+        "\tsha-src\tsha-src\t是\tMATCHED\t通过\n", encoding="utf-8")
+    # ★ 把 mtime 改成**上一轮**（早于本次运行起点）
+    old = time.time() - 3600
+    os.utime(manifest, (old, old))
+
+    class _A:
+        package_out = str(delivery)
+
+    pack = {"result": {"review_id": "RV-OLD"}}
+    assert tc._read_run_delivery_manifest(_A(), pack, since=time.time()) == [], \
+        "上一轮残留的交付清单不得被当成本轮交付"
+
+    # ★ 阳性对照：同一份清单，**本轮产出**（mtime 新）⇒ 必须读得到
+    os.utime(manifest, None)
+    rows = tc._read_run_delivery_manifest(_A(), pack, since=time.time() - 5)
+    assert rows and rows[0]["file_id"] == "F00001", rows

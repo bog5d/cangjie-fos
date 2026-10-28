@@ -255,8 +255,13 @@ def cmd_run(a) -> int:
         rc = _run_package(pack, a)
         # ★★ 实际交付清单必须进机读产物：否则「机器答卷」拿不到交付件数
         #   ⇒ HR-1（0 交付强制 0 分）会**误伤**成 0 分（真机上就是「明明交了却 0 分」）。
-        from cangjie_fos.services import dd_v1_exam_service as ex
-        delivered = ex.read_delivery_manifest(_delivery_manifest_path(a, pack))
+        # ★★ **只认本轮产出的那份**：交付目录里可能残留**上一轮**的 manifest
+        #   （本轮被拒、没复制任何原件时它还在）⇒ 拿旧清单当本轮交付 =
+        #   **把「本轮 0 交付」谎报成「有交付」** ⇒ 必须按 mtime 过滤。
+        if rc == EXIT_OK:
+            delivered = _read_run_delivery_manifest(a, pack, since=t0)
+        else:
+            delivered = []
 
     # ── 报告 ──────────────────────────────────────────────────────────
     _hr("输出")
@@ -582,6 +587,26 @@ def _delivery_manifest_path(a, pack: dict) -> Path:
     out_dir = (Path(a.package_out) if getattr(a, "package_out", "")
                else Path(_exam_data_dir()) / "deliveries" / str(p.get("review_id") or ""))
     return out_dir / "组包manifest.tsv"
+
+
+def _read_run_delivery_manifest(a, pack: dict, since: float) -> list[dict]:
+    """读**本轮**产出的实际交付清单（``组包manifest.tsv``）。
+
+    ★ **只认本轮产出的那份**：交付目录里可能残留**上一轮**的 manifest
+      （本轮被拒、没复制任何原件时它还在）⇒ 拿旧清单当本轮交付
+      ＝ **把「本轮 0 交付」谎报成「有交付」** ⇒ 必须按 mtime 过滤。
+    ★ mtime 早于 ``since``（本次运行开始时刻）⇒ 一律当「本轮没有交付」。
+    """
+    from cangjie_fos.services import dd_v1_exam_service as ex
+    mpath = _delivery_manifest_path(a, pack)
+    if not mpath.is_file():
+        return []
+    try:
+        if mpath.stat().st_mtime < float(since) - 1:
+            return []
+    except OSError:
+        return []
+    return ex.read_delivery_manifest(mpath)
 
 
 def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge=None,

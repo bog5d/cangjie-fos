@@ -1,7 +1,7 @@
 {
   "schema_version": "dd_v1_answer_sheet.v1",
   "exam_id": "EX-A4A-SYNTHETIC",
-  "generated_at": "2026-10-29T01:27:40+08:00",
+  "generated_at": "2026-10-29T01:59:01+08:00",
   "delivered": [
     {
       "file_id": "ba22dff5d64703ba313c9590244d2efe",
@@ -26,148 +26,8 @@
   },
   "obligations": [
     {
-      "obligation_id": "015186379d6f4b2481dbef8491d433d3",
-      "item_id": "015186379d6f4b2481dbef8491d433d3",
-      "text": "",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "主体甲",
-        "entity_basis": "AUTHORITY",
-        "period": "2024",
-        "required_parts": [],
-        "text": "",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [],
-      "candidate_count": 0,
-      "selected": [
-        {
-          "file_id": "241aa18509bf90620009a2b6c31a98b2",
-          "sha256": "",
-          "relative_path": "",
-          "locator": "",
-          "match_reason": "MATCH",
-          "entity": "",
-          "period": ""
-        },
-        {
-          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
-          "sha256": "",
-          "relative_path": "",
-          "locator": "",
-          "match_reason": "MATCH",
-          "entity": "",
-          "period": ""
-        },
-        {
-          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
-          "sha256": "",
-          "relative_path": "",
-          "locator": "",
-          "match_reason": "MATCH",
-          "entity": "",
-          "period": ""
-        }
-      ],
-      "selected_count": 3,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 5,
-        "checked": 5,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "232788cc4916407ba08d1a5209789c96",
-      "item_id": "232788cc4916407ba08d1a5209789c96",
-      "text": "",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "主体甲",
-        "entity_basis": "AUTHORITY",
-        "period": "2024",
-        "required_parts": [],
-        "text": "",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [],
-      "candidate_count": 0,
-      "selected": [
-        {
-          "file_id": "241aa18509bf90620009a2b6c31a98b2",
-          "sha256": "",
-          "relative_path": "",
-          "locator": "",
-          "match_reason": "MATCH",
-          "entity": "",
-          "period": ""
-        },
-        {
-          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
-          "sha256": "",
-          "relative_path": "",
-          "locator": "",
-          "match_reason": "MATCH",
-          "entity": "",
-          "period": ""
-        },
-        {
-          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
-          "sha256": "",
-          "relative_path": "",
-          "locator": "",
-          "match_reason": "MATCH",
-          "entity": "",
-          "period": ""
-        }
-      ],
-      "selected_count": 3,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 5,
-        "checked": 5,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "5bf7ee85250f401ba7739a1170888add",
-      "item_id": "5bf7ee85250f401ba7739a1170888add",
+      "obligation_id": "1b8c759473bf4de4808d21434f4bf067",
+      "item_id": "1b8c759473bf4de4808d21434f4bf067",
       "text": "",
       "interpretation": {
         "doc_type": "license",
@@ -226,8 +86,8 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "6a61c5a4cb39414eb5b3a5c8a34de425",
-      "item_id": "6a61c5a4cb39414eb5b3a5c8a34de425",
+      "obligation_id": "3828025e602e48028335e9074cd3d1a8",
+      "item_id": "3828025e602e48028335e9074cd3d1a8",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -296,8 +156,8 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "d1c9a36161e5474188d38ab618006c97",
-      "item_id": "d1c9a36161e5474188d38ab618006c97",
+      "obligation_id": "7888a4eb8f1a4ce781c67464c79104df",
+      "item_id": "7888a4eb8f1a4ce781c67464c79104df",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -366,8 +226,8 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "d3e76be7d8f9438aacca9d2e98c538f1",
-      "item_id": "d3e76be7d8f9438aacca9d2e98c538f1",
+      "obligation_id": "860cce6eb8b6451eb8504a92c05e2f31",
+      "item_id": "860cce6eb8b6451eb8504a92c05e2f31",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -436,8 +296,8 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "e6f9d06678a5489a96323960e2975c7d",
-      "item_id": "e6f9d06678a5489a96323960e2975c7d",
+      "obligation_id": "8fdfea49eac140a7841d37aed7b089e6",
+      "item_id": "8fdfea49eac140a7841d37aed7b089e6",
       "text": "",
       "interpretation": {
         "doc_type": "audit_report",
@@ -506,8 +366,78 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "f3d89a1971e541f9bd9015e3033ce26f",
-      "item_id": "f3d89a1971e541f9bd9015e3033ce26f",
+      "obligation_id": "af0f7e7ea3fe4f3eb269914dece85fc0",
+      "item_id": "af0f7e7ea3fe4f3eb269914dece85fc0",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "bf8576729a844461a21b0b226e09e155",
+      "item_id": "bf8576729a844461a21b0b226e09e155",
       "text": "",
       "interpretation": {
         "doc_type": "labor",
@@ -550,6 +480,76 @@
         "cap": 6,
         "found": 1,
         "checked": 1,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "e6117c68765743278d812209b7494ce3",
+      "item_id": "e6117c68765743278d812209b7494ce3",
+      "text": "",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "主体甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [],
+      "candidate_count": 0,
+      "selected": [
+        {
+          "file_id": "241aa18509bf90620009a2b6c31a98b2",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        },
+        {
+          "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+          "sha256": "",
+          "relative_path": "",
+          "locator": "",
+          "match_reason": "MATCH",
+          "entity": "",
+          "period": ""
+        }
+      ],
+      "selected_count": 3,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 5,
+        "checked": 5,
         "unchecked": 0,
         "truncated": false,
         "stop_reason": ""
