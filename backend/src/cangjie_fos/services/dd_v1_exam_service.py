@@ -296,14 +296,27 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
         "unresolved_doc_type_obligations": sum(1 for r in rows
                                               if r["interpretation"]["doc_type_unresolved"]),
     }
-    # ★ 参与类别的判定（**只认适配器实现**，不采信自填字段）
-    _prov = str(adapter.get("provenance") or "")
-    if not _prov:
-        _prov = str(pkt.get("model_participation", {}).get("provenance") or "") \
-            if isinstance(pkt.get("model_participation"), dict) else ""
-    if not _prov:
-        _prov = str(rec.get("model_participation", {}).get("provenance") or "") \
-            if isinstance(rec.get("model_participation"), dict) else ""
+    # ★★★ 参与类别的判定（**只认「盖章」**，**不采信适配器自填的 provenance**）
+    #   ★ 真因（第 6 轮独立复核抓到的绕过口）：`adapter.provenance` 是**适配器自己写的
+    #     自由字段**（`AdapterResult.provenance`）⇒ 一份 `run_record.json` 把它写成
+    #     `"HARNESS_MODEL"` ⇒ 答卷就会自称「有本机 Harness 参与」⇒ **自填即可冒充**。
+    #   ⇒ 正解：**只有带 `provenance_source == "ADAPTER_IMPLEMENTATION"` 盖章的值才采信**；
+    #     适配器自填的只记进 `declared_provenance`（留痕，不作数）。
+    _prov = ""
+    _prov_source = ""
+    _declared = ""
+    for _src in (pkt.get("model_participation"), rec.get("model_participation"),
+                 adapter if isinstance(adapter, dict) else None):
+        if not isinstance(_src, dict):
+            continue
+        if str(_src.get("provenance_source") or "") == "ADAPTER_IMPLEMENTATION":
+            _prov = str(_src.get("provenance") or "")
+            _prov_source = "ADAPTER_IMPLEMENTATION"
+            break
+        if not _declared:
+            _declared = str(_src.get("provenance") or "")
+    if not _declared:
+        _declared = str(adapter.get("provenance") or "") if isinstance(adapter, dict) else ""
     if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT", "UNKNOWN_ADAPTER"):
         _examinee_mode = _prov
     elif any(r.get("selection_source") == "MODEL" for r in rows):
@@ -329,6 +342,9 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
             #   未知适配器 ⇒ UNKNOWN_ADAPTER；没接适配器 ⇒ RULE_ONLY。
             "mode": str(_examinee_mode),
             "provenance": str(_prov),
+            "provenance_source": str(_prov_source),
+            # ★ 适配器**自填**的参与类别：只留痕（可查），**不作数**（可伪造）
+            "declared_provenance": str(_declared),
             "adapter_id": str(adapter.get("adapter_id") or ""),
             "vendor": str(adapter.get("vendor") or ""),
             "model_id_or_unknown": str(adapter.get("model_id_or_unknown") or "UNKNOWN"),

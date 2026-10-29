@@ -486,14 +486,34 @@ ADAPTER_PARTICIPATION_CLASSES: dict[type, str] = {
 
 UNKNOWN_ADAPTER = "UNKNOWN_ADAPTER"
 
+#: ★ **id 级声明表**（只是**旁证**；权威判定在 :func:`participation_class_of`）
+#:   —— 放在实现侧，是因为「这个 id 对应哪一类」是**适配器实现**的知识。
+KNOWN_ADAPTER_ID_CLASSES: dict[str, str] = {
+    "codex-cli": "HARNESS_MODEL",
+    "deepseek-harness": "HARNESS_MODEL",
+    "pi": "HARNESS_MODEL",
+    "manual-exchange": "HARNESS_MANUAL",
+    "prebaked-result": "PREBAKED_RESULT",
+}
+
+
+def declared_class_of(adapter_id: str) -> str:
+    """适配器 **id** → id 级**声明**类别（**旁证，不构成参与主张**）。"""
+    return KNOWN_ADAPTER_ID_CLASSES.get(str(adapter_id or "").strip(), UNKNOWN_ADAPTER)
+
 
 def participation_class_of(adapter: Any) -> str:
     """适配器**对象** → 参与类别（权威判定，按实现类）。
 
-    ★ 这是「模型参与」这件事**唯一**的判定入口：
+    ★ 这是「模型参与」这件事在**判词层**的判定入口：
       **不看** ``adapter_id``、**不看** ``vendor``、**不看**任何自填字符串
       ⇒ 自填字符串**不可能**把一个非 Harness 适配器变成 ``HARNESS_MODEL``。
     ★ 认不出 ⇒ ``UNKNOWN_ADAPTER``（不猜、不放行）。
+    ★ ★ **边界要说清（不是安全边界）**：**进程内**的代码理论上能替换实现
+      （monkeypatch ``CodexAdapter.run``、改 ``__class__`` …）⇒ 本判定挡的是
+      **「自填字段/自造替身冒充」**这一类，**挡不住**「进程内改实现」。
+      ⇒ 真正不可伪造的那一段是**下游只认盖章**（`provenance_source=ADAPTER_IMPLEMENTATION`，
+        由实现侧产生并随回执落盘）⇒ 伪造要连**盖章**一起造（那就不是「自填」了）。
     """
     if adapter is None:
         return UNKNOWN_ADAPTER

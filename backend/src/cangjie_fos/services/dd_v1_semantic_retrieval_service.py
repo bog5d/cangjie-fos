@@ -1067,6 +1067,15 @@ def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], r
     err = None if a["status"] == ad.OK else f"{a['status']}:{a['reason']}"
     sem = validate_semantic(a.get("raw_text"), snapshot_dir, meta, packet, call_error=err)
     rec["semantic_validation"] = sem.to_dict()
+    # ★★ **参与类别盖章**（权威）：按**适配器实现类**判定，**不采信**适配器自填的
+    #   ``adapter.provenance``（那是适配器自己写的自由字段 ⇒ 可伪造）。
+    #   ⇒ 下游（机器答卷）只认这份**盖章**（`provenance_source=ADAPTER_IMPLEMENTATION`）。
+    rec["model_participation"] = {
+        "provenance": ad.participation_class_of(adapter),
+        "provenance_source": "ADAPTER_IMPLEMENTATION",
+        "declared_provenance": ad.declared_class_of(str(a.get("adapter_id") or "")),
+        "adapter_id": str(a.get("adapter_id") or ""),
+    }
     rec["authoritative_validation"] = "semantic_validation"
     rec["validation_note"] = "validation=R4 结构层（中间结果）；下游只读 semantic_validation"
     rec["unsplit_items"] = packet["unsplit_items"]

@@ -309,8 +309,10 @@ def test_answer_sheet_with_model_results_marks_model_selection():
         "proposed_verdict": "MATCH", "confidence_or_uncertain": 0.9,
         "abstain_reason": None, "warnings": [], "elapsed": "UNKNOWN",
         "token_usage_or_UNKNOWN": "UNKNOWN"}], "rejected": [], "mode": "AGENT_SUGGESTION"},
+        # ★ 带**盖章**（桥接回执就是这么给的）⇒ 答卷照采
         "adapter": {"adapter_id": "test-standin", "vendor": "test",
-                    "status": "OK", "provenance": "UNKNOWN_ADAPTER"}}
+                    "status": "OK", "provenance": "UNKNOWN_ADAPTER",
+                    "provenance_source": "ADAPTER_IMPLEMENTATION"}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["obligations"][0]["selection_source"] == "MODEL", sheet["obligations"][0]
     assert sheet["examinee"]["mode"] == "UNKNOWN_ADAPTER", sheet["examinee"]
@@ -331,7 +333,8 @@ def test_answer_sheet_marks_prebaked_result_distinctly():
         "abstain_reason": None, "warnings": [], "elapsed": "UNKNOWN",
         "token_usage_or_UNKNOWN": "UNKNOWN"}], "rejected": [], "mode": "AGENT_SUGGESTION"},
         "adapter": {"adapter_id": "prebaked-result", "vendor": "operator-prebaked",
-                    "status": "OK", "provenance": "PREBAKED_RESULT"}}
+                    "status": "OK", "provenance": "PREBAKED_RESULT",
+                    "provenance_source": "ADAPTER_IMPLEMENTATION"}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["examinee"]["mode"] == "PREBAKED_RESULT", sheet["examinee"]
     assert sheet["obligations"][0]["selection_source"] == "MODEL"
@@ -439,7 +442,8 @@ def test_cli_bridge_to_answer_sheet_carries_model_selection(tmp_path):
     rc = pkt.get("agent_receipt") or {}
     rec["adapter"] = {"adapter_id": rc.get("adapter_id"), "vendor": rc.get("vendor"),
                       "status": rc.get("status"),
-                      "provenance": rc.get("provenance")}
+                      "provenance": rc.get("provenance"),
+                      "provenance_source": rc.get("provenance_source")}
     sheet = ex.build_answer_sheet(rec, pkt)
     assert sheet["obligations"][0]["selection_source"] == "MODEL", sheet["obligations"][0]
     assert sheet["examinee"]["mode"] == "UNKNOWN_ADAPTER", sheet["examinee"]
@@ -478,3 +482,63 @@ def test_bridge_receipt_carries_verifiable_run_traces(tmp_path):
     assert rc["argv_digest"].startswith("sha256:"), rc
     assert "workdir_digest" in rc, rc
     assert rc["provenance_source"] == "ADAPTER_IMPLEMENTATION", rc
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4. 第 6 轮独立复核抓到的**绕过口**：答卷层不得采信适配器自填的 provenance
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_answer_sheet_refuses_unstamped_provenance():
+    """★ 适配器**自填**的 `provenance="HARNESS_MODEL"` ⇒ 答卷**不得**自称模型参与。
+
+    ★ 真因（第 6 轮复核抓到）：`adapter.provenance` 是**适配器自己写的自由字段**
+      （`AdapterResult.provenance`）⇒ 一份 `run_record.json` 把它写成 `HARNESS_MODEL`
+      ⇒ 旧实现直接采信 ⇒ **自填即可冒充**（与第 5 轮修掉的「自填 adapter_id」同族，
+      但在**答卷层**这第二个入口上）。
+
+    ★ 旧字节上这条**是红的**：旧实现读 `adapter["provenance"]` 的**第一个非空值**。
+    """
+    rec = {"semantic_validation": {"accepted": [{
+        "obligation_id": "O1", "item_id": "I1", "agent_id": "a", "provider": "p",
+        "model_id_or_unknown": "UNKNOWN", "source_snapshot_id": "",
+        "candidate_files": [{"file_id": "F1", "sha256": "a" * 64,
+                             "relative_path": "a.txt", "locator": "L1",
+                             "entity": "子公司甲", "period": "2024",
+                             "match_reason": "r"}],
+        "proposed_verdict": "MATCH", "confidence_or_uncertain": 0.9,
+        "abstain_reason": None, "warnings": [], "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN"}], "rejected": [], "mode": "AGENT_SUGGESTION"},
+        "adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                    "status": "OK", "provenance": "HARNESS_MODEL"}}
+    sheet = ex.build_answer_sheet(rec, _pkt())
+    exi = sheet["examinee"]
+    # ★ **不得**自称模型参与
+    assert exi["mode"] != "HARNESS_MODEL", exi
+    # ★ 没有「盖章」⇒ 一律降级为「有模型选材但没有可信回执」
+    assert exi["mode"] == "MODEL_SELECTION_WITHOUT_RECEIPT", exi
+    assert exi["provenance_source"] == "", exi
+    # ★ 自填的那一档**留痕**（可查）但**不作数**
+    assert exi["declared_provenance"] == "HARNESS_MODEL", exi
+
+
+def test_answer_sheet_honors_stamped_provenance():
+    """★ 带**盖章**（`provenance_source=ADAPTER_IMPLEMENTATION`）的参与类别**照采**。
+
+    ★ 这条保证「真跑过 Codex」时答卷**确实**标 `HARNESS_MODEL`（不是把好数据也毙了）。
+    """
+    rec = {"semantic_validation": {"accepted": [{
+        "obligation_id": "O1", "item_id": "I1", "agent_id": "a", "provider": "p",
+        "model_id_or_unknown": "UNKNOWN", "source_snapshot_id": "",
+        "candidate_files": [{"file_id": "F1", "sha256": "a" * 64,
+                             "relative_path": "a.txt", "locator": "L1",
+                             "entity": "子公司甲", "period": "2024",
+                             "match_reason": "r"}],
+        "proposed_verdict": "MATCH", "confidence_or_uncertain": 0.9,
+        "abstain_reason": None, "warnings": [], "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN"}], "rejected": [], "mode": "AGENT_SUGGESTION"},
+        "adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                    "status": "OK", "provenance": "HARNESS_MODEL",
+                    "provenance_source": "ADAPTER_IMPLEMENTATION"}}
+    sheet = ex.build_answer_sheet(rec, _pkt())
+    assert sheet["examinee"]["mode"] == "HARNESS_MODEL", sheet["examinee"]
+    assert sheet["examinee"]["provenance_source"] == "ADAPTER_IMPLEMENTATION", sheet["examinee"]

@@ -408,3 +408,34 @@ def test_confirmed_map_key_case_does_not_matter(tmp_path):
     assert hit, rows
     assert "HUMAN_CONFIRMED" in str(hit[0].get("evidence") or ""), (
         f"大写查表键没命中（看起来像「人工没确认」）：{hit[0].get('evidence')}")
+
+
+def test_confirmed_map_exact_key_wins_over_case_variant(tmp_path):
+    """★ 查表键归一**不许串味**：表里同时有 `FILE-ABC` 与 `file-abc`（**不同主体**）⇒ 各归各的。
+
+    ★ 第 6 轮独立复核抓到的**误命中**：先前把「大小写不敏感」做成**单一索引**，
+      表里的 `FILE-ABC` 会被 `file-abc` **顶掉** ⇒ 行内 `file_id=FILE-ABC` 的材料
+      会被判成**另一个主体**（人工确认反了）。
+    ★ 修法：**两级查表** —— ① 原样键精确命中优先 ② 大小写不敏感只作兜底。
+    """
+    from cangjie_fos.services import dd_v1_entity_resolution_service as ers
+
+    row_up = {"file_id": "FILE-ABC", "sha256": "1" * 64,
+              "relative_path": "a/FILE-ABC.txt"}
+    row_lo = {"file_id": "file-abc", "sha256": "2" * 64,
+              "relative_path": "b/file-abc.txt"}
+    confirmed = {
+        "FILE-ABC": {"entity": "甲科技有限责任公司", "entity_id": "E-UPPER"},
+        "file-abc": {"entity": "乙实业集团有限公司", "entity_id": "E-LOWER"},
+    }
+    up = ers.resolve_material_entity(row_up, [], {}, confirmed_map=confirmed)
+    lo = ers.resolve_material_entity(row_lo, [], {}, confirmed_map=confirmed)
+    assert up["entity_id"] == "E-UPPER", up
+    assert lo["entity_id"] == "E-LOWER", lo
+
+    # ★ 只有大写键时 ⇒ 行内小写键**仍能命中**（大小写不敏感那档兜底）
+    only_upper = ers.resolve_material_entity(
+        row_lo, [], {}, confirmed_map={"FILE-ABC": {"entity": "甲科技有限责任公司",
+                                                    "entity_id": "E-UPPER"}})
+    assert only_upper["entity_id"] == "E-UPPER", only_upper
+    assert only_upper["matched_by"] == "HUMAN_CONFIRMED", only_upper

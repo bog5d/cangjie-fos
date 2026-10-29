@@ -1151,7 +1151,9 @@ def cmd_answer(a) -> int:
                               "vendor": str(_rc.get("vendor") or ""),
                               "status": str(_rc.get("status") or ""),
                               "model_id_or_unknown": str(_rc.get("model_id_or_unknown") or "UNKNOWN"),
-                              "provenance": str(_rc.get("provenance") or "")}
+                              "provenance": str(_rc.get("provenance") or ""),
+                              # ★ 带**盖章**（下游只认盖章；不带 ⇒ 只作旁证）
+                              "provenance_source": str(_rc.get("provenance_source") or "")}
         _mp = pkt.get("model_participation") or {}
         if _mp:
             rec["model_participation"] = _mp

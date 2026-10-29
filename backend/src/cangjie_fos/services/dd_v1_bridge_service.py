@@ -82,15 +82,12 @@ MAX_ENTITY_CLUSTERS = 8
 #:   ★ ★ **权威判定按「适配器实现类」**（见 :func:`adapter_participation_class`）：
 #:     自填 ``adapter_id="codex-cli"`` **拿不到** ``HARNESS_MODEL``。
 #:   ★ 未知 id ⇒ 一律 ``UNKNOWN_ADAPTER`` ⇒ **不得**计为模型参与。
-KNOWN_HARNESS_ADAPTERS = {
-    "codex-cli": "HARNESS_MODEL",
-    "deepseek-harness": "HARNESS_MODEL",
-    "pi": "HARNESS_MODEL",
-    "manual-exchange": "HARNESS_MANUAL",
-    # ★ 第 5 轮独立复核缺陷 ③：`PrebakedResultAdapter` 实际存在的类别此前**不可达**
-    #   （表里没有 `prebaked-result` ⇒ 真适配器落 `UNKNOWN_ADAPTER`，与文档口径不符）
-    "prebaked-result": "PREBAKED_RESULT",
-}
+#: ★ **已知的真 Harness 适配器 id 表**（**仅作 id 级旁证**，不是判定依据）。
+#:   ★ ★ **权威判定按「适配器实现类」**（见 :func:`adapter_participation_class`）：
+#:     自填 ``adapter_id="codex-cli"`` **拿不到** ``HARNESS_MODEL``。
+#:   ★ 表本体在实现侧（`dd_v1_agent_adapters.KNOWN_ADAPTER_ID_CLASSES`）——
+#:     「这个 id 属于哪一类」是**适配器实现**的知识，不该由消费方抄一份。
+KNOWN_HARNESS_ADAPTERS = dict(ad.KNOWN_ADAPTER_ID_CLASSES)
 
 
 def adapter_provenance(adapter_id: str) -> str:
@@ -101,7 +98,7 @@ def adapter_provenance(adapter_id: str) -> str:
       因为 id 是**字符串**，任何人都能自填。
     ★ 主张参与类别 ⇒ 必须用 :func:`adapter_participation_class`（按**实现类**判定）。
     """
-    return KNOWN_HARNESS_ADAPTERS.get(str(adapter_id or "").strip(), "UNKNOWN_ADAPTER")
+    return ad.declared_class_of(adapter_id)
 
 
 def adapter_participation_class(adapter: Any) -> str:
@@ -512,7 +509,7 @@ def bridge_library(
                 #   ⇒ id 级声明只作**旁证**记在 `declared_provenance`
                 "provenance": _impl_class,
                 "provenance_source": "ADAPTER_IMPLEMENTATION",
-                "declared_provenance": adapter_provenance(str(_a.get("adapter_id") or "")),
+                "declared_provenance": ad.declared_class_of(str(_a.get("adapter_id") or "")),
                 # ★ id 级声明与实现类**不一致** ⇒ 记录下来（自填 id 的替身会命中这条）
                 "provenance_mismatch": bool(_declared_class != "UNKNOWN_ADAPTER"
                                             and _declared_class != _impl_class),

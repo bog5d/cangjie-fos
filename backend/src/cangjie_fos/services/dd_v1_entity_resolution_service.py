@@ -53,24 +53,33 @@ def _norm(value: Any) -> str:
     return es.normalize_name(str(value or ""))
 
 
-def _confirmed_index(confirmed: dict | None) -> dict[str, Any]:
-    """把人工确认映射表**归一化成可查表**（键写法不敏感）。
+def _confirmed_index(confirmed: dict | None) -> tuple[dict[str, Any], dict[str, Any]]:
+    """人工确认映射表 → **(精确索引, 大小写不敏感索引)**。
 
-    ★ 每个原始键登记**三种写法**：原样 / 去空白小写 / 归一文件名形式
-      ⇒ 表里写 `FILE-ABC` 与行内 `file_id=file-abc` 也能对上。
-    ★ 归一后**同名**时以**原样键优先**（原样键是操作员明确写的）。
+    ★ ★ **两级查表**（第 6 轮独立复核抓到的**误命中**，已修）：
+      ① **精确档**：表里的键**按原样**登记 ⇒ 行内键**逐字相同**才命中
+         ⇒ 表里同时有 `FILE-ABC` 与 `file-abc` 两个**不同**主体时，
+            **各归各的**（原样键优先）⇒ 绝不串味；
+      ② **不区分大小写档**：表里的键**小写/归一**后登记 ⇒ 行内 `file_id=file-abc`
+         能命中表里的 `FILE-ABC`（**只在这一档兜底**）。
+    ★ 两档都命中不了 ⇒ 认不出（不猜、不放行）。
+    ★ 不区分大小写档里若有两个键归一后同名 ⇒ **先写入的赢**
+      （要指定不同主体 ⇒ 请用**精确键**）。
     """
-    out: dict[str, Any] = {}
+    exact: dict[str, Any] = {}
+    ci: dict[str, Any] = {}
     for k, v in (confirmed or {}).items():
         ks = str(k)
-        variants = [ks, ks.strip().lower(), _norm(ks)]
-        for variant in variants:
-            if variant and variant not in out:
-                out[variant] = v
-        # ★ 原样键最后再登记一次（若上面某个变体已占位 ⇒ 原样键优先覆盖）
-        if ks:
-            out[ks] = v
-    return out
+        # ★ 精确档**只放原样键**（归一后的写法一律进「不区分大小写档」）
+        #   ⇒ 否则表里的 `FILE-ABC` 会用它的归一形 `file-abc` **占掉** `file-abc` 那条
+        #   ⇒ 行内 `file_id=file-abc` 的材料会被判成**另一个主体**（人工确认反了）。
+        if ks and ks not in exact:
+            exact[ks] = v
+        nk = _norm(ks)
+        for variant in (ks.strip().lower(), nk.lower() if nk else "", nk):
+            if variant and variant not in ci:
+                ci[variant] = v
+    return exact, ci
 
 
 def _filename_of(meta_row: dict[str, Any]) -> str:
@@ -129,12 +138,22 @@ def resolve_material_entity(meta_row: dict[str, Any] | None,
     #   行内键不一致（例：表里写 `FILE-ABC`，行内 `file_id` 是 `file-abc`）
     #   ⇒ 只归一「行内键」不归一「表内键」⇒ **大写键静默不命中**（看起来像「人工没确认」）。
     #   ⇒ 两边都归一 ⇒ 命中与否只取决于**内容**，不取决于**写法**。
-    confirmed_index = _confirmed_index(confirmed)
-    for key in (str(row.get("sha256") or "").strip().lower(),
-                str(row.get("file_id") or "").strip().lower(),
-                _norm(fname), _norm(path)):
-        if key and key in confirmed_index:
-            c = confirmed_index[key]
+    _sha = str(row.get("sha256") or "").strip()
+    _fid = str(row.get("file_id") or "").strip()
+    _exact_idx, _ci_idx = _confirmed_index(confirmed)
+    # ★ 先精确、后大小写不敏感（★ 原样键优先 ⇒ 表里两个大小写不同的键**不串味**）
+    _hit = None
+    for key in (_sha, _fid, _norm(fname), _norm(path)):
+        if key and key in _exact_idx:
+            _hit = _exact_idx[key]
+            break
+    if _hit is None:
+        for key in (_sha.lower(), _fid.lower(), _norm(fname), _norm(path)):
+            if key and key in _ci_idx:
+                _hit = _ci_idx[key]
+                break
+    if _hit is not None:
+            c = _hit
             return {
                 "entity": str(c.get("entity") or c.get("display_name") or ""),
                 "entity_id": str(c.get("entity_id") or ""),
