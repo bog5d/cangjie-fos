@@ -56,6 +56,7 @@ A0 实测（真 trace，两入口零重叠）：
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,53 @@ DOC_TYPE_KEYS: tuple[str, ...] = tuple(k for k, _ in rq._DOC_TYPE_RULES)
 
 #: 每条义务的主体分簇上限（防止材料主体很多时义务数爆炸）。超出部分在输出里如实记账。
 MAX_ENTITY_CLUSTERS = 8
+
+#: ★ **已知的真 Harness 适配器**（只有它们才可能产生「模型参与」的凭据）。
+#:   适配器 id 之外的任何东西 ⇒ 一律 ``UNKNOWN_ADAPTER`` ⇒ **不得**计为模型参与。
+#:   （这是「别把自报当模型证据」的落点：身份由**适配器实现**决定，不由提交方自填。）
+KNOWN_HARNESS_ADAPTERS = {
+    "codex-cli": "HARNESS_MODEL",
+    "deepseek-harness": "HARNESS_MODEL",
+    "pi": "HARNESS_MODEL",
+    "manual-exchange": "HARNESS_MANUAL",
+}
+
+
+def adapter_provenance(adapter_id: str) -> str:
+    """适配器 → 参与类别。**未知适配器一律 UNKNOWN**（不得计为模型参与）。"""
+    return KNOWN_HARNESS_ADAPTERS.get(str(adapter_id or "").strip(), "UNKNOWN_ADAPTER")
+
+
+def _discrimination_readings(pool: list[dict[str, Any]],
+                             picked: list[str],
+                             rejected: list[dict[str, Any]]) -> dict[str, Any]:
+    """**排除式选择凭据**的读数：判断是不是「取第一个」。
+
+    ★ 这**只**证明「判断不是照抄第一个候选」；
+      它**不证明**判断出自模型（模型身份看适配器回执）。
+    ★ 池子里只有一种类型 ⇒ 「照抄自身类型」天然自洽 ⇒ 读数必然 WEAK（如实记账）。
+    """
+    _pool_types = sorted({str(e.get("doc_type") or "") for e in (pool or [])
+                           if str(e.get("doc_type") or "")})
+    _first = str((pool or [{}])[0].get("file_id") or "")
+    _picked = [str(x) for x in (picked or []) if str(x)]
+    _rej_with_reason = [r for r in (rejected or [])
+                         if isinstance(r, dict) and str(r.get("reason") or "").strip()]
+    _non_default = bool(_picked) and _first not in _picked[:1]
+    _ok = (len(_pool_types) >= 2 and _non_default and bool(_rej_with_reason))
+    return {
+        "pool_size": len(pool or []),
+        "pool_doc_types": _pool_types,
+        "pool_doc_type_count": len(_pool_types),
+        "picked_file_ids": _picked,
+        "non_default_pick": _non_default,
+        "rejected_count": len(rejected or []),
+        "rejected_with_reason": len(_rej_with_reason),
+        "discrimination": "PASS" if _ok else "WEAK",
+        "note": ("PASS = 池子里有多种类型、且模型**没有**取第一个、且记录了排除理由"
+                 " ⇒ 判断**不是**照抄第一个候选；"
+                 "★ 这**不证明**判断出自模型（模型身份看适配器回执）"),
+    }
 
 _YEAR_RE = re.compile(r"^\d{4}")
 _ATTACH_RE = re.compile(r"附注|附件|附录|appendix", re.I)
@@ -392,6 +440,10 @@ def bridge_library(
     suggestions: list[dict] = []
     packet: dict[str, Any] = {}
     external_model_calls = 0
+    # ★ 这两个读数在「空输入」分支也会被外层读到 ⇒ 必须在分支**之外**初始化
+    #   （曾因初始化写在 else 分支里 ⇒ 空库时 UnboundLocalError ⇒ 已修）
+    agent_receipt: dict[str, Any] = {}
+    model_sel: dict[str, dict[str, Any]] = {}
 
     if not meta or not obl_out:
         degrade_reason = "EMPTY_INPUT：材料库或义务为空，无可桥接内容"
@@ -401,6 +453,8 @@ def bridge_library(
         packet = sem.build_semantic_packet(snapshot_dir, meta, [],
                                            obligations=obl_out,
                                            resolve_doc_type=resolve_doc_type)
+        agent_receipt = {}
+        model_sel = {}
         if adapter is not None:
             rec = sem.run_semantic(adapter, snapshot_dir, meta, [], budget,
                                    workdir=workdir, obligations=obl_out,
@@ -413,6 +467,50 @@ def bridge_library(
             if mode != "AGENT_SUGGESTION":
                 degrade_reason = (degrade_reason
                                   or "模型未产出可接受建议（确定性门槛拦截或适配器不可用）")
+            # ★ 适配器回执 = 「模型参与」的**凭据**（身份不采信自填字段，认适配器实现）
+            _a = rec.get("adapter") or {}
+            _raw = str(_a.get("raw_text") or "")
+            agent_receipt = {
+                "adapter_id": str(_a.get("adapter_id") or ""),
+                "vendor": str(_a.get("vendor") or ""),
+                "role": str(_a.get("role") or ""),
+                "status": str(_a.get("status") or ""),
+                "exit_code": _a.get("exit_code"),
+                "elapsed_s": _a.get("elapsed_s"),
+                "model_id_or_unknown": str(_a.get("model_id_or_unknown") or "UNKNOWN"),
+                "cost_usd_or_UNKNOWN": _a.get("cost_usd_or_UNKNOWN", "UNKNOWN"),
+                "calls_used": external_model_calls,
+                "raw_digest": ("sha256:" + hashlib.sha256(_raw.encode("utf-8")).hexdigest())
+                if _raw else "",
+                "provenance": adapter_provenance(str(_a.get("adapter_id") or "")),
+                "accepted_results": len(suggestions),
+                "note": ("★ 回执只证明「哪个适配器、哪次调用、回了什么摘要」；"
+                         "**不证明**判断出自哪个模型 —— 模型身份由适配器实现决定"),
+            }
+            # ★ 每条义务的「模型选材」 ＋ **排除式选择凭据**
+            for _r in suggestions:
+                _oid = str(_r.get("obligation_id") or "")
+                if not _oid:
+                    continue
+                _picked = [str((cf or {}).get("file_id") or "")
+                           for cf in (_r.get("candidate_files") or []) if isinstance(cf, dict)]
+                _rej = [x for x in (_r.get("rejected_alternatives") or [])
+                        if isinstance(x, dict)]
+                _pool = list(packet.get("evidence", {}).get(_oid) or [])
+                model_sel[_oid] = {
+                    "obligation_id": _oid,
+                    "proposed_verdict": str(_r.get("proposed_verdict") or ""),
+                    "proposed_doc_type": str(_r.get("proposed_doc_type") or ""),
+                    "confidence_or_uncertain": _r.get("confidence_or_uncertain"),
+                    "agent_id": str(_r.get("agent_id") or ""),
+                    "provider": str(_r.get("provider") or ""),
+                    "model_id_or_unknown": str(_r.get("model_id_or_unknown") or "UNKNOWN"),
+                    "picked_file_ids": _picked,
+                    "rejected_alternatives": _rej,
+                    "discrimination": _discrimination_readings(_pool, _picked, _rej),
+                    "review_required": True,
+                    "approved": False,
+                }
         else:
             mode = "RULE_ONLY"
 
@@ -457,6 +555,9 @@ def bridge_library(
             #   （封闭六态）⇒ 规则提示里不再只剩一个笼统的 MISSING。
             #   候选**不为空**时该实参为 None ⇒ rule_hint 的既有行为逐字不变。
             "rule_hint": sem.rule_hint(ob, ev, st.get("no_candidate_reason")),
+            # ★ 模型选材（**有才带**）：这是「模型参与了语义判断」的**落点**
+            #   ⇒ 考生答卷据此把选中来源标成 MODEL（而不是规则提示）。
+            "model_selection": model_sel.get(ob["obligation_id"]) or {},
             # ★ 追加式：把结构化状态整体带出来（薄入口据此输出六态 ＋ 诊断）。
             "evidence_status": {
                 "no_candidate_reason": st.get("no_candidate_reason"),
@@ -529,6 +630,20 @@ def bridge_library(
         "mode": mode,
         "degrade_reason": degrade_reason,
         "external_model_calls": external_model_calls,
+        # ★ 模型参与的读数与凭据（**必须外显**：谁参与的、参与的类别、有没有排除式凭据）
+        "agent_receipt": agent_receipt,
+        "model_participation": {
+            "participated": bool(model_sel),
+            "provenance": str((agent_receipt or {}).get("provenance") or "RULE_ONLY"),
+            "obligations_with_model_selection": len(model_sel),
+            "discrimination_pass": sum(1 for m in model_sel.values()
+                                       if (m.get("discrimination") or {}).get("discrimination") == "PASS"),
+            "discrimination_weak": sum(1 for m in model_sel.values()
+                                       if (m.get("discrimination") or {}).get("discrimination") == "WEAK"),
+            "note": ("★ **RULE_ONLY 与 MODEL 严格分开**：mode=RULE_ONLY ⇒ 全程没有模型参与；"
+                     "mode=AGENT_SUGGESTION ⇒ 有适配器回执。"
+                     "★ 排除式凭据只证明判断**不是照抄第一个候选**，不证明判断出自模型。"),
+        },
         "advisory_only": True,
         "hard_verdict_touched": False,
         "key_space": {

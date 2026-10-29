@@ -40,7 +40,9 @@ RESULT_FIELDS = (
 #:   **可选**字段（schema 里在 ``properties``、不在 ``required``）；
 #:   取值域限权威 10 类（``dd_v1_requirement_service.CURRENT_DOC_TYPE_KEYS``），
 #:   域外值在语义层被拒（``DOC_TYPE_PROPOSAL_MISMATCH`` 等）。
-OPTIONAL_RESULT_FIELDS = ("proposed_doc_type",)
+OPTIONAL_RESULT_FIELDS = ("proposed_doc_type", "rejected_alternatives")
+#: 排除式选择凭据的字段（可选；每条必须有 file_id + reason）
+REJECTED_ALT_FIELDS = ("file_id", "reason")
 EVIDENCE_VERDICTS = ("MATCH", "PARTIAL", "OUTDATED")
 CANDIDATE_FIELDS = ("file_id", "relative_path", "sha256", "locator", "entity", "period", "match_reason")
 
@@ -198,6 +200,29 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
         errs.append("FORBIDDEN_VERDICT")  # 模型不能置 approved/deliverable（R4）
     elif verdict not in ALLOWED_VERDICTS:
         errs.append("INVALID_VERDICT")
+    # ★ 排除式选择凭据（可选）：每条必须有 file_id + reason；
+    #   file_id 必须在快照内（**不得**引用不存在的文件），
+    #   且**不得**是本次选中的那几件（否则「排除」自相矛盾）。
+    _picked = {str((cf or {}).get("file_id") or "")
+               for cf in (r.get("candidate_files") or []) if isinstance(cf, dict)}
+    _rej = r.get("rejected_alternatives")
+    if _rej is not None:
+        if not isinstance(_rej, list):
+            errs.append("REJECTED_ALTERNATIVES_NOT_LIST")
+        else:
+            for _i, _ra in enumerate(_rej):
+                if not isinstance(_ra, dict) or any(k not in _ra for k in REJECTED_ALT_FIELDS):
+                    errs.append(f"REJECTED_ALT_{_i}_MISSING_FIELDS")
+                    continue
+                if set(_ra) - set(REJECTED_ALT_FIELDS):
+                    errs.append(f"REJECTED_ALT_{_i}_UNKNOWN_FIELDS")
+                if not str(_ra.get("reason") or "").strip():
+                    errs.append(f"REJECTED_ALT_{_i}_EMPTY_REASON")
+                _fid = str(_ra.get("file_id") or "")
+                if _fid not in snap:
+                    errs.append(f"REJECTED_ALT_{_i}_NOT_IN_SNAPSHOT")
+                elif _fid in _picked:
+                    errs.append(f"REJECTED_ALT_{_i}_IS_PICKED")
     c = r["confidence_or_uncertain"]
     if not (c == "UNCERTAIN" or (isinstance(c, (int, float)) and not isinstance(c, bool) and 0 <= c <= 1)):
         errs.append("INVALID_CONFIDENCE")

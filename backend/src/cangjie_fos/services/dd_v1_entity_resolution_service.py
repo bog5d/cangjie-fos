@@ -104,7 +104,10 @@ def resolve_material_entity(meta_row: dict[str, Any] | None,
         }
 
     # 1) 人工确认映射（最高优先级：人已经判过了）
-    for key in (str(row.get("sha256") or "").strip().lower(), _norm(fname), _norm(path)):
+    # ★ 认三种键：sha256（内容身份）｜file_id（FOS 内部稳定 id）｜归一后的文件名/路径
+    for key in (str(row.get("sha256") or "").strip().lower(),
+                str(row.get("file_id") or "").strip().lower(),
+                _norm(fname), _norm(path)):
         if key and key in confirmed:
             c = confirmed[key]
             return {

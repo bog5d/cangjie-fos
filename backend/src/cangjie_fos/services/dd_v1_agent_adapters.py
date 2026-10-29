@@ -215,6 +215,72 @@ class MiniMaxPiAdapter:
         return res
 
 
+class PrebakedResultAdapter:
+    """**预置回执**适配器：把一份已经写好的模型回执 JSON 当作本次调用结果。
+
+    ★ **它不是 Harness 运行**：回执是**别人贴进来的**（文件）⇒ 身份不可自证。
+    ⇒ 因此它的 ``adapter_id`` **不在** ``bridge_service.KNOWN_HARNESS_ADAPTERS`` 里
+      ⇒ 参与类别恒为 ``PREBAKED_RESULT`` ⇒ **不得**计为「模型参与」的凭据。
+    ★ 存在的意义：让「模型判过的结果」能**被真实消费**（驱动选材），
+      同时在成绩单上把「这是贴进来的回执」如实标出来。
+    """
+
+    adapter_id, vendor, role = "prebaked-result", "operator-prebaked", "MANUAL"
+
+    def __init__(self, result_path: str | Path):
+        self.result_path = Path(result_path)
+
+    def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
+        res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK,
+                            workdir=str(workdir))
+        if not self.result_path.is_file():
+            res.status, res.reason = CALL_FAILED, f"RESULT_FILE_NOT_FOUND:{self.result_path}"
+            return res
+        data = self.result_path.read_bytes()
+        res.raw_text = data.decode("utf-8")
+        res.exit_code = 0
+        res.provenance = {
+            "reply_sha256": hashlib.sha256(data).hexdigest(),
+            "reply_source": "PREBAKED_FILE",
+            "declared_by": "UNKNOWN",
+            "independent_examinee_answer": False,
+            "note": "★ 预置回执：不是本机 Harness 运行 ⇒ 不构成「模型参与」的凭据",
+        }
+        res.model_id_or_unknown = "UNKNOWN"
+        return res
+
+
+def build_adapter(spec: str, *, result_path: str | Path | None = None,
+                  dsh_enabled: bool = False) -> Any:
+    """按名字建适配器（**薄入口**：CLI 只认这几个名字，不自己拼 argv）。
+
+    - ``codex``  → 本机 ``codex`` CLI（材料不出本机）
+    - ``pi``     → 本机 ``pi`` CLI
+    - ``dsh``    → 本机 ``dsh``（DeepSeek Harness；**要不要开由操作员自己决定**）
+    - ``manual`` → 人工交换（贴回执）
+    - ``prebaked``／给了 ``result_path`` → 预置回执（**不是 Harness 运行**）
+    """
+    s = str(spec or "").strip().lower()
+    if s in ("", "none", "rule_only", "rule-only"):
+        return None
+    if s in ("prebaked", "file", "result"):
+        if not result_path:
+            raise ValueError("PREBAKED_NEEDS_RESULT_PATH")
+        return PrebakedResultAdapter(result_path)
+    if result_path:
+        # 给了回执文件 ⇒ 走「预置回执」（不回落到真 Harness 运行）
+        return PrebakedResultAdapter(result_path)
+    if s in ("codex", "codex-cli"):
+        return CodexAdapter()
+    if s in ("pi", "minimax-pi"):
+        return MiniMaxPiAdapter()
+    if s in ("dsh", "deepseek", "deepseek-harness"):
+        return DeepSeekHarnessAdapter(enabled=bool(dsh_enabled))
+    if s in ("manual", "manual-exchange"):
+        return ManualExchangeAdapter()
+    raise ValueError(f"UNKNOWN_AGENT:{spec}")
+
+
 class ManualExchangeAdapter:
     """人工交换（#71 R2 第一 PoC）：导出 packet+schema，操作者把模型回复贴成 reply.json。"""
     adapter_id, vendor, role = "manual-exchange", "operator", "MANUAL"

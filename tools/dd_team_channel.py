@@ -241,7 +241,21 @@ def cmd_run(a) -> int:
 
     # ── 6 匹配 ────────────────────────────────────────────────────────
     _hr("第 6 步 / 共 6 步：逐条匹配并算完整性")
-    res = ms.match_library(lib, candidate_cap=a.cap)
+    # ★ 人工确认的主体映射表（可选）—— 主体识别里证据强度最高的一档
+    _confirmed_map = {}
+    _cm_path = str(getattr(a, "confirmed_entity_map", "") or "").strip()
+    if _cm_path:
+        try:
+            _cm = json.loads(Path(_cm_path).read_text(encoding="utf-8"))
+            _confirmed_map = _cm.get("confirmed_map") if isinstance(_cm, dict) and "confirmed_map" in _cm else _cm
+            if not isinstance(_confirmed_map, dict):
+                _confirmed_map = {}
+            print(f"  · 人工确认主体映射：{len(_confirmed_map)} 条已加载（{_cm_path}）")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  ⚠️ 人工确认主体映射没加载：{type(exc).__name__}: {exc}")
+    res = ms.match_library(lib, candidate_cap=a.cap,
+                           expand_candidates=not bool(getattr(a, "no_expand_candidates", False)),
+                           confirmed_map=_confirmed_map or None)
     print(f"  ✓ {res['obligations']} 条要求判定完成（候选上限 {res['candidate_cap']}，可调）")
     # ★ WP3-d：**候选上限必须显式报数**（禁静默漏检）——
     #   旧实现只印「候选上限 20，可调」⇒ 用户不知道实际查了多少、
@@ -251,6 +265,20 @@ def cmd_run(a) -> int:
           f"｜被上限挡掉 {res.get('truncated_candidate_count', 0)} 份")
     if res.get("capped_obligations"):
         print(f"  ⚠️ {res['candidate_cap_note']}")
+    # ★ 候选分批扩展的读数（**必须外显**：扩了几条／看了多少／还剩多少没看／为什么停）
+    _exp = res.get("candidate_expansion") or {}
+    if _exp.get("enabled"):
+        print(f"  · 候选分批扩展：{_exp.get('expanded_obligations')} 条触顶义务做了扩展"
+              f"（分批 {_exp.get('steps')}）｜共检查 {_exp.get('candidates_checked_total')} 份"
+              f"｜还有 {_exp.get('candidates_unchecked_total')} 份未看"
+              f"｜停止原因 {_exp.get('stop_reasons')}"
+              f"｜其中 {_exp.get('verdict_changed')} 条结论因扩展而改变")
+        if _exp.get("candidates_unchecked_total"):
+            print("    ⚠️ 还有候选**未看** ⇒ 结论只覆盖已检查部分，"
+                  "未看部分**不得**当作「不存在」")
+    elif _exp.get("enabled") is False:
+        print("  · 候选分批扩展：**未启用**（--no-expand-candidates）"
+              "⇒ 触顶义务的结论仍只覆盖窗口内的候选")
     _print_verdicts(res["by_verdict"])
 
     # ── 输入快照 ID（G-A3-7：让「输入快照 ID 可复核」有真字段）────────────
@@ -262,13 +290,46 @@ def cmd_run(a) -> int:
 
     # ── 附：语义层桥接（**只作建议**，不改判定）────────────────────────
     # 桥接是**附段**：失败或跳过时，上面 6 步的输出一字不变。
-    bridge = _run_bridge(lib, root, a)
+    # ★ **模型参与**：只有显式 `--agent` 才接适配器 ⇒ 默认全程 RULE_ONLY。
+    #   适配器在**本机**跑（材料不出本机）⇒ 不向未授权模型外发保密资料。
+    _adapter = None
+    _agent_spec = str(getattr(a, "agent", "") or "").strip()
+    _agent_result = str(getattr(a, "agent_result", "") or "").strip()
+    if _agent_spec or _agent_result:
+        try:
+            from cangjie_fos.services import dd_v1_agent_adapters as ad
+            _adapter = ad.build_adapter(
+                _agent_spec or "prebaked",
+                result_path=_agent_result or None,
+                dsh_enabled=(_agent_spec.lower() in ("dsh", "deepseek", "deepseek-harness")))
+            print(f"  · 已接模型适配器：{getattr(_adapter, 'adapter_id', '?')}"
+                  f"（本机运行，材料不出本机）")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  ⚠️ 模型适配器没接上：{type(exc).__name__}: {exc}"
+                  f"⇒ 本次仍走**纯规则**（RULE_ONLY）")
+            _adapter = None
+    bridge = _run_bridge(lib, root, a, adapter=_adapter)
     if bridge.get("ok"):
         b = bridge["result"]
         c = b["counts"]
         print(f"  ✓ 语义层桥接：{c['obligations_with_evidence']}/{c['obligations_out']} "
               f"条义务取到候选证据｜共 {c['evidence_total']} 份候选材料"
               f"｜模式 {b['mode']}｜外部模型调用 {b['external_model_calls']}")
+        # ★ **模型参与 vs 纯规则**：两者的读数必须**明确分开**（不许混成一句「仅供参考」）
+        _mp = b.get("model_participation") or {}
+        _rc = b.get("agent_receipt") or {}
+        if b["mode"] == "RULE_ONLY":
+            print("  · 模型参与：**无**（本次全程 RULE_ONLY，零外部调用、零费用）")
+        else:
+            print(f"  · 模型参与：**有**｜参与类别 `{_mp.get('provenance')}`"
+                  f"｜适配器 `{_rc.get('adapter_id')}`｜厂商 `{_rc.get('vendor')}`"
+                  f"｜调用 {_rc.get('calls_used')} 次"
+                  f"｜被接受的模型结果 {_rc.get('accepted_results')} 条"
+                  f"｜排除式凭据 PASS {_mp.get('discrimination_pass')} 条 /"
+                  f" WEAK {_mp.get('discrimination_weak')} 条")
+            print(f"    · 回执摘要：{_rc.get('raw_digest') or '（无）'}")
+            print("    · ★ 排除式凭据只证明判断**不是照抄第一个候选**，"
+                  "**不证明**判断出自模型；模型身份看适配器实现。")
         print("  说明：**仅供参考，不改判定**；交付前仍需人工逐条核对并批准。")
         for w in b.get("warnings") or []:
             print(f"  ⚠️ {w}")
@@ -477,7 +538,7 @@ def _run_package(pack: dict, a) -> int:
     return EXIT_OK
 
 
-def _run_bridge(lib, root: Path, a) -> dict:
+def _run_bridge(lib, root: Path, a, adapter=None) -> dict:
     """跑一次语义层桥接。**任何失败都不得影响入口 A 的原有输出。**
 
     返回：
@@ -491,6 +552,7 @@ def _run_bridge(lib, root: Path, a) -> dict:
         from cangjie_fos.services import dd_v1_bridge_service as br
         res = br.bridge_library(
             lib, material_root=root, db_path=None,
+            adapter=adapter,
             allow_real_material=bool(getattr(a, "allow_real_material", False)),
             # ★ 类型待判定通道：**显式打开**才生效（默认关闭 ⇒ 既有六态口径一字不变）。
             resolve_doc_type=bool(getattr(a, "resolve_doc_type", False)))
@@ -584,12 +646,17 @@ def _bridge_json(bridge, *, config_anchor: dict | None = None) -> dict:
         "sent_to_institution": False,
         "warnings": b.get("warnings") or [],
         "counts": b["counts"],
+        # ★ 模型参与的凭据与读数（机读层也要有）
+        "agent_receipt": b.get("agent_receipt") or {},
+        "model_participation": b.get("model_participation") or {},
         "obligations": [
             {
                 "obligation_id": o["obligation_id"],
                 "source_obligation_id": o["source_obligation_id"],
                 "entity": o["entity"],
                 "entity_basis": o["entity_basis"],
+                # ★ 模型选材（有才带）⇒ 答卷据此标 MODEL
+                "model_selection": o.get("model_selection") or {},
                 "subject_verified": o["subject_verified"],
                 "doc_type": o["doc_type"],
                 "period": o["period"],
@@ -703,6 +770,36 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
             lines.append("- 候选材料：（无）")
         lines.append("")
 
+    # ── 候选分批扩展（独立小节；读数必须外显）──────────────────────────
+    _exp = (res or {}).get("candidate_expansion") or {}
+    if _exp:
+        _ex = [
+            "",
+            "## 候选分批扩展（触顶义务的补查）",
+            "",
+            "> 候选窗口触顶时，结论**只覆盖窗口内**那部分候选。"
+            "本段如实报：扩了几条、检查了多少份、**还剩多少没看**、为什么停。",
+            "",
+            f"- 是否启用：`{_exp.get('enabled')}`｜分批计划：{_exp.get('steps')}",
+            f"- 扩展义务数：**{_exp.get('expanded_obligations')}**"
+            f"｜结论因此改变的：**{_exp.get('verdict_changed')}**",
+            f"- 共检查候选：**{_exp.get('candidates_checked_total')}** 份"
+            f"｜**还有 {_exp.get('candidates_unchecked_total')} 份未看**",
+            f"- 停止原因分布：{_exp.get('stop_reasons')}",
+            "",
+        ]
+        for _r in _exp.get("obligations") or []:
+            _ex.append(f"- `{str(_r.get('obligation_id'))[:8]}`"
+                       f"：判定 {_r.get('verdict_before')} → **{_r.get('verdict_after')}**"
+                       f"｜可交付件 {(_r.get('files_before'))} → {(_r.get('files_after'))}"
+                       f"｜检查 {_r.get('candidates_checked')} 份"
+                       f"｜未看 {_r.get('candidates_unchecked')} 份"
+                       f"｜停止原因 `{_r.get('stop_reason')}`")
+            if _r.get("note"):
+                _ex.append(f"    - {_r.get('note')}")
+        _ex.append("")
+        lines += _ex
+
     # ── 语义层桥接（附段，**独立小节**，与规则判定分开）────────────────
     b = (bridge or {}).get("result") if (bridge or {}).get("ok") else None
     if b:
@@ -790,6 +887,8 @@ def _write_reports(md: Path, js: Path, lib, a, res, q, cov, parsed, scan, bridge
         },
         "understanding_quality": q["by_dimension"],
         "card_provenance": cov["by_provenance"],
+        # ★ 候选分批扩展的读数（**机读层也要有** ⇒ 事后可复核，别只在终端print）
+        "candidate_expansion": res.get("candidate_expansion") or {},
         "semantic_bridge": _bridge_json(bridge, config_anchor=_config_anchor(a)),
         # ★ 实际交付清单（组包复制了哪些原件）——「机器答卷」据此判交付件数。
         "delivered": list(delivered or []),
@@ -956,8 +1055,54 @@ def _answer_sheet_from_bridge(bridge: dict):
         rh = o.get("rule_hint") or {}
         if rh:
             rule_hints[oid] = rh
+    # ★★ **模型选材必须进答卷**（否则「模型参与了判断」在考生答卷上根本看不见）：
+    #   桥接结果里每条义务的 `model_selection` ⇒ 还原成 R4 的 accepted 形状
+    #   ⇒ `build_answer_sheet` 那条既有消费路径原样可用（不改它的判定逻辑）。
+    _accepted: list[dict] = []
+    _ev_by_oid = evidence
+    for o in bridge.get("obligations") or []:
+        _ms = o.get("model_selection") or {}
+        if not _ms:
+            continue
+        _oid = str(o.get("obligation_id") or "")
+        _pool = {str(e.get("file_id") or ""): e for e in (_ev_by_oid.get(_oid) or [])}
+        _cands = []
+        for _fid in (_ms.get("picked_file_ids") or []):
+            _e = _pool.get(str(_fid)) or {}
+            _cands.append({
+                "file_id": str(_fid),
+                "sha256": str(_e.get("sha256") or ""),
+                "relative_path": str(_e.get("relative_path") or ""),
+                "locator": str(_e.get("locator") or ""),
+                "entity": str(_e.get("entity") or ""),
+                "period": str(_e.get("period") or ""),
+                "match_reason": "MODEL_SELECTION",
+            })
+        _accepted.append({
+            "obligation_id": _oid,
+            "item_id": str(o.get("source_obligation_id") or _oid),
+            "agent_id": str(_ms.get("agent_id") or ""),
+            "provider": str(_ms.get("provider") or ""),
+            "model_id_or_unknown": str(_ms.get("model_id_or_unknown") or "UNKNOWN"),
+            "prompt_version": "",
+            "source_snapshot_id": "",
+            "candidate_files": _cands,
+            "proposed_verdict": str(_ms.get("proposed_verdict") or ""),
+            "proposed_doc_type": str(_ms.get("proposed_doc_type") or ""),
+            "confidence_or_uncertain": _ms.get("confidence_or_uncertain", "UNCERTAIN"),
+            "abstain_reason": "",
+            "warnings": [],
+            "elapsed": 0,
+            "token_usage_or_UNKNOWN": "UNKNOWN",
+            "rejected_alternatives": list(_ms.get("rejected_alternatives") or []),
+            "discrimination": _ms.get("discrimination") or {},
+        })
     return {"obligations": obs, "evidence": evidence, "evidence_status": ev_status,
-            "rule_hints": rule_hints}
+            "rule_hints": rule_hints,
+            # ★ 参与类别（机读）—— 答卷据此把「有没有模型参与」标清楚
+            "model_participation": bridge.get("model_participation") or {},
+            "agent_receipt": bridge.get("agent_receipt") or {},
+            "_accepted": _accepted}
 
 
 def cmd_answer(a) -> int:
@@ -994,6 +1139,22 @@ def cmd_answer(a) -> int:
         raw = json.loads(_bj_path.read_text(encoding="utf-8"))
         bridge = raw.get("semantic_bridge") or raw.get("bridge") or raw
         rec, pkt = {}, _answer_sheet_from_bridge(bridge)
+        # ★ 把桥接里的**模型选材**与**回执**喂进 run_record
+        #   ⇒ 答卷的 `selection_source=MODEL` 与 `examinee.mode` 才不是空的。
+        _acc = pkt.pop("_accepted", []) or []
+        if _acc:
+            rec["semantic_validation"] = {"accepted": _acc, "rejected": [],
+                                          "mode": "AGENT_SUGGESTION"}
+        _rc = pkt.get("agent_receipt") or {}
+        if _rc:
+            rec["adapter"] = {"adapter_id": str(_rc.get("adapter_id") or ""),
+                              "vendor": str(_rc.get("vendor") or ""),
+                              "status": str(_rc.get("status") or ""),
+                              "model_id_or_unknown": str(_rc.get("model_id_or_unknown") or "UNKNOWN"),
+                              "provenance": str(_rc.get("provenance") or "")}
+        _mp = pkt.get("model_participation") or {}
+        if _mp:
+            rec["model_participation"] = _mp
         delivered = raw.get("delivered")
     else:
         print("[错误] 必须给 --run-dir 或 --bridge-json", file=sys.stderr)
@@ -1134,6 +1295,17 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--anchor-year", type=int, default=None,
                    help="「近三年」这类相对年份的锚定年；不给则不擅自假定")
     r.add_argument("--cap", type=int, default=20, help="每条要求的候选材料上限（默认 20）")
+    r.add_argument("--no-expand-candidates", action="store_true",
+                   help="**不**做候选分批扩展（默认：触顶的义务自动分批放大窗口重跑，"
+                        "并如实报「看了多少／还剩多少没看／为什么停」）")
+    r.add_argument("--confirmed-entity-map", default="",
+                   help="人工确认的主体映射表 JSON（sha256／file_id／文件名 → 主体）"
+                        "—— 主体识别里证据强度最高的一档")
+    r.add_argument("--agent", default="",
+                   help="接**模型**做语义判断：codex｜pi｜dsh｜manual｜none（默认 none＝纯规则）")
+    r.add_argument("--agent-result", default="",
+                   help="Harness 回执 JSON 路径（模型在**本机**跑完后回传；"
+                        "材料不出本机 ⇒ 不向未授权模型外发保密资料）")
     r.add_argument("--parse-limit", type=int, default=2000, help="本次最多抽取多少份正文")
     r.add_argument("--out", default=None, help="报告输出目录")
     r.add_argument("--no-bridge", action="store_true",

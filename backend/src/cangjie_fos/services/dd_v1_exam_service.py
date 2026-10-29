@@ -296,6 +296,23 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
         "unresolved_doc_type_obligations": sum(1 for r in rows
                                               if r["interpretation"]["doc_type_unresolved"]),
     }
+    # ★ 参与类别的判定（**只认适配器实现**，不采信自填字段）
+    _prov = str(adapter.get("provenance") or "")
+    if not _prov:
+        _prov = str(pkt.get("model_participation", {}).get("provenance") or "") \
+            if isinstance(pkt.get("model_participation"), dict) else ""
+    if not _prov:
+        _prov = str(rec.get("model_participation", {}).get("provenance") or "") \
+            if isinstance(rec.get("model_participation"), dict) else ""
+    if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT", "UNKNOWN_ADAPTER"):
+        _examinee_mode = _prov
+    elif any(r.get("selection_source") == "MODEL" for r in rows):
+        _examinee_mode = "MODEL_SELECTION_WITHOUT_RECEIPT"   # ★ 有模型选材但**没有回执** ⇒ 如实标
+    elif rows:
+        _examinee_mode = "RULE_ONLY"
+    else:
+        _examinee_mode = "UNKNOWN"
+
     return {
         "schema_version": ANSWER_SHEET_SCHEMA,
         "exam_id": exam_id,
@@ -304,18 +321,27 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
         #   逐题归属可能因口径不齐而漏挂，**件数**必须以清单为准。
         "delivered": delivered_files,
         "examinee": {
-            # ★ 桥接路径没有 run_record ⇒ 原本恒为 UNKNOWN；按**选材来源**推断：
-            #   全部来自规则链提示 ⇒ RULE_ONLY；有模型选材 ⇒ AGENT_SUGGESTION。
-            "mode": str(sem.get("mode") or rec.get("adapter", {}).get("status")
-                        or ("AGENT_SUGGESTION" if any(r.get("selection_source") == "MODEL"
-                                                      for r in rows)
-                            else ("RULE_ONLY" if rows else "UNKNOWN"))),
+            # ★ **MODEL 与 RULE_ONLY 严格分开**（本轮接线）：
+            #   `mode` ＝ 这次**到底有没有模型参与**（读参与类别，不是读「选材来源」的猜测）；
+            #   `selection_source` ＝ 每条义务的选材来自模型还是规则链（逐条留痕）。
+            # ★ 参与类别**只认适配器实现**：真 Harness（codex/dsh/pi）⇒ HARNESS_MODEL；
+            #   人工贴回执 ⇒ HARNESS_MANUAL；预置回执 ⇒ PREBAKED_RESULT（**不算模型凭据**）；
+            #   未知适配器 ⇒ UNKNOWN_ADAPTER；没接适配器 ⇒ RULE_ONLY。
+            "mode": str(_examinee_mode),
+            "provenance": str(_prov),
             "adapter_id": str(adapter.get("adapter_id") or ""),
             "vendor": str(adapter.get("vendor") or ""),
             "model_id_or_unknown": str(adapter.get("model_id_or_unknown") or "UNKNOWN"),
             "prompt_version": str(rec.get("prompt_version") or ""),
             "source_snapshot_id": str(rec.get("source_snapshot_id") or ""),
             "degrade_reason": str(sem.get("degrade_reason") or ""),
+            "model_selection_obligations": sum(1 for r in rows
+                                               if r.get("selection_source") == "MODEL"),
+            "rule_selection_obligations": sum(1 for r in rows
+                                              if r.get("selection_source") == "RULE_HINT"),
+            "note": ("★ mode=RULE_ONLY ⇒ 本次**没有模型参与**（零外部调用、零费用）；"
+                     "mode=HARNESS_MODEL ⇒ 有本机 Harness 回执；"
+                     "mode=PREBAKED_RESULT ⇒ 是**贴进来的**回执，**不构成模型参与凭据**"),
         },
         "obligations": rows,
         "summary": summary,
