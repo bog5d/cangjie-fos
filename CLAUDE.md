@@ -518,6 +518,36 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 ★ **M03 判词仍为 `PARTIAL`**（第 6 轮复裁进行中 ⇒ 不预告 PASS）。
 
 
+### ★ 第 12 轮复核：F30（假凭据方向）／F31／F32（印章值逐字相等）· 已修（2026-10-29）
+
+★ 第 12 轮独立复核（head `69240a539610`）判词 **CONDITIONAL**：F28／F29 **复验闭合**（M5／M15／M8 重打**都必红**）；
+★ 复核方跑 **10 个变异探针**，抓住 7 个、**零红 3 个**（N1／N5／N6）⇒ 三条**只需补断言**的缺口。
+
+- **F30（重要·假凭据方向）**：CLI「**从回执重新盖章**」这个锚点的**值**（`rec["adapter"]["participated"]`）**没人管**
+  ⇒ 变异 N1（写死 `True`）⇒ 零红 ⇒ 旧格式桥接 JSON（回执明确 `participated: false`）⇒ `mode='HARNESS_MODEL'`。
+  ⇒ **已修**：`test_cli_restamp_from_receipt_must_not_claim_participation` —— 回执说没跑出回执 ⇒ **不得**自称参与
+  ⇒ ★ 本席自测 **N1 RED** ✔。（根因：既有的旧形状兼容用例**只覆盖 `True` 那一档**。）
+- **F31／F32（条件项）**：消费侧「印章值**逐字相等**」**至今没有任何用例钉** ⇒ 变异 N5／N6（放宽成「任何非空 `provenance_source`」）⇒ 零红
+  ⇒ 伪造产物可**自称「有本机 Harness 参与」**（这两处守的正是 **F3 纪律**的全部内容）。
+  ⇒ **已修**：`test_forged_provenance_source_is_never_trusted` —— 伪造印章值 ⇒ 不采信参与标记／不采信身份／产物**不得谎称**已盖章
+  ⇒ ★ 本席自测 **N5／N6 RED** ✔。
+
+★ **PR 评论文案**：复核方逐句列出 **11 处要改**（含一处**事实错误**：「#74 暂停」应为 **2026-10-22**）⇒ **全部采纳**。
+
+### ★★ 同族自查：另两个锚点也补掉（`participation_class_of`／`declared_class_of`）（2026-10-29）
+
+★ 第 11 轮复核点名的族是「**不变体没有测试守护**」⇒ **本席在同一轮里自己又 grep 了一遍**：
+`grep -rn "participation_class_of\|declared_class_of" backend/tests/` ⇒ **0 命中** ⇒ **两个锚点都是零守护** ⇒ **一并补掉**：
+
+- `ad.participation_class_of()` ＝ **参与身份在判词层的唯一判定入口**（只看实现类）
+  ⇒ 新增 `test_participation_class_of_is_exact_type_matched`：精确类型｜**子类不认**｜**自填 id 不认**｜认不出 ⇒ `UNKNOWN_ADAPTER`
+  ⇒ ★ 突变复现：**变异 A（子类也认）RED**｜**变异 B（回退 id 表）RED**（连同另外 3 条既有用例共 4 red）。
+- `ad.declared_class_of()` ＝ id 级**旁证**（`declared_provenance`）
+  ⇒ 新增 `test_declared_class_of_is_only_a_side_evidence`：钉住「**旁证 ≠ 权威判定**」（同一自填 id：旁证 `HARNESS_MODEL`、权威 `UNKNOWN_ADAPTER`）。
+
+★ 这一族已是本项目最反复的缺口类型（第 6／9／10／11 轮各一次）⇒ **纪律**：凡「只此一处可信」的锚点，
+必须有**专属断言**，且该断言必须写在「被区分的两种取值**不同**」的场景里。
+
 ### ★ 第 11 轮复核：F28（唯一信任锚点零守护）／F29（假凭据方向）· 已修（2026-10-29）
 
 ★ 第 11 轮独立复核（head `94ba4adb6f4e`）判词 **CONDITIONAL**：F27／F26／口径收窄**全部复验闭合**；

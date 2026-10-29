@@ -753,6 +753,15 @@ wiring_entity_expansion / model_participation / agent_result / six_states_entry 
 ★ 本轮新增的两条正是**把信任锚点逐个列出来**（`run_semantic` 的盖章 ＝ `--run-dir` 唯一锚点；`participated_flag` ＝ 产出侧原语），
 ⇒ **凡「只此一处可信」的锚点，必须有专属的产出侧断言**（否则它一改，整条路径静默 fail-closed，而没有用例会发现）。
 
+★ ★★ **本席在同一轮里**又自查出**两个同族的锚点**（`grep -rn "participation_class_of\|declared_class_of" backend/tests/` ⇒ **0 命中**）⇒ **一并补掉**（不留给下一轮）：
+| 锚点 | 它是什么 | 为什么必须有专属断言 | 补的断言 | 突变复现 |
+|---|---|---|---|---|
+| `ad.participation_class_of()` | **参与身份在判词层的唯一判定入口**（只看实现类） | 它一失守（如改成「看子类」或「回退到 id 表」）⇒ **自造替身就能自称 `HARNESS_MODEL`** ⇒ **假凭据方向** | `test_participation_class_of_is_exact_type_matched`：精确类型｜**子类不认**｜**自填 id 不认**｜认不出 ⇒ `UNKNOWN_ADAPTER` | ★ 变异 A（子类也认）**RED**；变异 B（回退 id 表）**RED**（连同另外 3 条既有用例共 4 red） |
+| `ad.declared_class_of()` | id 级**旁证**（`declared_provenance`） | 它**只作旁证**、**不构成参与主张** ⇒ 必须钉住「**旁证 ≠ 权威判定**」这条边界 | `test_declared_class_of_is_only_a_side_evidence`：已知／未知 id 的取值 ＋ ★ 同一自填 id「旁证说 HARNESS_MODEL、权威判定仍 UNKNOWN_ADAPTER」 | ★ 变异 B **RED** |
+★ ⇒ **这一族（不变体没有测试守护）已是本项目最反复的缺口类型**：第 6 轮「`is_manual_only` 零调用方」｜
+第 9 轮「MUTANT-B 零测试保护」｜第 10 轮「断言零判别力」｜第 11 轮「唯一信任锚点零守护」｜**本轮自查又找出 2 个**。
+★ ⇒ **纪律（已写进仓内）**：★ **凡「只此一处可信」的锚点，必须有专属断言；且该断言必须在「被区分的两种取值不同」的场景里写。**
+
 ### 9.16 第 11 轮复核的判词与本轮处置（F28／F29）
 
 > **第 11 轮独立复核（2026-10-29 · head `94ba4adb6f4e`）**：判词 **CONDITIONAL** ——
@@ -797,3 +806,44 @@ wiring_entity_expansion / model_participation / agent_result / six_states_entry 
 第 11 轮复核方把这条纪律**用在了本席没写的地方** ⇒ **「有判别力」还不够，还要「**守护点覆盖到了全部信任锚点**」** ——
 ★ 本轮新增的两条正是**把信任锚点逐个列出来**（`run_semantic` 的盖章 ＝ `--run-dir` 唯一锚点；`participated_flag` ＝ 产出侧原语），
 ⇒ **凡「只此一处可信」的锚点，必须有专属的产出侧断言**（否则它一改，整条路径静默 fail-closed，而没有用例会发现）。
+
+### 9.17 第 12 轮复核的判词与本轮处置（F30／F31／F32）＋ PR 文案的 11 处修改
+
+> **第 12 轮独立复核（2026-10-29 · head `69240a539610`）**：判词 **CONDITIONAL** ——
+> ★ 复核方确认本席上轮两条**真闭合**：**F28 ✔**（M5／M15 重打**都必红**；新场景有判别力；`accepted == []` 写成了前置断言）｜
+> **F29 ✔**（M8 ⇒ **2 red**，单测 ＋ 端到端都堵住了）。
+> ★ 复核方跑了 **10 个变异探针**：抓住 7 个（红），**零红 3 个** ⇒ 三条新的缺口：
+> **F30**（重要·**假凭据方向**：CLI「从回执重新盖章」这个锚点的**值**没人管 ⇒ N1 写死 `True` 零红）｜
+> **F31／F32**（条件项：消费侧「印章值**逐字相等**」**至今没有任何用例钉** ⇒ N5／N6 放宽后零红 ⇒ 伪造产物可自称「有本机 Harness 参与」）。
+> ★ 复核方实跑：全量 **2023 / 2022 passed / 1 failed（doctor 环境项）/ 0 ERROR**｜12 文件子集 **236 passed**｜
+> 负向回归 `a0324a9` 23／`fe939b6` 15／`2d42995` 9／`cf81685` 7／并集 23 ⇒ **与本席逐位一致**。
+> ★ ★ **复核方还核了 PR 评论文案，逐句列出 11 处要改**（含一处**事实错误**：「#74 暂停」应为 **2026-10-22**，不是 2026-02-22）⇒ 本席已全部采纳并写进文案（`/workspace/work/pr_comment.md`）。
+
+★ **F30（重要·假凭据方向）**：`tools/dd_team_channel.py` 里 CLI「**从回执重新盖章**」这个锚点的**值**
+（`rec["adapter"]["participated"]`）**没人管** ⇒ 变异 N1（写死 `True`）⇒ **零红**；
+⇒ 在 N1 副本上跑**旧格式**桥接 JSON（回执明确 `participated: false`）⇒ `mode='HARNESS_MODEL'` ⇒ ★ **假凭据**。
+★ 根因：既有的「旧形状兼容用例」**只覆盖 `participated: True` 那一档** ⇒ **`False` 那一档没人管**。
+⇒ **已修（一条断言）**：`test_cli_restamp_from_receipt_must_keep_false` —— 旧形状桥接 JSON ＋ 回执 `participated=False`
+⇒ `mode` **不得**为 `HARNESS_MODEL`、`participated` 必为 `False`。
+★ ★ 本席**自测**的突变复现（不引述复核方）：**N1 ⇒ RED** ✔。
+
+★ **F31／F32（条件项·「印章值逐字相等」至今没有用例钉）**：
+消费侧两处守卫（`_participated` 与 `_prov`）都要求 `provenance_source` **逐字等于** `ADAPTER_IMPLEMENTATION`
+⇒ 复核方变异 N5／N6（**放宽成「任何非空 `provenance_source`」**）⇒ **各零红**
+⇒ 伪造产物（`provenance_source: "I_MADE_THIS_UP"`）就能**自称「有本机 Harness 参与」**。
+★ 这两处守的正是 **F3 纪律（「只认盖章」）的全部内容** ⇒ 「逐字相等」这件事必须被钉住。
+⇒ **已修（一条断言，两个守卫一起钉）**：`test_forged_provenance_source_is_never_trusted` ——
+伪造印章值 ⇒ **不采信**它的参与标记（`participated=False`）、**不采信**它的身份（`provenance` 为空）、
+且产物**不得谎称**「这份是盖章的」（`provenance_source != "ADAPTER_IMPLEMENTATION"`）。
+★ ★ 本席**自测**：**N5／N6 ⇒ RED** ✔。
+
+★ ★ **PR 评论文案：复核方逐句列出 11 处要改**，本席**全部采纳**：
+① 标题轮次（第 10/11 ⇒ 第 12）｜② 「第 5–11 轮」⇒ 第 5–12 轮｜③ 表里「十一轮」⇒ 「十二轮」｜
+④⑤⑥⑦ 全量／CI 等价／子集／负向回归四个数（陈旧）⇒ 一律更新为最终值｜
+⑧ ★ **事实错误**：「#74 暂停」应为 **2026-10-22**（仓内 `最终报告.md`／`EVIDENCE.md` 都是这个）⇒ 已改｜
+⑨ 五轮锚点 `5dfaa4f` 补标「★本地历史 sha，REST 重建后仓内已不存在」（与仓内口径一致）｜
+⑩ 「远端 tip X（＝本地 Y）」措辞不准（REST 重建 ⇒ **同 tree、不同 sha**）⇒ 改「**内容等同**本地 Y：**tree 逐位相同**」｜
+⑪ 「解包自核 22 OK」是**上一版**包的数 ⇒ 移入 **NOT_MEASURED** 段（最终包重建后由复核方核）。
+★ 另两条建议也已采纳：负向回归那句「复核方独立实测逐位一致」**等最终数字定稿后再留**；
+合成考场 A/B **注明跑的 head**（并注明「自该 head 起匹配层未变」）。
+★ NOT_MEASURED 段补两项：**按最终 head 重建的交接包 zip** ＋ **PR 最终文案本身**。

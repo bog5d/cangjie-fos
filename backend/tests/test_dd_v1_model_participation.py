@@ -1001,3 +1001,143 @@ def test_empty_receipt_file_must_not_claim_participation(tmp_path):
     assert exi["participated"] is False, exi
     assert exi["mode"] != "PREBAKED_RESULT", exi
     assert exi["mode"] in ("RULE_ONLY", "UNKNOWN"), exi
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 第 11 轮复核点名的**同族缺口**：「只此一处可信」的锚点必须有专属断言
+# ★ `participation_class_of`（**参与身份的权威判定入口**）与
+#   `declared_class_of`（id 级**旁证**）——本席自查发现 **零用例**（`grep` ⇒ 0 命中）
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_participation_class_of_is_exact_type_matched():
+    """★ **参与身份的权威判定入口** `ad.participation_class_of()` —— **零用例** ⇒ 补专属断言。
+
+    ★ 这是「模型参与」在**判词层**的唯一判定入口：**只看适配器实现类**、**不看任何自填字符串**。
+    ★ 它一旦失守（例如改成「看子类」或「看 id」），身份判词会**静默放宽** ⇒
+    自造替身就能自称 `HARNESS_MODEL` ⇒ **假凭据**方向。
+    ⇒ 本条把三条不变体逐条钉住：**精确类型**｜**子类不认**｜**自填 id 不认**。
+    """
+    # ★ 认得出的实现类 ⇒ 各自的类别
+    assert ad.participation_class_of(ad.CodexAdapter(["/bin/true"])) == "HARNESS_MODEL"
+    assert ad.participation_class_of(ad.ManualExchangeAdapter()) == "HARNESS_MANUAL"
+    assert ad.participation_class_of(ad.PrebakedResultAdapter("/dev/null")) == "PREBAKED_RESULT"
+    # ★ 认不出的 ⇒ `UNKNOWN_ADAPTER`（**不猜、不放行**）
+    assert ad.participation_class_of(_StandInAdapter()) == "UNKNOWN_ADAPTER"
+    assert ad.participation_class_of(None) == "UNKNOWN_ADAPTER"
+
+    # ★ ★ **子类也不认**（精确类型匹配）——「长得像」不等于「就是」
+    class _CodexSubclass(ad.CodexAdapter):
+        """★ 子类：实现**不是**注册表里的那个 ⇒ 不认。"""
+    assert ad.participation_class_of(_CodexSubclass(["/bin/true"])) == "UNKNOWN_ADAPTER"
+
+    # ★ ★ **自填 id 不认**（冒充者拿不到模型凭据）
+    class _Spoof:
+        adapter_id, vendor, role = "codex-cli", "openai-codex", "MANUAL"
+
+        def run(self, packet, workdir, budget):  # pragma: no cover - 不会被调用
+            raise AssertionError("不应当被调用")
+    assert ad.participation_class_of(_Spoof()) == "UNKNOWN_ADAPTER"
+
+
+def test_declared_class_of_is_only_a_side_evidence():
+    """★ id 级**旁证** `ad.declared_class_of()` —— **零用例** ⇒ 补专属断言。
+
+    ★ 它**只是旁证**（`declared_provenance`），**不构成参与主张** ⇒
+    它的返回值**绝不能**被当成「有模型参与」的凭据（那是 `participation_class_of` 的活）。
+    ⇒ 本条钉住两条：① id 表**只作旁证**（未知 id ⇒ `UNKNOWN_ADAPTER`）；
+    ② **旁证与权威判定分离**（同一个自填 id，权威判定仍是 `UNKNOWN_ADAPTER`）。
+    """
+    # ★ 已知 id ⇒ 给出**声明**类别（仅旁证）
+    assert ad.declared_class_of("codex-cli") == "HARNESS_MODEL"
+    assert ad.declared_class_of("manual-exchange") == "HARNESS_MANUAL"
+    assert ad.declared_class_of("prebaked-result") == "PREBAKED_RESULT"
+    # ★ 未知 id ⇒ `UNKNOWN_ADAPTER`
+    assert ad.declared_class_of("no-such-adapter") == "UNKNOWN_ADAPTER"
+    assert ad.declared_class_of("") == "UNKNOWN_ADAPTER"
+    # ★ ★ **旁证 ≠ 权威判定**：自填 `codex-cli` 的替身 ⇒ 旁证说「HARNESS_MODEL」，
+    #   但**权威判定**（按实现类）必须仍是 `UNKNOWN_ADAPTER` ⇒ **自填即可冒充的路被堵死**。
+    class _Spoof:
+        adapter_id, vendor, role = "codex-cli", "openai-codex", "MANUAL"
+    assert ad.declared_class_of(_Spoof().adapter_id) == "HARNESS_MODEL"
+    assert ad.participation_class_of(_Spoof()) == "UNKNOWN_ADAPTER"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 第 12 轮独立复核的 F30／F31／F32：三条**只需补断言**的缺口
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_cli_restamp_from_receipt_must_keep_false(tmp_path):
+    """★ 第 12 轮独立复核的 **F30**：CLI「从回执重新盖章」这个锚点的**值** —— **没人管**。
+
+    ★ 复核方的变异 **N1**（把 CLI 的 `rec["adapter"]["participated"]` 写死成 `True`）⇒ **零红**；
+    而在 N1 副本上跑**旧格式**桥接 JSON（回执明确 `participated: false`）
+    ⇒ `mode='HARNESS_MODEL'`、`participated=True` ⇒ ★ **假凭据**。
+    ★ 现有的「旧形状兼容用例」**只覆盖 `participated: True` 那一档** ⇒ **`False` 那一档没人管**。
+
+    ⇒ 本条钉住 **`False` 那一档**：回执说没跑出回执 ⇒ 答卷**不得**自称参与。
+    """
+    import argparse
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "dd_cli_f30", _REPO / "tools" / "dd_team_channel.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+
+    _bridge = {
+        "obligations": [],
+        "semantic_bridge": {
+            "mode": "AGENT_SUGGESTION",
+            # ★ 回执明确说：**没跑出回执**
+            "agent_receipt": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                              "status": "CALL_FAILED", "exit_code": 127,
+                              "raw_digest": "",
+                              "provenance": "HARNESS_MODEL",
+                              "provenance_source": "ADAPTER_IMPLEMENTATION",
+                              "participated": False,
+                              "participated_scope": "RECEIPT",
+                              "declared_provenance": "HARNESS_MODEL"},
+            # ★ **旧形状**：盖章块**没有**口径标记
+            "model_participation": {"participated": False, "provenance": "HARNESS_MODEL"},
+            "obligations": [],
+        },
+    }
+    _bj = tmp_path / "尽调结果-f30.json"
+    _bj.write_text(json.dumps(_bridge, ensure_ascii=False), encoding="utf-8")
+    _out = tmp_path / "f30out"
+    assert cli.cmd_answer(argparse.Namespace(
+        run_dir="", bridge_json=str(_bj), delivered="", exam_id="F30",
+        out=str(_out))) == 0
+    _sheets = sorted(_out.glob("机器答卷-*.json"))
+    assert _sheets, "CLI 应当产出机器答卷"
+    exi = json.loads(_sheets[-1].read_text("utf-8"))["examinee"]
+    # ★ 回执说没跑出回执 ⇒ **不得**自称「有本机 Harness 参与」
+    assert exi["mode"] != "HARNESS_MODEL", exi
+    assert exi["participated"] is False, exi
+
+
+def test_forged_provenance_source_is_never_trusted():
+    """★ 第 12 轮独立复核的 **F31／F32**：消费侧「印章值**逐字相等**」—— **至今没有任何用例钉**。
+
+    ★ 复核方的变异 **N5**（把 `_participated` 的守卫放宽成「任何非空 `provenance_source`」）与
+      **N6**（把 `_prov` 的守卫同样放宽）⇒ **各零红**；
+      ⇒ 伪造产物（`provenance_source: "I_MADE_THIS_UP"`）就能**自称「有本机 Harness 参与」**。
+    ★ 这两条守的正是 **F3 纪律（「只认盖章」）的全部内容** —— 「逐字相等」这件事必须被钉住。
+
+    ⇒ 本条钉住：**盖章值必须逐字等于 `ADAPTER_IMPLEMENTATION`**；别的任何值 ⇒ **一概不采信**。
+    """
+    _forged = {"adapter_id": "codex-cli", "vendor": "openai-codex", "status": "OK",
+               "provenance": "HARNESS_MODEL",
+               # ★ **伪造的印章值**（不是逐字相等）
+               "provenance_source": "I_MADE_THIS_UP",
+               "participated": True, "participated_scope": "RECEIPT"}
+    sheet = ex.build_answer_sheet({"adapter": _forged}, {})
+    exi = sheet["examinee"]
+    # ★ **不得**采信这个源：既不采信它的身份，也不采信它的参与标记
+    assert exi["participated"] is False, exi
+    assert exi["mode"] != "HARNESS_MODEL", exi
+    # ★ 产物里**不得**谎称「这份是盖章的」
+    assert exi["provenance_source"] != "ADAPTER_IMPLEMENTATION", exi
+    # ★ 身份那档也不作数（`_prov` 只认逐字相等的盖章）
+    assert exi["provenance"] == "", exi
