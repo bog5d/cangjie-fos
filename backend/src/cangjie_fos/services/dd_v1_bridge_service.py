@@ -508,6 +508,8 @@ def bridge_library(
                 #   ⇒ 自造一个 `adapter_id="codex-cli"` 的替身**拿不到** HARNESS_MODEL
                 #   ⇒ id 级声明只作**旁证**记在 `declared_provenance`
                 "provenance": _impl_class,
+                # ★ **这次真的跑出回执了吗**（类别 ≠ 参与；第 6 轮复核 F1）
+                "participated": ad.participated_flag(_a),
                 "provenance_source": "ADAPTER_IMPLEMENTATION",
                 "declared_provenance": ad.declared_class_of(str(_a.get("adapter_id") or "")),
                 # ★ id 级声明与实现类**不一致** ⇒ 记录下来（自填 id 的替身会命中这条）

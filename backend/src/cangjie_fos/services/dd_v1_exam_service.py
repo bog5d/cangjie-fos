@@ -305,6 +305,8 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
     _prov = ""
     _prov_source = ""
     _declared = ""
+    # ★ 必须在分支**之外**初始化（曾因写在分支里 ⇒ 分支没走时 NameError ⇒ 已修）
+    _degrade = ""
     for _src in (pkt.get("model_participation"), rec.get("model_participation"),
                  adapter if isinstance(adapter, dict) else None):
         if not isinstance(_src, dict):
@@ -317,14 +319,29 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
             _declared = str(_src.get("provenance") or "")
     if not _declared:
         _declared = str(adapter.get("provenance") or "") if isinstance(adapter, dict) else ""
+    # ★ ★ **类别 ≠ 参与**（第 6 轮独立复核的 F1，已修）：
+    #   参与**类别**只说明「适配器实现是哪一个」，**不说明**「它这次真的跑出了回执」。
+    #   ⇒ 二进制不在 PATH（exit 127）／人工还没贴回执（PENDING_MANUAL）／贴进来的文件不存在
+    #   ⇒ **都没跑出回执** ⇒ 此时自称 `HARNESS_MODEL` 就是**假凭据**
+    #   ⇒ 正解：**类别 ＋ participated** 两个条件都满足，才算「这次有模型参与」。
+    _participated = True
+    for _src in (pkt.get("model_participation"), rec.get("model_participation"),
+                 adapter if isinstance(adapter, dict) else None):
+        if isinstance(_src, dict) and str(_src.get("provenance_source") or "") == "ADAPTER_IMPLEMENTATION":
+            _participated = bool(_src.get("participated"))
+            break
     if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT", "UNKNOWN_ADAPTER"):
-        _examinee_mode = _prov
+        _examinee_mode = _prov if _participated else "RULE_ONLY"
     elif any(r.get("selection_source") == "MODEL" for r in rows):
         _examinee_mode = "MODEL_SELECTION_WITHOUT_RECEIPT"   # ★ 有模型选材但**没有回执** ⇒ 如实标
     elif rows:
         _examinee_mode = "RULE_ONLY"
     else:
         _examinee_mode = "UNKNOWN"
+    if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT") and not _participated:
+        _degrade = (f"★ 适配器实现是 {_prov} 这一类，但**这次没跑出回执**"
+                    "（二进制不在 PATH／回执未贴／贴进来的文件不存在）"
+                    "⇒ 本次**没有模型参与** ⇒ 参与类别按 RULE_ONLY 记，不自称模型凭据")
 
     return {
         "schema_version": ANSWER_SHEET_SCHEMA,
@@ -343,14 +360,24 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
             "mode": str(_examinee_mode),
             "provenance": str(_prov),
             "provenance_source": str(_prov_source),
+            # ★ **这次真的跑出回执了吗**（类别 ≠ 参与；第 6 轮复核 F1）
+            "participated": bool(_participated),
             # ★ 适配器**自填**的参与类别：只留痕（可查），**不作数**（可伪造）
-            "declared_provenance": str(_declared),
+            #   ★ 不是合法类别值的一律记 `UNDECLARED`
+            #     （★ 否则 `adapter.provenance` 是个 dict 时 ⇒ 机读产物里会出现
+            #       Python 的 dict repr，例如 "{'independent_examinee_answer': False}"）
+            "declared_provenance": (str(_declared)
+                                    if str(_declared) in ("HARNESS_MODEL", "HARNESS_MANUAL",
+                                                         "PREBAKED_RESULT", "UNKNOWN_ADAPTER",
+                                                         "RULE_ONLY",
+                                                         "MODEL_SELECTION_WITHOUT_RECEIPT")
+                                    else ("UNDECLARED" if _declared else "")),
             "adapter_id": str(adapter.get("adapter_id") or ""),
             "vendor": str(adapter.get("vendor") or ""),
             "model_id_or_unknown": str(adapter.get("model_id_or_unknown") or "UNKNOWN"),
             "prompt_version": str(rec.get("prompt_version") or ""),
             "source_snapshot_id": str(rec.get("source_snapshot_id") or ""),
-            "degrade_reason": str(sem.get("degrade_reason") or ""),
+            "degrade_reason": " ｜ ".join(x for x in (str(sem.get("degrade_reason") or ""), _degrade) if x),
             "model_selection_obligations": sum(1 for r in rows
                                                if r.get("selection_source") == "MODEL"),
             "rule_selection_obligations": sum(1 for r in rows

@@ -1072,6 +1072,8 @@ def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], r
     #   ⇒ 下游（机器答卷）只认这份**盖章**（`provenance_source=ADAPTER_IMPLEMENTATION`）。
     rec["model_participation"] = {
         "provenance": ad.participation_class_of(adapter),
+        # ★ **这次真的跑出回执了吗**（类别 ≠ 参与；F1）
+        "participated": ad.participated_flag(a),
         "provenance_source": "ADAPTER_IMPLEMENTATION",
         "declared_provenance": ad.declared_class_of(str(a.get("adapter_id") or "")),
         "adapter_id": str(a.get("adapter_id") or ""),

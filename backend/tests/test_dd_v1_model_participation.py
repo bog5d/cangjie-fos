@@ -312,7 +312,8 @@ def test_answer_sheet_with_model_results_marks_model_selection():
         # ★ 带**盖章**（桥接回执就是这么给的）⇒ 答卷照采
         "adapter": {"adapter_id": "test-standin", "vendor": "test",
                     "status": "OK", "provenance": "UNKNOWN_ADAPTER",
-                    "provenance_source": "ADAPTER_IMPLEMENTATION"}}
+                    "provenance_source": "ADAPTER_IMPLEMENTATION",
+                    "participated": True}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["obligations"][0]["selection_source"] == "MODEL", sheet["obligations"][0]
     assert sheet["examinee"]["mode"] == "UNKNOWN_ADAPTER", sheet["examinee"]
@@ -334,7 +335,8 @@ def test_answer_sheet_marks_prebaked_result_distinctly():
         "token_usage_or_UNKNOWN": "UNKNOWN"}], "rejected": [], "mode": "AGENT_SUGGESTION"},
         "adapter": {"adapter_id": "prebaked-result", "vendor": "operator-prebaked",
                     "status": "OK", "provenance": "PREBAKED_RESULT",
-                    "provenance_source": "ADAPTER_IMPLEMENTATION"}}
+                    "provenance_source": "ADAPTER_IMPLEMENTATION",
+                    "participated": True}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["examinee"]["mode"] == "PREBAKED_RESULT", sheet["examinee"]
     assert sheet["obligations"][0]["selection_source"] == "MODEL"
@@ -443,7 +445,8 @@ def test_cli_bridge_to_answer_sheet_carries_model_selection(tmp_path):
     rec["adapter"] = {"adapter_id": rc.get("adapter_id"), "vendor": rc.get("vendor"),
                       "status": rc.get("status"),
                       "provenance": rc.get("provenance"),
-                      "provenance_source": rc.get("provenance_source")}
+                      "provenance_source": rc.get("provenance_source"),
+                      "participated": rc.get("participated")}
     sheet = ex.build_answer_sheet(rec, pkt)
     assert sheet["obligations"][0]["selection_source"] == "MODEL", sheet["obligations"][0]
     assert sheet["examinee"]["mode"] == "UNKNOWN_ADAPTER", sheet["examinee"]
@@ -538,7 +541,59 @@ def test_answer_sheet_honors_stamped_provenance():
         "token_usage_or_UNKNOWN": "UNKNOWN"}], "rejected": [], "mode": "AGENT_SUGGESTION"},
         "adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
                     "status": "OK", "provenance": "HARNESS_MODEL",
-                    "provenance_source": "ADAPTER_IMPLEMENTATION"}}
+                    "provenance_source": "ADAPTER_IMPLEMENTATION",
+                    "participated": True}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["examinee"]["mode"] == "HARNESS_MODEL", sheet["examinee"]
     assert sheet["examinee"]["provenance_source"] == "ADAPTER_IMPLEMENTATION", sheet["examinee"]
+
+
+def test_failed_harness_run_must_not_claim_model_participation():
+    """★ 第 6 轮独立复核的 **F1**：Harness **没跑出回执** ⇒ 不得自称「模型参与」。
+
+    ★ 真因：参与**类别**只说明「适配器实现是哪一个」，**不说明**「它这次真的跑成功了」
+      —— 二进制不在 PATH（exit 127）／人工还没贴回执（PENDING_MANUAL）／贴进来的文件不存在
+      ⇒ **都没跑出回执** ⇒ 若只看类别 ⇒ 答卷与成绩单自称「有本机 Harness 参与」⇒ **假凭据**
+      （成绩单字段 `examinee_mode` 的用途正是「让读者能区分 RULE_ONLY 的分与模型跑的分」）。
+
+    ★ 旧字节上这条**是红的**：旧实现只读 `adapter["provenance"]`，不看运行结果。
+    """
+    rec = {"semantic_validation": {"accepted": [{
+        "obligation_id": "O1", "item_id": "I1", "agent_id": "a", "provider": "p",
+        "model_id_or_unknown": "UNKNOWN", "source_snapshot_id": "",
+        "candidate_files": [{"file_id": "F1", "sha256": "a" * 64,
+                             "relative_path": "a.txt", "locator": "L1",
+                             "entity": "子公司甲", "period": "2024",
+                             "match_reason": "r"}],
+        "proposed_verdict": "MATCH", "confidence_or_uncertain": 0.9,
+        "abstain_reason": None, "warnings": [], "elapsed": "UNKNOWN",
+        "token_usage_or_UNKNOWN": "UNKNOWN"}], "rejected": [], "mode": "AGENT_SUGGESTION"},
+        "adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                    "status": "CALL_FAILED", "provenance": "HARNESS_MODEL",
+                    "provenance_source": "ADAPTER_IMPLEMENTATION",
+                    "participated": False}}
+    sheet = ex.build_answer_sheet(rec, _pkt())
+    exi = sheet["examinee"]
+    # ★ **不得**自称模型参与
+    assert exi["mode"] == "RULE_ONLY", exi
+    assert exi["participated"] is False, exi
+    # ★ 身份那一档**照留**（可查）：实现类确实是 Codex
+    assert exi["provenance"] == "HARNESS_MODEL", exi
+    # ★ 降级原因要写清楚
+    assert "没跑出回执" in str(exi.get("degrade_reason") or ""), exi
+
+
+def test_declared_provenance_is_not_a_python_repr():
+    """★ 第 6 轮独立复核的 **F4**：`adapter.provenance` 是 dict 时，机读产物里**不许**出现 Python repr。
+
+    ★ 真因：`AdapterResult.provenance` 是个**自由 dict** ⇒ 旧实现 `str(dict)` 直接进机读产物
+      ⇒ 机器答卷里出现 `"{'independent_examinee_answer': False}"` 这种 Python repr。
+    """
+    rec = {"semantic_validation": {"accepted": [], "rejected": [], "mode": "AGENT_SUGGESTION"},
+           "adapter": {"adapter_id": "manual-exchange", "vendor": "operator",
+                       "status": "OK",
+                       "provenance": {"independent_examinee_answer": False}}}
+    sheet = ex.build_answer_sheet(rec, _pkt())
+    exi = sheet["examinee"]
+    assert exi["declared_provenance"] == "UNDECLARED", exi
+    assert "independent_examinee_answer" not in json.dumps(exi, ensure_ascii=False), exi

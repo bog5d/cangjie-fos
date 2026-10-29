@@ -476,12 +476,11 @@ def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
 #: 实现类 → 参与类别。**精确类型匹配**（不是 isinstance）：
 #:   ⇒ 自造一个 ``class _Spoof: adapter_id = "codex-cli"`` **拿不到** ``HARNESS_MODEL``；
 #:   ⇒ 连子类也不认（宁可不认，也不要认错）。
+#: ★ 由**类属性**生成（类属性是**唯一来源** ⇒ 不会出现「没人读的自填字段」）
 ADAPTER_PARTICIPATION_CLASSES: dict[type, str] = {
-    CodexAdapter: "HARNESS_MODEL",
-    MiniMaxPiAdapter: "HARNESS_MODEL",
-    DeepSeekHarnessAdapter: "HARNESS_MODEL",
-    ManualExchangeAdapter: "HARNESS_MANUAL",
-    PrebakedResultAdapter: "PREBAKED_RESULT",
+    cls: str(getattr(cls, "participation_class", "") or UNKNOWN_ADAPTER)
+    for cls in (CodexAdapter, MiniMaxPiAdapter, DeepSeekHarnessAdapter,
+                ManualExchangeAdapter, PrebakedResultAdapter)
 }
 
 UNKNOWN_ADAPTER = "UNKNOWN_ADAPTER"
@@ -495,6 +494,31 @@ KNOWN_ADAPTER_ID_CLASSES: dict[str, str] = {
     "manual-exchange": "HARNESS_MANUAL",
     "prebaked-result": "PREBAKED_RESULT",
 }
+
+
+#: ★ 参与类别的**合法取值**（答卷层只认这几个；其余一律 UNDECLARED）
+PARTICIPATION_CATEGORIES = ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT",
+                             "UNKNOWN_ADAPTER", "RULE_ONLY",
+                             "MODEL_SELECTION_WITHOUT_RECEIPT")
+
+
+def participated_flag(adapter_result: dict[str, Any] | None) -> bool:
+    """适配器**真的跑出了回执**吗？（第 6 轮独立复核的 F1，已修）
+
+    ★ ★ **为什么要这一层**：参与**类别**只说明「适配器实现是哪一个」，
+      **不说明**「它这次真的跑成功了」——
+      二进制不在 PATH（exit 127）／人工还没贴回执（``PENDING_MANUAL``）／
+      贴进来的文件不存在（``RESULT_FILE_NOT_FOUND``）⇒ **都没跑出回执**。
+      ⇒ 若只看类别 ⇒ 答卷与成绩单会自称「有本机 Harness 参与」⇒ **假凭据**。
+      ⇒ 正解：**类别 ＋ 跑出回执** 两个条件都满足，才算「这次有模型参与」。
+    """
+    a = adapter_result or {}
+    if str(a.get("status") or "") != OK:
+        return False
+    raw = str(a.get("raw_text") or "")
+    if not raw:
+        return False
+    return True
 
 
 def declared_class_of(adapter_id: str) -> str:
