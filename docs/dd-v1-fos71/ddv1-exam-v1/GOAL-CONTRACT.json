@@ -139,14 +139,14 @@
       "collected_at": "2026-10-29T00:10:00+08:00",
       "claim": "第 5 轮复核抓到 3 条重要缺陷（①候选扩展路径丢掉人工确认映射 ②参与身份只按自填 adapter_id 判定 ③PREBAKED_RESULT 不可达）＋1 条条件项（大写 file_id 查表键静默不命中）＋1 条文档计数错误⇒ 已逐条修复并补负向回归：把新测试拷到缺陷前字节 a0324a9 上跑 ⇒ 8 failed / 27 passed（这 8 条确实打到点上，不是空转摆设）",
       "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9",
-      "reviewer_note": "★ 第 7 轮复裁已回（CONDITIONAL：F1–F4、F19 复验闭合，唯一重要项 F14 ＋ 四条文档/实现项）⇒ 已逐条修复并补负向回归（★ 口径以「两文件 50 条」为准：a0324a9⇒23／fe939b6⇒15／2d42995⇒9／cf81685⇒7／累计 23）⇒ 第 8 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
+      "reviewer_note": "★ 第 7 轮复裁已回（CONDITIONAL：F1–F4、F19 复验闭合，唯一重要项 F14 ＋ 四条文档/实现项）⇒ 已逐条修复并补负向回归（★ 口径以「两文件 54 条」为准：a0324a9⇒27／fe939b6⇒18／2d42995⇒9／cf81685⇒7／累计 27）⇒ 第 8 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
     },
     {
       "subject_id": "ddv1-full-regression-after-round5-fix",
       "source": "backend/tests/ 全量（pytest --junitxml=/workspace/work/junit_final4.xml）",
       "event_at": "2026-10-29T00:10:00+08:00",
       "collected_at": "2026-10-29T00:10:00+08:00",
-      "claim": "修复后全量回归（**第 11 轮修复后的最终字节**）：2023 tests / 2022 passed / 1 failed / 0 errors / 0 skipped；唯一失败仍是 tests/test_doctor_script.py::test_doctor_script_exits_zero（沙箱环境项，CI 显式 ignore）⇒ 相对上一版 2008 条 +15（第 6 轮 5 条 ＋ 第 7 轮 2 条 ＋ 第 8 轮 F21 2 条 ＋ 第 9 轮 F24／F25 2 条 ＋ 第 10 轮 F26 1 条 ＋ 第 11 轮 F28／F29 3 条）⇒ 零新增失败｜★ 复核方第 11 轮本席口径实测 2020/2019/1/0 ⇒ 逐位一致（差 3 ＝ 本轮新增 3 条）",
+      "claim": "修复后全量回归（**第 12 轮修复后的最终字节**）：2027 tests / 2026 passed / 1 failed / 0 errors / 0 skipped；唯一失败仍是 tests/test_doctor_script.py::test_doctor_script_exits_zero（沙箱环境项，CI 显式 ignore）⇒ 相对上一版 2008 条 +19（第 6 轮 5 条 ＋ 第 7 轮 2 条 ＋ 第 8 轮 F21 2 条 ＋ 第 9 轮 F24／F25 2 条 ＋ 第 10 轮 F26 1 条 ＋ 第 11 轮 F28／F29 3 条 ＋ 第 12 轮 F30／F31／F32 ＋ 自查 2 条）⇒ 零新增失败｜★ 复核方第 12 轮本席口径实测 2023/2022/1/0 ⇒ 逐位一致（差 4 ＝ 本轮新增 4 条）",
       "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9.6"
     }
   ],
