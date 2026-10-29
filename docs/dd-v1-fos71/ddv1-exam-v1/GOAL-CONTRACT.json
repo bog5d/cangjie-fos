@@ -65,7 +65,7 @@
   },
   "state": {
     "status": "IN_PROGRESS",
-    "next_action": "第 5 轮接线已完成；独立 Reviewer 第 5/6/7 轮均裁定 CONDITIONAL ⇒ 已逐条修完全部缺陷并补负向回归。第 7 轮（head 17859a0）复验闭合 F1–F4、F19（复核方自跑子集 885 passed / 1 failed，唯一红＝沙箱 doctor 环境项），仍开唯一重要项 F14（--bridge-json 路径上真跑了的参与被记成 RULE_ONLY ＋ 理由不实）已修（bridge 块补盖章 ＋ CLI 补 participated）；F15（AB 锚点标本地历史 sha）／F16（UNKNOWN_ADAPTER 上移，避免 import 期 NameError）／F17（红数口径改本席实测并**写清作用域与文件版本**（两文件、47 条）：a0324a9⇒20／fe939b6⇒12／2d42995⇒8／cf81685⇒6，累计 20；与复核方的 19／11／7／5 互相印证）／F18（回落盖章块 declared_provenance）均已修。第 9 轮复裁裁定 CONDITIONAL（★ 本轮没有未闭的重要项、无假凭据、无数据错、无回归失败；只剩 F24 测试护栏＋文档与代码一致／F25 一句措辞 两条条件项）⇒ 已逐条修完（F24：F14 用例换新契约形状＋补旧形状兼容用例／补 bridge 产出侧断言／删掉兼容逃逸使规则与代码逐字一致；F25：participated_scope 外露＋degrade_reason 分两种情形）第 10 轮复裁裁定 CONDITIONAL（F24／F25 已闭合；新抓到 **F27**（本席新增的产出侧断言**不具判别力** ⇒ M3 变异 0 red ⇒ 真实 CLI 读数会错）＋ **F26**（审计标签把「无口径标记」说成「选材口径」）⇒ **均已修**：F27 场景换成「跑出回执但建议全被拒」（两个口径取值不同 ⇒ 断言有判别力，本席自测 M3 必红）＋F26 标签改 `UNMARKED`）⇒ 第 11 轮复裁进行中 ⇒ 复裁 PASS 后再改判 M03=PASS 15/15、G3=PASS、重算 SHA256SUMS、重建交接包、更新 PR #86（不合并 master）"
+    "next_action": "第 5 轮接线已完成；独立 Reviewer 第 5/6/7 轮均裁定 CONDITIONAL ⇒ 已逐条修完全部缺陷并补负向回归。第 7 轮（head 17859a0）复验闭合 F1–F4、F19（复核方自跑子集 885 passed / 1 failed，唯一红＝沙箱 doctor 环境项），仍开唯一重要项 F14（--bridge-json 路径上真跑了的参与被记成 RULE_ONLY ＋ 理由不实）已修（bridge 块补盖章 ＋ CLI 补 participated）；F15（AB 锚点标本地历史 sha）／F16（UNKNOWN_ADAPTER 上移，避免 import 期 NameError）／F17（红数口径改本席实测并**写清作用域与文件版本**（两文件、47 条）：a0324a9⇒20／fe939b6⇒12／2d42995⇒8／cf81685⇒6，累计 20；与复核方的 19／11／7／5 互相印证）／F18（回落盖章块 declared_provenance）均已修。第 9 轮复裁裁定 CONDITIONAL（★ 本轮没有未闭的重要项、无假凭据、无数据错、无回归失败；只剩 F24 测试护栏＋文档与代码一致／F25 一句措辞 两条条件项）⇒ 已逐条修完（F24：F14 用例换新契约形状＋补旧形状兼容用例／补 bridge 产出侧断言／删掉兼容逃逸使规则与代码逐字一致；F25：participated_scope 外露＋degrade_reason 分两种情形）第 10 轮复裁裁定 CONDITIONAL（F24／F25 已闭合；新抓到 **F27**（本席新增的产出侧断言**不具判别力** ⇒ M3 变异 0 red ⇒ 真实 CLI 读数会错）＋ **F26**（审计标签把「无口径标记」说成「选材口径」）⇒ **均已修**：F27 场景换成「跑出回执但建议全被拒」（两个口径取值不同 ⇒ 断言有判别力，本席自测 M3 必红）＋F26 标签改 `UNMARKED`）第 11 轮复裁裁定 CONDITIONAL（F27／F26／口径收窄全部复验闭合；**新抓到 F28**（`run_semantic` 的盖章＝`--run-dir` 路径唯一信任锚点，却零产出侧守护 ⇒ 失守即整条路径静默 fail-closed）＋ **F29**（`participated_flag` 零用例 ⇒ 空回执会被自称参与＝**假凭据方向**）⇒ **均已修**：F28 补专属产出侧断言（场景「回执口径 True ＋ 选材口径 False」⇒ 有判别力）＋ F29 补单测与端到端；本席自测 M5／M15／M8 三变异全部 RED）⇒ 第 12 轮复裁进行中 ⇒ 复裁 PASS 后再改判 M03=PASS 15/15、G3=PASS、重算 SHA256SUMS、重建交接包、更新 PR #86（不合并 master）"
   },
   "evidence": [
     {
@@ -139,14 +139,14 @@
       "collected_at": "2026-10-29T00:10:00+08:00",
       "claim": "第 5 轮复核抓到 3 条重要缺陷（①候选扩展路径丢掉人工确认映射 ②参与身份只按自填 adapter_id 判定 ③PREBAKED_RESULT 不可达）＋1 条条件项（大写 file_id 查表键静默不命中）＋1 条文档计数错误⇒ 已逐条修复并补负向回归：把新测试拷到缺陷前字节 a0324a9 上跑 ⇒ 8 failed / 27 passed（这 8 条确实打到点上，不是空转摆设）",
       "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9",
-      "reviewer_note": "★ 第 7 轮复裁已回（CONDITIONAL：F1–F4、F19 复验闭合，唯一重要项 F14 ＋ 四条文档/实现项）⇒ 已逐条修复并补负向回归（★ 口径以「两文件 47 条」为准：a0324a9⇒20／fe939b6⇒12／2d42995⇒8／cf81685⇒6／累计 20）⇒ 第 8 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
+      "reviewer_note": "★ 第 7 轮复裁已回（CONDITIONAL：F1–F4、F19 复验闭合，唯一重要项 F14 ＋ 四条文档/实现项）⇒ 已逐条修复并补负向回归（★ 口径以「两文件 50 条」为准：a0324a9⇒23／fe939b6⇒15／2d42995⇒9／cf81685⇒7／累计 23）⇒ 第 8 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
     },
     {
       "subject_id": "ddv1-full-regression-after-round5-fix",
       "source": "backend/tests/ 全量（pytest --junitxml=/workspace/work/junit_final4.xml）",
       "event_at": "2026-10-29T00:10:00+08:00",
       "collected_at": "2026-10-29T00:10:00+08:00",
-      "claim": "修复后全量回归（**第 10 轮修复后的最终字节**）：2020 tests / 2019 passed / 1 failed / 0 errors / 0 skipped；唯一失败仍是 tests/test_doctor_script.py::test_doctor_script_exits_zero（沙箱环境项，CI 显式 ignore）⇒ 相对上一版 2008 条 +12（第 6 轮 5 条 ＋ 第 7 轮 2 条 ＋ 第 8 轮 F21 2 条 ＋ 第 9 轮 F24／F25 2 条 ＋ 第 10 轮 F26 1 条）⇒ 零新增失败｜★ 复核方第 10 轮本席口径实测 2019/2018/1/0 ⇒ 逐位一致（差 1 ＝ 本轮新增 1 条）",
+      "claim": "修复后全量回归（**第 11 轮修复后的最终字节**）：2023 tests / 2022 passed / 1 failed / 0 errors / 0 skipped；唯一失败仍是 tests/test_doctor_script.py::test_doctor_script_exits_zero（沙箱环境项，CI 显式 ignore）⇒ 相对上一版 2008 条 +15（第 6 轮 5 条 ＋ 第 7 轮 2 条 ＋ 第 8 轮 F21 2 条 ＋ 第 9 轮 F24／F25 2 条 ＋ 第 10 轮 F26 1 条 ＋ 第 11 轮 F28／F29 3 条）⇒ 零新增失败｜★ 复核方第 11 轮本席口径实测 2020/2019/1/0 ⇒ 逐位一致（差 3 ＝ 本轮新增 3 条）",
       "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9.6"
     }
   ],

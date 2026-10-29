@@ -892,3 +892,112 @@ def test_unmarked_source_is_labelled_unmarked_not_selection():
     # ★ 没有盖章 ⇒ `NONE`
     sheet2 = ex.build_answer_sheet({}, {})
     assert sheet2["examinee"].get("participated_scope") == "NONE", sheet2["examinee"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 第 11 轮独立复核的 F28／F29：两条「**不变体没有测试守护**」的缺口
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_participated_flag_requires_non_empty_receipt():
+    """★ 第 11 轮独立复核的 **F29**：`ad.participated_flag()` ——「到底有没有回执」的**原语** —— **零测试守护**。
+
+    ★ 复核方的突变 **M8**（把「`raw_text` 非空」这一条去掉）⇒ **116 passed、零红**
+      ⇒ 而它在**真实 CLI** 上会造成**假凭据**：空回执文件 ⇒ 答卷自称「贴进来的回执」⇒ `PREBAKED_RESULT`
+      （这正是 F1「没跑出回执却自称参与」的**同族**，发生在**产出侧的原语**上）。
+    ★ 这条条件是**承重**的：5 个真适配器里 **4 个**能出现「`status=OK` 但 `raw_text` 为空」
+      （Codex：退出 0 却没写 out.json｜MiniMaxPi：模型没产出文本｜DeepSeek：抽取可能为空｜Prebaked／Manual：操作员贴了空文件）。
+
+    ★ 本条**不改实现**，只把**不变体钉住**。
+    """
+    # ★ **空回执不算参与**（假凭据的方向）
+    assert ad.participated_flag({"status": "OK", "raw_text": ""}) is False
+    # ★ **缺键**不算参与
+    assert ad.participated_flag({"status": "OK"}) is False
+    # ★ **None** 不算参与
+    assert ad.participated_flag({"status": "OK", "raw_text": None}) is False
+    # ★ 跑失败（哪怕有内容）不算参与
+    assert ad.participated_flag({"status": "CALL_FAILED", "raw_text": "{}"}) is False
+    assert ad.participated_flag({"status": "EXIT_127", "raw_text": "{}"}) is False
+    # ★ **真跑出了回执**才算参与
+    assert ad.participated_flag({"status": "OK", "raw_text": "{}"}) is True
+    assert ad.participated_flag({"status": "OK", "raw_text": "{\"results\": []}"}) is True
+    # ★ 空字典也不该崩
+    assert ad.participated_flag({}) is False
+    assert ad.participated_flag(None) is False
+
+
+def test_run_semantic_stamp_carries_receipt_scope_contract():
+    """★ 第 11 轮独立复核的 **F28**：`run_semantic` 的盖章 —— `--run-dir` 路径**唯一**的信任锚点 —— **零产出侧守护**。
+
+    ★ 复核方的突变 **M5**（盖章的 `participated_scope` ⇒ `SELECTION`）与 **M15**（盖章去掉 `provenance_source`）
+      ⇒ **116 passed、零红**；而在 M5 副本上跑**真实** `answer --run-dir`（适配器真的跑成功）
+      ⇒ `mode='RULE_ONLY'`、`participated_scope='SELECTION_ONLY'` ⇒ **一次真实的参与被记成「没有参与」**
+      ⇒ `--run-dir` 路径**只有这一个**盖章来源 ⇒ 它一旦失去回执口径，**整条路径 fail-closed**，而**没有任何用例会发现**。
+
+    ⇒ 本条**用有判别力的场景**钉住它：回执口径 True ＋ 选材口径 False（建议全被确定性闸拒了）
+      ⇒ 断言「盖章写的是哪个口径」**有判别力** ⇒ M5／M15 必红。
+    """
+    import pathlib
+    import tempfile
+    from cangjie_fos.services import dd_v1_semantic_retrieval_service as sem
+    tmp_path = pathlib.Path(tempfile.mkdtemp())
+    lib = _build_library(tmp_path, WP04_SNAPSHOT, "F28库",
+                         ["子公司甲：提供2024年度审计报告"])
+    # ★ **跑出了回执、但建议全被确定性闸拒了** ⇒ 两个口径取值不同 ⇒ 断言有判别力
+    _FX = Path(__file__).parent / "fixtures" / "dd_v1_fos71_wp04"
+    _meta = json.loads((_FX / "meta.json").read_text("utf-8"))
+    _raw_items = json.loads((_FX / "raw_items.json").read_text("utf-8"))
+    _wd = tmp_path / "wd"
+    _wd.mkdir(parents=True, exist_ok=True)
+    rec = sem.run_semantic(_RejectedSuggestionAdapter(), _FX / "snapshot", _meta,
+                            _raw_items, workdir=_wd)
+    mp = rec.get("model_participation") or {}
+    # ★ 盖章必须带**回执口径**与**盖章标记**
+    assert mp.get("participated_scope") == "RECEIPT", mp
+    assert mp.get("provenance_source") == "ADAPTER_IMPLEMENTATION", mp
+    assert "participated" in mp, mp
+    # ★ 回执口径：**跑出了回执** ⇒ True
+    assert mp.get("participated") is True, mp
+    # ★ 选材口径：**没有建议被接受** ⇒ False（★ 这条断言保证「两个口径取值不同」⇒ 有判别力）
+    accepted = (rec.get("semantic_validation") or {}).get("accepted")
+    assert accepted == [], accepted
+
+
+def test_empty_receipt_file_must_not_claim_participation(tmp_path):
+    """★ 第 11 轮独立复核的 **F29（端到端）**：**空回执文件** ⇒ 答卷**不得**自称参与。
+
+    ★ 复核方的实测：正确字节上 `--agent prebaked` ＋ **一个空的回执文件**
+      ⇒ `receipt.status='OK'`、`raw_digest=''`、`participated=False` ⇒ `examinee.mode='RULE_ONLY'` ✔ 诚实；
+      而在 M8 副本上 ⇒ `participated=True` ⇒ `examinee.mode='PREBAKED_RESULT'` ⇒ ★ **假凭据**
+      （**回执是空的**，答卷却自称「贴进来的回执」）—— 正是 F1「没跑出回执却自称参与」的**同族**。
+    ⇒ 本条是**端到端**守护：走真实 CLI 的 `--agent prebaked` 路径。
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "dd_cli_f29", _REPO / "tools" / "dd_team_channel.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+
+    # ★ **空的回执文件**（操作员贴了一个空文件）
+    _reply = tmp_path / "回执.json"
+    _reply.write_text("", encoding="utf-8")
+    lib = _build_library(tmp_path, WP04_SNAPSHOT, "F29库",
+                         ["子公司甲：提供2024年度审计报告"])
+    out = br.bridge_library(lib, material_root=WP04_SNAPSHOT, db_path=_db(tmp_path),
+                            adapter=ad.PrebakedResultAdapter(_reply))
+    rc = out.get("agent_receipt") or {}
+    # ★ 空回执 ⇒ 原语就该判「没跑出回执」
+    assert rc.get("participated") is False, rc
+    # ★ 答卷层**不得**自称「贴进来的回执」
+    rec = {"adapter": {"adapter_id": rc.get("adapter_id"), "vendor": rc.get("vendor"),
+                       "status": rc.get("status"),
+                       "provenance": rc.get("provenance"),
+                       "provenance_source": rc.get("provenance_source"),
+                       "participated": rc.get("participated"),
+                       "participated_scope": rc.get("participated_scope")}}
+    sheet = ex.build_answer_sheet(rec, {})
+    exi = sheet["examinee"]
+    assert exi["participated"] is False, exi
+    assert exi["mode"] != "PREBAKED_RESULT", exi
+    assert exi["mode"] in ("RULE_ONLY", "UNKNOWN"), exi
