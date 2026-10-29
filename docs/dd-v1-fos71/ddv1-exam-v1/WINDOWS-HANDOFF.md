@@ -282,10 +282,18 @@ python tools\dd_team_channel.py run `
 ★ ★ **参与身份怎么判定的（别自填就信）**：
   `provenance`（权威）**按适配器实现类**判定，**不看** `adapter_id` 字符串
   ⇒ 自填 `adapter_id="codex-cli"` 的替身**拿不到** `HARNESS_MODEL`。
-  回执里另有三处可核验字段：
+  回执里另有几处可核验字段：
+  - `provenance_source`：**固定是 `ADAPTER_IMPLEMENTATION`**（＝「这一档是按实现类判的」）；
   - `declared_provenance`：id 级**声明**（只是旁证，不构成参与主张）；
   - `provenance_mismatch`：声明与实现**不一致** ⇒ 会显式标出来；
   - `executable` / `argv_digest` / `workdir_digest`：**运行痕迹**（跑了什么的指纹，不含材料内容）。
+
+★ ★★ **答卷层也只认「盖章」**（第 6 轮复核抓到的一个绕过口，已修）：
+  机器答卷的 `examinee.mode` **不采信** `run_record.json` 里适配器自填的 `adapter.provenance`
+  （那是适配器自己写的自由字段 ⇒ 可伪造）⇒ **必须带** `provenance_source=ADAPTER_IMPLEMENTATION`
+  的盖章才采信；没有盖章 ⇒ 一律降级为 `MODEL_SELECTION_WITHOUT_RECEIPT`（**有模型选材但没有可信回执**），
+  自填的那一档只记进 `examinee.declared_provenance`（留痕、可查、**不作数**）。
+  ⇒ 你自测时可查：`机器答卷.json` 的 `examinee.provenance_source` 应当是 `ADAPTER_IMPLEMENTATION`。
 
 ★ **材料不出本机**：适配器跑的是**你本机**的 CLI ⇒ 不向未授权外部模型发送保密资料
 （本版**没有**新增任何付费 API，**没有**改生产配置）。

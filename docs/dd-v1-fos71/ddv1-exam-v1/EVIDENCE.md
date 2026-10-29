@@ -434,3 +434,35 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
   （沙箱缺 `.env`/`node_modules`/后端依赖；★ **CI 本身就显式 `--ignore` 这一条**）
   ⇒ **零新增失败**；
 - 基线 `abc4627` 同环境为 1887/1886/1/0 ⇒ 本分支 **2008/2007/1/0**。
+
+### 9.7 第 6 轮独立复核在新 head 上抓到的两处（已修）
+
+★ 复核（新 head `35de52cb3cf2`）**独立复现**了两处，均已修：
+
+**① 答卷层仍采信适配器自填的 `provenance` ⇒ 自填即可冒充「模型参与」（重要）**
+
+- **真因**：`dd_v1_exam_service.build_answer_sheet` 读 `adapter["provenance"]` 的**第一个非空值**；
+  而 `adapter.provenance` 是**适配器自己写的自由字段**（`AdapterResult.provenance`）
+  ⇒ 一份 `run_record.json` 把它写成 `"HARNESS_MODEL"` ⇒ 机器答卷就自称「有本机 Harness 参与」
+  ⇒ 与第 5 轮修掉的「自填 `adapter_id`」**同族**，但落在**答卷层**这第二个入口上。
+- **修法**：**只认「盖章」** ——
+  - 参与类别必须带 `provenance_source == "ADAPTER_IMPLEMENTATION"` 才采信；
+  - 盖章由**实现侧**产生：`dd_v1_semantic_retrieval_service.run_semantic` 在 run_record 里盖
+    （`rec["model_participation"]`，provenance 来自 `ad.participation_class_of(adapter)`）、
+    `dd_v1_bridge_service` 的回执带 `provenance_source`、`tools/dd_team_channel.py` 把它带进答卷；
+  - 适配器自填的那一档**只记进 `examinee.declared_provenance`**（留痕、可查、**不作数**）。
+- **负向回归**：`test_answer_sheet_refuses_unstamped_provenance`、
+  `test_answer_sheet_honors_stamped_provenance`（跑在修复前字节 `fe939b6` 上 **3 red**）。
+
+**② 查表键归一造成误命中 ⇒ 人工确认反了（重要）**
+
+- **真因**：`_confirmed_index` 把「归一后的写法」也塞进**精确档**
+  ⇒ 表里的 `FILE-ABC` 会用它的归一形 `file-abc` **占掉** `file-abc` 那一条
+  ⇒ 行内 `file_id=file-abc` 的材料被判成**另一个主体**。
+- **修法**：**两级查表** —— ① 精确档**只放原样键**（原样键优先 ⇒ 各归各的）；
+  ② 大小写不敏感档**只作兜底**（表里写 `FILE-ABC`、行内 `file-abc` 仍能命中）。
+- **负向回归**：`test_confirmed_map_exact_key_wins_over_case_variant`（修复前字节 **红**）。
+
+**③ 措辞收紧**：参与类别判定**不是安全边界** —— 进程内代码理论上能替换实现
+（monkeypatch / 改 `__class__`）⇒ 挡的是「自填字段/自造替身冒充」这一类；
+真正不可伪造的那一段是**下游只认盖章**（伪造要连盖章一起造 ⇒ 那就不是「自填」了）。

@@ -517,6 +517,18 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 ★ **负向回归**：把新测试拷到**缺陷前字节** `a0324a9` 上跑 ⇒ **8 failed / 27 passed** ⇒ 这 8 条确实打到点上。
 ★ **M03 判词仍为 `PARTIAL`**（第 6 轮复裁进行中 ⇒ 不预告 PASS）。
 
+### ★ 第 6 轮复核（复裁）新抓到并已修的两处（2026-10-29）
+
+| # | 缺陷 | 修法 | 文件 |
+|---|---|---|---|
+| ① | **答卷层仍采信适配器自填的 `provenance`** ⇒ 自填即可冒充「模型参与」 | **只认「盖章」**（`provenance_source=ADAPTER_IMPLEMENTATION`）；盖章由**实现侧**产生并随回执落盘；自填那档只记 `declared_provenance`（留痕、不作数） | `dd_v1_exam_service.py`、`dd_v1_semantic_retrieval_service.py`、`dd_v1_bridge_service.py`、`tools/dd_team_channel.py` |
+| ② | **查表键归一造成误命中**（人工确认反了） | **两级查表**：精确档只放**原样键**（各归各的）＋ 大小写不敏感档只作兜底 | `dd_v1_entity_resolution_service.py` |
+| ③ | 措辞 | 参与类别判定**不是安全边界**（进程内能替换实现）⇒ 挡的是「自填字段冒充」 | `dd_v1_agent_adapters.py` |
+| ④ | id 级声明表 | 搬进**实现侧**（`ad.KNOWN_ADAPTER_ID_CLASSES` ＋ `ad.declared_class_of`），bridge 侧改为引用（API 不变） | `dd_v1_agent_adapters.py`、`dd_v1_bridge_service.py` |
+
+★ **负向回归**：3 条新测试跑在修复前字节 `fe939b6` 上 ⇒ **3 red**（确实打到点上）。
+★ 修复后 12 文件子集 **224 passed / 0 failed / 0 errors**。
+
 
 ### 改动（工具层 / 测试 / 夹具）
 
