@@ -48,10 +48,14 @@ from cangjie_fos.services import dd_v1_exam_service as ex               # noqa: 
 from cangjie_fos.services import dd_v1_gold_service as gold_svc         # noqa: E402
 from cangjie_fos.services import dd_v1_semantic_retrieval_service as sem  # noqa: E402
 
-FX = BACKEND / "tests" / "fixtures" / "dd-v1-fos71-a4"
+# ★ 夹具与输出目录**可由环境变量指定** ⇒ 同一套脚本能在「修复前/修复后」两侧跑
+#   （做同考场对比时，两侧用**同一份**夹具，只有代码不同 ⇒ 差异才可归因）。
+FX = Path(os.environ.get("DDV1_SIM_FIXTURE")
+          or (BACKEND / "tests" / "fixtures" / "dd-v1-fos71-a4"))
 MATERIAL = FX / "frozen" / "examiner"   # ★ 盲化快照＝标准答案能对上内容指纹的那一份
 GRADER = FX / "frozen" / "grader"
-OUT = Path(__file__).resolve().parent / "证据"
+OUT = Path(os.environ.get("DDV1_SIM_OUT")
+           or (Path(__file__).resolve().parent / "证据"))
 
 
 def _sha256(path: Path) -> str:
@@ -177,7 +181,7 @@ def main() -> int:
             "--package-out", str(delivery),
             "--out", str(report),
             "--allow-real-material",
-        ])
+        ] + (["--cap", os.environ["DDV1_SIM_CAP"]] if os.environ.get("DDV1_SIM_CAP") else []))
         print(f"[1/5] 组包（真实入口）：退出码 {rc}")
         results = sorted(report.glob("尽调结果-*.json"))
         if not results:
