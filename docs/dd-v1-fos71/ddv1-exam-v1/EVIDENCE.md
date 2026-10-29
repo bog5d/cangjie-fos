@@ -886,3 +886,21 @@ wiring_entity_expansion / model_participation / agent_result / six_states_entry 
 PR #86 评论更新（★ 文案经复核方**逐句核过**：11 处 ＋ 4 处（A–D）全部采纳）。
 ★ **master 未合并**（合并需 Owner 授权）。
 ★ **真实 42 题业务成绩仍 `NOT_SCORABLE`**（历史 Gold 未交付，未补造分数）；★ **真实 `HARNESS_MODEL` 端到端仍 `NOT_MEASURED`**（沙箱无文本生成 LLM）。
+
+### 9.19 第 5 轮**旧会话**裁定（针对 head `d7aa3b0`）· 逐条现状核对（2026-10-29 晚）
+
+★ ★ **背景**：第 5 轮那份裁定是**早于第 6–13 轮**的历史裁定（它针对的 head `d7aa3b0` 早已不是当前 head）。
+★ 本席**没有凭记忆说「都修了」** ⇒ ★ **逐条在当前 head 上现读/实测**，结果如下：
+
+| 缺陷 | 现状 | 核法 |
+|---|---|---|
+| ① 扩展路径未透传 `confirmed_map` | **已闭** | `dd_v1_match_service.py:2008` ＝「★ **透传 confirmed_map**（第 5 轮独立复核缺陷 ①）」 |
+| ② 参与身份只按自填 `adapter_id` | **已闭** | `participation_class_of()` 存在；参与**类别**按**适配器实现类**判定，自填 id 只作旁证 |
+| ③ `PREBAKED_RESULT` 不可达 | **已闭** | `KNOWN_ADAPTER_ID_CLASSES` 含 `prebaked-result ⇒ PREBAKED_RESULT`（现读实测） |
+| ④ `file_id` 键必须小写（大写静默不命中） | **已闭** | 两级查表：表里写 `FILE-ABC`、行内 `file_id=file-abc` ⇒ **实测命中** `human_confirmed_map` |
+| ⑥ `model_participation` 条数（26 vs 实收） | **已闭** | 文档现写 **41**（与实收一致） |
+| ⑦ A/B 归因表述与「库级判定分布其实变了」 | **已闭** | `AB-成绩对比.md` 明写「答卷来自 `answer --bridge-json <尽调结果-*.json>`」＋「**不是**来自夹具预置的 `replies/`」；库级分布变化（`RESTRICTED×8 → CONFLICT×6+RESTRICTED×2`）也已写进文档 |
+| ⑤ 包级 `SHA256SUMS` 不覆盖 a5 夹具 | ★ **本轮补闭** | ★ **已补夹具级自证清单**：`dd-v1-fos71-a5/SHA256SUMS`（**121 条 / 121 OK / 0 FAILED**）＋ `dd-v1-fos71-a4/SHA256SUMS`（**49 条 / 49 OK / 0 FAILED**）⇒ 夹具现在**可脱离 git 独立自核** |
+
+★ ★ **处置原则**：★ 历史裁定**不因「当时是对的」而直接作废** ⇒ ★ 逐条现读核对，
+★ **已闭的写明「在哪一行/哪个读数」**，★ 未闭的**当轮补闭** ⇒ ⇒ 不留「疑似已修」的糊涂账。

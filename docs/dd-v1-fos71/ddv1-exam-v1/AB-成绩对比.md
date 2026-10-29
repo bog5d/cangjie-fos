@@ -17,7 +17,7 @@
 > ★ **两侧的可核凭据＝各自落盘的产物文件**（`/workspace/work/ab/{before,after}_cli/尽调结果.json` 等）
 >   ＋ 本目录 `证据/` 里的机读读数；sha 只是「当时用的哪份代码」的**说明**，不是核对凭据。
 
-夹具的 `gold.json` / `raw_items.json` / `replies/` **与 a4 逐位相同**（a5 只加材料，不动标准答案、不动清单、不动答卷）｜★ a5 夹具**已入仓**（`backend/tests/fixtures/dd-v1-fos71-a5/`）｜★ 它**不在** `docs/…/ddv1-exam-v1/SHA256SUMS` 的覆盖范围内（那份清单只覆盖本目录）⇒ **自核方式**：`git ls-tree -r <head> backend/tests/fixtures/dd-v1-fos71-a5/`（git 对象哈希即完整性）
+夹具的 `gold.json` / `raw_items.json` / `replies/` **与 a4 逐位相同**（a5 只加材料，不动标准答案、不动清单、不动答卷）｜★ a5 夹具**已入仓**（`backend/tests/fixtures/dd-v1-fos71-a5/`）｜★ 它**不在** `docs/…/ddv1-exam-v1/SHA256SUMS` 的覆盖范围内（那份清单只覆盖本目录）⇒ ★ **现已补上夹具级自证清单**：`backend/tests/fixtures/dd-v1-fos71-a5/SHA256SUMS`（**121 条**，覆盖该夹具内**除自身外全部文件**，`sha256sum -c` ⇒ **121 OK / 0 FAILED**；a4 同理 **49 条 / 49 OK**）⇒ **自核方式**：① 在夹具目录里 `sha256sum -c SHA256SUMS`；② `git ls-tree -r <head> backend/tests/fixtures/dd-v1-fos71-a5/`（git 对象哈希即完整性）
 ⇒ **没有**「改标准答案提分」「让考生提前读 Gold」的余地。
 
 ## 1. 三组对照的读数
