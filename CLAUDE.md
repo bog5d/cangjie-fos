@@ -743,3 +743,14 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 | `docs/dd-v1-fos71/ddv1-exam-v1/SKILLS-REVIEW.md` | 技能复用复盘（检索 478｜命中 3｜复用 2｜候选 1） |
 | `docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py` | **合成考场**完整模拟考试（零外部调用、零费用） |
 | `docs/dd-v1-fos71/ddv1-exam-v1/证据/` | 模拟考场的实跑产物（成绩单/逐题明细/机器答卷/版本对比/预检报告） |
+
+### ★★ 第 13 轮复核：**PASS**（收口 · 2026-10-29）
+
+★ 第 13 轮独立复核（head `7e2d0eee3a2a`）裁定 **PASS** —— ★ 前 12 轮的全部重要项均已闭合并经其逐条实跑验证。
+★ 复核方本轮 11 个探针：10 个被抓住（`participation_class_of`／`declared_class_of` 4／4／3 red｜Gold 隔离 3 red｜泄漏扫描 2 red｜HR-1 1 red）；
+★ 唯一零红的 **P4**（`approve()` 的「`approved_by` 不能为空」）**被同族的 `assert_approval`（HG1）兜住** ⇒ **非阻塞**
+⇒ ★ **本席顺手补了**（复核方建议）：既有用例只覆盖空白那一档 ⇒ **空字符串**那一档**没有用例** ⇒ 补上 ⇒ 本席自测突变 ⇒ **RED** ✔。
+
+★ **收口**：M03 ⇒ **PASS 15/15**（progress 73 → 80）｜G3 ⇒ **PASS**｜G9 ⇒ **PASS**｜仓内 `SHA256SUMS` **16/16 OK**｜
+交接包按最终 head 重建 ＋ 解包自核 **22 OK / 0 FAILED / 0 missing**｜PR #86 评论更新（文案经复核方逐句核过）。
+★ **master 未合并**（合并需 Owner 授权）｜★ 真实 42 题业务成绩仍 `NOT_SCORABLE`｜★ 真实 `HARNESS_MODEL` 端到端仍 `NOT_MEASURED`。

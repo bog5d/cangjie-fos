@@ -162,6 +162,11 @@ def test_approval_requires_named_approver(tmp_path):
     rev = pkg.build_review_pack(lib, db_path=_db(tmp_path))
     with pytest.raises(ValueError, match="approved_by"):
         pkg.approve(rev["review_id"], approved_by="  ", db_path=_db(tmp_path))
+    # ★ 第 13 轮独立复核的 **P4**（非阻塞·纵深防御缺口）：**空字符串**那一档此前**没有用例**
+    #   ⇒ 复核方的突变（把「无批准人」这道闸放宽）⇒ **零红** ⇒ 端到端仍被第二道闸（HG1）拦住，
+    #   但**第一道闸本身**没有护栏 ⇒ 现在把「空字符串」也钉上。
+    with pytest.raises(ValueError, match="approved_by"):
+        pkg.approve(rev["review_id"], approved_by="", db_path=_db(tmp_path))
 
 
 def test_repackaging_blocked_after_packaged(tmp_path):

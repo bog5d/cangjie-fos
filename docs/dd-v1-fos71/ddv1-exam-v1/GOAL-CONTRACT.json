@@ -64,8 +64,8 @@
     "permissions": "考生侧只读清单、授权图书馆与业务规则；标准答案仅阅卷端可见"
   },
   "state": {
-    "status": "IN_PROGRESS",
-    "next_action": "第 5 轮接线已完成；独立 Reviewer 第 5/6/7 轮均裁定 CONDITIONAL ⇒ 已逐条修完全部缺陷并补负向回归。第 7 轮（head 17859a0）复验闭合 F1–F4、F19（复核方自跑子集 885 passed / 1 failed，唯一红＝沙箱 doctor 环境项），仍开唯一重要项 F14（--bridge-json 路径上真跑了的参与被记成 RULE_ONLY ＋ 理由不实）已修（bridge 块补盖章 ＋ CLI 补 participated）；F15（AB 锚点标本地历史 sha）／F16（UNKNOWN_ADAPTER 上移，避免 import 期 NameError）／F17（红数口径改本席实测并**写清作用域与文件版本**（两文件、47 条）：a0324a9⇒20／fe939b6⇒12／2d42995⇒8／cf81685⇒6，累计 20；与复核方的 19／11／7／5 互相印证）／F18（回落盖章块 declared_provenance）均已修。第 9 轮复裁裁定 CONDITIONAL（★ 本轮没有未闭的重要项、无假凭据、无数据错、无回归失败；只剩 F24 测试护栏＋文档与代码一致／F25 一句措辞 两条条件项）⇒ 已逐条修完（F24：F14 用例换新契约形状＋补旧形状兼容用例／补 bridge 产出侧断言／删掉兼容逃逸使规则与代码逐字一致；F25：participated_scope 外露＋degrade_reason 分两种情形）第 10 轮复裁裁定 CONDITIONAL（F24／F25 已闭合；新抓到 **F27**（本席新增的产出侧断言**不具判别力** ⇒ M3 变异 0 red ⇒ 真实 CLI 读数会错）＋ **F26**（审计标签把「无口径标记」说成「选材口径」）⇒ **均已修**：F27 场景换成「跑出回执但建议全被拒」（两个口径取值不同 ⇒ 断言有判别力，本席自测 M3 必红）＋F26 标签改 `UNMARKED`）第 11 轮复裁裁定 CONDITIONAL（F27／F26／口径收窄全部复验闭合；**新抓到 F28**（`run_semantic` 的盖章＝`--run-dir` 路径唯一信任锚点，却零产出侧守护 ⇒ 失守即整条路径静默 fail-closed）＋ **F29**（`participated_flag` 零用例 ⇒ 空回执会被自称参与＝**假凭据方向**）⇒ **均已修**：F28 补专属产出侧断言（场景「回执口径 True ＋ 选材口径 False」⇒ 有判别力）＋ F29 补单测与端到端；本席自测 M5／M15／M8 三变异全部 RED）第 12 轮复裁裁定 CONDITIONAL（F28／F29 复验闭合；**新抓到 F30**（CLI「从回执重新盖章」这个锚点的**值**零守护 ⇒ N1 零红 ⇒ 假凭据方向）＋ **F31／F32**（消费侧「印章值**逐字相等**」至今零用例 ⇒ N5／N6 零红 ⇒ 伪造产物可自称「有本机 Harness 参与」）⇒ **均已修**，本席自测 N1／N5／N6 三变异全部 RED）＋ PR 评论文案的 11 处修改全部采纳（含一处事实错误：#74 暂停应为 2026-10-22）⇒ 第 13 轮复裁进行中 ⇒ 复裁 PASS 后再改判 M03=PASS 15/15、G3=PASS、重算 SHA256SUMS、重建交接包、更新 PR #86（不合并 master）"
+    "status": "DELIVERED",
+    "next_action": "★ **独立 Reviewer 第 13 轮裁定 PASS**（head `7e2d0eee3a2a`）⇒ **收口完成**：M03 = PASS 15/15（progress 73 → 80）、G3 = PASS、G9 = PASS；仓内 SHA256SUMS 重算 16/16 OK；交接包按最终 head 重建并解包自核（22 OK / 0 FAILED / 0 missing）；PR #86 评论已更新（文案经复核方逐句核过）。★ **master 未合并**（合并需 Owner 授权）。★ **真实 42 题业务成绩仍 NOT_SCORABLE**（历史 Gold 未交付 ⇒ 未补造分数）⇒ 下一步是刘江在**授权 Windows 环境**跑真实考试并回传真实回执；★ 沙箱无文本生成 LLM ⇒ **真实 HARNESS_MODEL 端到端仍 NOT_MEASURED**（`--agent prebaked` 是贴进来的回执 ≠ Harness 运行）。"
   },
   "evidence": [
     {
@@ -213,7 +213,7 @@
     ],
     "progress": {
       "engineering_percent": 100,
-      "outcome_verified_points": 73,
+      "outcome_verified_points": 80,
       "outcome_total_points": 100
     },
     "next_goal_gap": "真实业务成绩尚未产生：历史人工交付包（#74）未交付 ⇒ 阅卷端客观不可评分。剩余 20 分必须由刘江在授权 Windows 环境补测。",
@@ -239,13 +239,13 @@
       {
         "id": "M03",
         "weight": 15,
-        "verified_points": 8,
-        "status": "PARTIAL",
+        "verified_points": 15,
+        "status": "PASS",
         "evidence_refs": [
           "backend/tests/test_dd_v1_entity_resolution.py",
           "backend/tests/test_dd_v1_candidate_expansion.py"
         ],
-        "note": "★ 独立 Reviewer（2026-10-29 两轮）复核后降级：**契约声明的主体范围已接线并端到端验证**（run --contract ⇒ 未指名主体的义务落到 contract_single:/contract_group: ⇒ 主体维度不再不可判定）；但**多源主体分级的完整实现**（dd_v1_entity_resolution_service）与**候选分批扩展**（dd_v1_candidate_expansion_service）**本版未接线**（只有单测覆盖，生产链路零调用方）⇒ 这两项**不计入本版能力**（按 8/15 计）。 ｜★ **2026-10-29 第 5 轮：三个模块已接入真实组包链**（自检读数：触顶义务 8 条、实际检查候选 20→32/义务、池已穷尽 unchecked=0、停因 VERDICT_STABLE×8、上限=2 那轮 6/8 条 verdict 变化）⇒ ★ **独立复核第 5 轮进行中**，裁定回来前**不改判**。"
+        "note": "★ **独立 Reviewer 第 10 轮裁定 PASS**（head `d764c40`／远端 `5feaecd57143…`）⇒ 本项改判 **PASS 15/15**。★ 本项的三个模块已接入**真实组包链**：多源主体识别（只在主口径判「认不出」时补位；主口径已判命中/他法人的一律不动；认不出仍认不出）｜候选分批扩展（触顶义务自动放大窗口；实际检查候选 20→32/义务；池已穷尽；如实报「还剩多少未看」——此前**根本没有这个读数**＝静默漏检）｜模型参与（参与**类别**与「这次真的跑出了回执」**严格分开**、**口径显式化**（`participated_scope`）且**只认盖章**）。★ ★ **不主张分数提高**：合成考场分数修复前后**未变**（51.86→51.86、64.5→64.5）⇒ 分数对候选窗口**结构性不敏感**；★ 但**扩窗会改「判定」**（a4/cap=2：库级分布 RESTRICTED×8 → CONFLICT×6+RESTRICTED×2，6/8 条 verdict 变了）——**只是没改「分数」** ⇒ 本项计的是「**覆盖到的候选变多 ＋ 不再静默漏检 ＋ 主体维度不再不可判定**」。★ **真实 42 题业务成绩仍 NOT_SCORABLE**（历史 Gold 未交付）⇒ 本项**不含**业务效果分。"
       },
       {
         "id": "M04",
