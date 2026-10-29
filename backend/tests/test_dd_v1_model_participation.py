@@ -790,19 +790,47 @@ def test_degrade_reason_does_not_assert_unproven_causes():
     assert exi.get("participated_scope") == "SELECTION_ONLY", exi
 
 
-def test_bridge_emits_participation_scope_contract():
-    """★ 第 9 轮独立复核的 **F24②**：bridge 产出的**契约字段**必须被测试保护。
+class _RejectedSuggestionAdapter(_StandInAdapter):
+    """★ **跑出了回执、但建议全被确定性闸拒了**（第 10 轮独立复核的 F27 要求的场景）。
 
-    ★ Reviewer 的突变测试（MUTANT-B）发现：`run_participated` / `run_participated_scope`
-      **零测试保护** ⇒ 把它们删掉，全套 60 条仍然全绿 ⇒ **不变式只靠一个产出点撑着**。
-    ⇒ 正解：契约字段（`participated_scope` / `run_participated_scope` ＋ `run_participated`）
-      必须有**测试直接断言**产出侧真的写了、且**与回执一致**。
+    ★ 关键：它让**两个口径取值不同** ——
+      `bool(回执.participated)`＝True（status=OK ＋ raw_text 非空）
+      vs `bool(选材口径)`＝False（没有建议被接受 ⇒ `model_sel` 为空）。
+    ★ ⇒ 在这个场景里，「`run_participated` 取的是哪个口径」**有判别力**。
     """
-    lib = _build_library(tmp_path := __import__("pathlib").Path(
-        __import__("tempfile").mkdtemp()), WP04_SNAPSHOT, "F24库",
-        ["子公司甲：提供2024年度审计报告"])
+
+    def run(self, packet, workdir, budget):
+        res = super().run(packet, workdir, budget)
+        # ★ 把候选的**定位符**改成证据里没有的 ⇒ 确定性闸（`CANDIDATE_i_LOCATOR_NOT_IN_EVIDENCE`）拒掉它
+        #   （★ 注意：改**主体**是**无效**的 —— 校验器的主体取自**证据池**（`snap.get(file_id)`），
+        #     不看适配器交的那个字段 ⇒ 要让建议被拒，得改**只存在于适配器输出里**的字段。）
+        payload = json.loads(res.raw_text or "{}")
+        for r in payload.get("results") or []:
+            for c in r.get("candidate_files") or []:
+                c["locator"] = "L-NOT-IN-EVIDENCE"
+        res.raw_text = json.dumps(payload, ensure_ascii=False)
+        return res
+
+
+def test_bridge_emits_participation_scope_contract():
+    """★ 第 9 轮独立复核的 **F24②** ＋ **第 10 轮独立复核的 F27**：产出侧契约字段必须被**有判别力**的断言保护。
+
+    ★ 第 9 轮：bridge 的 `run_participated` / `run_participated_scope` **零测试保护**（突变测试：删掉它们，全套仍全绿）。
+    ★ 第 10 轮（F27）：本席第一版断言 `run_participated == bool(回执.participated)` **在自己��场景里不具判别力** ——
+      场景里模型选材被接受了 ⇒ 两个口径取值**相同** ⇒ 把 `run_participated` 换成**选材口径**也照样全绿
+      （Reviewer 的 M3 变异：全套 42 条全过，但**真实 CLI 读数会错**：prebaked ⇒ `RULE_ONLY` 而非 `PREBAKED_RESULT`）
+      ⇒ ★ **一条「看起来在守、实际没守」的断言 ＝ 虚假的安全感**。
+
+    ⇒ 正解：**场景必须让两个口径取值不同** —— 「**跑出了回执、但建议全被确定性闸拒了**」
+      ⇒ `bool(回执.participated)`＝True、`bool(选材口径)`＝False ⇒ 断言**立刻有判别力**。
+    """
+    import pathlib
+    import tempfile
+    tmp_path = pathlib.Path(tempfile.mkdtemp())
+    lib = _build_library(tmp_path, WP04_SNAPSHOT, "F27库",
+                         ["子公司甲：提供2024年度审计报告"])
     out = br.bridge_library(lib, material_root=WP04_SNAPSHOT,
-                            db_path=_db(tmp_path), adapter=_StandInAdapter())
+                            db_path=_db(tmp_path), adapter=_RejectedSuggestionAdapter())
     mp = out.get("model_participation") or {}
     rc = out.get("agent_receipt") or {}
     # ★ 契约字段必须存在
@@ -811,6 +839,9 @@ def test_bridge_emits_participation_scope_contract():
     assert "run_participated" in mp, mp
     # ★ 回执那侧也必须标口径
     assert rc.get("participated_scope") == "RECEIPT", rc
+    # ★ ★ **前置条件：两个口径在本场景里取值必须不同**（否则下面的断言没有判别力）
+    assert bool(rc.get("participated")) is True, rc
+    assert bool(mp.get("participated")) is False, mp
     # ★ `run_participated` 必须与**回执口径**一致（不是选材口径）
     assert mp.get("run_participated") == bool(rc.get("participated")), (mp, rc)
 
@@ -838,3 +869,26 @@ def test_unmarked_participated_key_is_not_trusted():
     # ★ 裸键**不得**被采信 ⇒ 采信的是回执口径的 False ⇒ participated=False
     assert exi["participated"] is False, exi
     assert exi.get("participated_scope") == "RECEIPT", exi
+
+
+def test_unmarked_source_is_labelled_unmarked_not_selection():
+    """★ 第 10 轮独立复核的 **F26**：审计标签必须**如实**说清判词来源。
+
+    ★ 形态：产出一个**有盖章、但完全没有口径标记**的源（旧 `run_record.json` 的形状）
+      ⇒ 上一版把它标成 `SELECTION_ONLY`（「只有选材口径」）⇒ **审计字段把来源说错了**
+      （那个源其实是**回执语义**，只是没带标记）。
+    ⇒ 正解：源**自己声明** `SELECTION` ⇒ `SELECTION_ONLY`；**有盖章但无标记** ⇒ `UNMARKED`；
+      什么都没有 ⇒ `NONE`。
+    ★ **判词本身不受影响**（fail-closed 照旧）—— 这一条只管**审计字段别撒谎**。
+    """
+    rec = {"adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                       "status": "OK", "provenance": "HARNESS_MODEL",
+                       "provenance_source": "ADAPTER_IMPLEMENTATION",
+                       "participated": True}}
+    sheet = ex.build_answer_sheet(rec, {})
+    exi = sheet["examinee"]
+    # ★ 有盖章、但**没有任何口径标记** ⇒ 标签必须是 `UNMARKED`，**不是** `SELECTION_ONLY`
+    assert exi.get("participated_scope") == "UNMARKED", exi
+    # ★ 没有盖章 ⇒ `NONE`
+    sheet2 = ex.build_answer_sheet({}, {})
+    assert sheet2["examinee"].get("participated_scope") == "NONE", sheet2["examinee"]

@@ -365,7 +365,14 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
             _part_scope = "RECEIPT"
             break
         # ★ 到这里只有**选材口径** ⇒ **不拿它当回执口径**（fail-closed），继续找回执口径的源
-        _part_scope = "SELECTION_ONLY"
+        #   ★ ★ **标签要如实**（第 10 轮独立复核的 F26）：
+        #     「**源自己声明** `participated_scope == "SELECTION"`」⇒ 记 `SELECTION_ONLY`；
+        #     「**有盖章但压根没有任何口径标记**」（旧 `run_record.json` 的形状）
+        #     ⇒ 记 **`UNMARKED`**（★ 上一版一律记 `SELECTION_ONLY` ⇒ **审计字段把来源说错了**：
+        #       那个源其实是**回执语义**，只是没带标记）。
+        _part_scope = ("SELECTION_ONLY"
+                       if str(_src.get("participated_scope") or "") == "SELECTION"
+                       else "UNMARKED")
     if not _part_scope:
         _part_scope = "NONE"
     if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT", "UNKNOWN_ADAPTER"):

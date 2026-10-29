@@ -518,6 +518,25 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 ★ **M03 判词仍为 `PARTIAL`**（第 6 轮复裁进行中 ⇒ 不预告 PASS）。
 
 
+### ★ 第 10 轮复核：F27（重要·护栏不咬人）／F26（审计标签）· 已修（2026-10-29）
+
+★ 第 10 轮独立复核（head `5feaecd57143…`）判词 **CONDITIONAL**：F24 三小条、F25 闭合，第 6～9 轮的重要项仍闭合、无回归。
+★ 复核方做了 **7 个变异探针**：M3（bridge 的 `run_participated` 换成**选材口径**）⇒ **0 red** ⇒ 抓出本席栽的跟头。
+
+- **F27（重要）**：本席第 9 轮新增的产出侧断言 `run_participated == bool(回执.participated)`
+  **在自己��场景里不具判别力** —— 场景里模型选材**被接受** ⇒ 两个口径取值**相同**
+  ⇒ 把 `run_participated` 换成选材口径也照样全绿，**而真实 CLI 读数会错**（`prebaked` ⇒ `RULE_ONLY`）。
+  ⇒ **已修**：场景换成「**跑出了回执、但建议全被确定性闸拒了**」（新增 `_RejectedSuggestionAdapter`：改候选 `locator`
+  ⇒ 触发 `CANDIDATE_i_LOCATOR_NOT_IN_EVIDENCE`）⇒ 两个口径取值不同 ⇒ **断言立刻有判别力**
+  ⇒ ★ 本席**自己**做了突变测试（M3）确认新断言 **RED** ✔。
+  ⇒ ★★ **本轮最重要的一条纪律**：**断言的「判别力」与断言的「存在」是两件事** ——
+  一个断言若在它自己的场景里区分不开它要区分的两条路径，它就是**「假守」**（零红）⇒
+  **新写护栏断言时，必须先确认「要区分的两个取值在本场景里不同」，并把它写成前置断言**。
+- **F26（条件项）**：`participated_scope` 对「有盖章但无口径标记」的源改记 **`UNMARKED`**（不再谎称 `SELECTION_ONLY`）；
+  判词本身不变（fail-closed 照旧）⇒ 新增 `test_unmarked_source_is_labelled_unmarked_not_selection`。
+- ★ **口径收窄（复核方指出本席措辞过宽）**：**旧桥接 JSON 不误判**（CLI 从回执重新盖章 ⇒ 仍 `HARNESS_MODEL`）；
+  **旧 `run_record.json` 会被判 `RULE_ONLY`（安全侧，§9.9 早已如实披露）**。
+
 ### ★ 第 9 轮复核：只剩 2 条条件项（F24／F25）· 已修（2026-10-29）
 
 ★ 第 9 轮独立复核（head `e304bb6a6253`）判词 **CONDITIONAL**，★ **本轮没有未闭的重要项**、无假凭据、无数据错、无回归失败。
@@ -537,7 +556,7 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 ### ★ 第 8 轮复核：新抓到并已修的三条（F21／F22／F23）＋ F17 口径更正（2026-10-29）
 
 ★ 第 8 轮独立复核（head `1d3916953d4b`）**复验闭合 F14／F15／F16／F18／F20**，并确认 F1–F4、F19 未回归。
-★ **F17** 由本席**在同轮内认领**并已修（负向回归必须写清**作用域 ＋ 测试文件版本**：两文件 46 条 ⇒ 19／11／7／5、累计 19）。
+★ **F17** 由本席**在同轮内认领**并已修（负向回归必须写清**作用域 ＋ 测试文件版本**：两文件 47 条 ⇒ 20／12／8／6、累计 20）。
 ★ **本轮新抓到 3 条**：
 
 - **F21（重要）**：**「选材口径」冒充「回执口径」**。机读产物里有两个 `participated` 味的字段、**含义不同**：
@@ -550,7 +569,7 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
   ④ `degrade_reason` **不再无条件断言**具体成因（不写「这次没跑出回执」这种可能不成立的话），
   改为只陈述**确实知道**的事（拿不到可采信的回执口径参与标记）＋ 成因列为**可能**。
   ⇒ 既有 4 条用例按新契约更新（补口径标记 ＋ 措辞断言）⇒ **口径从隐含约定变成显式契约**。
-- **F22（文档·计数陈旧）**：「12 文件子集 226 passed」⇒ 改为 **232 passed / 0 failed / 0 errors**（三处统一；★ 复核方第 9 轮实测 230 ＝ 同一作用域、测试文件版本少 2 条 ⇒ 互相印证），并把**作用域（哪 12 个文件）**写在数字旁。
+- **F22（文档·计数陈旧）**：「12 文件子集 226 passed」⇒ 改为 **233 passed / 0 failed / 0 errors**（三处统一；★ 复核方第 10 轮实测 232 ＝ 同一作用域、测试文件版本少 1 条 ⇒ 互相印证），并把**作用域（哪 12 个文件）**写在数字旁。
 - **F23（文档·缺口）**：`WINDOWS-HANDOFF.md` 补「**两个 `participated` 字段含义不同**」的口径对照表
   ⇒ 操作员知道该看 `agent_receipt.participated`（回执口径），**别拿 `model_participation.participated` 判断参与**。
 
@@ -575,11 +594,11 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
   ⇒ 常量**上移**到推导式之前（已验证 `import OK`）。
 - **F17（文档·口径）**：负向回归红数**必须带「作用域 ＋ 测试文件版本」**：
   ★ **负向回归口径（★ 作用域 ＋ 文件版本，两个都要写清）**：
-  ★ **作用域 ＝ `test_dd_v1_model_participation.py`（33）＋ `test_dd_v1_wiring_entity_expansion.py`（13）＝ 当前 46 条**
+  ★ **作用域 ＝ `test_dd_v1_model_participation.py`（34）＋ `test_dd_v1_wiring_entity_expansion.py`（13）＝ 当前 47 条**
 （测试文件取自 head，拷到各缺陷前字节跑），`--junitxml` 确数：
-  ★ `a0324a9` ⇒ **19 red**｜`fe939b6` ⇒ **11 red**｜`2d42995` ⇒ **7 red**｜`cf81685`（第 8 轮被复核的 head）⇒ **5 red**；
-  ★ **累计（并集）＝ 19**；包含关系（**机器验过**）：`cf81685` ⊂ `2d42995` ⊂ `fe939b6` ⊂ `a0324a9`。
-  ★ ★ **口径纪律**：复核方第 9 轮实测 **17／9／5／3**（**作用域相同、但测试文件版本少 2 条 F24／F25 用例**）
+  ★ `a0324a9` ⇒ **20 red**｜`fe939b6` ⇒ **12 red**｜`2d42995` ⇒ **8 red**｜`cf81685`（第 8 轮被复核的 head）⇒ **6 red**；
+  ★ **累计（并集）＝ 20**；包含关系（**机器验过**）：`cf81685` ⊂ `2d42995` ⊂ `fe939b6` ⊂ `a0324a9`。
+  ★ ★ **口径纪律**：复核方第 10 轮实测 **19／11／7／5**（**作用域相同、但测试文件版本少 2 条 F26／F27 用例**）
 ⇒ 差值恰为新增条数 ⇒ **同一把尺子、互相印证**（不是「两把尺子」）。
 ⇒ ★ **凡报红数必带「作用域（哪几个文件／多少条）＋ 测试文件版本」** —— 同一个字节、换个文件版本，读数就会变。
   ★ ★ **一条「契约变更导致的红」要单独说清**：`test_failed_harness_run_must_not_claim_model_participation`
@@ -609,7 +628,7 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 | ③ | **Harness 没跑出回执却自称 `HARNESS_MODEL`**（假凭据） | 类别与「真的跑出回执」**拆成两件事**：新增 `participated`（`ad.participated_flag()`）⇒ 没跑出回执 ⇒ `examinee.mode` 记 `RULE_ONLY` |
 | ④ | **`--run-dir` 路径机读产物里出现 Python dict repr** | 非法类别值的 `declared_provenance` 一律记 `UNDECLARED` |
 
-★ 修复后 12 文件子集 **232 passed / 0 failed / 0 errors**（★ 复核方第 9 轮实测 230 ＝ 同一作用域、测试文件版本少 2 条 ⇒ 互相印证）。
+★ 修复后 12 文件子集 **233 passed / 0 failed / 0 errors**（★ 复核方第 10 轮实测 232 ＝ 同一作用域、测试文件版本少 1 条 ⇒ 互相印证）。
 
 
 ### 改动（工具层 / 测试 / 夹具）
