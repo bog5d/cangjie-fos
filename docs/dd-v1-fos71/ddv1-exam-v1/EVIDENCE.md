@@ -283,7 +283,7 @@ blob `af715407fd9c6cd7a5f63296f4bc9127cdbfbe86`，该仓 main tip `d14327c6de89e
 | 扩展步长 | — | `[60, 180]`（从上限之上起步） |
 | 触顶义务的结论变化 | — | 上限=2 那轮 **6/8 条 verdict 变了** |
 | 停因分布 | — | `VERDICT_STABLE` × 8 |
-| 模型参与类别 | 恒 `RULE_ONLY` | 按适配器实现分 6 档（`HARNESS_MODEL` / `HARNESS_MANUAL` / `PREBAKED_RESULT` / `UNKNOWN_ADAPTER` / `MODEL_SELECTION_WITHOUT_RECEIPT` / `RULE_ONLY`） |
+| 模型参与类别 | 恒 `RULE_ONLY` | 分 6 档（`HARNESS_MODEL` / `HARNESS_MANUAL` / `PREBAKED_RESULT` / `UNKNOWN_ADAPTER` / `MODEL_SELECTION_WITHOUT_RECEIPT` / `RULE_ONLY`）｜★ 第 5 轮复核后**按适配器实现类判定**（不再只看自填 `adapter_id`）⇒ `PREBAKED_RESULT` 也**真正可达**了 |
 
 ### 8.3 修复前后对比（同一合成考场）：**分数没变**，如实记
 
@@ -294,12 +294,27 @@ blob `af715407fd9c6cd7a5f63296f4bc9127cdbfbe86`，该仓 main tip `d14327c6de89e
 | 标准考场 | a4 / 20 | 64.5 | **64.5** |
 
 ★ **为什么分数不变（不是 excuses，是考场的性质）**：
-合成考场的「选了什么」来自**夹具里预置的答卷件**（不从检索结果生成），
-「交付了什么」由**披露策略**决定（合成考场未配策略 ⇒ 按最严 ⇒ 不可交付）
+合成考场的答卷来自 `answer --bridge-json <尽调结果-*.json>` ⇒ 选中**就是本次 run 窗口内的可交付候选**
+（★ 更正：**不是**来自夹具预置的 `replies/` —— 脚本根本没读 `replies/`）；
+但**扩出来的候选进不了「选中」集合**（过不了可交付闸 / 内容冲突闸），
+「交付了什么」又由**披露策略**决定（合成考场未配策略 ⇒ 按最严 ⇒ 不可交付）
 ⇒ ⇒ **分数在结构上就对「候选窗口」不敏感**。
 ⇒ ⇒ a5 上多出的 24 份硬负样本与正解件**同主体/同期间/同类型** ⇒ 触发**内容冲突闸**
 ⇒ ⇒ 扩窗口**解决不了冲突**（冲突要人工裁定）。
 ⇒ ⇒ **本轮不主张「分数提高」**，主张「**覆盖到的候选从 20 份变成 32 份，且不再静默漏检**」。
+
+★ ★ **同时必须说清的另一半（否则就是不完整）**：**扩窗确实会改「判定」，只是没改「分数」。**
+自己复跑（同夹具、同脚本、只有代码不同）：
+
+| 库级判定分布 `summary.by_verdict` | before（`2a4ea18`） | after（当前 head） |
+|---|---|---|
+| a4 · cap=2 | **`RESTRICTED` × 8** | **`CONFLICT` × 6 ＋ `RESTRICTED` × 2**（6/8 条 verdict 变了） |
+| a5 · cap=2 | `CONFLICT` × 6 ＋ `RESTRICTED` × 2 | 同左（0 条变化） |
+| a5 · cap=20 | `CONFLICT` × 6 ＋ `RESTRICTED` × 2 | 同左（0 条变化） |
+
+⇒ 「本轮只改覆盖率、没改判定」**不准确**（已更正）；准确说法是：
+**扩窗改判定**（看得更全 ⇒ 内容冲突闸能开火）**不改分数**（冲突件选不中也交不出去）。
+★ before 侧机读产物**已补存**：`/workspace/work/ab/{before,after}_cli*/`、`/workspace/work/ab/a4_{before,after}_cli_cap2/`。
 
 ★ 完整报告：`/workspace/work/ab/AB-成绩对比.md`（仓内副本：`docs/dd-v1-fos71/ddv1-exam-v1/AB-成绩对比.md`）。
 
