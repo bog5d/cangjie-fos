@@ -259,6 +259,70 @@ blob `af715407fd9c6cd7a5f63296f4bc9127cdbfbe86`，该仓 main tip `d14327c6de89e
 
 ---
 
+## 8. 第 5 轮（2026-10-29 接线轮）：三个模块「从零调用方 → 真实组包链上的调用方」
+
+> 上一轮 Reviewer 判 M03=PARTIAL 的根因是**生产链路零调用方**（模块写好了、也测过了，
+> 但真实组包里根本没走它们）⇒ 本轮逐条接线，并把「接线证据」落到**机读读数**上。
+
+### 8.1 本轮改了什么（不动判定逻辑）
+
+| 模块 | 上一版 | 本版 |
+|---|---|---|
+| 多源主体识别 | `dd_v1_entity_resolution_service` 完整实现，**生产零调用方** | 接进 `dd_v1_match_service.evaluate_file`：主口径判「认不出（SUBJECT_UNREGISTERED）」时**补位**；主口径已判命中/他法人的**一律不动**；留痕 `subject_matched_by` / `subject_multi_source` 落 `dd_v1_matches.evidence` |
+| 候选分批扩展 | `dd_v1_candidate_expansion_service` 完整实现，**生产零调用方** | 接进 `dd_v1_match_service.match_library`：触顶义务自动分批放大窗口（步长从 cap **之上**起步 ⇒ 不重复第一窗）；扩展后的结论**替换**原结论、库级判定分布按新结论重算 |
+| 模型参与 | 回执格式有，答卷**不带**模型选材 | `dd_v1_agent_adapters` + `dd_v1_bridge_service` + `dd_v1_exam_service`：适配器实现决定参与类别；模型选材进机器答卷（`selection_source=MODEL`） |
+
+### 8.2 机读读数（我在本地实跑，同一份合成夹具）
+
+| 读数 | 修复前 `2a4ea18` | 修复后 `fd9bb21` |
+|---|---|---|
+| 机读结果顶层有 `candidate_expansion` | **无此字段**（模块零调用方） | **有** |
+| 触顶义务数 | 无此读数 | 8（a5 夹具，池 32 份 > 上限 20） |
+| 实际检查候选 | 20/义务（触顶即止） | **32/义务（池已穷尽）** |
+| 「还剩多少没看」 | **无此读数 ⇒ 静默漏检** | 0（**且确为 0**：池已穷尽） |
+| 扩展步长 | — | `[60, 180]`（从上限之上起步） |
+| 触顶义务的结论变化 | — | 上限=2 那轮 **6/8 条 verdict 变了** |
+| 停因分布 | — | `VERDICT_STABLE` × 8 |
+| 模型参与类别 | 恒 `RULE_ONLY` | 按适配器实现分 6 档（`HARNESS_MODEL` / `HARNESS_MANUAL` / `PREBAKED_RESULT` / `UNKNOWN_ADAPTER` / `MODEL_SELECTION_WITHOUT_RECEIPT` / `RULE_ONLY`） |
+
+### 8.3 修复前后对比（同一合成考场）：**分数没变**，如实记
+
+| 对照 | 夹具/上限 | before | after |
+|---|---|---|---|
+| 触顶扩容 | a5（池 32 份）/ 20 | 51.86 | **51.86** |
+| 窗口太窄 | a4 / 2 | 64.5 | **64.5** |
+| 标准考场 | a4 / 20 | 64.5 | **64.5** |
+
+★ **为什么分数不变（不是 excuses，是考场的性质）**：
+合成考场的「选了什么」来自**夹具里预置的答卷件**（不从检索结果生成），
+「交付了什么」由**披露策略**决定（合成考场未配策略 ⇒ 按最严 ⇒ 不可交付）
+⇒ ⇒ **分数在结构上就对「候选窗口」不敏感**。
+⇒ ⇒ a5 上多出的 24 份硬负样本与正解件**同主体/同期间/同类型** ⇒ 触发**内容冲突闸**
+⇒ ⇒ 扩窗口**解决不了冲突**（冲突要人工裁定）。
+⇒ ⇒ **本轮不主张「分数提高」**，主张「**覆盖到的候选从 20 份变成 32 份，且不再静默漏检**」。
+
+★ 完整报告：`/workspace/work/ab/AB-成绩对比.md`（仓内副本：`docs/dd-v1-fos71/ddv1-exam-v1/AB-成绩对比.md`）。
+
+### 8.4 本轮自检抓到的**自己引入的**缺陷（已修）
+
+★ `dd_v1_bridge_service.bridge_library`：`agent_receipt` / `model_sel` 的初始化写在 `else:` 分支**内部**，
+而返回体无条件读它们 ⇒ ⇒ **空材料库/空义务**时 `UnboundLocalError` ⇒ 崩。
+⇒ **既有**测试 `tests/test_dd_v1_bridge.py::test_bridge_on_empty_library_does_not_raise` 当场抓住
+（全量回归 2003 条 / 2 failures ⇒ 除基线那条 doctor 外多这一条）。
+⇒ 已修（初始化提到分支之外）⇒ 复跑子集 **74 tests / 0 failures / 0 errors**。
+
+★ **教训（跨项目可复用）**：**接线类改动必须跑全量**，不能只跑自己新写的测试
+—— 接线改的全是**既有链路**（bridge/答卷/阅卷），只跑新测试会漏掉这类崩溃。
+
+### 8.5 新增回归（本轮）
+
+| 文件 | 条数 | 覆盖 |
+|---|---|---|
+| `backend/tests/test_dd_v1_wiring_entity_expansion.py` | 10 | 多源补位的正例（文件名/正文命中）、反例（认不出仍认不出）、**判别力**（关掉接线 ⇒ 正例必须回到认不出）、扩展找到窗口外那份、读数到最外层容器、未看数如实报、可关闭 |
+| `backend/tests/test_dd_v1_model_participation.py` | 26 | 参与身份只认适配器实现、预置回执不算 Harness、R4 排除项硬校验（4 条）、排除式读数 PASS/WEAK、答卷层 MODEL vs RULE_ONLY、「有模型选材但没回执」必须被标出、端到端（桥接 → 答卷） |
+
+---
+
 ## 7. 可复跑入口
 
 ```bash

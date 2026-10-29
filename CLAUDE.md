@@ -482,6 +482,35 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 
 ---
 
+## DD-V1 第 5 轮（2026-10-29 接线轮）改动文件清单（接手必读）
+
+> 交办单：`cangjie-fos#85` ＋ `cangjie-teams-channel#108`。
+> 分支 `feat/71-ddv1-exam-v1-20261028`；本轮字节 `fd9bb2174337ee39124aaf8f391de62f2df03449`（＋ 缺陷修复 `b011b2e…`）。
+> ★ 上一版的三个模块（entity_resolution / candidate_expansion / agent 选材）**生产链路零调用方** ⇒ 本轮**接进真实组包链**。
+> ★ 本轮**没有改动任何既有测试断言**；★ **也没有**改考试/阅卷/评分/预检的判定逻辑（只做接线与口径分离）。
+
+### 改动（服务层）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `backend/src/cangjie_fos/services/dd_v1_match_service.py` | ① `resolve_subject_multi_source()`：**多源主体识别接入真实组包链**（只在主口径判 `SUBJECT_UNREGISTERED` 时**补位**；主口径已判命中/他法人的**一律不动**；认不出仍认不出）＋ 形状翻译（manifest 的 `rel_path`/`file_name`/`content_hash` → 模块的 `relative_path`/`sha256`，不翻译则「文件名命中」「人工确认映射」两档永不触发）＋ 留痕 `subject_matched_by`/`subject_multi_source` 落 `dd_v1_matches.evidence`；② `_expand_capped_obligations()`：**候选分批扩展接入实际检索流程**（步长从 cap 之上起步 ⇒ 不重复第一窗；扩展后的结论**替换**原结论、库级判定分布按新结论重算；读数落库级 `candidate_expansion`） |
+| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | ① `adapter_provenance()` ＋ `KNOWN_HARNESS_ADAPTERS`：**参与身份只认适配器实现**（不采信自填字段）；② `_discrimination_readings()`：排除式选择凭据（PASS/WEAK；★ **只证明「不是照抄第一个候选」，不证明出自模型**）；③ 桥接产出 `agent_receipt` / `model_participation` / 每义务 `model_selection`；④ ★ 修**本轮自己引入**的缺陷：`agent_receipt`/`model_sel` 初始化写在 `else` 分支内 ⇒ 空库时 `UnboundLocalError`（既有测试当场抓住） |
+| `backend/src/cangjie_fos/services/dd_v1_agent_adapters.py` | 新增 `PrebakedResultAdapter`（贴进来的回执 ⇒ 类别恒 `PREBAKED_RESULT`，**不是** Harness 运行）＋ `build_adapter()` |
+| `backend/src/cangjie_fos/services/dd_v1_agent_result_service.py` | `rejected_alternatives`（排除式选择凭据）**硬校验**：排除项须在快照内、**不得**是自己选中的那件、理由非空（`REJECTED_ALT_*`） |
+| `backend/src/cangjie_fos/services/dd_v1_agent_result.v1.schema.json` | 新增可选字段 `rejected_alternatives`（file_id + reason） |
+| `backend/src/cangjie_fos/services/dd_v1_entity_resolution_service.py` | 人工确认映射**认 `file_id`**；BODY_TEXT 档补 `entity_id` |
+| `backend/src/cangjie_fos/services/dd_v1_exam_service.py` | `examinee.mode` 改为**按参与类别**（6 档）＋ `model_selection_obligations`/`rule_selection_obligations`；模型选材进机器答卷（`selection_source=MODEL`） |
+
+### 改动（工具层 / 测试 / 夹具）
+
+| 文件 | 改了什么 |
+|------|---------|
+| `tools/dd_team_channel.py` | 新增 4 个开关：`--agent`（`codex`/`pi`/`dsh`/`manual`/`prebaked`）、`--agent-result`、`--confirmed-entity-map`、`--no-expand-candidates`；读数外显到终端、人看报告独立小节、**机读 JSON 顶层** |
+| `backend/tests/test_dd_v1_wiring_entity_expansion.py` | **新增 10 条**：多源补位正例（文件名/正文命中）、反例（认不出仍认不出）、**判别力**（关掉接线 ⇒ 正例必须回到认不出）、扩展找到窗口外那份、读数到最外层容器、未看数如实报、可关闭 |
+| `backend/tests/test_dd_v1_model_participation.py` | **新增 26 条**：参与身份只认适配器实现、预置回执不算 Harness、R4 排除项硬校验、排除式读数 PASS/WEAK、答卷层 MODEL vs RULE_ONLY、「有模型选材但没回执」必须被标出、端到端 |
+| `backend/tests/fixtures/dd-v1-fos71-a5/` | **新增合成夹具**：a4 ＋ 24 份硬负样本（候选池 32 份 > 上限 20）；★ `gold.json`/`raw_items.json`/`replies/` 与 a4 **逐位相同**（只加材料、不动标准答案） |
+| `docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py` | 新增三个环境变量：`DDV1_SIM_FIXTURE` / `DDV1_SIM_OUT` / `DDV1_SIM_CAP`（**不改默认行为**）⇒ 修复前/后两侧用**同一份**夹具跑同一脚本 |
+
 ## DD-V1 考场 V1 改动文件清单（接手必读，2026-10-28/29）
 
 > 交办单：`cangjie-fos#85`（永久验收红线）＋ `cangjie-teams-channel#108`（正式交办）。
