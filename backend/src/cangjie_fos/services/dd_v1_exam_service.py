@@ -324,7 +324,8 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
     #   ⇒ 二进制不在 PATH（exit 127）／人工还没贴回执（PENDING_MANUAL）／贴进来的文件不存在
     #   ⇒ **都没跑出回执** ⇒ 此时自称 `HARNESS_MODEL` 就是**假凭据**
     #   ⇒ 正解：**类别 ＋ participated** 两个条件都满足，才算「这次有模型参与」。
-    _participated = True
+    # ★ **没有盖章 ⇒ participated 默认 False**（安全侧：认不出就当没有参与）
+    _participated = False
     for _src in (pkt.get("model_participation"), rec.get("model_participation"),
                  adapter if isinstance(adapter, dict) else None):
         if isinstance(_src, dict) and str(_src.get("provenance_source") or "") == "ADAPTER_IMPLEMENTATION":
