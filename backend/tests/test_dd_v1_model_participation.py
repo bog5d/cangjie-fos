@@ -588,8 +588,13 @@ def test_failed_harness_run_must_not_claim_model_participation():
     # ★ 第 8 轮独立复核的 **F21**：措辞**不再无条件断言**「这次没跑出回执」
     #   （那句话在「只是拿不到回执口径的参与标记」的场合是**假的**）⇒ 改为只陈述我们确实知道的事。
     _dr = str(exi.get("degrade_reason") or "")
-    assert "拿不到可采信的回执口径参与标记" in _dr, exi
-    assert "没跑出回执" not in _dr, exi
+    # ★ 第 9 轮独立复核的 **F25**：**已知成因**（回执口径的标记存在且为假）⇒ 应当**直说**，
+    #   **不得**再用「拿不到标记／可能是…」那种「我们不知道」的口吻（否则把已知说成未知）。
+    assert "回执口径的参与标记为假" in _dr, exi
+    assert "拿不到可采信的回执口径参与标记" not in _dr, exi
+    assert "可能是：" not in _dr, exi
+    # ★ 参与判词的来源口径**必须外显**（第 9 轮的审计缺口）⇒ 读者能看出判词从哪来
+    assert exi.get("participated_scope") == "RECEIPT", exi
 
 
 def test_declared_provenance_is_not_a_python_repr():
@@ -642,12 +647,18 @@ def test_cli_bridge_json_path_keeps_real_participation(tmp_path):
                               "provenance": "HARNESS_MODEL",
                               "provenance_source": "ADAPTER_IMPLEMENTATION",
                               "participated": True,
+                              "participated_scope": "RECEIPT",
                               "declared_provenance": "HARNESS_MODEL",
                               "implementation_verified": True,
                               "accepted_results": 0},
+            # ★ ★ **新契约形状**（第 9 轮独立复核的 F24①）：bridge 现在会写**口径标记** ⇒
+            #   这条端到端用例必须用**新形状**，否则它证明的是「旧形状 ＋ 兼容逃逸」，
+            #   **不再证明新契约端到端成立**。
             "model_participation": {"participated": False, "provenance": "HARNESS_MODEL",
                                     "provenance_source": "ADAPTER_IMPLEMENTATION",
+                                    "participated_scope": "SELECTION",
                                     "run_participated": True,
+                                    "run_participated_scope": "RECEIPT",
                                     "declared_provenance": "HARNESS_MODEL"},
             "obligations": [],
         },
@@ -672,6 +683,24 @@ def test_cli_bridge_json_path_keeps_real_participation(tmp_path):
     assert exi["participated"] is True, exi
     # ★ **不得**写那句不实的话
     assert "没跑出回执" not in str(exi.get("degrade_reason") or ""), exi
+    # ★ ★ **旧形状兼容**（第 9 轮 F24①）：旧桥接 JSON **没有**口径标记 ⇒
+    #   盖章块会被跳过（fail-closed）⇒ 但 CLI **从回执重新盖章**（`participated_scope: RECEIPT`）
+    #   ⇒ 仍应判 `HARNESS_MODEL`（**不是**退回 RULE_ONLY）。
+    _bridge_old = json.loads(json.dumps(bridge))
+    _bridge_old["semantic_bridge"]["model_participation"] = {
+        "participated": False, "provenance": "HARNESS_MODEL",
+        "run_participated": True}
+    _bj2 = tmp_path / "尽调结果-f14-旧形状.json"
+    _bj2.write_text(json.dumps(_bridge_old, ensure_ascii=False), encoding="utf-8")
+    _out2 = tmp_path / "f14out-old"
+    assert cli.cmd_answer(argparse.Namespace(
+        run_dir="", bridge_json=str(_bj2), delivered="", exam_id="F14OLD",
+        out=str(_out2))) == 0
+    _sheets2 = sorted(_out2.glob("机器答卷-*.json"))
+    assert _sheets2, "CLI 应当产出机器答卷"
+    exi2 = json.loads(_sheets2[-1].read_text("utf-8"))["examinee"]
+    assert exi2["mode"] == "HARNESS_MODEL", exi2
+    assert exi2["participated"] is True, exi2
 
 
 def test_answer_sheet_falls_back_to_stamped_declared_provenance(tmp_path):
@@ -744,12 +773,68 @@ def test_degrade_reason_does_not_assert_unproven_causes():
     ⇒ 在「只是拿不到回执口径的参与标记」的场合，**那句是假的**（回执可能明明跑过）。
     ⇒ 正解：只陈述**确实知道**的事（拿不到可采信的回执口径参与标记），成因列为**可能**。
     """
+    # ★ 场景：**压根没有回执口径的标记**（只有选材口径）⇒ 我们**不知道**原因
+    #   ⇒ 只能陈述「拿不到可采信的标记」，**不得**断言「这次没跑出回执」。
+    rec = {"adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                       "status": "OK", "provenance": "HARNESS_MODEL",
+                       "provenance_source": "ADAPTER_IMPLEMENTATION",
+                       "participated": False, "participated_scope": "SELECTION"}}
+    sheet = ex.build_answer_sheet(rec, _pkt())
+    exi = sheet["examinee"]
+    dr = str(exi.get("degrade_reason") or "")
+    assert dr, "participated=false 时应当给出理由"
+    assert "没跑出回执" not in dr, dr
+    assert "拿不到可采信的回执口径参与标记" in dr, dr
+    assert "可能是：" in dr, dr
+    # ★ fail-closed ⇒ 来源口径如实记 `SELECTION_ONLY`
+    assert exi.get("participated_scope") == "SELECTION_ONLY", exi
+
+
+def test_bridge_emits_participation_scope_contract():
+    """★ 第 9 轮独立复核的 **F24②**：bridge 产出的**契约字段**必须被测试保护。
+
+    ★ Reviewer 的突变测试（MUTANT-B）发现：`run_participated` / `run_participated_scope`
+      **零测试保护** ⇒ 把它们删掉，全套 60 条仍然全绿 ⇒ **不变式只靠一个产出点撑着**。
+    ⇒ 正解：契约字段（`participated_scope` / `run_participated_scope` ＋ `run_participated`）
+      必须有**测试直接断言**产出侧真的写了、且**与回执一致**。
+    """
+    lib = _build_library(tmp_path := __import__("pathlib").Path(
+        __import__("tempfile").mkdtemp()), WP04_SNAPSHOT, "F24库",
+        ["子公司甲：提供2024年度审计报告"])
+    out = br.bridge_library(lib, material_root=WP04_SNAPSHOT,
+                            db_path=_db(tmp_path), adapter=_StandInAdapter())
+    mp = out.get("model_participation") or {}
+    rc = out.get("agent_receipt") or {}
+    # ★ 契约字段必须存在
+    assert mp.get("participated_scope") == "SELECTION", mp
+    assert mp.get("run_participated_scope") == "RECEIPT", mp
+    assert "run_participated" in mp, mp
+    # ★ 回执那侧也必须标口径
+    assert rc.get("participated_scope") == "RECEIPT", rc
+    # ★ `run_participated` 必须与**回执口径**一致（不是选材口径）
+    assert mp.get("run_participated") == bool(rc.get("participated")), (mp, rc)
+
+
+def test_unmarked_participated_key_is_not_trusted():
+    """★ 第 9 轮独立复核的 **F24③**：**没有口径标记**的键**不得**被采信。
+
+    ★ 上一版留了一条兼容逃逸：「有 `run_participated` 这个键就算数」
+      ⇒ 文档写「以 `participated_scope` 为准」而代码却多信一条路 ⇒ **文档说不等于代码做**。
+    ⇒ 正解：**只认带口径标记的源**（`participated_scope == RECEIPT` ／ `run_participated_scope == RECEIPT`），
+      其余一律 **fail-closed**。
+
+    ★ 缺陷前字节（本轮修掉逃逸之前）上这条**是红的**（裸键被采信 ⇒ participated 变 True）。
+    """
     rec = {"adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
                        "status": "OK", "provenance": "HARNESS_MODEL",
                        "provenance_source": "ADAPTER_IMPLEMENTATION",
                        "participated": False, "participated_scope": "RECEIPT"}}
-    sheet = ex.build_answer_sheet(rec, _pkt())
-    dr = str(sheet["examinee"].get("degrade_reason") or "")
-    assert dr, "participated=false 时应当给出理由"
-    assert "没跑出回执" not in dr, dr
-    assert "拿不到可采信的回执口径参与标记" in dr, dr
+    pkt = {"model_participation": {"participated": False, "provenance": "HARNESS_MODEL",
+                                   "provenance_source": "ADAPTER_IMPLEMENTATION",
+                                   # ★ **裸键**：有 `run_participated`，但**没有**口径标记
+                                   "run_participated": True}}
+    sheet = ex.build_answer_sheet(rec, pkt)
+    exi = sheet["examinee"]
+    # ★ 裸键**不得**被采信 ⇒ 采信的是回执口径的 False ⇒ participated=False
+    assert exi["participated"] is False, exi
+    assert exi.get("participated_scope") == "RECEIPT", exi

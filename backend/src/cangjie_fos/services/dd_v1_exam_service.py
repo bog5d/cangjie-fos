@@ -357,7 +357,10 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
             _participated = bool(_src.get("participated"))
             _part_scope = "RECEIPT"
             break
-        if str(_src.get("run_participated_scope") or "") == "RECEIPT" or "run_participated" in _src:
+        # ★ ★ **只认带口径标记的**（第 9 轮独立复核的 F24③：规则必须与代码**逐字一致**）
+        #   ⇒ **不**保留「有 `run_participated` 这个键就算数」的兼容逃逸：
+        #     那样文档写「以 `participated_scope` 为准」而代码却多信一条路 ⇒ **文档说不等于代码做**。
+        if str(_src.get("run_participated_scope") or "") == "RECEIPT":
             _participated = bool(_src.get("run_participated"))
             _part_scope = "RECEIPT"
             break
@@ -374,12 +377,18 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
     else:
         _examinee_mode = "UNKNOWN"
     if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT") and not _participated:
-        # ★ **不无条件断言具体成因**（第 8 轮独立复核的 F21）：
-        #   上一版直接写「这次没跑出回执」⇒ 在「**只是拿不到回执口径的参与标记**」的场合，
-        #   那句话**是假的**（回执可能明明跑过）⇒ 改为**只陈述我们确实知道的事**，成因列为**可能**。
-        _why = ("**拿不到可采信的回执口径参与标记**"
-                "（可能是：二进制不在 PATH／回执未贴／贴进来的文件不存在／"
-                "回执里没有可核的参与标记）")
+        # ★ ★ **两种情形、两种措辞**（第 8 轮 F21 ＋ **第 9 轮 F25**）：
+        #   ① **回执口径的标记存在、且明确为假** ⇒ 我们**确实知道**「回执说这次没跑出回执」
+        #      ⇒ 直说即可（这是最常见的场景：适配器 exit 127／CALL_FAILED）。
+        #   ② **压根没有回执口径的标记**（只有选材口径／什么都没有）⇒ 我们**不知道**原因
+        #      ⇒ 只陈述「拿不到可采信的标记」，成因列为**可能**（★ 上一版把①也说成② ⇒ **不准确**）。
+        if _part_scope == "RECEIPT":
+            _why = ("**回执口径的参与标记为假**"
+                    "（回执明确说：这次没跑出回执）")
+        else:
+            _why = ("**拿不到可采信的回执口径参与标记**"
+                    "（可能是：二进制不在 PATH／回执未贴／贴进来的文件不存在／"
+                    "回执里没有可核的参与标记）")
         _degrade = (f"★ 适配器实现是 {_prov} 这一类，但本次{_why}"
                     "⇒ 本次**没有可采信的模型参与** ⇒ 参与类别按 RULE_ONLY 记，不自称模型凭据"
                     "（★ 回执本身若在别处留存，请以回执为准）")
@@ -403,6 +412,10 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
             "provenance_source": str(_prov_source),
             # ★ **这次真的跑出回执了吗**（类别 ≠ 参与；第 6 轮复核 F1）
             "participated": bool(_participated),
+            # ★ ★ **参与判词的来源口径**（第 9 轮独立复核的审计缺口）：
+            #   `RECEIPT` ＝ 采信了带口径标记的回执；`SELECTION_ONLY` ＝ 只有选材口径（fail-closed）；
+            #   `NONE` ＝ 什么都没采信到 ⇒ **读者能看出「这个判词是从哪来的」**。
+            "participated_scope": str(_part_scope),
             # ★ 适配器**自填**的参与类别：只留痕（可查），**不作数**（可伪造）
             #   ★ 不是合法类别值的一律记 `UNDECLARED`
             #     （★ 否则 `adapter.provenance` 是个 dict 时 ⇒ 机读产物里会出现

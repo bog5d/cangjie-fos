@@ -65,7 +65,7 @@
   },
   "state": {
     "status": "IN_PROGRESS",
-    "next_action": "第 5 轮接线已完成；独立 Reviewer 第 5/6/7 轮均裁定 CONDITIONAL ⇒ 已逐条修完全部缺陷并补负向回归。第 7 轮（head 17859a0）复验闭合 F1–F4、F19（复核方自跑子集 885 passed / 1 failed，唯一红＝沙箱 doctor 环境项），仍开唯一重要项 F14（--bridge-json 路径上真跑了的参与被记成 RULE_ONLY ＋ 理由不实）已修（bridge 块补盖章 ＋ CLI 补 participated）；F15（AB 锚点标本地历史 sha）／F16（UNKNOWN_ADAPTER 上移，避免 import 期 NameError）／F17（红数口径改本席实测并**写清作用域与文件版本**（两文件、44 条）：a0324a9⇒17／fe939b6⇒9／2d42995⇒5／cf81685⇒3，累计 17；与复核方的 15／7／2 互相印证）／F18（回落盖章块 declared_provenance）均已修。第 8 轮复裁裁定 CONDITIONAL（文档级：F17/F22/F23 ＋ 条件项 F21）⇒ 已逐条修完（F21 口径显式化＋fail-closed＋措辞不再断言成因；F22 三处计数带作用域；F23 交接清单补口径对照）⇒ 第 9 轮复裁进行中 ⇒ 复裁 PASS 后再改判 M03=PASS 15/15、G3=PASS、重算 SHA256SUMS、重建交接包、更新 PR #86（不合并 master）"
+    "next_action": "第 5 轮接线已完成；独立 Reviewer 第 5/6/7 轮均裁定 CONDITIONAL ⇒ 已逐条修完全部缺陷并补负向回归。第 7 轮（head 17859a0）复验闭合 F1–F4、F19（复核方自跑子集 885 passed / 1 failed，唯一红＝沙箱 doctor 环境项），仍开唯一重要项 F14（--bridge-json 路径上真跑了的参与被记成 RULE_ONLY ＋ 理由不实）已修（bridge 块补盖章 ＋ CLI 补 participated）；F15（AB 锚点标本地历史 sha）／F16（UNKNOWN_ADAPTER 上移，避免 import 期 NameError）／F17（红数口径改本席实测并**写清作用域与文件版本**（两文件、46 条）：a0324a9⇒19／fe939b6⇒11／2d42995⇒7／cf81685⇒5，累计 19；与复核方的 17／9／5／3 互相印证）／F18（回落盖章块 declared_provenance）均已修。第 9 轮复裁裁定 CONDITIONAL（★ 本轮没有未闭的重要项、无假凭据、无数据错、无回归失败；只剩 F24 测试护栏＋文档与代码一致／F25 一句措辞 两条条件项）⇒ 已逐条修完（F24：F14 用例换新契约形状＋补旧形状兼容用例／补 bridge 产出侧断言／删掉兼容逃逸使规则与代码逐字一致；F25：participated_scope 外露＋degrade_reason 分两种情形）⇒ 第 10 轮复裁进行中 ⇒ 复裁 PASS 后再改判 M03=PASS 15/15、G3=PASS、重算 SHA256SUMS、重建交接包、更新 PR #86（不合并 master）"
   },
   "evidence": [
     {
@@ -139,14 +139,14 @@
       "collected_at": "2026-10-29T00:10:00+08:00",
       "claim": "第 5 轮复核抓到 3 条重要缺陷（①候选扩展路径丢掉人工确认映射 ②参与身份只按自填 adapter_id 判定 ③PREBAKED_RESULT 不可达）＋1 条条件项（大写 file_id 查表键静默不命中）＋1 条文档计数错误⇒ 已逐条修复并补负向回归：把新测试拷到缺陷前字节 a0324a9 上跑 ⇒ 8 failed / 27 passed（这 8 条确实打到点上，不是空转摆设）",
       "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9",
-      "reviewer_note": "★ 第 7 轮复裁已回（CONDITIONAL：F1–F4、F19 复验闭合，唯一重要项 F14 ＋ 四条文档/实现项）⇒ 已逐条修复并补负向回归（★ 口径以「两文件 44 条」为准：a0324a9⇒17／fe939b6⇒9／2d42995⇒5／cf81685⇒3／累计 17）⇒ 第 8 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
+      "reviewer_note": "★ 第 7 轮复裁已回（CONDITIONAL：F1–F4、F19 复验闭合，唯一重要项 F14 ＋ 四条文档/实现项）⇒ 已逐条修复并补负向回归（★ 口径以「两文件 46 条」为准：a0324a9⇒19／fe939b6⇒11／2d42995⇒7／cf81685⇒5／累计 19）⇒ 第 8 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
     },
     {
       "subject_id": "ddv1-full-regression-after-round5-fix",
       "source": "backend/tests/ 全量（pytest --junitxml=/workspace/work/junit_final4.xml）",
       "event_at": "2026-10-29T00:10:00+08:00",
       "collected_at": "2026-10-29T00:10:00+08:00",
-      "claim": "修复后全量回归（**第 8 轮修复后的最终字节**）：2017 tests / 2016 passed / 1 failed / 0 errors / 0 skipped；唯一失败仍是 tests/test_doctor_script.py::test_doctor_script_exits_zero（沙箱环境项，CI 显式 ignore）⇒ 相对上一版 2008 条 +9（第 6 轮 5 条 ＋ 第 7 轮 2 条 ＋ 本轮 F21 2 条）⇒ 零新增失败｜★ CI 等价口径（再 ignore doctor）＝ 2015/2015/0/0，与复核方第 8 轮的 2013/2013/0/0 差 2 ⇒ 互相印证",
+      "claim": "修复后全量回归（**第 9 轮修复后的最终字节**）：2019 tests / 2018 passed / 1 failed / 0 errors / 0 skipped；唯一失败仍是 tests/test_doctor_script.py::test_doctor_script_exits_zero（沙箱环境项，CI 显式 ignore）⇒ 相对上一版 2008 条 +11（第 6 轮 5 条 ＋ 第 7 轮 2 条 ＋ 第 8 轮 F21 2 条 ＋ 第 9 轮 F24／F25 2 条）⇒ 零新增失败｜★ 复核方第 9 轮本席口径实测 2017/2016/1/0 ⇒ 逐位一致（差 2 ＝ 本轮新增 2 条）",
       "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9.6"
     }
   ],

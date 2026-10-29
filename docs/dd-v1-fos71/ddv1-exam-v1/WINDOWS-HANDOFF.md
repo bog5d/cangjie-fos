@@ -301,7 +301,10 @@ python tools\dd_team_channel.py run `
 #    | `semantic_bridge.model_participation.run_participated`（尽调结果 JSON） | `RECEIPT` | 同 `agent_receipt.participated` |
 #    | `model_participation.participated`（`run_record.json`，run_semantic 的盖章） | `RECEIPT` | **回执口径**（盖章那一侧） |
 #
-#    ★ ★ **以 `participated_scope` 字段为准**：`RECEIPT` 才是回执口径，`SELECTION` 是选材口径。
+#    ★ ★ **规则（与代码逐字一致）**：**只认带口径标记的源** ——
+#      `participated_scope == "RECEIPT"` 或 `run_participated_scope == "RECEIPT"` 才算数；
+#      **没有口径标记的键一律不采信**（fail-closed）。
+#      ⇒ `RECEIPT` 才是回执口径，`SELECTION` 是选材口径。
 #    ⇒ **答卷层只采信标了 `RECEIPT` 的那个**；只有选材口径 ⇒ **fail-closed**（当作没有参与）。
 #    ⇒ ★ **别拿尽调结果 JSON 里的 `model_participation.participated` 判断「模型有没有参与」** —— 那是选材口径
 #      （它为 False 时其实模型跑过、只是选材被确定性闸拒了）。
