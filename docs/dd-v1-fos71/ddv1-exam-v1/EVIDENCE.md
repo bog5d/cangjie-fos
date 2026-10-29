@@ -492,3 +492,26 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
 `test_failed_harness_run_must_not_claim_model_participation`（F1）、`test_declared_provenance_is_not_a_python_repr`（F4）
 ＋ 前一轮的 3 条（盖章 / 误命中）＝ **累计 7 条负向回归**。
 ★ 修复后 12 文件子集 **226 passed / 0 failed / 0 errors**（`--junitxml` 确数）。
+
+### 9.9 `--run-dir` 路径的**实跑**三例（复核方点名要验的那条）
+
+★ 第 6 轮复核问：「人工贴回执（`HARNESS_MANUAL`）的路径还能不能正确落到 `HARNESS_MANUAL`？」
+⇒ 我用真实 CLI（`tools/dd_team_channel.py answer --run-dir <目录>`）实跑三例：
+
+| 情形 | `examinee.mode` | `provenance` | `provenance_source` | `participated` | `declared_provenance` |
+|---|---|---|---|---|---|
+| 盖章 ＋ **跑出回执**（人工贴回执） | **`HARNESS_MANUAL`** ✔ | `HARNESS_MANUAL` | `ADAPTER_IMPLEMENTATION` | `true` | `UNDECLARED`（dict **不进产物**） |
+| **无盖章**（旧 run_record） | `RULE_ONLY`／`UNKNOWN`（按有无义务行） | 空 | 空 | **`false`**（安全侧） | `HARNESS_MODEL`（**留痕、不作数**） |
+| 盖章 ＋ **跑失败**（exit 127） | **`RULE_ONLY`** ✔（不自称模型参与） | `HARNESS_MODEL`（**身份那一档仍留痕**） | `ADAPTER_IMPLEMENTATION` | `false` | 空 |
+
+★ 复现：`answer --run-dir <含 run_record.json 的目录> --out <输出目录>`；机读产物＝`机器答卷-*.json` 的 `examinee` 段。
+★ 自查时发现并已修：原先**无盖章**时 `participated` 默认报 `true`（字段在说谎）⇒ 改为默认 **false**（安全侧：认不出就当没有参与）。
+
+### 9.10 一处**如实记账**：远端历史里有一条**重复提交**
+
+★ 我在推 `2d42995` 时把范围写成了 `d0e85be^..2d42995` ⇒ 该范围**含**已在远端的 `d0e85be`
+⇒ REST 重建时又建了一条**内容相同、sha 不同**的孪生提交（远端 `cbabe93e` ≡ 本地 `d0e85be`）。
+⇒ **处置**：★ **不做** force／改写已落字节（只做前向更正）⇒ 这条重复**留在历史里**，在此**如实记录**。
+⇒ **对内容的影响：无**（两条 tree 相同；远端 tip `a4a63ae` 的文件内容已逐路径核对一致）。
+⇒ **教训**：★ **推之前先算准范围**（`rest_push.py <base>..<tip>` 的 base 必须是**远端已有**的那条，
+  不是「上一条本地提交」）—— 范围算错 ⇒ **多推一条**（幂等护栏只能挡「重跑同一条」，挡不住「范围算错」）。
