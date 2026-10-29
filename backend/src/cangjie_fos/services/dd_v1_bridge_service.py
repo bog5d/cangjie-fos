@@ -677,6 +677,14 @@ def bridge_library(
         "model_participation": {
             "participated": bool(model_sel),
             "provenance": str((agent_receipt or {}).get("provenance") or "RULE_ONLY"),
+            # ★★ **盖章**（第 6 轮独立复核的 F14：这里缺了它 ⇒ 答卷层跳过本块
+            #   ⇒ 命中 `rec["adapter"]`（那儿的 `participated` 是 None）⇒ **永远 False**
+            #   ⇒ **真跑了的模型参与被记成 RULE_ONLY**，且 degrade_reason 还写着
+            #   「这次没跑出回执」——**那句是假的**）。
+            #   ⇒ 本块与 `agent_receipt` 同源（同一份实现类判定）⇒ 盖章一致。
+            "provenance_source": str((agent_receipt or {}).get("provenance_source") or ""),
+            "run_participated": bool((agent_receipt or {}).get("participated")),
+            "declared_provenance": str((agent_receipt or {}).get("declared_provenance") or ""),
             "obligations_with_model_selection": len(model_sel),
             "discrimination_pass": sum(1 for m in model_sel.values()
                                        if (m.get("discrimination") or {}).get("discrimination") == "PASS"),

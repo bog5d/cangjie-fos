@@ -517,6 +517,32 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 ★ **负向回归**：把新测试拷到**缺陷前字节** `a0324a9` 上跑 ⇒ **8 failed / 27 passed** ⇒ 这 8 条确实打到点上。
 ★ **M03 判词仍为 `PARTIAL`**（第 6 轮复裁进行中 ⇒ 不预告 PASS）。
 
+
+### ★ 第 7 轮复核（CONDITIONAL）的处置：F14／F15／F16／F17／F18（2026-10-29）
+
+★ 复核方第 7 轮**复验闭合 F1–F4、F19**（自跑子集 885 passed / 1 failed，唯一红＝沙箱 doctor 环境项）
+⇒ **仍开的唯一重要项 ＝ F14** ＋ F15／F16／F17／F18 四条。**已逐条修完**：
+
+- **F14（重要）**：`--bridge-json` 路径上「真跑了的模型参与」被记成 `RULE_ONLY`，理由还写着**不实**的「这次没跑出回执」。
+  ★ 根因：答卷层**只认带盖章的源**（第 6 轮 F3 的纪律）⇒
+  ① `dd_v1_bridge_service` 的 `model_participation` 块**没带** `provenance_source`、
+  ② `tools/dd_team_channel.py` 的 `rec["adapter"]` **没带** `participated`
+  ⇒ 两处都被循环跳过 ⇒ 落到 `bool(None)` ⇒ **永远 False**。
+  ⇒ **修法（两处都补）**：bridge 块补盖章（`provenance_source` ＋ `run_participated` ＋ `declared_provenance`）；CLI 的 `rec["adapter"]` 补 `participated`。
+- **F15（文档）**：AB 报告的 `fd9bb21` 在远端**查无此 commit** ⇒ 改为标注「本地历史 sha、未上远端」＋ 写明**可核的是产物文件本身**。
+- **F16（重要·可致命）**：`dd_v1_agent_adapters.py` 的 `UNKNOWN_ADAPTER` 定义在推导式**之后** ⇒
+  再加一个没有 `participation_class` 属性的适配器类 ⇒ **`NameError at import`** ⇒ 整个 backend 起不来
+  ⇒ 常量**上移**到推导式之前（已验证 `import OK`）。
+- **F17（文档·口径）**：负向回归红数统一为**本席实测**：`a0324a9` ⇒ **12**／`fe939b6` ⇒ **6**／`2d42995` ⇒ **2**／**累计 12**；
+  ★ 复核方实测的 5／13 出自**另一份文件副本** ⇒ **两把尺子的读数不可比**（各自带口径引用）。
+- **F18（重要）**：答卷层未读盖章块自带的 `declared_provenance` ⇒ 人工贴回执路径记 `UNDECLARED` ⇒ **审计信息丢失**
+  ⇒ 改为：自填值**非合法类别**时回落**盖章块**的 `declared_provenance`（只认盖章块；合法值照旧保留）。
+
+★ **负向回归**：F14／F18 两条在缺陷前字节 `2d42995` 上 **2 red**（`mode=RULE_ONLY` ＋ 不实理由／`UNDECLARED`），当前字节全绿。
+★ ★ **坑（值得记住）**：F14 的负向回归**第一版是「绿的但测不到东西」** —— 场景里带了模型选材
+⇒ bridge 块的「选材口径」`participated=True` **恰好**把缺陷掩盖 ⇒ 连缺陷都复现不出来
+⇒ 正解：负向场景必须是「**跑过、但建议全被确定性闸拒了**」（accepted=0 ⇒ 无模型选材）。
+
 ### ★ 第 6 轮复核（复裁）新抓到并已修的两处（2026-10-29）
 
 | # | 缺陷 | 修法 | 文件 |

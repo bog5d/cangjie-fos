@@ -2,14 +2,20 @@
 
 > 目的：证明本轮「三个模块接线」在**真实组包链**上的实际效果。
 > 方法：同一份合成夹具、同一份脚本，**只有代码不同**（修复前 `2a4ea18` / 修复后 `fd9bb21`）。
+> ⚠️ **这两个 sha 是本地历史 sha、都没上远端**（`fd9bb21` 在远端查无此 commit）⇒ **不能**拿它们当「可核的版本锚」。
+> ⇒ **真正可核的是产物文件本身**：本目录 `证据/` 下的机读文件（`成绩单.json` / `机器答卷.json` / `逐题评分明细.tsv` / `版本对比.json`）
+>   ＋ 同目录 `SHA256SUMS` 清单 ⇒ 接收方一条命令自核（`sha256sum -c SHA256SUMS`）。
 > ⚠️ 本报告的「分数」是**合成考场**的分数，**不是**真实 42 题的业务成绩（真实成绩仍 `NOT_SCORABLE`）。
 
 ## 0. 两侧输入一致性（先验这一条，否则 A/B 无效）
 
 | 侧 | 代码 | 夹具 | 脚本 | 候选上限 |
 |---|---|---|---|---|
-| before | `2a4ea18`（git worktree `/workspace/work/fosgit_before`） | a4 / a5（同一份，字节相同） | 同一份 `run_sim_exam.py` | 同 |
-| after | `fd9bb21`（本工作树） | 同上 | 同上 | 同 |
+| before | `2a4ea18`（**本地历史 sha**，worktree `/workspace/work/fosgit_before`） | a4 / a5（同一份，字节相同） | 同一份 `run_sim_exam.py` | 同 |
+| after | `fd9bb21`（**本地历史 sha，未上远端**） | 同上 | 同上 | 同 |
+
+> ★ **两侧的可核凭据＝各自落盘的产物文件**（`/workspace/work/ab/{before,after}_cli/尽调结果.json` 等）
+>   ＋ 本目录 `证据/` 里的机读读数；sha 只是「当时用的哪份代码」的**说明**，不是核对凭据。
 
 夹具的 `gold.json` / `raw_items.json` / `replies/` **与 a4 逐位相同**（a5 只加材料，不动标准答案、不动清单、不动答卷）｜★ a5 夹具**已入仓**（`backend/tests/fixtures/dd-v1-fos71-a5/`）｜★ 它**不在** `docs/…/ddv1-exam-v1/SHA256SUMS` 的覆盖范围内（那份清单只覆盖本目录）⇒ **自核方式**：`git ls-tree -r <head> backend/tests/fixtures/dd-v1-fos71-a5/`（git 对象哈希即完整性）
 ⇒ **没有**「改标准答案提分」「让考生提前读 Gold」的余地。
@@ -44,7 +50,7 @@
 ★ ★ **必须同时说清的那条（否则就是不完整）**：**扩窗口确实会改「判定」，只是没改「分数」。**
 我自己在 **a4 夹具 / 上限=2** 上复跑（同一夹具、同一脚本、只有代码不同）：
 
-| 库级判定分布（`summary.by_verdict`） | before（`2a4ea18`） | after（当前 head） |
+| 库级判定分布（`summary.by_verdict`） | before（`2a4ea18`，本地历史 sha） | after（`fd9bb21`，本地历史 sha） |
 |---|---|---|
 | a4 · cap=2 | **`RESTRICTED` × 8** | **`CONFLICT` × 6 ＋ `RESTRICTED` × 2**（**6/8 条 verdict 变了**） |
 | a5 · cap=2 | `CONFLICT` × 6 ＋ `RESTRICTED` × 2 | 同左（**0 条**变化） |
@@ -57,7 +63,7 @@
 
 ## 3. 本轮接线真正改变的东西（机读读数）
 
-| 读数 | before（`2a4ea18`） | after（`fd9bb21`） | 出处 |
+| 读数 | before（`2a4ea18`，本地历史 sha） | after（`fd9bb21`，本地历史 sha） | 出处 |
 |---|---|---|---|
 | `candidate_expansion` 字段是否存在 | **不存在**（模块零调用方） | 存在 | 机读结果 JSON 顶层 |
 | 触顶义务数 `capped_obligations` | 无此读数 | 8 | 同上 |
@@ -86,7 +92,8 @@
 
 ```bash
 # 修复前
-git -C <repo> worktree add /workspace/work/fosgit_before 2a4ea18
+git -C <repo> worktree add /workspace/work/fosgit_before 2a4ea18   # ★ 本地历史 sha（远端无此 commit）
+# ★ 复现要点：**产物文件**才是核对凭据（见 §0 与 `证据/`）；sha 仅作说明。
 cd /workspace/work/fosgit_before
 DDV1_SIM_FIXTURE=<...>/dd-v1-fos71-a5 DDV1_SIM_OUT=/tmp/ab_before \
   PYTHONPATH=backend/src:tools python docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py

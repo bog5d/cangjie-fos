@@ -305,6 +305,8 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
     _prov = ""
     _prov_source = ""
     _declared = ""
+    # ★ **盖章块自带的 `declared_provenance`**（权威的「声明值」；第 7 轮复核的 F18）
+    _stamped_declared = ""
     # ★ 必须在分支**之外**初始化（曾因写在分支里 ⇒ 分支没走时 NameError ⇒ 已修）
     _degrade = ""
     for _src in (pkt.get("model_participation"), rec.get("model_participation"),
@@ -314,11 +316,21 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
         if str(_src.get("provenance_source") or "") == "ADAPTER_IMPLEMENTATION":
             _prov = str(_src.get("provenance") or "")
             _prov_source = "ADAPTER_IMPLEMENTATION"
+            _stamped_declared = str(_src.get("declared_provenance") or "")
             break
         if not _declared:
             _declared = str(_src.get("provenance") or "")
     if not _declared:
         _declared = str(adapter.get("provenance") or "") if isinstance(adapter, dict) else ""
+    # ★ ★ **F18：自填值非法时回落到盖章块的 `declared_provenance`**（信息丢失）
+    #   —— 人工贴回执路径：`adapter["provenance"]` 是个 dict（工具层塞的原始载荷）
+    #   ⇒ 上一版一律记 `UNDECLARED` ⇒ **盖章块里明明写着 `HARNESS_MANUAL`，审计信息却丢了**。
+    #   ★ 只在**自填值不是合法类别**时才回落（合法值照旧保留 ⇒ 不改变既有行为）；
+    #   ★ 且**只认盖章块**（与 F3 同一条纪律：下游只认盖章）。
+    _LEGAL_DECLARED = ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT",
+                       "UNKNOWN_ADAPTER", "RULE_ONLY", "MODEL_SELECTION_WITHOUT_RECEIPT")
+    if _stamped_declared and str(_declared) not in _LEGAL_DECLARED:
+        _declared = _stamped_declared
     # ★ ★ **类别 ≠ 参与**（第 6 轮独立复核的 F1，已修）：
     #   参与**类别**只说明「适配器实现是哪一个」，**不说明**「它这次真的跑出了回执」。
     #   ⇒ 二进制不在 PATH（exit 127）／人工还没贴回执（PENDING_MANUAL）／贴进来的文件不存在
@@ -329,7 +341,14 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
     for _src in (pkt.get("model_participation"), rec.get("model_participation"),
                  adapter if isinstance(adapter, dict) else None):
         if isinstance(_src, dict) and str(_src.get("provenance_source") or "") == "ADAPTER_IMPLEMENTATION":
-            _participated = bool(_src.get("participated"))
+            # ★ 两个同名不同义的 `participated` 要分清：
+            #   `run_participated` ＝「**这次跑出了回执**」（回执口径）
+            #   `participated`（bridge 块里那个）＝「有义务用了模型选材」（选材口径）
+            #   ⇒ 一律以**回执口径**为准（没有 run_participated 才退回 participated）。
+            if "run_participated" in _src:
+                _participated = bool(_src.get("run_participated"))
+            else:
+                _participated = bool(_src.get("participated"))
             break
     if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT", "UNKNOWN_ADAPTER"):
         _examinee_mode = _prov if _participated else "RULE_ONLY"

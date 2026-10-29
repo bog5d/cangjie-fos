@@ -1153,7 +1153,11 @@ def cmd_answer(a) -> int:
                               "model_id_or_unknown": str(_rc.get("model_id_or_unknown") or "UNKNOWN"),
                               "provenance": str(_rc.get("provenance") or ""),
                               # ★ 带**盖章**（下游只认盖章；不带 ⇒ 只作旁证）
-                              "provenance_source": str(_rc.get("provenance_source") or "")}
+                              "provenance_source": str(_rc.get("provenance_source") or ""),
+                              # ★★ **participated 也要带**（第 6 轮独立复核的 F14：
+                              #   缺了它 ⇒ 答卷层 `bool(None)` ⇒ **永远 False**
+                              #   ⇒ 真跑了的模型参与被记成 RULE_ONLY（还写着不实的理由））
+                              "participated": bool(_rc.get("participated"))}
         _mp = pkt.get("model_participation") or {}
         if _mp:
             rec["model_participation"] = _mp

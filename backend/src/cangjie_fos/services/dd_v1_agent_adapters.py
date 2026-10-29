@@ -470,6 +470,12 @@ def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
     return record
 
 
+#: ★ ★ `UNKNOWN_ADAPTER` **必须定义在这之前**（第 6 轮独立复核的 F16：import 地雷）
+#:   —— 推导式里 `or UNKNOWN_ADAPTER` 只在**类没写该属性**时求值；
+#:   那天 5 个类都写了 ⇒ 短路 ⇒ 右操作数**从未求值** ⇒ 地雷没炸；
+#:   一旦加了第 6 个适配器类忘了写 ⇒ **NameError at import** ⇒ 整个 backend 起不来。
+UNKNOWN_ADAPTER = "UNKNOWN_ADAPTER"
+
 # ══════════════════════════════════════════════════════════════════════
 # ★ 参与类别**注册表**（权威来源 = **适配器实现类**，不是任何自填字符串）
 # ══════════════════════════════════════════════════════════════════════
@@ -483,7 +489,6 @@ ADAPTER_PARTICIPATION_CLASSES: dict[type, str] = {
                 ManualExchangeAdapter, PrebakedResultAdapter)
 }
 
-UNKNOWN_ADAPTER = "UNKNOWN_ADAPTER"
 
 #: ★ **id 级声明表**（只是**旁证**；权威判定在 :func:`participation_class_of`）
 #:   —— 放在实现侧，是因为「这个 id 对应哪一类」是**适配器实现**的知识。

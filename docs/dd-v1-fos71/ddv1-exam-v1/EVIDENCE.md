@@ -232,7 +232,9 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 ★ Reviewer 给的期望读数 **1973 / 1972 passed / 1 failed / 0 ERROR** 与我用 `--junitxml` 取到的确数**逐项一致**。
 
 ★ **Reviewer 收口后核验（PASS 维持，锚点 `896139a`（★本地历史 sha，REST 重建后仓内已不存在））**：本目录三个 blob 逐个核过
-（`最终报告.md`＝`22d27f88410a`、`SHA256SUMS`＝`1ad9bf49d38b`（★ 该 blob 是**当时**的 15 条；★ **当前**目录为 **16 条**，`sha256sum -c` ⇒ **16 OK / 0 FAILED / 0 missing**，覆盖含 `证据/` 子目录）、
+（`最终报告.md`＝`22d27f88410a`、`SHA256SUMS`＝`1ad9bf49d38b`
+　　⚠️ **这两个 blob 是历史快照：那个 `SHA256SUMS` blob 里的清单是「当时」的 15 条，不要拿它当当前口径**（★ **当前**目录的清单是 **16 条**）
+　　⇒ **当前口径只认本目录的 `SHA256SUMS` 文件本身**：`sha256sum -c SHA256SUMS` ⇒ **16 OK / 0 FAILED / 0 missing**，覆盖含 `证据/` 子目录）、
 `版本锚点.md`＝`b3b757a9da2a`）；`ddv1-exam-v1/` 下 16 个条目 blob sha 逐个相同；`tools/dd_team_channel.py` mode 仍 **100755** ✔。
 ★ **唯一未核**：**交接包 zip 本体不在共享工作区** ⇒ Reviewer 记 **NOT_MEASURED（Reviewer 未核）**；
 我自跑：解包后逐件复算 **19/19 通过、0 失败**。⇒ 故 G10 的依据在最终报告里**拆成两句**（仓内 ✔／包体 Reviewer 未核）。
@@ -428,12 +430,14 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
   --junitxml=/workspace/work/junit_final4.xml
 ```
 
-★ 读数：**tests=2008 / failures=1 / errors=0 / skipped=0**
+★ 读数（**已按第 7 轮修复后的最终字节重跑**）：**tests=2015 / failures=1 / errors=0 / skipped=0**
 - 与上一轮（接线字节 `d7aa3b0`）的 **2003** 条相比 **+5**（＝本轮新增的 5 条负向回归：model_participation +3、wiring +2）；
 - **失败集合仍只有一条**：`tests/test_doctor_script.py::test_doctor_script_exits_zero`
   （沙箱缺 `.env`/`node_modules`/后端依赖；★ **CI 本身就显式 `--ignore` 这一条**）
   ⇒ **零新增失败**；
-- 基线 `abc4627` 同环境为 1887/1886/1/0 ⇒ 本分支 **2008/2007/1/0**。
+- 基线 `abc4627` 同环境为 1887/1886/1/0 ⇒ 本分支 **2015/2014/1/0**（相对上一版 2008 条 **+7** ＝ 第 6 轮 5 条 ＋ 本轮 F14／F18 2 条）。
+- ★ 逐文件条数差（机器对账）：`test_dd_v1_model_participation` 23→29（**+6**）、`test_dd_v1_wiring_entity_expansion` 12→13（**+1**）⇒ 合计 **+7**，与上条一致。
+- ★ 失败集合**只有** `tests.test_doctor_script::test_doctor_script_exits_zero`（沙箱环境项）⇒ **零新增失败**。
 
 ### 9.7 第 6 轮独立复核在新 head 上抓到的两处（已修）
 
@@ -487,10 +491,17 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
 | F11 | 「这 6 条」应为「这 8 条」 | 文档 | **已修** |
 | F12 | AB 报告 §0 的 after 锚点陈旧 | 文档 | **已修**（改为「可核的是产物文件本身」＋ 标注本地历史 sha） |
 
-★ **负向回归**（跑在修复前字节 `fe939b6` 上 ⇒ **4 red**）：
-`test_answer_sheet_refuses_unstamped_provenance`、`test_answer_sheet_honors_stamped_provenance`、
-`test_failed_harness_run_must_not_claim_model_participation`（F1）、`test_declared_provenance_is_not_a_python_repr`（F4）
-＋ 前一轮的 3 条（盖章 / 误命中）＝ **累计 7 条负向回归**。
+★ **负向回归（口径已纠正，见 §9.11 的说明）**：
+本席实测（**本席的测试文件**、29 条、`--junitxml` 确数）——
+★ `a0324a9`（第 5 轮修复前字节）⇒ **12 red**；
+★ `fe939b6`（第 6 轮修复前字节）⇒ **6 red**；
+★ `2d42995`（第 7 轮复核时的 head）⇒ **2 red**（本轮新增的 F14／F18 两条）；
+★ **累计（三个基线的并集）＝ 12**（`fe939b6` 与 `2d42995` 的红集都是 `a0324a9` 红集的子集）。
+
+★ **口径纪律**：复核方实测的数字是 **5 red @ `fe939b6`**、**13 red @ `a0324a9`**，
+与本席的 6／12 **不是同一把尺子**（复核方用的是**当时的**测试文件副本，本席用的是**现在的** 29 条文件，
+两份文件内容已不同）⇒ **两个数字不可互相证实、也不可互相证伪** ⇒ 各自带口径引用，**禁取其一当结论**。
+★ 历史文档里写的「4 red / 累计 7」**是错值**（既不是复核方的 5/13，也不是本席的 6/12）⇒ 已在 §9.11 更正。
 ★ 修复后 12 文件子集 **226 passed / 0 failed / 0 errors**（`--junitxml` 确数）。
 
 ### 9.9 `--run-dir` 路径的**实跑**三例（复核方点名要验的那条）
@@ -526,3 +537,25 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
 ⇒ **已修 helper**：`rest_push.py` 改为 `git show <commit>:<path>` 取 blob（⇒ 提交内容与消息不会再错位）。
 ⇒ **教训**：★ **推之前先算准范围**（`rest_push.py <base>..<tip>` 的 base 必须是**远端已有**的那条，
   不是「上一条本地提交」）—— 范围算错 ⇒ **多推一条**（幂等护栏只能挡「重跑同一条」，挡不住「范围算错」）。
+
+### 9.11 第 7 轮复核（CONDITIONAL）的处置：F14／F15／F16／F17／F18
+
+★ 独立复核（第 7 轮，head `17859a0`）裁定 **CONDITIONAL**：
+★ **F1–F4、F19 已复验闭合 ✔**（复核方自跑子集 **885 passed / 1 failed**，唯一红＝沙箱 doctor 环境项）；
+★ **仍开的重要项只剩 F14**，另有 F15／F16／F17／F18 四条文档/实现项。逐条处置如下。
+
+| # | 发现 | 严重度 | 处置 |
+|---|---|---|---|
+| **F14** | **`--bridge-json` 路径上「真跑了的模型参与」被记成 `RULE_ONLY`**，且 `degrade_reason` 写着**不实**的「这次没跑出回执」 | **重要** | **已修（两处都补）**：① `dd_v1_bridge_service` 的 `model_participation` 块补 **`provenance_source`（取自 `agent_receipt`）** ＋ `run_participated` ＋ `declared_provenance`；② `tools/dd_team_channel.py` 构造 `rec["adapter"]` 时补 **`participated`**。★ **根因**：答卷层的取值循环**只认带盖章的源**（F3 的纪律）⇒ 这两处**都没带盖章** ⇒ 循环**整个跳过** ⇒ 落到 `rec["adapter"]` 的 `bool(None)` ⇒ **永远 False** ⇒ 类别判成 `RULE_ONLY` ⇒ 且理由写成了「没跑出回执」（**那句当时是假的**） |
+| **F15** | AB 报告 §0 的 after 锚点陈旧（`fd9bb21` 在远端**查无此 commit** ⇒ 读者无从核对） | 文档 | **已修**：该 sha 与 `2a4ea18` 一律标注为「**本地历史 sha、未上远端**」；并写明**真正可核的是产物文件本身**（本目录 `证据/` ＋ `SHA256SUMS`） |
+| **F16** | `dd_v1_agent_adapters.py` 的 `UNKNOWN_ADAPTER` 定义在推导式**之后**（靠 `or` 短路侥幸没炸）⇒ 再加一个**没有** `participation_class` 属性的适配器类 ⇒ `NameError at import` ⇒ **整个 backend 起不来** | 重要（可致命） | **已修**：常量**上移**到 `ADAPTER_PARTICIPATION_CLASSES` **之前**；已验证 `import OK` |
+| **F17** | 负向回归的**红数口径**在文档里写错（「4 red / 累计 7」） | 文档 | **已修**：改为**本席实测值**（`a0324a9` ⇒ 12／`fe939b6` ⇒ 6／`2d42995` ⇒ 2／**累计 12**），并写明复核方实测的 5／13 **出自另一份文件副本** ⇒ **两把尺子不可比**（见 §9.8） |
+| **F18** | 答卷层**未读盖章块自带的 `declared_provenance`** ⇒ 人工贴回执路径记 `UNDECLARED` 而非 `HARNESS_MANUAL` ⇒ **审计信息丢了** | 重要 | **已修**：自填值**不是合法类别**时，回落到**盖章块**的 `declared_provenance`（只认盖章块 ⇒ 与 F3 同一条纪律；合法值照旧保留 ⇒ 不改既有行为） |
+
+★ **F14／F18 的负向回归（缺陷前字节上确实变红）**：
+`test_cli_bridge_json_path_keeps_real_participation`（F14）、`test_answer_sheet_falls_back_to_stamped_declared_provenance`（F18）
+⇒ 在 `2d42995` 上 **2 red**（F14 ⇒ `mode=RULE_ONLY` ＋ 不实理由；F18 ⇒ `UNDECLARED`），在当前字节上 **全绿**。
+★ ★ **一个值得记住的坑**：F14 那条负向回归**第一版是「绿的但测不到东西」** ——
+因为测试里造的桥接结果**带模型选材** ⇒ bridge 块那个「选材口径」的 `participated=True` **恰好**把缺陷掩盖了
+⇒ 真跑缺陷（`2d42995`）也是 `mode=RULE_ONLY`（**复现不出来**）。
+⇒ 正解：负向回归的场景必须是「**跑过、但建议全被确定性闸拒了**」（accepted=0 ⇒ 无模型选材）——这才是复核方实跑到的组合。

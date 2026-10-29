@@ -597,3 +597,93 @@ def test_declared_provenance_is_not_a_python_repr():
     exi = sheet["examinee"]
     assert exi["declared_provenance"] == "UNDECLARED", exi
     assert "independent_examinee_answer" not in json.dumps(exi, ensure_ascii=False), exi
+
+
+def test_cli_bridge_json_path_keeps_real_participation(tmp_path):
+    """★ 第 7 轮独立复核的 **F14**：`--bridge-json` 路径上「真跑了的参与」**不得**被记成 RULE_ONLY。
+
+    ★ 真因（两处叠加）：① CLI 由回执构造 `rec["adapter"]` 时带了 `provenance_source`
+      却**没带** `participated`；② bridge 自己的 `model_participation` 块**有** `participated`
+      却**没有** `provenance_source` ⇒ 答卷层的取值循环**跳过它** ⇒ 命中 `rec["adapter"]`
+      ⇒ `bool(None)` ⇒ **永远 False** ⇒ **真跑了的模型参与被记成 RULE_ONLY**，
+      且 `degrade_reason` 还写着「这次没跑出回执」——**那句是假的**。
+
+    ★ 缺陷前字节 `2d42995` 上这条**是红的**（同一输入 ⇒ `mode=RULE_ONLY` ＋ 不实的理由）。
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "dd_cli_f14", _REPO / "tools" / "dd_team_channel.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+
+    # ★ 场景：**Harness 真的跑过、也出了回执**（status=OK ＋ raw_digest 非空），
+    #   但**它的建议全被确定性闸拒了**（accepted=0 ⇒ 没有任何模型选材）
+    #   ⇒ 这正是复核方实跑到的组合（`--agent prebaked` ＋ `{"results": []}`）。
+    #   ★ 这个场景**必须**有「无模型选材」：若桥接里**有**模型选材，
+    #   bridge 块那个「选材口径」的 `participated=True` 会**恰好**把 F14 掩盖掉
+    #   ⇒ 测试就变成「绿的但测不到东西」（我自己踩过这一脚）。
+    bridge = {
+        "obligations": [],
+        "semantic_bridge": {
+            "mode": "AGENT_SUGGESTION",
+            "external_model_calls": 1,
+            "agent_receipt": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                              "status": "OK", "exit_code": 0,
+                              "raw_digest": "sha256:" + "a" * 64,
+                              "provenance": "HARNESS_MODEL",
+                              "provenance_source": "ADAPTER_IMPLEMENTATION",
+                              "participated": True,
+                              "declared_provenance": "HARNESS_MODEL",
+                              "implementation_verified": True,
+                              "accepted_results": 0},
+            "model_participation": {"participated": False, "provenance": "HARNESS_MODEL",
+                                    "provenance_source": "ADAPTER_IMPLEMENTATION",
+                                    "run_participated": True,
+                                    "declared_provenance": "HARNESS_MODEL"},
+            "obligations": [],
+        },
+    }
+
+    # ★ ★ **走真实 CLI**（`answer --bridge-json`）—— 不能在测试里**复刻** CLI 的构造，
+    #   复刻会把自己刚修好的那行抄进来 ⇒ 缺陷在测试里就看不见了。
+    import argparse
+    _bj = tmp_path / "尽调结果-f14.json"
+    _bj.write_text(json.dumps(bridge, ensure_ascii=False), encoding="utf-8")
+    _out = tmp_path / "f14out"
+    rc_cli = cli.cmd_answer(argparse.Namespace(
+        run_dir="", bridge_json=str(_bj), delivered="", exam_id="F14",
+        out=str(_out)))
+    assert rc_cli == 0, rc_cli
+    _sheets = sorted(_out.glob("机器答卷-*.json"))
+    assert _sheets, "CLI 应当产出机器答卷"
+    sheet = json.loads(_sheets[-1].read_text("utf-8"))
+    exi = sheet["examinee"]
+    # ★ 真跑了的参与 ⇒ **不得**被记成 RULE_ONLY
+    assert exi["mode"] == "HARNESS_MODEL", exi
+    assert exi["participated"] is True, exi
+    # ★ **不得**写那句不实的话
+    assert "没跑出回执" not in str(exi.get("degrade_reason") or ""), exi
+
+
+def test_answer_sheet_falls_back_to_stamped_declared_provenance(tmp_path):
+    """★ 第 7 轮独立复核的 **F18**：自填值非法时 ⇒ 回落到**盖章块**的 `declared_provenance`。
+
+    ★ 场景：人工贴回执路径 —— `adapter["provenance"]` 是工具层塞进去的原始载荷（一个 dict）
+      ⇒ 上一版一律记 `UNDECLARED` ⇒ **盖章块里明明写着 `HARNESS_MANUAL`，审计信息却丢了**。
+    ★ 缺陷前字节（`2d42995` 之前的第 6 轮修复）上这条**是红的**（记成 `UNDECLARED`）。
+    """
+    rec = {"adapter": {"adapter_id": "manual", "vendor": "human",
+                       "status": "OK",
+                       # ★ 非法类别值（真实形态：工具层塞的原始载荷是个 dict）
+                       "provenance": {"independent_examinee_answer": False},
+                       "provenance_source": "ADAPTER_IMPLEMENTATION",
+                       "participated": True}}
+    pkt = {"model_participation": {"participated": False, "provenance": "HARNESS_MANUAL",
+                                   "provenance_source": "ADAPTER_IMPLEMENTATION",
+                                   "run_participated": True,
+                                   "declared_provenance": "HARNESS_MANUAL"}}
+    sheet = ex.build_answer_sheet(rec, pkt)
+    exi = sheet["examinee"]
+    assert exi["declared_provenance"] == "HARNESS_MANUAL", exi
+    # ★ 也要**不得**把 dict 的 repr 写进机读产物
+    assert "independent_examinee_answer" not in json.dumps(exi, ensure_ascii=False), exi
