@@ -510,6 +510,8 @@ def bridge_library(
                 "provenance": _impl_class,
                 # ★ **这次真的跑出回执了吗**（类别 ≠ 参与；第 6 轮复核 F1）
                 "participated": ad.participated_flag(_a),
+                # ★ ★ **口径标记**（第 8 轮独立复核的 F21）：这里是**回执口径**
+                "participated_scope": "RECEIPT",
                 "provenance_source": "ADAPTER_IMPLEMENTATION",
                 "declared_provenance": ad.declared_class_of(str(_a.get("adapter_id") or "")),
                 # ★ id 级声明与实现类**不一致** ⇒ 记录下来（自填 id 的替身会命中这条）
@@ -684,6 +686,12 @@ def bridge_library(
             #   ⇒ 本块与 `agent_receipt` 同源（同一份实现类判定）⇒ 盖章一致。
             "provenance_source": str((agent_receipt or {}).get("provenance_source") or ""),
             "run_participated": bool((agent_receipt or {}).get("participated")),
+            # ★ ★ **口径标记**（第 8 轮独立复核的 F21）：
+            #   ★ 本块那个 `participated` 是**选材口径**（「有义务用了模型选材」）
+            #   ★ `run_participated` 才是**回执口径**（「这次真的跑出了回执」）
+            #   ⇒ 显式标出来，下游才不会再把两者混着读。
+            "participated_scope": "SELECTION",
+            "run_participated_scope": "RECEIPT",
             "declared_provenance": str((agent_receipt or {}).get("declared_provenance") or ""),
             "obligations_with_model_selection": len(model_sel),
             "discrimination_pass": sum(1 for m in model_sel.values()

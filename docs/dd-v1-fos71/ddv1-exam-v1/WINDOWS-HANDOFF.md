@@ -291,6 +291,21 @@ python tools\dd_team_channel.py run `
 #   ⇒ 二进制不在 PATH（exit 127）／人工还没贴回执／贴进来的文件不存在
 #   ⇒ `participated=false` ⇒ `examinee.mode` 记 **RULE_ONLY**（**不自称模型凭据**），
 #     且 `degrade_reason` 会写明原因。★ 这是第 6 轮独立复核抓出来的假凭据口子（已修）。
+#
+# ★ ★ ★ **两个 `participated` 字段：含义不同，别混读**（第 8 轮独立复核的 F23）
+#
+#    | 字段（在哪个文件里） | `participated_scope` | 含义 |
+#    |---|---|---|
+#    | `semantic_bridge.agent_receipt.participated`（尽调结果 JSON） | `RECEIPT` | **这次真的跑出了回执** ← **该看这个** |
+#    | `semantic_bridge.model_participation.participated`（尽调结果 JSON） | `SELECTION` | 「有义务用了模型选材」（**不是**「有没有参与」） |
+#    | `semantic_bridge.model_participation.run_participated`（尽调结果 JSON） | `RECEIPT` | 同 `agent_receipt.participated` |
+#    | `model_participation.participated`（`run_record.json`，run_semantic 的盖章） | `RECEIPT` | **回执口径**（盖章那一侧） |
+#
+#    ★ ★ **以 `participated_scope` 字段为准**：`RECEIPT` 才是回执口径，`SELECTION` 是选材口径。
+#    ⇒ **答卷层只采信标了 `RECEIPT` 的那个**；只有选材口径 ⇒ **fail-closed**（当作没有参与）。
+#    ⇒ ★ **别拿尽调结果 JSON 里的 `model_participation.participated` 判断「模型有没有参与」** —— 那是选材口径
+#      （它为 False 时其实模型跑过、只是选材被确定性闸拒了）。
+#    ★ 答卷里的 `examinee.participated` 是**派生值**（已按回执口径算好）⇒ **以它为准**。
 ```
 
 ★ ★ **参与身份怎么判定的（别自填就信）**：

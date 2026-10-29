@@ -430,13 +430,13 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
   --junitxml=/workspace/work/junit_final4.xml
 ```
 
-★ 读数（**已按第 7 轮修复后的最终字节重跑**）：**tests=2015 / failures=1 / errors=0 / skipped=0**
+★ 读数（**已按第 8 轮修复后的最终字节重跑**）：**tests=2017 / failures=1 / errors=0 / skipped=0**
 - 与上一轮（接线字节 `d7aa3b0`）的 **2003** 条相比 **+5**（＝本轮新增的 5 条负向回归：model_participation +3、wiring +2）；
 - **失败集合仍只有一条**：`tests/test_doctor_script.py::test_doctor_script_exits_zero`
   （沙箱缺 `.env`/`node_modules`/后端依赖；★ **CI 本身就显式 `--ignore` 这一条**）
   ⇒ **零新增失败**；
-- 基线 `abc4627` 同环境为 1887/1886/1/0 ⇒ 本分支 **2015/2014/1/0**（相对上一版 2008 条 **+7** ＝ 第 6 轮 5 条 ＋ 本轮 F14／F18 2 条）。
-- ★ 逐文件条数差（机器对账）：`test_dd_v1_model_participation` 23→29（**+6**）、`test_dd_v1_wiring_entity_expansion` 12→13（**+1**）⇒ 合计 **+7**，与上条一致。
+- 基线 `abc4627` 同环境为 1887/1886/1/0 ⇒ 本分支 **2017/2016/1/0**（相对上一版 2008 条 **+9** ＝ 第 6 轮 5 条 ＋ 第 7 轮 2 条 ＋ 本轮 F21 2 条）。
+- ★ 逐文件条数差（机器对账）：`test_dd_v1_model_participation` 23→**31**（**+8**）、`test_dd_v1_wiring_entity_expansion` 12→13（**+1**）⇒ 合计 **+9**，与上条一致。
 - ★ 失败集合**只有** `tests.test_doctor_script::test_doctor_script_exits_zero`（沙箱环境项）⇒ **零新增失败**。
 
 ### 9.7 第 6 轮独立复核在新 head 上抓到的两处（已修）
@@ -491,18 +491,23 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
 | F11 | 「这 6 条」应为「这 8 条」 | 文档 | **已修** |
 | F12 | AB 报告 §0 的 after 锚点陈旧 | 文档 | **已修**（改为「可核的是产物文件本身」＋ 标注本地历史 sha） |
 
-★ **负向回归（口径已纠正，见 §9.11 的说明）**：
-本席实测（**本席的测试文件**、29 条、`--junitxml` 确数）——
-★ `a0324a9`（第 5 轮修复前字节）⇒ **12 red**；
-★ `fe939b6`（第 6 轮修复前字节）⇒ **6 red**；
-★ `2d42995`（第 7 轮复核时的 head）⇒ **2 red**（本轮新增的 F14／F18 两条）；
-★ **累计（三个基线的并集）＝ 12**（`fe939b6` 与 `2d42995` 的红集都是 `a0324a9` 红集的子集）。
+★ **负向回归口径（★ 作用域 ＋ 文件版本，两个都要写清）**：
+★ **作用域 ＝ `test_dd_v1_model_participation.py`（31）＋ `test_dd_v1_wiring_entity_expansion.py`（13）＝ 当前 44 条**
+（测试文件取自 head，拷到各缺陷前字节跑），`--junitxml` 确数：
+★ `a0324a9` ⇒ **17 red**｜`fe939b6` ⇒ **9 red**｜`2d42995` ⇒ **5 red**｜`cf81685`（第 8 轮被复核的 head）⇒ **3 red**；
+★ **累计（并集）＝ 17**；包含关系（**机器验过**）：`cf81685` ⊂ `2d42995` ⊂ `fe939b6` ⊂ `a0324a9`。
+★ ★ **口径纪律**：复核方第 8 轮实测 **15／7／2**（**作用域相同、但测试文件版本少 2 条 F21 用例**）
+⇒ 差值恰为新增条数 ⇒ **同一把尺子、互相印证**（不是「两把尺子」）。
+⇒ ★ **凡报红数必带「作用域（哪几个文件／多少条）＋ 测试文件版本」** —— 同一个字节、换个文件版本，读数就会变。
+★ ★ **一条「契约变更导致的红」要单独说清**：`test_failed_harness_run_must_not_claim_model_participation`
+在 `2d42995`／`cf81685` 上红，**不是**它自己坏了，而是**它断言的措辞随契约变了**
+（旧字节写的正是 F21 指出的那句**不实**的话）⇒ 它同时**就是 F21 的证据**。
+★ 历史文档里写的「4 red / 累计 7」**是错值**（既不是复核方的 5／13，也不是本席的 17／9／5／3）⇒ 已在 §9.11 与本节更正。
+★ **12 文件子集（作用域＝ bridge / semantic_retrieval / local_run / exam_scoring / exam_preflight / exam_e2e /
+wiring_entity_expansion / model_participation / agent_result / six_states_entry / candidate_expansion / entity_resolution）**
+＝ **230 passed / 0 failed / 0 errors**（本席实跑，`--junitxml` 确数，2026-10-29 11:2x）
+｜★ 复核方第 8 轮实测 **228**（**同一作用域、测试文件版本少 2 条 F21 用例**）⇒ **互相印证**。
 
-★ **口径纪律**：复核方实测的数字是 **5 red @ `fe939b6`**、**13 red @ `a0324a9`**，
-与本席的 6／12 **不是同一把尺子**（复核方用的是**当时的**测试文件副本，本席用的是**现在的** 29 条文件，
-两份文件内容已不同）⇒ **两个数字不可互相证实、也不可互相证伪** ⇒ 各自带口径引用，**禁取其一当结论**。
-★ 历史文档里写的「4 red / 累计 7」**是错值**（既不是复核方的 5/13，也不是本席的 6/12）⇒ 已在 §9.11 更正。
-★ 修复后 12 文件子集 **226 passed / 0 failed / 0 errors**（`--junitxml` 确数）。
 
 ### 9.9 `--run-dir` 路径的**实跑**三例（复核方点名要验的那条）
 
@@ -549,13 +554,67 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
 | **F14** | **`--bridge-json` 路径上「真跑了的模型参与」被记成 `RULE_ONLY`**，且 `degrade_reason` 写着**不实**的「这次没跑出回执」 | **重要** | **已修（两处都补）**：① `dd_v1_bridge_service` 的 `model_participation` 块补 **`provenance_source`（取自 `agent_receipt`）** ＋ `run_participated` ＋ `declared_provenance`；② `tools/dd_team_channel.py` 构造 `rec["adapter"]` 时补 **`participated`**。★ **根因**：答卷层的取值循环**只认带盖章的源**（F3 的纪律）⇒ 这两处**都没带盖章** ⇒ 循环**整个跳过** ⇒ 落到 `rec["adapter"]` 的 `bool(None)` ⇒ **永远 False** ⇒ 类别判成 `RULE_ONLY` ⇒ 且理由写成了「没跑出回执」（**那句当时是假的**） |
 | **F15** | AB 报告 §0 的 after 锚点陈旧（`fd9bb21` 在远端**查无此 commit** ⇒ 读者无从核对） | 文档 | **已修**：该 sha 与 `2a4ea18` 一律标注为「**本地历史 sha、未上远端**」；并写明**真正可核的是产物文件本身**（本目录 `证据/` ＋ `SHA256SUMS`） |
 | **F16** | `dd_v1_agent_adapters.py` 的 `UNKNOWN_ADAPTER` 定义在推导式**之后**（靠 `or` 短路侥幸没炸）⇒ 再加一个**没有** `participation_class` 属性的适配器类 ⇒ `NameError at import` ⇒ **整个 backend 起不来** | 重要（可致命） | **已修**：常量**上移**到 `ADAPTER_PARTICIPATION_CLASSES` **之前**；已验证 `import OK` |
-| **F17** | 负向回归的**红数口径**在文档里写错（「4 red / 累计 7」） | 文档 | **已修**：改为**本席实测值**（`a0324a9` ⇒ 12／`fe939b6` ⇒ 6／`2d42995` ⇒ 2／**累计 12**），并写明复核方实测的 5／13 **出自另一份文件副本** ⇒ **两把尺子不可比**（见 §9.8） |
+| **F17** | 负向回归的**红数口径**在文档里写错（「4 red / 累计 7」） | 文档 | **已修**（并于第 8 轮**再修一次**：把「作用域」也写进数字旁）⇒ 现口径 ＝ **作用域 44 条**（两文件）＋ **测试文件版本**：见 §9.8 的完整口径表 |
 | **F18** | 答卷层**未读盖章块自带的 `declared_provenance`** ⇒ 人工贴回执路径记 `UNDECLARED` 而非 `HARNESS_MANUAL` ⇒ **审计信息丢了** | 重要 | **已修**：自填值**不是合法类别**时，回落到**盖章块**的 `declared_provenance`（只认盖章块 ⇒ 与 F3 同一条纪律；合法值照旧保留 ⇒ 不改既有行为） |
 
-★ **F14／F18 的负向回归（缺陷前字节上确实变红）**：
+★ **负向回归口径（★ 作用域 ＋ 文件版本，两个都要写清）**：
+★ **作用域 ＝ `test_dd_v1_model_participation.py`（31）＋ `test_dd_v1_wiring_entity_expansion.py`（13）＝ 当前 44 条**
+（测试文件取自 head，拷到各缺陷前字节跑），`--junitxml` 确数：
+★ `a0324a9` ⇒ **17 red**｜`fe939b6` ⇒ **9 red**｜`2d42995` ⇒ **5 red**｜`cf81685`（第 8 轮被复核的 head）⇒ **3 red**；
+★ **累计（并集）＝ 17**；包含关系（**机器验过**）：`cf81685` ⊂ `2d42995` ⊂ `fe939b6` ⊂ `a0324a9`。
+★ ★ **口径纪律**：复核方第 8 轮实测 **15／7／2**（**作用域相同、但测试文件版本少 2 条 F21 用例**）
+⇒ 差值恰为新增条数 ⇒ **同一把尺子、互相印证**（不是「两把尺子」）。
+⇒ ★ **凡报红数必带「作用域（哪几个文件／多少条）＋ 测试文件版本」** —— 同一个字节、换个文件版本，读数就会变。
+★ ★ **一条「契约变更导致的红」要单独说清**：`test_failed_harness_run_must_not_claim_model_participation`
+在 `2d42995`／`cf81685` 上红，**不是**它自己坏了，而是**它断言的措辞随契约变了**
+（旧字节写的正是 F21 指出的那句**不实**的话）⇒ 它同时**就是 F21 的证据**。
+★ **F14／F18 两条负向回归**（缺陷前字节上确实变红）：
 `test_cli_bridge_json_path_keeps_real_participation`（F14）、`test_answer_sheet_falls_back_to_stamped_declared_provenance`（F18）
 ⇒ 在 `2d42995` 上 **2 red**（F14 ⇒ `mode=RULE_ONLY` ＋ 不实理由；F18 ⇒ `UNDECLARED`），在当前字节上 **全绿**。
+★ 两条都只存在于 `test_dd_v1_model_participation.py`；`test_dd_v1_wiring_entity_expansion.py` 的 3 条红是**第 6 轮 F2** 的查表用例。
+
 ★ ★ **一个值得记住的坑**：F14 那条负向回归**第一版是「绿的但测不到东西」** ——
 因为测试里造的桥接结果**带模型选材** ⇒ bridge 块那个「选材口径」的 `participated=True` **恰好**把缺陷掩盖了
 ⇒ 真跑缺陷（`2d42995`）也是 `mode=RULE_ONLY`（**复现不出来**）。
 ⇒ 正解：负向回归的场景必须是「**跑过、但建议全被确定性闸拒了**」（accepted=0 ⇒ 无模型选材）——这才是复核方实跑到的组合。
+
+### 9.12 第 8 轮复核：新抓到并已修的三条（F21／F22／F23）
+
+★ 第 8 轮独立复核（head `1d3916953d4b`）**复验闭合了 F14／F15／F16／F18／F20**（并确认 F1–F4、F19 未回归），
+★ **F17** 由本席**在同轮内**认领并已修（口径问题，见 §9.8）。
+★ **本轮新抓到 3 条**，逐条处置如下。
+
+| # | 发现 | 严重度 | 处置 |
+|---|---|---|---|
+| **F21** | **「选材口径」冒充「回执口径」**：机读产物里有两个 `participated` 味的字段，**含义不同**（`model_participation.participated`＝「有义务用了模型选材」；`agent_receipt.participated`／`run_participated`＝「这次真的跑出了回执」）。★ 上一版在「盖章块缺 `run_participated`」时**退回选材口径** ⇒ 在「回执说跑过、但选材口径是 False」时会**误判成「没跑出回执」**，还写出**不实的**理由 | 重要 | **已修（口径显式化 ＋ fail-closed）**：① 产出侧统一加**口径标记** `participated_scope`（`RECEIPT` ／ `SELECTION`）与 `run_participated_scope`；② 答卷层**只采信标了 `participated_scope == "RECEIPT"` 的源**；③ 只有选材口径 ⇒ **fail-closed（当作没有参与）**，**绝不**拿选材口径冒充回执口径；④ `degrade_reason` **不再无条件断言**具体成因（不写「这次没跑出回执」这种可能不成立的话），改为只陈述**确实知道**的事（拿不到可采信的回执口径参与标记）＋ 成因列为**可能** |
+| **F22** | 文档里「12 文件子集 **226 passed**」**陈旧**（本轮新增 2 条后应为 228，本轮再新增 2 条 F21 用例后为 **230**） | 文档 | **已修**：三处（`EVIDENCE.md`／`最终报告.md`／`CLAUDE.md`）统一改为 **230 passed / 0 failed / 0 errors**，**并把「作用域＝哪 12 个文件」写在数字旁**（本席实跑，`--junitxml` 确数） |
+| **F23** | 交接说明里**没写**「两个 `participated` 字段含义不同」⇒ 操作员读桥接 JSON 里的 `model_participation.participated` 极易误读成「模型有没有参与」 | 文档 | **已修**：`WINDOWS-HANDOFF.md` 的核验清单补一段**口径对照**（哪个字段是回执口径、哪个是选材口径、该看哪个） |
+
+★ **F21 的负向回归**（缺陷前字节 `cf81685` 上**真红**（3 red 中的 2 条），当前字节全绿）：
+`test_answer_sheet_never_uses_selection_scope_as_receipt_scope`（情形 A：盖章块只有选材口径 False ＋ 回执口径 True ⇒ 旧版误判 RULE_ONLY）、
+`test_degrade_reason_does_not_assert_unproven_causes`（旧版无条件断言「这次没跑出回执」）。
+★ ★ **既有 4 条用例已按新契约更新**（补 `participated_scope: RECEIPT` ＋ 措辞断言改为「拿不到可采信的回执口径参与标记」）
+⇒ ⇒ **这不是「把测试改绿」，是把「口径」从隐含约定变成显式契约**（旧形状不再被默认采信）。
+
+### 9.13 第 8 轮复核的判词与本轮处置（F21／F22／F23 ＋ F17 口径更正）
+
+> **第 8 轮独立复核（2026-10-29 · head `1d3916953d4b`）**：判词 **CONDITIONAL（文档级）**。
+> ★ 复核方**逐条实跑**确认闭合：**F14**（合成 bridge JSON ＋ 真实 CLI `--agent prebaked` ⇒ `mode='PREBAKED_RESULT'`；
+> 缺陷前字节 `2d42995` 上同一条命令给 `RULE_ONLY`）｜**F15**（并用只读 REST 核了 `fd9bb21`／`2a4ea18` 远端确实 Not Found）｜
+> **F16**（重跑地雷探针：加一个无该属性的类不再 NameError）｜**F18**｜**F20**｜**F1–F4、F19 无回归**。
+> ★ 复核方自跑全量（CI 等价）：**2013 passed / 0 failed / 0 errors**（EXIT=0）⇒ 与本席的 2015/2014/1/0 **完全自洽**
+> （doctor 那条被 CI 显式 ignore）⇒ **失败集合为空**。
+> ★ 本轮新抓到 **3 条**：**F21**（条件项·代码：选材口径冒充回执口径）｜**F22**（文档·计数陈旧）｜**F23**（文档·机读产物字段语义缺口）。
+> ★ 复核方明确：**「①②③ 落地后我这一轮就能给 PASS」**（①②＝F17 口径、②＝F22 三处计数、③＝F23 交接清单）⇒
+> 本席已全部落地并**追加**了 F21 的代码修法 ⇒ **第 9 轮复裁进行中** ⇒ **M03 仍为 `PARTIAL`**（不预告 PASS）。
+
+★ **F21 的修法（与复核方建议同向，并按其「永不回落到选材口径」的要求做成 fail-closed）**：
+| 产出侧 | 加**口径标记**：`participated_scope`（`RECEIPT`／`SELECTION`）、`run_participated_scope`（`RECEIPT`） |
+|---|---|
+| 消费侧（答卷层） | **只采信标了 `RECEIPT` 的源**；只有选材口径 ⇒ **fail-closed**（当作没有参与）⇒ **绝不拿选材口径冒充回执口径** |
+| 理由文案 | `degrade_reason` **不再无条件断言**具体成因（不写「这次没跑出回执」这种可能不成立的话）⇒ 只陈述**确实知道**的事（拿不到可采信的回执口径参与标记）＋ 成因列为**可能** |
+
+★ **既有 4 条用例按新契约更新**（补 `participated_scope: RECEIPT` ＋ 措辞断言改为「拿不到可采信的回执口径参与标记」）
+⇒ ★ **这不是「把测试改绿」，是把「口径」从隐含约定变成显式契约**（旧形状不再被默认采信）。
+★ **F21 负向回归**：`test_answer_sheet_never_uses_selection_scope_as_receipt_scope`（情形 A：回执说跑过、选材口径是 False ⇒ 旧版误判 `RULE_ONLY`）、
+`test_degrade_reason_does_not_assert_unproven_causes`（旧版无条件断言成因）⇒ 在缺陷前字节 `cf81685` 上**真红**，当前字节全绿。

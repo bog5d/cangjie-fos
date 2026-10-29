@@ -337,19 +337,34 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
     #   ⇒ **都没跑出回执** ⇒ 此时自称 `HARNESS_MODEL` 就是**假凭据**
     #   ⇒ 正解：**类别 ＋ participated** 两个条件都满足，才算「这次有模型参与」。
     # ★ **没有盖章 ⇒ participated 默认 False**（安全侧：认不出就当没有参与）
+    # ★ ★★ **口径必须显式区分**（第 8 轮独立复核的 F21）：
+    #   机读产物里有两个「participated 味」的字段，**含义不同**：
+    #     `model_participation.participated` ＝「**有义务用了模型选材**」（**选材口径**）
+    #     `agent_receipt.participated` ／ `run_participated` ＝「**这次真的跑出了回执**」（**回执口径**）
+    #   ★ 上一版在「盖章块缺 `run_participated`」时**退回选材口径** ⇒ **拿选材冒充回执** ⇒
+    #     在「回执说跑过、但选材口径是 False」时，会**误判成「没跑出回执」** ⇒ 还写出**不实的**理由。
+    #   ⇒ 正解：**只采信标了 `participated_scope == "RECEIPT"` 的源**；
+    #     只有选材口径 ⇒ **fail-closed（当作没有参与）**，绝不拿选材口径冒充回执口径。
     _participated = False
+    _part_scope = ""
     for _src in (pkt.get("model_participation"), rec.get("model_participation"),
                  adapter if isinstance(adapter, dict) else None):
-        if isinstance(_src, dict) and str(_src.get("provenance_source") or "") == "ADAPTER_IMPLEMENTATION":
-            # ★ 两个同名不同义的 `participated` 要分清：
-            #   `run_participated` ＝「**这次跑出了回执**」（回执口径）
-            #   `participated`（bridge 块里那个）＝「有义务用了模型选材」（选材口径）
-            #   ⇒ 一律以**回执口径**为准（没有 run_participated 才退回 participated）。
-            if "run_participated" in _src:
-                _participated = bool(_src.get("run_participated"))
-            else:
-                _participated = bool(_src.get("participated"))
+        if not isinstance(_src, dict):
+            continue
+        if str(_src.get("provenance_source") or "") != "ADAPTER_IMPLEMENTATION":
+            continue
+        if str(_src.get("participated_scope") or "") == "RECEIPT":
+            _participated = bool(_src.get("participated"))
+            _part_scope = "RECEIPT"
             break
+        if str(_src.get("run_participated_scope") or "") == "RECEIPT" or "run_participated" in _src:
+            _participated = bool(_src.get("run_participated"))
+            _part_scope = "RECEIPT"
+            break
+        # ★ 到这里只有**选材口径** ⇒ **不拿它当回执口径**（fail-closed），继续找回执口径的源
+        _part_scope = "SELECTION_ONLY"
+    if not _part_scope:
+        _part_scope = "NONE"
     if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT", "UNKNOWN_ADAPTER"):
         _examinee_mode = _prov if _participated else "RULE_ONLY"
     elif any(r.get("selection_source") == "MODEL" for r in rows):
@@ -359,9 +374,15 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
     else:
         _examinee_mode = "UNKNOWN"
     if _prov in ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT") and not _participated:
-        _degrade = (f"★ 适配器实现是 {_prov} 这一类，但**这次没跑出回执**"
-                    "（二进制不在 PATH／回执未贴／贴进来的文件不存在）"
-                    "⇒ 本次**没有模型参与** ⇒ 参与类别按 RULE_ONLY 记，不自称模型凭据")
+        # ★ **不无条件断言具体成因**（第 8 轮独立复核的 F21）：
+        #   上一版直接写「这次没跑出回执」⇒ 在「**只是拿不到回执口径的参与标记**」的场合，
+        #   那句话**是假的**（回执可能明明跑过）⇒ 改为**只陈述我们确实知道的事**，成因列为**可能**。
+        _why = ("**拿不到可采信的回执口径参与标记**"
+                "（可能是：二进制不在 PATH／回执未贴／贴进来的文件不存在／"
+                "回执里没有可核的参与标记）")
+        _degrade = (f"★ 适配器实现是 {_prov} 这一类，但本次{_why}"
+                    "⇒ 本次**没有可采信的模型参与** ⇒ 参与类别按 RULE_ONLY 记，不自称模型凭据"
+                    "（★ 回执本身若在别处留存，请以回执为准）")
 
     return {
         "schema_version": ANSWER_SHEET_SCHEMA,

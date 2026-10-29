@@ -518,6 +518,30 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 ★ **M03 判词仍为 `PARTIAL`**（第 6 轮复裁进行中 ⇒ 不预告 PASS）。
 
 
+### ★ 第 8 轮复核：新抓到并已修的三条（F21／F22／F23）＋ F17 口径更正（2026-10-29）
+
+★ 第 8 轮独立复核（head `1d3916953d4b`）**复验闭合 F14／F15／F16／F18／F20**，并确认 F1–F4、F19 未回归。
+★ **F17** 由本席**在同轮内认领**并已修（负向回归必须写清**作用域 ＋ 测试文件版本**：两文件 44 条 ⇒ 17／9／5／3、累计 17）。
+★ **本轮新抓到 3 条**：
+
+- **F21（重要）**：**「选材口径」冒充「回执口径」**。机读产物里有两个 `participated` 味的字段、**含义不同**：
+  `model_participation.participated`＝「有义务用了模型选材」（**选材口径**）；
+  `agent_receipt.participated` ／ `run_participated`＝「这次真的跑出了回执」（**回执口径**）。
+  ★ 旧版在「盖章块缺 `run_participated`」时**退回选材口径** ⇒ 在「回执说跑过、但选材口径是 False」时
+  **误判成「没跑出回执」**，还写出**不实的**理由。
+  ⇒ **修法**：① 产出侧统一加**口径标记**（`participated_scope` = `RECEIPT`／`SELECTION`、`run_participated_scope` = `RECEIPT`）；
+  ② 答卷层**只采信标了 `RECEIPT` 的源**；③ 只有选材口径 ⇒ **fail-closed**（当作没有参与）；
+  ④ `degrade_reason` **不再无条件断言**具体成因（不写「这次没跑出回执」这种可能不成立的话），
+  改为只陈述**确实知道**的事（拿不到可采信的回执口径参与标记）＋ 成因列为**可能**。
+  ⇒ 既有 4 条用例按新契约更新（补口径标记 ＋ 措辞断言）⇒ **口径从隐含约定变成显式契约**。
+- **F22（文档·计数陈旧）**：「12 文件子集 226 passed」⇒ 改为 **230 passed / 0 failed / 0 errors**（三处统一），并把**作用域（哪 12 个文件）**写在数字旁。
+- **F23（文档·缺口）**：`WINDOWS-HANDOFF.md` 补「**两个 `participated` 字段含义不同**」的口径对照表
+  ⇒ 操作员知道该看 `agent_receipt.participated`（回执口径），**别拿 `model_participation.participated` 判断参与**。
+
+★ **F21 的负向回归**在缺陷前字节 `cf81685` 上**真红**（情形 A：回执说跑过、选材口径是 False ⇒ 旧版误判 `RULE_ONLY`）。
+★ ★ **口径纪律（再强调一次）**：凡报计数必带「**作用域 ＋ 口径 ＋ 时刻**」——
+第 8 轮复核方当面指出「12／6／2」是**单文件作用域**下的数，与复核方的 13／5 并列会被误读成少算。
+
 ### ★ 第 7 轮复核（CONDITIONAL）的处置：F14／F15／F16／F17／F18（2026-10-29）
 
 ★ 复核方第 7 轮**复验闭合 F1–F4、F19**（自跑子集 885 passed / 1 failed，唯一红＝沙箱 doctor 环境项）
@@ -533,8 +557,19 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 - **F16（重要·可致命）**：`dd_v1_agent_adapters.py` 的 `UNKNOWN_ADAPTER` 定义在推导式**之后** ⇒
   再加一个没有 `participation_class` 属性的适配器类 ⇒ **`NameError at import`** ⇒ 整个 backend 起不来
   ⇒ 常量**上移**到推导式之前（已验证 `import OK`）。
-- **F17（文档·口径）**：负向回归红数统一为**本席实测**：`a0324a9` ⇒ **12**／`fe939b6` ⇒ **6**／`2d42995` ⇒ **2**／**累计 12**；
-  ★ 复核方实测的 5／13 出自**另一份文件副本** ⇒ **两把尺子的读数不可比**（各自带口径引用）。
+- **F17（文档·口径）**：负向回归红数**必须带「作用域 ＋ 测试文件版本」**：
+  ★ **负向回归口径（  ★ 作用域 ＋ 文件版本，两个都要写清）**：
+  ★ **作用域 ＝ `test_dd_v1_model_participation.py`（31）＋ `test_dd_v1_wiring_entity_expansion.py`（13）＝ 当前 44 条**
+（测试文件取自 head，拷到各缺陷前字节跑），`--junitxml` 确数：
+  ★ `a0324a9` ⇒ **17 red**｜`fe939b6` ⇒ **9 red**｜`2d42995` ⇒ **5 red**｜`cf81685`（第 8 轮被复核的 head）⇒ **3 red**；
+  ★ **累计（并集）＝ 17**；包含关系（**机器验过**）：`cf81685` ⊂ `2d42995` ⊂ `fe939b6` ⊂ `a0324a9`。
+  ★   ★ **口径纪律**：复核方第 8 轮实测 **15／7／2**（**作用域相同、但测试文件版本少 2 条 F21 用例**）
+⇒ 差值恰为新增条数 ⇒ **同一把尺子、互相印证**（不是「两把尺子」）。
+⇒   ★ **凡报红数必带「作用域（哪几个文件／多少条）＋ 测试文件版本」** —— 同一个字节、换个文件版本，读数就会变。
+  ★   ★ **一条「契约变更导致的红」要单独说清**：`test_failed_harness_run_must_not_claim_model_participation`
+在 `2d42995`／`cf81685` 上红，**不是**它自己坏了，而是**它断言的措辞随契约变了**
+（旧字节写的正是 F21 指出的那句**不实**的话）⇒ 它同时**就是 F21 的证据**。
+
 - **F18（重要）**：答卷层未读盖章块自带的 `declared_provenance` ⇒ 人工贴回执路径记 `UNDECLARED` ⇒ **审计信息丢失**
   ⇒ 改为：自填值**非合法类别**时回落**盖章块**的 `declared_provenance`（只认盖章块；合法值照旧保留）。
 
@@ -559,7 +594,7 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 | ③ | **Harness 没跑出回执却自称 `HARNESS_MODEL`**（假凭据） | 类别与「真的跑出回执」**拆成两件事**：新增 `participated`（`ad.participated_flag()`）⇒ 没跑出回执 ⇒ `examinee.mode` 记 `RULE_ONLY` |
 | ④ | **`--run-dir` 路径机读产物里出现 Python dict repr** | 非法类别值的 `declared_provenance` 一律记 `UNDECLARED` |
 
-★ 修复后 12 文件子集 **226 passed / 0 failed / 0 errors**。
+★ 修复后 12 文件子集 **230 passed / 0 failed / 0 errors**。
 
 
 ### 改动（工具层 / 测试 / 夹具）

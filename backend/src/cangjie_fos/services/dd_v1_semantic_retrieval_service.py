@@ -1074,6 +1074,10 @@ def run_semantic(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]], r
         "provenance": ad.participation_class_of(adapter),
         # ★ **这次真的跑出回执了吗**（类别 ≠ 参与；F1）
         "participated": ad.participated_flag(a),
+        # ★ ★ **口径标记**（第 8 轮独立复核的 F21）：本字段是**回执口径**
+        #   （「这次真的跑出了回执」）⇒ 显式标出来，
+        #   免得下游把它和 `model_participation.participated`（**选材口径**）混为一谈。
+        "participated_scope": "RECEIPT",
         "provenance_source": "ADAPTER_IMPLEMENTATION",
         "declared_provenance": ad.declared_class_of(str(a.get("adapter_id") or "")),
         "adapter_id": str(a.get("adapter_id") or ""),

@@ -313,7 +313,9 @@ def test_answer_sheet_with_model_results_marks_model_selection():
         "adapter": {"adapter_id": "test-standin", "vendor": "test",
                     "status": "OK", "provenance": "UNKNOWN_ADAPTER",
                     "provenance_source": "ADAPTER_IMPLEMENTATION",
-                    "participated": True}}
+                    "participated": True,
+                    # ★ **口径标记**（第 8 轮独立复核的 F21）：这是**回执口径**
+                    "participated_scope": "RECEIPT"}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["obligations"][0]["selection_source"] == "MODEL", sheet["obligations"][0]
     assert sheet["examinee"]["mode"] == "UNKNOWN_ADAPTER", sheet["examinee"]
@@ -336,7 +338,8 @@ def test_answer_sheet_marks_prebaked_result_distinctly():
         "adapter": {"adapter_id": "prebaked-result", "vendor": "operator-prebaked",
                     "status": "OK", "provenance": "PREBAKED_RESULT",
                     "provenance_source": "ADAPTER_IMPLEMENTATION",
-                    "participated": True}}
+                    "participated": True,
+                    "participated_scope": "RECEIPT"}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["examinee"]["mode"] == "PREBAKED_RESULT", sheet["examinee"]
     assert sheet["obligations"][0]["selection_source"] == "MODEL"
@@ -542,7 +545,8 @@ def test_answer_sheet_honors_stamped_provenance():
         "adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
                     "status": "OK", "provenance": "HARNESS_MODEL",
                     "provenance_source": "ADAPTER_IMPLEMENTATION",
-                    "participated": True}}
+                    "participated": True,
+                    "participated_scope": "RECEIPT"}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     assert sheet["examinee"]["mode"] == "HARNESS_MODEL", sheet["examinee"]
     assert sheet["examinee"]["provenance_source"] == "ADAPTER_IMPLEMENTATION", sheet["examinee"]
@@ -571,7 +575,8 @@ def test_failed_harness_run_must_not_claim_model_participation():
         "adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
                     "status": "CALL_FAILED", "provenance": "HARNESS_MODEL",
                     "provenance_source": "ADAPTER_IMPLEMENTATION",
-                    "participated": False}}
+                    "participated": False,
+                    "participated_scope": "RECEIPT"}}
     sheet = ex.build_answer_sheet(rec, _pkt())
     exi = sheet["examinee"]
     # ★ **不得**自称模型参与
@@ -580,7 +585,11 @@ def test_failed_harness_run_must_not_claim_model_participation():
     # ★ 身份那一档**照留**（可查）：实现类确实是 Codex
     assert exi["provenance"] == "HARNESS_MODEL", exi
     # ★ 降级原因要写清楚
-    assert "没跑出回执" in str(exi.get("degrade_reason") or ""), exi
+    # ★ 第 8 轮独立复核的 **F21**：措辞**不再无条件断言**「这次没跑出回执」
+    #   （那句话在「只是拿不到回执口径的参与标记」的场合是**假的**）⇒ 改为只陈述我们确实知道的事。
+    _dr = str(exi.get("degrade_reason") or "")
+    assert "拿不到可采信的回执口径参与标记" in _dr, exi
+    assert "没跑出回执" not in _dr, exi
 
 
 def test_declared_provenance_is_not_a_python_repr():
@@ -687,3 +696,60 @@ def test_answer_sheet_falls_back_to_stamped_declared_provenance(tmp_path):
     assert exi["declared_provenance"] == "HARNESS_MANUAL", exi
     # ★ 也要**不得**把 dict 的 repr 写进机读产物
     assert "independent_examinee_answer" not in json.dumps(exi, ensure_ascii=False), exi
+
+
+def test_answer_sheet_never_uses_selection_scope_as_receipt_scope():
+    """★ 第 8 轮独立复核的 **F21**：**选材口径**不得冒充**回执口径**。
+
+    ★ 形态：机读产物里有两个「participated 味」的字段，含义不同 ——
+      · `model_participation.participated` ＝「**有义务用了模型选材**」（选材口径）
+      · `agent_receipt.participated` ／ `run_participated` ＝「**这次真的跑出了回执**」（回执口径）
+    ★ 上一版的取值循环在「盖章块缺 `run_participated`」时**退回选材口径**
+      ⇒ 在「回执说跑过、但选材口径是 False」时会**误判成「没跑出回执」**，还写出**不实的**理由。
+    ⇒ 正解：① 只采信标了 `participated_scope == "RECEIPT"` 的源；
+      ② 只有选材口径 ⇒ **fail-closed**（当作没有参与），**绝不**拿选材口径冒充回执口径。
+
+    ★ 缺陷前字节（`2d42995`／`cf81685`）上这条**是红的**（它会拿选材口径当回执口径）。
+    """
+    # ── 情形 A：盖章块只有**选材口径**（False）＋ 回执口径在 rec["adapter"] 里（True）
+    #    ⇒ 期望：答卷采信**回执口径** ⇒ mode=HARNESS_MODEL（**不是** RULE_ONLY）
+    rec = {"adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                       "status": "OK", "provenance": "HARNESS_MODEL",
+                       "provenance_source": "ADAPTER_IMPLEMENTATION",
+                       "participated": True, "participated_scope": "RECEIPT"}}
+    pkt = {"model_participation": {"participated": False, "provenance": "HARNESS_MODEL",
+                                   "provenance_source": "ADAPTER_IMPLEMENTATION",
+                                   "participated_scope": "SELECTION"}}
+    sheet = ex.build_answer_sheet(rec, pkt)
+    exi = sheet["examinee"]
+    assert exi["mode"] == "HARNESS_MODEL", exi
+    assert exi["participated"] is True, exi
+
+    # ── 情形 B：盖章块只有**选材口径**（True）＋ **没有任何回执口径**的源
+    #    ⇒ 期望：**fail-closed** ⇒ participated=False（**不拿选材口径冒充回执口径**）
+    rec2 = {"adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                        "status": "OK", "provenance": "HARNESS_MODEL",
+                        "provenance_source": "ADAPTER_IMPLEMENTATION",
+                        "participated": True, "participated_scope": "SELECTION"}}
+    sheet2 = ex.build_answer_sheet(rec2, {})
+    exi2 = sheet2["examinee"]
+    assert exi2["participated"] is False, exi2
+    assert exi2["mode"] == "RULE_ONLY", exi2
+
+
+def test_degrade_reason_does_not_assert_unproven_causes():
+    """★ 第 8 轮独立复核的 **F21（附带）**：`degrade_reason` **不得无条件断言**具体成因。
+
+    ★ 上一版直接写「**这次没跑出回执**（二进制不在 PATH／回执未贴／贴进来的文件不存在）」
+    ⇒ 在「只是拿不到回执口径的参与标记」的场合，**那句是假的**（回执可能明明跑过）。
+    ⇒ 正解：只陈述**确实知道**的事（拿不到可采信的回执口径参与标记），成因列为**可能**。
+    """
+    rec = {"adapter": {"adapter_id": "codex-cli", "vendor": "openai-codex",
+                       "status": "OK", "provenance": "HARNESS_MODEL",
+                       "provenance_source": "ADAPTER_IMPLEMENTATION",
+                       "participated": False, "participated_scope": "RECEIPT"}}
+    sheet = ex.build_answer_sheet(rec, _pkt())
+    dr = str(sheet["examinee"].get("degrade_reason") or "")
+    assert dr, "participated=false 时应当给出理由"
+    assert "没跑出回执" not in dr, dr
+    assert "拿不到可采信的回执口径参与标记" in dr, dr

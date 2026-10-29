@@ -1157,7 +1157,12 @@ def cmd_answer(a) -> int:
                               # ★★ **participated 也要带**（第 6 轮独立复核的 F14：
                               #   缺了它 ⇒ 答卷层 `bool(None)` ⇒ **永远 False**
                               #   ⇒ 真跑了的模型参与被记成 RULE_ONLY（还写着不实的理由））
-                              "participated": bool(_rc.get("participated"))}
+                              "participated": bool(_rc.get("participated")),
+                              # ★ ★ **口径标记**（第 8 轮独立复核的 F21）：
+                              #   本字段来自**回执** ⇒ 是**回执口径**（「这次真的跑出了回执」）
+                              #   ⇒ 显式标出来，免得下游把它与 `model_participation.participated`
+                              #   （**选材口径**）混着读。
+                              "participated_scope": "RECEIPT"}
         _mp = pkt.get("model_participation") or {}
         if _mp:
             rec["model_participation"] = _mp
