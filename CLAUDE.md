@@ -494,20 +494,37 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 | 文件 | 改了什么 |
 |------|---------|
 | `backend/src/cangjie_fos/services/dd_v1_match_service.py` | ① `resolve_subject_multi_source()`：**多源主体识别接入真实组包链**（只在主口径判 `SUBJECT_UNREGISTERED` 时**补位**；主口径已判命中/他法人的**一律不动**；认不出仍认不出）＋ 形状翻译（manifest 的 `rel_path`/`file_name`/`content_hash` → 模块的 `relative_path`/`sha256`，不翻译则「文件名命中」「人工确认映射」两档永不触发）＋ 留痕 `subject_matched_by`/`subject_multi_source` 落 `dd_v1_matches.evidence`；② `_expand_capped_obligations()`：**候选分批扩展接入实际检索流程**（步长从 cap 之上起步 ⇒ 不重复第一窗；扩展后的结论**替换**原结论、库级判定分布按新结论重算；读数落库级 `candidate_expansion`） |
-| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | ① `adapter_provenance()` ＋ `KNOWN_HARNESS_ADAPTERS`：**参与身份只认适配器实现**（不采信自填字段）；② `_discrimination_readings()`：排除式选择凭据（PASS/WEAK；★ **只证明「不是照抄第一个候选」，不证明出自模型**）；③ 桥接产出 `agent_receipt` / `model_participation` / 每义务 `model_selection`；④ ★ 修**本轮自己引入**的缺陷：`agent_receipt`/`model_sel` 初始化写在 `else` 分支内 ⇒ 空库时 `UnboundLocalError`（既有测试当场抓住） |
+| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | ① `adapter_provenance()`（**id 级旁证**）＋ ★★ `adapter_participation_class()`（**权威：按适配器实现类判定**）＋ `KNOWN_HARNESS_ADAPTERS`（补 `prebaked-result`）；② `_discrimination_readings()`：排除式选择凭据（PASS/WEAK；★ **只证明「不是照抄第一个候选」，不证明出自模型**）；③ 桥接产出 `agent_receipt` / `model_participation` / 每义务 `model_selection`；④ ★ 修**本轮自己引入**的缺陷：`agent_receipt`/`model_sel` 初始化写在 `else` 分支内 ⇒ 空库时 `UnboundLocalError`（既有测试当场抓住） |
 | `backend/src/cangjie_fos/services/dd_v1_agent_adapters.py` | 新增 `PrebakedResultAdapter`（贴进来的回执 ⇒ 类别恒 `PREBAKED_RESULT`，**不是** Harness 运行）＋ `build_adapter()` |
 | `backend/src/cangjie_fos/services/dd_v1_agent_result_service.py` | `rejected_alternatives`（排除式选择凭据）**硬校验**：排除项须在快照内、**不得**是自己选中的那件、理由非空（`REJECTED_ALT_*`） |
 | `backend/src/cangjie_fos/services/dd_v1_agent_result.v1.schema.json` | 新增可选字段 `rejected_alternatives`（file_id + reason） |
-| `backend/src/cangjie_fos/services/dd_v1_entity_resolution_service.py` | 人工确认映射**认 `file_id`**；BODY_TEXT 档补 `entity_id` |
+| `backend/src/cangjie_fos/services/dd_v1_entity_resolution_service.py` | 人工确认映射**认 `file_id`**；BODY_TEXT 档补 `entity_id`；★ 查表键**归一**（`_confirmed_index()`：原样／去空白小写／归一文件名）⇒ 大写 `file_id` 也能命中 |
 | `backend/src/cangjie_fos/services/dd_v1_exam_service.py` | `examinee.mode` 改为**按参与类别**（6 档）＋ `model_selection_obligations`/`rule_selection_obligations`；模型选材进机器答卷（`selection_source=MODEL`） |
+
+### ★ 第 5 轮独立复核（CONDITIONAL）的修复（2026-10-29）
+
+★ Reviewer 第 5 轮（锚点 `5dfaa4f`）裁定 **CONDITIONAL**；**3 条重要缺陷 ＋ 1 条条件项 ＋ 1 条文档计数错误**已逐条修复
+（详见 `docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9` 与 `最终报告.md §5.2`）：
+
+| # | 缺陷 | 修法 | 文件 |
+|---|---|---|---|
+| ① | 候选扩展路径**丢掉人工确认映射** | 两层都透传 `confirmed_map` ⇒ 扩展结论与第一遍**同一套口径** | `dd_v1_candidate_expansion_service.py`、`dd_v1_match_service.py` |
+| ② | 参与身份**只按自填 `adapter_id`** | 判定入口改为**按实现类**（`ADAPTER_PARTICIPATION_CLASSES` 精确类型匹配，子类也不认）⇒ id 级降级为旁证 `declared_provenance` ＋ 新增 `provenance_mismatch` ＋ **运行痕迹**（`executable`/`argv_digest`/`workdir_digest`） | `dd_v1_agent_adapters.py`、`dd_v1_bridge_service.py` |
+| ③ | `PREBAKED_RESULT` **不可达** | 白名单补 `prebaked-result` ＋ 实现类注册表登记（**仍不是** `HARNESS_MODEL`） | `dd_v1_bridge_service.py`、`dd_v1_agent_adapters.py` |
+| ④ | **大写 `file_id` 查表键静默不命中** | `_confirmed_index()` 表内键三种写法归一 | `dd_v1_entity_resolution_service.py` |
+| ⑤ | 用例条数写错（26→23、36→35） | 全部改正 | `最终报告.md`、`EVIDENCE.md`、`GOAL-CONTRACT.json`、`CLAUDE.md` |
+
+★ **负向回归**：把新测试拷到**缺陷前字节** `a0324a9` 上跑 ⇒ **8 failed / 27 passed** ⇒ 这 8 条确实打到点上。
+★ **M03 判词仍为 `PARTIAL`**（第 6 轮复裁进行中 ⇒ 不预告 PASS）。
+
 
 ### 改动（工具层 / 测试 / 夹具）
 
 | 文件 | 改了什么 |
 |------|---------|
 | `tools/dd_team_channel.py` | 新增 4 个开关：`--agent`（`codex`/`pi`/`dsh`/`manual`/`prebaked`）、`--agent-result`、`--confirmed-entity-map`、`--no-expand-candidates`；读数外显到终端、人看报告独立小节、**机读 JSON 顶层** |
-| `backend/tests/test_dd_v1_wiring_entity_expansion.py` | **新增 10 条**：多源补位正例（文件名/正文命中）、反例（认不出仍认不出）、**判别力**（关掉接线 ⇒ 正例必须回到认不出）、扩展找到窗口外那份、读数到最外层容器、未看数如实报、可关闭 |
-| `backend/tests/test_dd_v1_model_participation.py` | **新增 26 条**：参与身份只认适配器实现、预置回执不算 Harness、R4 排除项硬校验、排除式读数 PASS/WEAK、答卷层 MODEL vs RULE_ONLY、「有模型选材但没回执」必须被标出、端到端 |
+| `backend/tests/test_dd_v1_wiring_entity_expansion.py` | **新增 12 条**：多源补位正例（文件名/正文命中）、反例（认不出仍认不出）、**判别力**（关掉接线 ⇒ 正例必须回到认不出）、扩展找到窗口外那份、读数到最外层容器、未看数如实报、可关闭 |
+| `backend/tests/test_dd_v1_model_participation.py` | **新增 23 条**：参与身份只认适配器实现、预置回执不算 Harness、R4 排除项硬校验、排除式读数 PASS/WEAK、答卷层 MODEL vs RULE_ONLY、「有模型选材但没回执」必须被标出、端到端 |
 | `backend/tests/fixtures/dd-v1-fos71-a5/` | **新增合成夹具**：a4 ＋ 24 份硬负样本（候选池 32 份 > 上限 20）；★ `gold.json`/`raw_items.json`/`replies/` 与 a4 **逐位相同**（只加材料、不动标准答案） |
 | `docs/dd-v1-fos71/ddv1-exam-v1/run_sim_exam.py` | 新增三个环境变量：`DDV1_SIM_FIXTURE` / `DDV1_SIM_OUT` / `DDV1_SIM_CAP`（**不改默认行为**）⇒ 修复前/后两侧用**同一份**夹具跑同一脚本 |
 

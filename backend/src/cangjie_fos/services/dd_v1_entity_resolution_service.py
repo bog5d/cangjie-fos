@@ -53,6 +53,26 @@ def _norm(value: Any) -> str:
     return es.normalize_name(str(value or ""))
 
 
+def _confirmed_index(confirmed: dict | None) -> dict[str, Any]:
+    """把人工确认映射表**归一化成可查表**（键写法不敏感）。
+
+    ★ 每个原始键登记**三种写法**：原样 / 去空白小写 / 归一文件名形式
+      ⇒ 表里写 `FILE-ABC` 与行内 `file_id=file-abc` 也能对上。
+    ★ 归一后**同名**时以**原样键优先**（原样键是操作员明确写的）。
+    """
+    out: dict[str, Any] = {}
+    for k, v in (confirmed or {}).items():
+        ks = str(k)
+        variants = [ks, ks.strip().lower(), _norm(ks)]
+        for variant in variants:
+            if variant and variant not in out:
+                out[variant] = v
+        # ★ 原样键最后再登记一次（若上面某个变体已占位 ⇒ 原样键优先覆盖）
+        if ks:
+            out[ks] = v
+    return out
+
+
 def _filename_of(meta_row: dict[str, Any]) -> str:
     rp = str(meta_row.get("relative_path") or "")
     return rp.replace("\\", "/").rsplit("/", 1)[-1]
@@ -105,11 +125,16 @@ def resolve_material_entity(meta_row: dict[str, Any] | None,
 
     # 1) 人工确认映射（最高优先级：人已经判过了）
     # ★ 认三种键：sha256（内容身份）｜file_id（FOS 内部稳定 id）｜归一后的文件名/路径
+    # ★ ★ **查表键要归一**（第 5 轮独立复核条件项 ④）：映射表里的键大小写/写法可能与
+    #   行内键不一致（例：表里写 `FILE-ABC`，行内 `file_id` 是 `file-abc`）
+    #   ⇒ 只归一「行内键」不归一「表内键」⇒ **大写键静默不命中**（看起来像「人工没确认」）。
+    #   ⇒ 两边都归一 ⇒ 命中与否只取决于**内容**，不取决于**写法**。
+    confirmed_index = _confirmed_index(confirmed)
     for key in (str(row.get("sha256") or "").strip().lower(),
                 str(row.get("file_id") or "").strip().lower(),
                 _norm(fname), _norm(path)):
-        if key and key in confirmed:
-            c = confirmed[key]
+        if key and key in confirmed_index:
+            c = confirmed_index[key]
             return {
                 "entity": str(c.get("entity") or c.get("display_name") or ""),
                 "entity_id": str(c.get("entity_id") or ""),

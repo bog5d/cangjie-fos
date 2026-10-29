@@ -138,6 +138,8 @@ def _fail(res: AdapterResult, code: int | None, err: str, timed_out: bool) -> Ad
 
 class CodexAdapter:
     adapter_id, vendor, role = "codex-cli", "openai-codex", "EXAMINEE_2"
+    # ★ 参与类别由**实现类**决定（不是自填字符串）⇒ 见模块末尾 ADAPTER_PARTICIPATION_CLASSES
+    participation_class = "HARNESS_MODEL"
 
     def __init__(self, binary: str | list[str] = "codex"):
         self.binary = [binary] if isinstance(binary, str) else list(binary)
@@ -173,6 +175,7 @@ class CodexAdapter:
 class MiniMaxPiAdapter:
     """AUX（scored=false, ranked=false）。董事长批准替补前不计入考生3。"""
     adapter_id, vendor, role = "pi", "minimax-cn", "AUX"
+    participation_class = "HARNESS_MODEL"
 
     def __init__(self, binary: str | list[str] = "pi", model: str | None = None):
         self.binary = [binary] if isinstance(binary, str) else list(binary)
@@ -226,6 +229,8 @@ class PrebakedResultAdapter:
     """
 
     adapter_id, vendor, role = "prebaked-result", "operator-prebaked", "MANUAL"
+    # ★ 预置回执 = **人工预置**，不是模型参与 ⇒ 类别 `PREBAKED_RESULT`
+    participation_class = "PREBAKED_RESULT"
 
     def __init__(self, result_path: str | Path):
         self.result_path = Path(result_path)
@@ -284,6 +289,7 @@ def build_adapter(spec: str, *, result_path: str | Path | None = None,
 class ManualExchangeAdapter:
     """人工交换（#71 R2 第一 PoC）：导出 packet+schema，操作者把模型回复贴成 reply.json。"""
     adapter_id, vendor, role = "manual-exchange", "operator", "MANUAL"
+    participation_class = "HARNESS_MANUAL"
 
     def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
         res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK, workdir=str(workdir))
@@ -361,6 +367,7 @@ class DeepSeekHarnessAdapter:
     最终回答取 stdout。本代码不上传、不外发任何东西；dsh 自己如何调用模型由操作员的 dsh 配置决定。
     """
     adapter_id, vendor = "deepseek-harness", "deepseek-harness"
+    participation_class = "HARNESS_MODEL"
 
     def __init__(self, enabled: bool = False, binary: str | list[str] = "dsh", profile: str = "headless",
                  mode: str = "stdin", role: str = "EXAMINEE_3", extra_args: list[str] | None = None):
@@ -461,3 +468,37 @@ def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
     }
     (wd / "run_record.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), "utf-8")
     return record
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ★ 参与类别**注册表**（权威来源 = **适配器实现类**，不是任何自填字符串）
+# ══════════════════════════════════════════════════════════════════════
+#: 实现类 → 参与类别。**精确类型匹配**（不是 isinstance）：
+#:   ⇒ 自造一个 ``class _Spoof: adapter_id = "codex-cli"`` **拿不到** ``HARNESS_MODEL``；
+#:   ⇒ 连子类也不认（宁可不认，也不要认错）。
+ADAPTER_PARTICIPATION_CLASSES: dict[type, str] = {
+    CodexAdapter: "HARNESS_MODEL",
+    MiniMaxPiAdapter: "HARNESS_MODEL",
+    DeepSeekHarnessAdapter: "HARNESS_MODEL",
+    ManualExchangeAdapter: "HARNESS_MANUAL",
+    PrebakedResultAdapter: "PREBAKED_RESULT",
+}
+
+UNKNOWN_ADAPTER = "UNKNOWN_ADAPTER"
+
+
+def participation_class_of(adapter: Any) -> str:
+    """适配器**对象** → 参与类别（权威判定，按实现类）。
+
+    ★ 这是「模型参与」这件事**唯一**的判定入口：
+      **不看** ``adapter_id``、**不看** ``vendor``、**不看**任何自填字符串
+      ⇒ 自填字符串**不可能**把一个非 Harness 适配器变成 ``HARNESS_MODEL``。
+    ★ 认不出 ⇒ ``UNKNOWN_ADAPTER``（不猜、不放行）。
+    """
+    if adapter is None:
+        return UNKNOWN_ADAPTER
+    cls = ADAPTER_PARTICIPATION_CLASSES.get(type(adapter))
+    if cls:
+        return cls
+    # ★ 子类也不认：宁可判 UNKNOWN，也不要把「长得像」当成「就是」
+    return UNKNOWN_ADAPTER

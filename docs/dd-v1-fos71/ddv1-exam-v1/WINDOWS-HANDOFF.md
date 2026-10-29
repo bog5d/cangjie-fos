@@ -273,8 +273,19 @@ python tools\dd_team_channel.py run `
   --package --approved-by "<批准人>" `
   --package-out "<交付目录>" --out "<报告目录>"
 # ③ 核参与类别（在机读结果 JSON 顶层）
-#    examinee.mode 应为 HARNESS_MODEL；agent_receipt.provenance 应为 harness:<适配器实现>
+#    examinee.mode 应为 HARNESS_MODEL
+#    agent_receipt.provenance 应为 HARNESS_MODEL
+#    agent_receipt.provenance_source 应为 ADAPTER_IMPLEMENTATION
+#    agent_receipt.implementation_verified 应为 true
 ```
+
+★ ★ **参与身份怎么判定的（别自填就信）**：
+  `provenance`（权威）**按适配器实现类**判定，**不看** `adapter_id` 字符串
+  ⇒ 自填 `adapter_id="codex-cli"` 的替身**拿不到** `HARNESS_MODEL`。
+  回执里另有三处可核验字段：
+  - `declared_provenance`：id 级**声明**（只是旁证，不构成参与主张）；
+  - `provenance_mismatch`：声明与实现**不一致** ⇒ 会显式标出来；
+  - `executable` / `argv_digest` / `workdir_digest`：**运行痕迹**（跑了什么的指纹，不含材料内容）。
 
 ★ **材料不出本机**：适配器跑的是**你本机**的 CLI ⇒ 不向未授权外部模型发送保密资料
 （本版**没有**新增任何付费 API，**没有**改生产配置）。

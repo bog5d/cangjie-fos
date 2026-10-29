@@ -53,7 +53,7 @@
   },
   "capability": {
     "effective_config_ref": "backend/config/dd_v1_exam_scoring_spec.v1.json",
-    "code_version": "feat/71-ddv1-exam-v1-20261028 (base abc462747e99171415dc405e735773fd9d1335d1) ｜第 5 轮接线字节 fd9bb2174337ee39124aaf8f391de62f2df03449（+ 缺陷修复 b011b2e…）",
+    "code_version": "feat/71-ddv1-exam-v1-20261028 (base abc462747e99171415dc405e735773fd9d1335d1) ｜第 5 轮接线字节 fd9bb2174337ee39124aaf8f391de62f2df03449（+ 缺陷修复 b011b2e…）｜★ 第 5 轮复核修复字节（提交后回填）",
     "entry_points": [
       "tools/dd_team_channel.py preflight --contract <考场契约.json>",
       "tools/dd_team_channel.py answer --bridge-json <尽调结果-*.json>",
@@ -118,7 +118,7 @@
     },
     {
       "subject_id": "ddv1-wiring-real-chain",
-      "source": "backend/tests/test_dd_v1_wiring_entity_expansion.py（10 条）+ backend/tests/test_dd_v1_model_participation.py（26 条）+ docs/dd-v1-fos71/ddv1-exam-v1/AB-成绩对比.md（同一合成考场修复前后对比）",
+      "source": "backend/tests/test_dd_v1_wiring_entity_expansion.py（12 条）+ backend/tests/test_dd_v1_model_participation.py（23 条）+ docs/dd-v1-fos71/ddv1-exam-v1/AB-成绩对比.md（同一合成考场修复前后对比）",
       "event_at": "2026-10-29T09:40:00+08:00",
       "collected_at": "2026-10-29T09:40:00+08:00",
       "claim": "多源主体补位只在「认不出」时触发（认不出仍认不出，不猜不放行）｜候选触顶后分批扩展：实际检查候选 20→32/义务、池已穷尽、如实报未看数（此前**无此读数**＝静默漏检）｜模型参与类别只认适配器实现 ⇒ RULE_ONLY / HARNESS_MODEL / PREBAKED_RESULT / UNKNOWN_ADAPTER 严格分开。★ 修复前后**分数未变**（51.86→51.86 / 64.5→64.5）⇒ 如实记：合成考场分数对候选窗口结构性不敏感；本轮主张的是「覆盖到的候选变多 + 不再静默漏检」，**不主张分数提高**。",
@@ -131,6 +131,15 @@
       "collected_at": "2026-10-29T09:40:00+08:00",
       "claim": "真实 42 题的业务成绩：本轮**仍 NOT_SCORABLE**（历史人工交付包 #74 未交付 ⇒ Gold 不可得）⇒ ★ **未接入 ≠ 不存在**；★ **没有补造任何历史分数**；★ 合成考场分数**不得**替代真实成绩。",
       "validation_result": "NOT_MEASURED"
+    },
+    {
+      "subject_id": "ddv1-round5-review-fix",
+      "source": "backend/tests/test_dd_v1_model_participation.py（23 条）＋ backend/tests/test_dd_v1_wiring_entity_expansion.py（12 条）＋ /workspace/verify/REVIEW-ROUND5-PR86.md（裁定 CONDITIONAL）",
+      "event_at": "2026-10-29T00:10:00+08:00",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "第 5 轮复核抓到 3 条重要缺陷（①候选扩展路径丢掉人工确认映射 ②参与身份只按自填 adapter_id 判定 ③PREBAKED_RESULT 不可达）＋1 条条件项（大写 file_id 查表键静默不命中）＋1 条文档计数错误⇒ 已逐条修复并补负向回归：把新测试拷到缺陷前字节 a0324a9 上跑 ⇒ 8 failed / 27 passed（这 8 条确实打到点上，不是空转摆设）",
+      "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9",
+      "reviewer_note": "★ 第 6 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
     }
   ],
   "gate": {
@@ -173,7 +182,7 @@
         "goal_metric_id": "M03",
         "expected_change": "主体可由多源认领、范围按契约显式声明、候选触顶可继续扩展并如实报数",
         "verified_change": "PARTIAL",
-        "verified_note": "★ **2026-10-29 第 5 轮接线**：三个模块已接进**真实组包链**（此前为「生产零调用方」）：多源主体识别（仅在主口径判「认不出」时补位，主口径已判命中/他法人的一律不动）｜候选分批扩展（触顶义务自动放大窗口，读数在机读 JSON 顶层 `candidate_expansion`，如实报「还剩多少没看」）｜模型参与（参与类别只认适配器实现 ⇒ MODEL 与 RULE_ONLY 严格分开）。★ **独立复核第 5 轮进行中** ⇒ 复核通过后本项改判 **PASS 15/15**（progress 73→80）；在裁定回来之前**不改判**（不预告未取得的判词）。"
+        "verified_note": "★ **2026-10-29 第 5 轮接线**：三个模块已接进**真实组包链**（此前为「生产零调用方」）：多源主体识别（仅在主口径判「认不出」时补位，主口径已判命中/他法人的一律不动）｜候选分批扩展（触顶义务自动放大窗口，读数在机读 JSON 顶层 `candidate_expansion`，如实报「还剩多少没看」）｜模型参与（**参与身份按适配器实现类判定**，MODEL 与 RULE_ONLY 严格分开）。★ **独立复核第 5 轮裁定 CONDITIONAL**（3 重要缺陷＋1 条件项＋1 文档计数）⇒ **已逐条修复**（扩展路径透传人工确认映射 ｜ 参与身份按实现类判定 ｜ `PREBAKED_RESULT` 可达 ｜ 查表键大小写归一 ｜ 计数纠正）并补「**缺陷前字节上会变红**」的负向回归（实测 8 red / 27 passed）⇒ **第 6 轮复裁进行中** ⇒ **复裁 PASS 后**本项才改判 **PASS 15/15**；在此之前 **M03 仍为 PARTIAL**。"
       },
       {
         "work_item_id": "WP4-ANSWER-SHEET-AND-GRADE",

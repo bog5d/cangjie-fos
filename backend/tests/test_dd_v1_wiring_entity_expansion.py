@@ -352,3 +352,59 @@ def test_expansion_can_be_switched_off(tmp_path):
     exp = res["candidate_expansion"]
     assert exp["enabled"] is False
     assert exp["expanded_obligations"] == 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 五、第 5 轮独立复核抓到的缺陷 ①：扩展路径**丢掉人工确认映射**
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_expansion_keeps_human_confirmed_evidence(tmp_path):
+    """★ 缺陷 ①：候选扩展**必须透传** `confirmed_map`（人工确认是最强的一档证据）。
+
+    ★ 旧字节上这条**是红的**：扩展路径调 `match_obligation` 时**没传** `confirmed_map`
+      ⇒ 触顶义务（最需要人工确认的那批）的最终结论是在「无人工确认口径」下算出来的
+      ⇒ 主体依据从 `HUMAN_CONFIRMED` 掉回 `BODY_TEXT`/`UNRESOLVED`。
+    """
+    lib = _many_materials_library(tmp_path, n=30)
+    obl = _ingest(tmp_path, lib, "甲科技有限责任公司：提供 2024 年度审计报告")[0]
+    obl_id = obl["obligation_id"]
+    deep_id, pool = _designate_deep_candidate(tmp_path, lib, obl_id)
+    assert pool > 20
+
+    # 人工确认：把**窗口外那份**（只有扩窗才看得到）认成登记主体
+    confirmed = {deep_id: {"entity": "甲科技有限责任公司", "entity_id": "E1",
+                           "source_ref": "人工确认（测试夹具）"}}
+    res = ms.match_library(lib, candidate_cap=20, db_path=_db(tmp_path),
+                           confirmed_map=confirmed)
+    exp = res["candidate_expansion"]
+    assert exp["expanded_obligations"] == 1, exp
+
+    rows = [r for r in _matches(tmp_path, obl_id) if r["file_id"] == deep_id]
+    assert rows, "扩窗后窗口外那份必须进入留痕"
+    ev = str(rows[0].get("evidence") or "")
+    assert "HUMAN_CONFIRMED" in ev, (
+        f"扩展后丢了人工确认这一档证据 ⇒ 扩展结论与第一遍不同口径：{ev[:400]}")
+
+
+def test_confirmed_map_key_case_does_not_matter(tmp_path):
+    """★ 条件项 ④：查表键**大小写归一** ⇒ 表里写 `FILE-ABC` 也要能命中。
+
+    ★ 旧字节上这条**是红的**：只归一「行内键」、不归一「表内键」
+      ⇒ 大写键**静默不命中**（看起来像「人工没确认过」）。
+    """
+    lib = _two_entity_library(tmp_path)
+    obl = _ingest(tmp_path, lib, "甲科技有限责任公司：提供 2024 年度审计报告")[0]
+    obl_id = obl["obligation_id"]
+
+    # 先拿一份材料的 file_id（大写形式写进表里）
+    cand = ms._conn(_db(tmp_path)).execute(
+        "SELECT file_id FROM dd_v1_manifest LIMIT 1").fetchone()
+    fid = str(cand["file_id"])
+    confirmed = {fid.upper(): {"entity": "甲科技有限责任公司", "entity_id": "E1"}}
+
+    st = ms.match_obligation(lib, obl_id, db_path=_db(tmp_path), confirmed_map=confirmed)
+    rows = _matches(tmp_path, obl_id)
+    hit = [r for r in rows if r["file_id"] == fid]
+    assert hit, rows
+    assert "HUMAN_CONFIRMED" in str(hit[0].get("evidence") or ""), (
+        f"大写查表键没命中（看起来像「人工没确认」）：{hit[0].get('evidence')}")

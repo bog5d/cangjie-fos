@@ -78,20 +78,40 @@ DOC_TYPE_KEYS: tuple[str, ...] = tuple(k for k, _ in rq._DOC_TYPE_RULES)
 #: 每条义务的主体分簇上限（防止材料主体很多时义务数爆炸）。超出部分在输出里如实记账。
 MAX_ENTITY_CLUSTERS = 8
 
-#: ★ **已知的真 Harness 适配器**（只有它们才可能产生「模型参与」的凭据）。
-#:   适配器 id 之外的任何东西 ⇒ 一律 ``UNKNOWN_ADAPTER`` ⇒ **不得**计为模型参与。
-#:   （这是「别把自报当模型证据」的落点：身份由**适配器实现**决定，不由提交方自填。）
+#: ★ **已知的真 Harness 适配器 id 表**（**仅作 id 级旁证**，不是判定依据）。
+#:   ★ ★ **权威判定按「适配器实现类」**（见 :func:`adapter_participation_class`）：
+#:     自填 ``adapter_id="codex-cli"`` **拿不到** ``HARNESS_MODEL``。
+#:   ★ 未知 id ⇒ 一律 ``UNKNOWN_ADAPTER`` ⇒ **不得**计为模型参与。
 KNOWN_HARNESS_ADAPTERS = {
     "codex-cli": "HARNESS_MODEL",
     "deepseek-harness": "HARNESS_MODEL",
     "pi": "HARNESS_MODEL",
     "manual-exchange": "HARNESS_MANUAL",
+    # ★ 第 5 轮独立复核缺陷 ③：`PrebakedResultAdapter` 实际存在的类别此前**不可达**
+    #   （表里没有 `prebaked-result` ⇒ 真适配器落 `UNKNOWN_ADAPTER`，与文档口径不符）
+    "prebaked-result": "PREBAKED_RESULT",
 }
 
 
 def adapter_provenance(adapter_id: str) -> str:
-    """适配器 → 参与类别。**未知适配器一律 UNKNOWN**（不得计为模型参与）。"""
+    """适配器 **id** → id 级**声明**类别（**旁证，不是判定依据**）。
+
+    ★ ★ **这个函数只反映「这个 id 在白名单里」**，
+      **不能**用它来主张「这次参与是模型做的」——
+      因为 id 是**字符串**，任何人都能自填。
+    ★ 主张参与类别 ⇒ 必须用 :func:`adapter_participation_class`（按**实现类**判定）。
+    """
     return KNOWN_HARNESS_ADAPTERS.get(str(adapter_id or "").strip(), "UNKNOWN_ADAPTER")
+
+
+def adapter_participation_class(adapter: Any) -> str:
+    """适配器**对象** → 参与类别（**权威判定**：按实现类，不看任何自填字符串）。
+
+    ★ 自造 ``class _SpoofAdapter: adapter_id = "codex-cli"`` ⇒ ``UNKNOWN_ADAPTER``。
+    ★ 认不出 ⇒ ``UNKNOWN_ADAPTER``（不猜、不放行）。
+    """
+    from cangjie_fos.services import dd_v1_agent_adapters as _ad
+    return _ad.participation_class_of(adapter)
 
 
 def _discrimination_readings(pool: list[dict[str, Any]],
@@ -470,6 +490,11 @@ def bridge_library(
             # ★ 适配器回执 = 「模型参与」的**凭据**（身份不采信自填字段，认适配器实现）
             _a = rec.get("adapter") or {}
             _raw = str(_a.get("raw_text") or "")
+            # ★ 权威参与类别 = **按 adapter 对象（实现类）** 判定
+            _impl_class = adapter_participation_class(adapter)
+            _declared_class = adapter_provenance(str(_a.get("adapter_id") or ""))
+            _argv = [str(x) for x in (_a.get("argv_summary") or [])]
+            _argv0 = _argv[0] if _argv else ""
             agent_receipt = {
                 "adapter_id": str(_a.get("adapter_id") or ""),
                 "vendor": str(_a.get("vendor") or ""),
@@ -482,10 +507,28 @@ def bridge_library(
                 "calls_used": external_model_calls,
                 "raw_digest": ("sha256:" + hashlib.sha256(_raw.encode("utf-8")).hexdigest())
                 if _raw else "",
-                "provenance": adapter_provenance(str(_a.get("adapter_id") or "")),
+                # ★ ★ **权威参与类别：按适配器**实现类**判定**（不看自填 id）
+                #   ⇒ 自造一个 `adapter_id="codex-cli"` 的替身**拿不到** HARNESS_MODEL
+                #   ⇒ id 级声明只作**旁证**记在 `declared_provenance`
+                "provenance": _impl_class,
+                "provenance_source": "ADAPTER_IMPLEMENTATION",
+                "declared_provenance": adapter_provenance(str(_a.get("adapter_id") or "")),
+                # ★ id 级声明与实现类**不一致** ⇒ 记录下来（自填 id 的替身会命中这条）
+                "provenance_mismatch": bool(_declared_class != "UNKNOWN_ADAPTER"
+                                            and _declared_class != _impl_class),
+                "implementation_verified": _impl_class != "UNKNOWN_ADAPTER",
+                # ★ **可核验运行痕迹**：真正被调起的可执行文件 / argv 摘要 / 工作目录
+                #   （摘要而非明文 ⇒ 不外泄材料内容，只留「跑了什么」的指纹）
+                "executable": _argv0,
+                "argv_digest": ("sha256:" + hashlib.sha256(
+                    "\x00".join(_argv).encode("utf-8")).hexdigest()) if _argv else "",
+                "workdir_digest": ("sha256:" + hashlib.sha256(
+                    str(_a.get("workdir") or "").encode("utf-8")).hexdigest())
+                if _a.get("workdir") else "",
                 "accepted_results": len(suggestions),
-                "note": ("★ 回执只证明「哪个适配器、哪次调用、回了什么摘要」；"
-                         "**不证明**判断出自哪个模型 —— 模型身份由适配器实现决定"),
+                "note": ("★ 回执只证明「哪个适配器实现、哪次调用、回了什么摘要」；"
+                         "**不证明**判断出自哪个模型 —— 模型身份由适配器**实现**决定，"
+                         "自填的 adapter_id 只能作旁证"),
             }
             # ★ 每条义务的「模型选材」 ＋ **排除式选择凭据**
             for _r in suggestions:

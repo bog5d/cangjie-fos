@@ -1940,7 +1940,8 @@ def match_library(
     if expand_candidates:
         expansion = _expand_capped_obligations(
             library_id, statuses, candidate_cap=candidate_cap,
-            steps=expansion_steps, max_candidates=max_candidates, db_path=db_path)
+            steps=expansion_steps, max_candidates=max_candidates, db_path=db_path,
+            confirmed_map=confirmed_map)
     else:
         expansion = {"enabled": False, "steps": [], "expanded_obligations": 0,
                      "verdict_changed": 0, "stop_reasons": {},
@@ -1986,7 +1987,8 @@ def _expand_capped_obligations(library_id: str,
                                candidate_cap: int,
                                steps: tuple[int, ...] | None,
                                max_candidates: int,
-                               db_path: Path | None = None) -> dict:
+                               db_path: Path | None = None,
+                               confirmed_map: dict | None = None) -> dict:
     """对**触顶**的义务做候选分批扩展（接线 `dd_v1_candidate_expansion_service`）。
 
     ★ 只对「还有候选没看」的义务做（没触顶的扩展没有意义 ⇒ 不平摊成本）。
@@ -2003,8 +2005,11 @@ def _expand_capped_obligations(library_id: str,
     rows: list[dict] = []
     for oid in capped:
         before = statuses.get(oid) or {}
+        # ★ **透传 confirmed_map**（第 5 轮独立复核缺陷 ①）：扩展后的最终结论
+        #   必须与第一遍**同一套口径**（人工确认是最强的一档证据 ⇒ 不能在扩展里丢掉）
         exp = ces.match_with_expansion(library_id, oid, steps=_steps,
-                                       db_path=db_path, max_candidates=max_candidates)
+                                       db_path=db_path, max_candidates=max_candidates,
+                                       confirmed_map=confirmed_map)
         final = exp.get("raw") or {}
         if final:
             statuses[oid] = final

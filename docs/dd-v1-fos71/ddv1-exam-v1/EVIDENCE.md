@@ -319,7 +319,7 @@ blob `af715407fd9c6cd7a5f63296f4bc9127cdbfbe86`，该仓 main tip `d14327c6de89e
 | 文件 | 条数 | 覆盖 |
 |---|---|---|
 | `backend/tests/test_dd_v1_wiring_entity_expansion.py` | 10 | 多源补位的正例（文件名/正文命中）、反例（认不出仍认不出）、**判别力**（关掉接线 ⇒ 正例必须回到认不出）、扩展找到窗口外那份、读数到最外层容器、未看数如实报、可关闭 |
-| `backend/tests/test_dd_v1_model_participation.py` | 26 | 参与身份只认适配器实现、预置回执不算 Harness、R4 排除项硬校验（4 条）、排除式读数 PASS/WEAK、答卷层 MODEL vs RULE_ONLY、「有模型选材但没回执」必须被标出、端到端（桥接 → 答卷） |
+| `backend/tests/test_dd_v1_model_participation.py` | **23** | 参与身份只认适配器实现、预置回执不算 Harness、R4 排除项硬校验（4 条）、排除式读数 PASS/WEAK、答卷层 MODEL vs RULE_ONLY、「有模型选材但没回执」必须被标出、端到端（桥接 → 答卷） |
 
 ---
 
@@ -342,3 +342,65 @@ cd backend && python -m pytest tests/ -q --ignore=tests/test_ui_smoke_gk.py
 
 ★ 跑测试前请先清 `__pycache__`（陈旧 pycache 会**伪造**「改动没生效」）：
 `find . -name __pycache__ -type d -prune -exec rm -rf {} +`
+
+---
+
+## 9. 第 5 轮复核（CONDITIONAL）修复的证据
+
+★ Reviewer 第 5 轮（锚点 `5dfaa4f`）裁定 **CONDITIONAL**，抓到 3 条重要缺陷 ＋ 1 条条件项。
+本节给出**修法**与**可复现的负向证据**。
+
+### 9.1 缺陷 ①：候选扩展路径丢掉人工确认映射
+
+- **真因**：`dd_v1_candidate_expansion_service.match_with_expansion()` 调
+  `ms.match_obligation(..., candidate_cap=cap, db_path=db_path)` —— **没传** `confirmed_map`；
+  接线层 `dd_v1_match_service._expand_capped_obligations()` 同样**没透传**。
+  ⇒ 触顶义务（正是最需要人工确认的那批）的**最终结论**是在「无人工确认口径」下算出来的，
+  主体依据从 `HUMAN_CONFIRMED` 掉回 `BODY_TEXT`/`UNRESOLVED`，最强一档证据被抹掉。
+- **修法**：两层都透传 `confirmed_map` ⇒ **扩展后的结论与第一遍同一套口径**。
+- **负向证据**：`backend/tests/test_dd_v1_wiring_entity_expansion.py::test_expansion_keeps_human_confirmed_evidence`
+  —— 跑在缺陷前字节 `a0324a9` 上 **变红**（扩展后留痕里没有 `HUMAN_CONFIRMED`）。
+
+### 9.2 缺陷 ②：参与身份只按自填 `adapter_id` 判定
+
+- **真因**：`adapter_provenance(adapter_id)` 是**字符串查表** ⇒ `class _SpoofAdapter: adapter_id = "codex-cli"`
+  即得 `HARNESS_MODEL` ⇒ 回执里出现一条**假凭据**。
+- **修法**：**判定入口换成适配器实现类**——
+  `dd_v1_agent_adapters.ADAPTER_PARTICIPATION_CLASSES`（**精确类型匹配**，子类也不认）
+  ＋ `dd_v1_bridge_service.adapter_participation_class(adapter_object)`。
+  - id 级查表**降级为旁证**：回执里改记 `declared_provenance`（id 级声明）＋
+    `provenance_mismatch`（声明与实现不一致 ⇒ 会被标出来）＋ `provenance_source="ADAPTER_IMPLEMENTATION"`。
+  - 回执补**可核验运行痕迹**：`executable`（真正被调起的可执行文件）、`argv_digest`（sha256）、
+    `workdir_digest`（sha256）—— 只留指纹，不留材料内容。
+- **负向证据**：`test_spoof_adapter_with_known_id_is_not_credited_as_model`、
+  `test_bridge_receipt_judges_identity_by_implementation_not_by_id`
+  —— 两条在缺陷前字节 `a0324a9` 上**都变红**。
+
+### 9.3 缺陷 ③：`PREBAKED_RESULT` 不可达
+
+- **真因**：`KNOWN_HARNESS_ADAPTERS` 里没有 `prebaked-result` ⇒ 真正的 `PrebakedResultAdapter`
+  在 id 级查表里落 `UNKNOWN_ADAPTER` ⇒ **与文档口径「预置回执 ⇒ `PREBAKED_RESULT`」不符**。
+- **修法**：白名单补 `prebaked-result → PREBAKED_RESULT`；实现类注册表里同样登记
+  ⇒ **两类口径一致**，且**仍不是** `HARNESS_MODEL`（贴进来的回执永远不算本机 Harness 运行）。
+- **负向证据**：`test_prebaked_result_is_not_a_harness_run`（缺陷前字节 **红**）。
+
+### 9.4 条件项 ④：`file_id` 大写查表键静默不命中
+
+- **真因**：只归一「行内键」、不归一「表内键」 ⇒ 表里写 `FILE-ABC`、行内 `file_id=file-abc` ⇒ 对不上
+  ⇒ 看起来像「人工没确认过」，实际是**写法**不同。
+- **修法**：`dd_v1_entity_resolution_service._confirmed_index()`：表内键同时登记
+  「原样／去空白小写／归一文件名」三种写法 ⇒ 命中与否只取决于**内容**，不取决于**写法**。
+- **负向证据**：`test_confirmed_map_key_case_does_not_matter`（缺陷前字节 **红**）。
+
+### 9.5 负向回归的整体执行方式（可复现）
+
+```bash
+git worktree add /workspace/work/fosgit_prefix a0324a9      # 缺陷前字节
+cp backend/tests/test_dd_v1_model_participation.py  /workspace/work/fosgit_prefix/backend/tests/
+cp backend/tests/test_dd_v1_wiring_entity_expansion.py /workspace/work/fosgit_prefix/backend/tests/
+cd /workspace/work/fosgit_prefix/backend && PYTHONPATH=src \
+  pytest tests/test_dd_v1_model_participation.py tests/test_dd_v1_wiring_entity_expansion.py \
+  --junitxml=/workspace/work/junit_prefix.xml
+```
+
+★ 实测：**8 failed / 27 passed** ⇒ 这 6 条**确实打到点上**（在缺陷前字节上红、在修复后字节上绿）。

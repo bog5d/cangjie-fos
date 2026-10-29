@@ -47,8 +47,15 @@ def _files_of(result: dict[str, Any]) -> list[str]:
 def match_with_expansion(library_id: str, obligation_id: str, *,
                           steps: tuple[int, ...] = DEFAULT_STEPS,
                           db_path=None,
-                          max_candidates: int = 180) -> dict[str, Any]:
+                          max_candidates: int = 180,
+                          confirmed_map: dict | None = None) -> dict[str, Any]:
     """分批扩展候选窗口地匹配一条义务。
+
+    ★ ★ **必须透传 `confirmed_map`**（人工确认映射）：
+      扩展后的**最终结论**必须在**同一套口径**下算出来 —— 人工确认是**最强的一档证据**
+      （`HUMAN_CONFIRMED` > 登记全称 > 正文 …）⇒ 漏传 ⇒ 触顶义务（= 最需要人工确认的那批）
+      的结论与留痕会**丢掉人工确认这一档**，与「扩展不改变既有口径」直接冲突。
+      （★ 第 5 轮独立复核抓到的缺陷 ①，已修。）
 
     返回::
 
@@ -66,7 +73,14 @@ def match_with_expansion(library_id: str, obligation_id: str, *,
     last: dict[str, Any] = {}
 
     for cap in plan:
-        res = ms.match_obligation(library_id, obligation_id, candidate_cap=cap, db_path=db_path)
+        # ★ 只在**确实有**人工确认映射时才多传这个 kwarg
+        #   （既有替身/桩函数的入参形状不能被打断 ⇒ 无映射时保持原调用形状）
+        if confirmed_map:
+            res = ms.match_obligation(library_id, obligation_id, candidate_cap=cap,
+                                      db_path=db_path, confirmed_map=confirmed_map)
+        else:
+            res = ms.match_obligation(library_id, obligation_id, candidate_cap=cap,
+                                      db_path=db_path)
         last = res
         files = _files_of(res)
         found = int(res.get("candidate_count") or 0)

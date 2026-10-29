@@ -61,6 +61,8 @@ class _StandInAdapter:
     def run(self, packet, workdir, budget):
         res = ad.AdapterResult(self.adapter_id, self.vendor, self.role,
                                 status=ad.OK, workdir=str(workdir))
+        # ★ 留一条**运行痕迹**（argv 摘要）⇒ 回执里才有可核验的「跑了什么」
+        res.argv_summary = ["test-standin", "--fake-run"]
         results = []
         for ob in packet.get("obligations") or []:
             oid = str(ob.get("obligation_id") or "")
@@ -107,6 +109,17 @@ class _StandInAdapter:
 
 
 def test_only_known_harness_adapters_are_credited():
+    """★ 权威判定：**按实现类**（不是按自填 id）。
+
+    ★ 第 5 轮独立复核缺陷 ②：原先只查 ``adapter_id`` 字符串 ⇒ 自填即可冒充。
+      现在判定入口是 :func:`br.adapter_participation_class`（按**实现类**精确匹配）。
+    """
+    # ── 权威路径：传**适配器对象** ⇒ 按实现类判定
+    assert br.adapter_participation_class(ad.CodexAdapter()) == "HARNESS_MODEL"
+    assert br.adapter_participation_class(ad.MiniMaxPiAdapter()) == "HARNESS_MODEL"
+    assert br.adapter_participation_class(ad.DeepSeekHarnessAdapter()) == "HARNESS_MODEL"
+    assert br.adapter_participation_class(ad.ManualExchangeAdapter()) == "HARNESS_MANUAL"
+    # ── id 级函数只是**旁证**（它反映「这个 id 在白名单里」，不构成参与主张）
     assert br.adapter_provenance("codex-cli") == "HARNESS_MODEL"
     assert br.adapter_provenance("deepseek-harness") == "HARNESS_MODEL"
     assert br.adapter_provenance("pi") == "HARNESS_MODEL"
@@ -117,12 +130,44 @@ def test_unknown_adapter_is_not_credited_as_model():
     assert br.adapter_provenance("test-standin") == "UNKNOWN_ADAPTER"
     assert br.adapter_provenance("") == "UNKNOWN_ADAPTER"
     assert br.adapter_provenance("whatever") == "UNKNOWN_ADAPTER"
+    # ★ 按实现类判定时：不在注册表里的对象（含替身）一律 UNKNOWN
+    assert br.adapter_participation_class(_StandInAdapter()) == "UNKNOWN_ADAPTER"
+    assert br.adapter_participation_class(None) == "UNKNOWN_ADAPTER"
+
+
+class _SpoofAdapter(_StandInAdapter):
+    """★ 自填 ``adapter_id="codex-cli"`` 的替身（第 5 轮复核缺陷 ② 的原样复现）。"""
+
+    adapter_id, vendor, role = "codex-cli", "openai-codex", "EXAMINEE_2"
+
+
+def test_spoof_adapter_with_known_id_is_not_credited_as_model():
+    """★ **自填 id 冒充模型 ⇒ 必须落 UNKNOWN_ADAPTER**（缺陷 ② 的负向回归）。
+
+    ★ 旧字节上这条**是红的**：旧实现按 id 字符串查表 ⇒ 直接判成 ``HARNESS_MODEL``。
+    """
+    spoof = _SpoofAdapter()
+    assert spoof.adapter_id == "codex-cli"
+    # ★ 权威判定按**实现类** ⇒ 替身（哪怕 id 冒充）**拿不到** HARNESS_MODEL
+    assert br.adapter_participation_class(spoof) == "UNKNOWN_ADAPTER"
+    # ★ id 级旁证仍会说「这个 id 在白名单里」⇒ 必须与权威判定**分开记**
+    assert br.adapter_provenance(spoof.adapter_id) == "HARNESS_MODEL"
 
 
 def test_prebaked_result_is_not_a_harness_run():
-    """★ 贴进来的回执 ⇒ **不是** Harness 运行 ⇒ 不得计为模型凭据。"""
-    assert "prebaked-result" not in br.KNOWN_HARNESS_ADAPTERS
-    assert br.adapter_provenance("prebaked-result") == "UNKNOWN_ADAPTER"
+    """★ 贴进来的回执 ⇒ **不是** Harness 运行 ⇒ 不得计为模型凭据。
+
+    ★ 第 5 轮独立复核缺陷 ③：原先 ``KNOWN_HARNESS_ADAPTERS`` 里**没有**
+      ``prebaked-result`` ⇒ 真正的 :class:`PrebakedResultAdapter` 落 ``UNKNOWN_ADAPTER``
+      （与文档口径「预置回执 ⇒ PREBAKED_RESULT」不符）⇒ 现在两类都对得上。
+    """
+    assert br.KNOWN_HARNESS_ADAPTERS["prebaked-result"] == "PREBAKED_RESULT"
+    assert br.adapter_provenance("prebaked-result") == "PREBAKED_RESULT"
+    # ★ 实现类判定同样是 PREBAKED_RESULT（**可达**、且**不是** HARNESS_MODEL）
+    assert br.adapter_participation_class(
+        ad.PrebakedResultAdapter("/nonexistent/reply.json")) == "PREBAKED_RESULT"
+    assert br.adapter_participation_class(
+        ad.PrebakedResultAdapter("/nonexistent/reply.json")) != "HARNESS_MODEL"
 
 
 def test_build_adapter_returns_none_for_rule_only():
@@ -398,3 +443,38 @@ def test_cli_bridge_to_answer_sheet_carries_model_selection(tmp_path):
     sheet = ex.build_answer_sheet(rec, pkt)
     assert sheet["obligations"][0]["selection_source"] == "MODEL", sheet["obligations"][0]
     assert sheet["examinee"]["mode"] == "UNKNOWN_ADAPTER", sheet["examinee"]
+
+
+def test_bridge_receipt_judges_identity_by_implementation_not_by_id(tmp_path):
+    """★ 缺陷 ② 的**端到端**负向回归：自填 id 的替身 ⇒ 回执**不得**出现 HARNESS_MODEL。
+
+    ★ 旧字节上这条**是红的**：回执的 `provenance` 只看 `adapter_id` 字符串
+      ⇒ 替身冒充 ⇒ 直接落 `HARNESS_MODEL`（= 一条假凭据）。
+    """
+    lib = _build_library(tmp_path, WP04_SNAPSHOT, "冒充库",
+                         ["子公司甲：提供2024年度审计报告"])
+    out = br.bridge_library(lib, material_root=WP04_SNAPSHOT, db_path=_db(tmp_path),
+                            adapter=_SpoofAdapter())
+    rc = out["agent_receipt"]
+    # ★ 权威判定（按实现类）⇒ 冒充者**拿不到**模型凭据
+    assert rc["provenance"] == "UNKNOWN_ADAPTER", rc
+    assert rc["provenance_source"] == "ADAPTER_IMPLEMENTATION", rc
+    assert rc["implementation_verified"] is False, rc
+    # ★ id 级旁证仍会说「这个 id 在白名单里」⇒ 必须**分开记**且**标出不一致**
+    assert rc["declared_provenance"] == "HARNESS_MODEL", rc
+    assert rc["provenance_mismatch"] is True, rc
+    # ★ 最外层读数同样不得宣称模型参与
+    assert out["model_participation"]["provenance"] == "UNKNOWN_ADAPTER", out["model_participation"]
+
+
+def test_bridge_receipt_carries_verifiable_run_traces(tmp_path):
+    """★ 回执要带**可核验运行痕迹**（跑了什么），不只带一个自报 id。"""
+    lib = _build_library(tmp_path, WP04_SNAPSHOT, "痕迹库",
+                         ["子公司甲：提供2024年度审计报告"])
+    out = br.bridge_library(lib, material_root=WP04_SNAPSHOT, db_path=_db(tmp_path),
+                            adapter=_StandInAdapter())
+    rc = out["agent_receipt"]
+    assert rc["raw_digest"].startswith("sha256:"), rc
+    assert rc["argv_digest"].startswith("sha256:"), rc
+    assert "workdir_digest" in rc, rc
+    assert rc["provenance_source"] == "ADAPTER_IMPLEMENTATION", rc
