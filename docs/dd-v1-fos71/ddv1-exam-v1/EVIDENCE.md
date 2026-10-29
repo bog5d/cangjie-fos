@@ -419,3 +419,18 @@ cd /workspace/work/fosgit_prefix/backend && PYTHONPATH=src \
 ```
 
 ★ 实测：**8 failed / 27 passed** ⇒ 这 6 条**确实打到点上**（在缺陷前字节上红、在修复后字节上绿）。
+
+### 9.6 修复后的全量回归（最终字节 `b7d2ff9` → `9d6e13b`）
+
+```bash
+cd /workspace/work/fosgit/backend && PYTHONPATH=src \
+  pytest tests/ -p no:cacheprovider --ignore=tests/test_ui_smoke_gk.py --tb=no -q \
+  --junitxml=/workspace/work/junit_final4.xml
+```
+
+★ 读数：**tests=2008 / failures=1 / errors=0 / skipped=0**
+- 与上一轮（接线字节 `d7aa3b0`）的 **2003** 条相比 **+5**（＝本轮新增的 5 条负向回归：model_participation +3、wiring +2）；
+- **失败集合仍只有一条**：`tests/test_doctor_script.py::test_doctor_script_exits_zero`
+  （沙箱缺 `.env`/`node_modules`/后端依赖；★ **CI 本身就显式 `--ignore` 这一条**）
+  ⇒ **零新增失败**；
+- 基线 `abc4627` 同环境为 1887/1886/1/0 ⇒ 本分支 **2008/2007/1/0**。

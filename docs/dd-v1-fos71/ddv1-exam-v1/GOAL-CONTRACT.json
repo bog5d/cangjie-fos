@@ -53,7 +53,7 @@
   },
   "capability": {
     "effective_config_ref": "backend/config/dd_v1_exam_scoring_spec.v1.json",
-    "code_version": "feat/71-ddv1-exam-v1-20261028 (base abc462747e99171415dc405e735773fd9d1335d1) ｜第 5 轮接线字节 fd9bb2174337ee39124aaf8f391de62f2df03449（+ 缺陷修复 b011b2e…）｜★ 第 5 轮复核修复字节（提交后回填）",
+    "code_version": "feat/71-ddv1-exam-v1-20261028 (base abc462747e99171415dc405e735773fd9d1335d1) ｜第 5 轮接线字节 fd9bb2174337ee39124aaf8f391de62f2df03449（+ 缺陷修复 b011b2e…）｜第 5 轮复核修复 3edba0b → 文档改齐 9d6e13b（远端 head 35de52cb3cf2…）",
     "entry_points": [
       "tools/dd_team_channel.py preflight --contract <考场契约.json>",
       "tools/dd_team_channel.py answer --bridge-json <尽调结果-*.json>",
@@ -65,7 +65,7 @@
   },
   "state": {
     "status": "IN_PROGRESS",
-    "next_action": "第 5 轮接线已完成（三个模块接入真实组包链 ＋ MODEL/RULE_ONLY 分开 ＋ 修复前后对比）⇒ 等独立 Reviewer 第 5 轮裁定 ⇒ 按裁定处置 ⇒ 更新 PR #86 与 Windows 交接说明（不合并 master）"
+    "next_action": "第 5 轮接线已完成；独立 Reviewer 第 5 轮裁定 CONDITIONAL（3 重要缺陷＋1 条件项＋1 文档计数）⇒ 已逐条修复并补负向回归（缺陷前字节 8 red / 27 passed）＋ 按 D3/D7/D8/D9/D10 改齐文档口径⇒ 修复后全量回归 2008/2007/1/0（零新增失败）⇒ 第 6 轮复裁进行中 ⇒ 复裁 PASS 后再改判 M03=PASS 15/15、G3=PASS、重算 SHA256SUMS、重建交接包、更新 PR #86（不合并 master）"
   },
   "evidence": [
     {
@@ -140,6 +140,14 @@
       "claim": "第 5 轮复核抓到 3 条重要缺陷（①候选扩展路径丢掉人工确认映射 ②参与身份只按自填 adapter_id 判定 ③PREBAKED_RESULT 不可达）＋1 条条件项（大写 file_id 查表键静默不命中）＋1 条文档计数错误⇒ 已逐条修复并补负向回归：把新测试拷到缺陷前字节 a0324a9 上跑 ⇒ 8 failed / 27 passed（这 8 条确实打到点上，不是空转摆设）",
       "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9",
       "reviewer_note": "★ 第 6 轮复裁进行中 ⇒ M03 仍为 PARTIAL，不预告 PASS。"
+    },
+    {
+      "subject_id": "ddv1-full-regression-after-round5-fix",
+      "source": "backend/tests/ 全量（pytest --junitxml=/workspace/work/junit_final4.xml）",
+      "event_at": "2026-10-29T00:10:00+08:00",
+      "collected_at": "2026-10-29T00:10:00+08:00",
+      "claim": "修复后全量回归：2008 tests / 2007 passed / 1 failed / 0 errors / 0 skipped；唯一失败仍是 tests/test_doctor_script.py::test_doctor_script_exits_zero（沙箱环境项，CI 显式 ignore）⇒ 与上一轮 2003 条相比 +5（本轮 5 条负向回归）⇒ 零新增失败",
+      "artifact": "docs/dd-v1-fos71/ddv1-exam-v1/EVIDENCE.md §9.6"
     }
   ],
   "gate": {
