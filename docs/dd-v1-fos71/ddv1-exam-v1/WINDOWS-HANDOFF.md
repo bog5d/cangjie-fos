@@ -272,11 +272,25 @@ python tools\dd_team_channel.py run `
   --resolve-doc-type --agent codex `
   --package --approved-by "<批准人>" `
   --package-out "<交付目录>" --out "<报告目录>"
-# ③ 核参与类别（在机读结果 JSON 顶层）
-#    examinee.mode 应为 HARNESS_MODEL
-#    agent_receipt.provenance 应为 HARNESS_MODEL
-#    agent_receipt.provenance_source 应为 ADAPTER_IMPLEMENTATION
-#    agent_receipt.implementation_verified 应为 true
+# ③ 核参与类别（★ **看两个文件、各看各的位置** —— 别只看顶层）
+#
+#    【尽调结果-*.json】（run 命令产出）
+#      semantic_bridge.agent_receipt.provenance          应为 HARNESS_MODEL
+#      semantic_bridge.agent_receipt.provenance_source    应为 ADAPTER_IMPLEMENTATION
+#      semantic_bridge.agent_receipt.implementation_verified 应为 true
+#      semantic_bridge.agent_receipt.participated         应为 true   ← ★ **这一项才是「真的跑过」**
+#      ★ 注意：agent_receipt 在 **semantic_bridge 下面**，**不在顶层**；顶层也没有 examinee。
+#
+#    【机器答卷-*.json】（answer 命令产出，★ examinee 在**这里**）
+#      examinee.mode              HARNESS_MODEL（participated=true 时）／否则 RULE_ONLY
+#      examinee.participated      true／false
+#      examinee.provenance_source ADAPTER_IMPLEMENTATION（没有盖章 ⇒ 不采信自填字段）
+#
+# ★ ★ **类别 ≠ 参与**：`provenance` 只说明「适配器实现是哪一个」，
+#   `participated` 才说明「**这次真的跑出了回执**」。
+#   ⇒ 二进制不在 PATH（exit 127）／人工还没贴回执／贴进来的文件不存在
+#   ⇒ `participated=false` ⇒ `examinee.mode` 记 **RULE_ONLY**（**不自称模型凭据**），
+#     且 `degrade_reason` 会写明原因。★ 这是第 6 轮独立复核抓出来的假凭据口子（已修）。
 ```
 
 ★ ★ **参与身份怎么判定的（别自填就信）**：
@@ -286,7 +300,7 @@ python tools\dd_team_channel.py run `
   - `provenance_source`：**固定是 `ADAPTER_IMPLEMENTATION`**（＝「这一档是按实现类判的」）；
   - `declared_provenance`：id 级**声明**（只是旁证，不构成参与主张）；
   - `provenance_mismatch`：声明与实现**不一致** ⇒ 会显式标出来；
-  - `executable` / `argv_digest` / `workdir_digest`：**运行痕迹**（跑了什么的指纹，不含材料内容）。
+  - `executable` / `argv_digest` / `workdir_digest`：**运行痕迹**（跑了什么的指纹，不含材料内容）｜★ **它们是适配器自己写的字段**（可被替身伪造）⇒ 只能作**旁证**，不能单独当「跑过」的证据；且**不派生进程**的适配器（人工交换／预置回执）这三项为空。
 
 ★ ★★ **答卷层也只认「盖章」**（第 6 轮复核抓到的一个绕过口，已修）：
   机器答卷的 `examinee.mode` **不采信** `run_record.json` 里适配器自填的 `adapter.provenance`

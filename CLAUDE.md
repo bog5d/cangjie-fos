@@ -527,7 +527,13 @@ cd backend && uv run --extra dev pytest tests/test_ui_smoke.py -v -s  # 终端3
 | ④ | id 级声明表 | 搬进**实现侧**（`ad.KNOWN_ADAPTER_ID_CLASSES` ＋ `ad.declared_class_of`），bridge 侧改为引用（API 不变） | `dd_v1_agent_adapters.py`、`dd_v1_bridge_service.py` |
 
 ★ **负向回归**：3 条新测试跑在修复前字节 `fe939b6` 上 ⇒ **3 red**（确实打到点上）。
-★ 修复后 12 文件子集 **224 passed / 0 failed / 0 errors**。
+★ 第 6 轮复核**新抓到**的两处（同族），也已修：
+| # | 缺陷 | 修法 |
+|---|---|---|
+| ③ | **Harness 没跑出回执却自称 `HARNESS_MODEL`**（假凭据） | 类别与「真的跑出回执」**拆成两件事**：新增 `participated`（`ad.participated_flag()`）⇒ 没跑出回执 ⇒ `examinee.mode` 记 `RULE_ONLY` |
+| ④ | **`--run-dir` 路径机读产物里出现 Python dict repr** | 非法类别值的 `declared_provenance` 一律记 `UNDECLARED` |
+
+★ 修复后 12 文件子集 **226 passed / 0 failed / 0 errors**。
 
 
 ### 改动（工具层 / 测试 / 夹具）

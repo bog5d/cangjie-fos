@@ -10,7 +10,7 @@
 ## 0. 一句话结论
 
 **开发面四组测试全绿、全量回归零新增失败；合成考场跑出真实分数（64.5 分）；**
-**独立 Reviewer 三轮增量复核：第三轮裁定 PASS（锚点 `b20f8f0`，其自跑子集 86 passed / 0 failed / 0 ERROR）。**
+**独立 Reviewer 三轮增量复核：第三轮裁定 PASS（锚点 `b20f8f0`（★本地历史 sha，REST 重建后仓内已不存在），其自跑子集 86 passed / 0 failed / 0 ERROR）。**
 **真实 42 题的业务成绩仍是 `NOT_SCORABLE`** —— 原因不是系统没能力，
 而是**标准答案包至今未交付**（`#74` 于 2026-10-22 按波总意见暂停），
 **「未接入」≠「不存在」**，本版**没有**补造任何历史分数。
@@ -215,7 +215,7 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 ### 6.3 第三轮增量复核（**Reviewer 裁定：PASS**）与残余 4 条次要的处置
 
 ★ **第三轮裁定原文结论**：「上一轮 9 条 PASS 全部仍成立；本轮 5 条收口清单逐条闭合且我用**自己的探针**复验过」⇒ **VERDICT = PASS**
-（锚点 `b20f8f0`；Reviewer 核了 5 个关键文件的 blob SHA 逐个相同；子集 **86 passed / 0 failed / 0 ERROR**；
+（锚点 `b20f8f0`（★本地历史 sha，REST 重建后仓内已不存在）；Reviewer 核了 5 个关键文件的 blob SHA 逐个相同；子集 **86 passed / 0 failed / 0 ERROR**；
 合成考场 64.5 / 安全闸 PASS / `selection_mismatches=3` / `delivered_files=1` / `RULE_ONLY`，与我的读数**逐项一致**）。
 ★ 完整报告：`/workspace/verify/REVIEW-INCREMENTAL2-PR86.md`（Reviewer 自跑，**未改动本仓库任何文件**）。
 
@@ -231,8 +231,8 @@ AI 语义判断那一路需要模型适配器，**云沙箱内没有外部模型
 **本轮未发现新缺陷、无新增阻塞项**」（报告：`/workspace/verify/REVIEW-FAST4-PR86.md`）。
 ★ Reviewer 给的期望读数 **1973 / 1972 passed / 1 failed / 0 ERROR** 与我用 `--junitxml` 取到的确数**逐项一致**。
 
-★ **Reviewer 收口后核验（PASS 维持，锚点 `896139a`）**：本目录三个 blob 逐个核过
-（`最终报告.md`＝`22d27f88410a`、`SHA256SUMS`＝`1ad9bf49d38b`（**15 条**，`sha256sum -c` ⇒ **15 OK / 0 FAILED / 0 missing**，覆盖含 `证据/` 子目录）、
+★ **Reviewer 收口后核验（PASS 维持，锚点 `896139a`（★本地历史 sha，REST 重建后仓内已不存在））**：本目录三个 blob 逐个核过
+（`最终报告.md`＝`22d27f88410a`、`SHA256SUMS`＝`1ad9bf49d38b`（★ 该 blob 是**当时**的 15 条；★ **当前**目录为 **16 条**，`sha256sum -c` ⇒ **16 OK / 0 FAILED / 0 missing**，覆盖含 `证据/` 子目录）、
 `版本锚点.md`＝`b3b757a9da2a`）；`ddv1-exam-v1/` 下 16 个条目 blob sha 逐个相同；`tools/dd_team_channel.py` mode 仍 **100755** ✔。
 ★ **唯一未核**：**交接包 zip 本体不在共享工作区** ⇒ Reviewer 记 **NOT_MEASURED（Reviewer 未核）**；
 我自跑：解包后逐件复算 **19/19 通过、0 失败**。⇒ 故 G10 的依据在最终报告里**拆成两句**（仓内 ✔／包体 Reviewer 未核）。
@@ -362,7 +362,7 @@ cd backend && python -m pytest tests/ -q --ignore=tests/test_ui_smoke_gk.py
 
 ## 9. 第 5 轮复核（CONDITIONAL）修复的证据
 
-★ Reviewer 第 5 轮（锚点 `5dfaa4f`）裁定 **CONDITIONAL**，抓到 3 条重要缺陷 ＋ 1 条条件项。
+★ Reviewer 第 5 轮（锚点 `5dfaa4f`（★本地历史 sha，REST 重建后仓内已不存在））裁定 **CONDITIONAL**，抓到 3 条重要缺陷 ＋ 1 条条件项。
 本节给出**修法**与**可复现的负向证据**。
 
 ### 9.1 缺陷 ①：候选扩展路径丢掉人工确认映射
@@ -418,7 +418,7 @@ cd /workspace/work/fosgit_prefix/backend && PYTHONPATH=src \
   --junitxml=/workspace/work/junit_prefix.xml
 ```
 
-★ 实测：**8 failed / 27 passed** ⇒ 这 6 条**确实打到点上**（在缺陷前字节上红、在修复后字节上绿）。
+★ 实测：**8 failed / 27 passed** ⇒ 这 **8 条**确实打到点上**（在缺陷前字节上红、在修复后字节上绿）。
 
 ### 9.6 修复后的全量回归（最终字节 `b7d2ff9` → `9d6e13b`）
 
@@ -466,3 +466,29 @@ cd /workspace/work/fosgit/backend && PYTHONPATH=src \
 **③ 措辞收紧**：参与类别判定**不是安全边界** —— 进程内代码理论上能替换实现
 （monkeypatch / 改 `__class__`）⇒ 挡的是「自填字段/自造替身冒充」这一类；
 真正不可伪造的那一段是**下游只认盖章**（伪造要连盖章一起造 ⇒ 那就不是「自填」了）。
+
+### 9.8 第 6 轮复核（复裁）的判词与本轮修复
+
+★ 独立复核（新 head `35de52cb3cf2`）裁定 **CONDITIONAL**：第 5 轮那 3 条重要缺陷**代码层已闭合**
+（复核方自跑负向回归复现了「8 red / 27 passed」），但**新抓到 4 处**。逐条处置如下。
+
+| # | 发现 | 严重度 | 处置 |
+|---|---|---|---|
+| F1 | **Harness 没跑出回执，答卷/成绩单却自称 `HARNESS_MODEL`**（exit 127／回执未贴／文件不存在 ⇒ `participated` 其实是 false） | 重要 | **已修**：参与类别与「真的跑出回执」**拆成两件事** —— 新增 `participated`（由 `ad.participated_flag()` 判定：`status==OK` 且有 `raw_text`）；**没跑出回执 ⇒ `examinee.mode` 记 `RULE_ONLY`**，`provenance` 仍留身份那一档，`degrade_reason` 写明原因 |
+| F2 | `_confirmed_index` **误命中**（表里 `FILE-ABC` 的归一形占掉 `file-abc` 那条 ⇒ 人工确认反了）＋ docstring「原样键优先」**不实** | 重要 | **已修**：**两级查表** —— 精确档**只放原样键** ＋ 大小写不敏感档**只作兜底** |
+| F3 | 「参与类别只认实现类」**端到端不成立**（答卷读适配器自填的 `provenance`） | 重要 | **已修**：**只认盖章**（`provenance_source=ADAPTER_IMPLEMENTATION`），盖章由**实现侧**产生并随回执落盘；自填那档只记 `declared_provenance` |
+| F4 | `--run-dir` 路径机读产物里出现 **Python dict repr**（`"{'independent_examinee_answer': False}"`） | 重要 | **已修**：不是合法类别值的 `declared_provenance` 一律记 `UNDECLARED`（不把 dict repr 写进机读产物） |
+| F5 | 「可核验运行痕迹」三字段是**适配器自报**的（可被替身伪造）＋ 不派生进程的适配器这三项为空 | 条件项 | **已修（措辞）**：文档改为「只作**旁证**，不能单独当『跑过』的证据」；不派生进程的适配器这三项为空（已写明） |
+| F6 | 类属性 `participation_class` **没人读**（自填字段留在最显眼的地方） | 条件项 | **已修**：注册表改为**由类属性生成** ⇒ 类属性成为**唯一来源**（不再是「没人读的自填字段」） |
+| F7 | `__class__` 改写可绕过精确类型匹配（进程内代码能替换实现） | 条件项（威胁模型的边界，进程内无法根治） | **已修（措辞）**：写清「挡的是**自填字段/自造替身冒充**；进程内改实现挡不住；不可伪造的那一段是**下游只认盖章**」 |
+| F8 | 包级 `SHA256SUMS` 条数写 **15**，实际 **16** | 文档 | **已修**（`最终报告.md` G10 ＋ `EVIDENCE.md`） |
+| F9 | 引用了**仓内不存在**的本地历史 sha（`b20f8f0`／`896139a`／`5dfaa4f`）⇒ 读者无法从仓内核对 | 文档 | **已修**：这几处一律标注「★本地历史 sha，REST 重建后仓内已不存在；可核的是它引用的 blob sha」 |
+| F10 | G9 写「三轮、第三轮 PASS」**陈旧**（未反映第 5/6 轮 CONDITIONAL） | 文档 | **已修**：G9 改判 **PARTIAL**（复核已跑 6 轮；本分支第 5/6 轮为 CONDITIONAL ⇒ 收口判词待下一轮复裁；前四轮 PASS 维持，其判词针对**上一版**） |
+| F11 | 「这 6 条」应为「这 8 条」 | 文档 | **已修** |
+| F12 | AB 报告 §0 的 after 锚点陈旧 | 文档 | **已修**（改为「可核的是产物文件本身」＋ 标注本地历史 sha） |
+
+★ **负向回归**（跑在修复前字节 `fe939b6` 上 ⇒ **4 red**）：
+`test_answer_sheet_refuses_unstamped_provenance`、`test_answer_sheet_honors_stamped_provenance`、
+`test_failed_harness_run_must_not_claim_model_participation`（F1）、`test_declared_provenance_is_not_a_python_repr`（F4）
+＋ 前一轮的 3 条（盖章 / 误命中）＝ **累计 7 条负向回归**。
+★ 修复后 12 文件子集 **226 passed / 0 failed / 0 errors**（`--junitxml` 确数）。
