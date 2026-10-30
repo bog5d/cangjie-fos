@@ -1103,6 +1103,14 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
             if fid:
                 _dfids.add(fid)
     delivered_files = len(_dfids)
+    # ★ D3 的**第二个口径**：「可归属到义务」的件数之和。
+    #   优先取**答卷 summary** 的同名口径（答卷 rows 的字段名是 `delivered`）；
+    #   缺失时回退到阅卷 rows 的 `delivered_files` 列表长度（阅卷 rows 用的是这个字段名）。
+    #   ★ 两个口径都取错字段名会**恒为 0**（实测踩过 ⇒ 已记注释）。
+    _attributed = (sheet.get("summary") or {}).get("delivered_files_attributed")
+    if _attributed is None:
+        _attributed = sum(len(r.get("delivered_files") or []) for r in rows)
+    _attributed_delivered = int(_attributed)
     # ★★ 冻结硬口径 HR-0 / HR-1（`#85`：0 分必须如实报 0 分）：
     #   - HR-1：交付件数 == 0 ⇒ 总分 = 0（**不是** NOT_SCORABLE）；
     #   - HR-0：命中的标准答案材料数 == 0 ⇒ 总分 = 0
@@ -1164,8 +1172,10 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
             #   读 counts.delivered_files_attributed 恒为 null ⇒ D3 的两口径在**机读证据层**
             #   不可见 ⇒ 无法对账）。这里补上，**不改**任何一个口径的取值。
             #   · delivered_files            = 阅卷采用的**并集**口径（顶层 ∪ 逐行，去重）
-            #   · delivered_files_attributed = **可归属到义务**的件数之和（答卷 summary 同名口径）
-            "delivered_files_attributed": sum(len(r.get("delivered") or []) for r in rows),
+            #   · delivered_files_attributed = **可归属到义务**的件数之和
+            #   ★ 来源必须是**答卷 summary**（答卷的 rows 有 `delivered` 键；阅卷的 rows 用的是
+            #     `delivered_files` 列表 ⇒ 从阅卷 rows 取会恒为 0 ⇒ 实测踩过）。
+            "delivered_files_attributed": _attributed_delivered,
             "understood": understood,
             "answered": answered,
             "complete": complete,
@@ -1241,6 +1251,11 @@ def _diagnostic_block(sheet: dict[str, Any],
             "answered": sum(1 for r in srows if str(r.get("verdict") or "") in DETERMINATE_VERDICTS),
             "selected_files": sum(int(r.get("selected_count") or 0) for r in srows),
             "delivered_files": len(dfids),
+            # ★ D3：诊断读数也带**第二个口径**（与正式评分同一口径，不一致会很难查）
+            "delivered_files_attributed": int(
+                (sheet.get("summary") or {}).get("delivered_files_attributed")
+                if (sheet.get("summary") or {}).get("delivered_files_attributed") is not None
+                else sum(len(r.get("delivered_files") or []) for r in srows)),
         },
         "exam_coverage": cov,
         "gold_resolution": gaps,
