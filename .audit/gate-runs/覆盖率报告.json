@@ -1,0 +1,987 @@
+{
+  "schema_version": "dd_v1_coverage_report.v1",
+  "generated_at": "2026-10-30T18:24:54+08:00",
+  "runs_dir": ".audit/gate-runs",
+  "runs": [
+    {
+      "exam": "A",
+      "run_id": "20261030T094939Z",
+      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e",
+      "status": "LOW_CONFIDENCE",
+      "total_score": 96.67,
+      "understanding": 0.666667,
+      "recall": 1.0,
+      "precision": 1.0,
+      "complete_ratio": 1.0,
+      "safety": "PASS",
+      "questions_total": 3,
+      "questions_processed": 3,
+      "questions_correct": 3,
+      "failures": 0
+    },
+    {
+      "exam": "B",
+      "run_id": "20261030T094940Z",
+      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e",
+      "status": "SCORED_PARTIAL",
+      "total_score": 85.43,
+      "understanding": 0.888889,
+      "recall": 0.846154,
+      "precision": 0.846154,
+      "complete_ratio": 0.857143,
+      "safety": "PASS",
+      "questions_total": 9,
+      "questions_processed": 9,
+      "questions_correct": 6,
+      "failures": 1
+    },
+    {
+      "exam": "C",
+      "run_id": "20261030T094940Z",
+      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e",
+      "status": "SCORED",
+      "total_score": 100.0,
+      "understanding": 1.0,
+      "recall": 1.0,
+      "precision": 1.0,
+      "complete_ratio": 1.0,
+      "safety": "PASS",
+      "questions_total": 42,
+      "questions_processed": 42,
+      "questions_correct": 38,
+      "failures": 0
+    }
+  ],
+  "gate": {
+    "schema_version": "dd_v1_gate_report.v1",
+    "evaluated_at": "2026-10-30T18:21:58+08:00",
+    "gate_spec_id": "DDV1-DELIVERY-GATE-V1",
+    "gate_spec_frozen_at": "2026-10-30T18:40:00+08:00",
+    "gate_spec_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backend/config/dd_v1_delivery_gate.v1.json",
+    "gate_spec_amendments": [
+      {
+        "id": "A1",
+        "amended_at": "2026-10-30T19:05:00+08:00",
+        "target": "G2/G5 的 status_scored 检查语义",
+        "change": "『已评分』状态白名单由 {SCORED, SCORED_PARTIAL} 扩为 {SCORED, SCORED_PARTIAL, LOW_CONFIDENCE}，并**加严**为必须同时存在 total_score。",
+        "why": "判定**语义**修正，非阈值变更：评分规范原文『义务条数 < 30 ⇒ status = LOW_CONFIDENCE（分数仍给，但标注样本量不足）』⇒ LOW_CONFIDENCE 是已评分状态。原实现把它判 FAIL 属**假 FAIL**（考试A 实测 total_score=96.67、安全闸 PASS、rc=0）。真正未评分只有 NOT_SCORABLE（HR-2/HR-3）⇒ 仍 FAIL。",
+        "thresholds_unchanged": "所有**数值阈值**（total_score≥70、understanding=1.0、questions=42、coverage=1.0、require_failed_zero）一个字未改。",
+        "effect": "不降低任何门槛的严格度；仅移除一个与规范相矛盾的假 FAIL 来源。"
+      },
+      {
+        "id": "A2",
+        "amended_at": "2026-10-30T19:20:00+08:00",
+        "target": "G7 的 artifact_exists 路径解析",
+        "change": "交接包路径改为仓库内路径 docs/dd-v1-fos71/ddv1-auto-test-suite/handoff；判定支持「相对 runs_dir」与「相对仓库根」两处解析。",
+        "why": "交接包是**交付物**，必须进版本控制随 PR 走，不能只躺在 .audit/ 本地证据目录里（否则交接＝没有交接）。",
+        "thresholds_unchanged": "G7 的判定标准（目录存在且非空）**一个字未改**；只改**在哪里找**。",
+        "effect": "交接包缺失仍判 FAIL（门槛严格度不变），只是查找位置更合理。"
+      }
+    ],
+    "gates": {
+      "G1": {
+        "status": "PASS",
+        "reason": "pytest passed=2098 failed=0 skipped=6 total=2104",
+        "gate": "G1",
+        "title": "基础测试 PASS（程序层：单元/契约/回归）",
+        "exam": null,
+        "run_id": null,
+        "git_sha": null
+      },
+      "G2": {
+        "status": "PASS",
+        "reason": "rc_zero=PASS(rc_run=0); status_scored=PASS(status=LOW_CONFIDENCE total_score=96.67); safety_pass=PASS(safety=PASS)",
+        "gate": "G2",
+        "title": "模拟端到端 PASS（考试A：完整链路可评分 + 安全闸 PASS）",
+        "exam": "A",
+        "run_id": "20261030T094939Z",
+        "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+      },
+      "G3": {
+        "status": "FAIL",
+        "reason": "NO_REAL_MODEL_RUN_WITH_PARTICIPATION",
+        "gate": "G3",
+        "title": "真实模型调用 PASS（participated=true 且非 RULE_ONLY）",
+        "exam": null,
+        "run_id": null,
+        "git_sha": null
+      },
+      "G4": {
+        "status": "PASS",
+        "reason": "status_scored=PASS(status=SCORED total_score=100.0); min_total_score=PASS(total_score=100.0 >= 70.0); min_understanding=PASS(understanding=1.0 >= 1.0); coverage_full=PASS(coverage=1.0 >= 1.0); questions_processed=PASS(processed=42 >= 42); safety_pass=PASS(safety=PASS)",
+        "gate": "G4",
+        "title": "合成 Gold 评分达标（考试C：完整42题）",
+        "exam": "C",
+        "run_id": "20261030T094940Z",
+        "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+      },
+      "G5": {
+        "status": "PASS",
+        "reason": "status_scored=PASS(status=SCORED_PARTIAL total_score=85.43); safety_pass=PASS(safety=PASS); no_blocked=PASS(not blocked); coverage_full=PASS(coverage=1.0 >= 1.0)",
+        "gate": "G5",
+        "title": "安全测试 PASS（考试B：复杂业务 + 披露闸）",
+        "exam": "B",
+        "run_id": "20261030T094940Z",
+        "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+      },
+      "G6": {
+        "status": "FAIL",
+        "reason": "NO_REVIEWER_REPORT:g6_reviewer.json",
+        "gate": "G6",
+        "title": "独立 Reviewer PASS（可复跑关键测试的复核报告）",
+        "exam": null,
+        "run_id": null,
+        "git_sha": null
+      },
+      "G7": {
+        "status": "PASS",
+        "reason": "artifact=handoff path=docs/dd-v1-fos71/ddv1-auto-test-suite/handoff",
+        "gate": "G7",
+        "title": "完整交接包生成（Windows 交接 + 证据目录）",
+        "exam": null,
+        "run_id": null,
+        "git_sha": null
+      }
+    },
+    "observations": {
+      "A": {
+        "run_id": "20261030T094939Z",
+        "status": "LOW_CONFIDENCE",
+        "total_score": 96.67,
+        "question_understanding_coverage": 0.666667,
+        "question_answer_coverage": 1.0,
+        "material_recall": 1.0,
+        "selection_precision": 1.0,
+        "complete_delivery_ratio": 1.0,
+        "miss_rate": 0.0,
+        "wrong_rate": 0.0,
+        "questions_processed": 3,
+        "questions_total": 3,
+        "verifiable_coverage": 1.0,
+        "delivered_files": 2,
+        "delivered_files_attributed": null,
+        "safety_status": "PASS",
+        "safety_violations": 0,
+        "model_participated": false,
+        "agent_spec": "none",
+        "examinee_mode": "RULE_ONLY"
+      },
+      "B": {
+        "run_id": "20261030T094940Z",
+        "status": "SCORED_PARTIAL",
+        "total_score": 85.43,
+        "question_understanding_coverage": 0.888889,
+        "question_answer_coverage": 0.888889,
+        "material_recall": 0.846154,
+        "selection_precision": 0.846154,
+        "complete_delivery_ratio": 0.857143,
+        "miss_rate": 0.142857,
+        "wrong_rate": 0.111111,
+        "questions_processed": 9,
+        "questions_total": 9,
+        "verifiable_coverage": 1.0,
+        "delivered_files": 2,
+        "delivered_files_attributed": null,
+        "safety_status": "PASS",
+        "safety_violations": 0,
+        "model_participated": false,
+        "agent_spec": "none",
+        "examinee_mode": "RULE_ONLY"
+      },
+      "C": {
+        "run_id": "20261030T094940Z",
+        "status": "SCORED",
+        "total_score": 100.0,
+        "question_understanding_coverage": 1.0,
+        "question_answer_coverage": 0.904762,
+        "material_recall": 1.0,
+        "selection_precision": 1.0,
+        "complete_delivery_ratio": 1.0,
+        "miss_rate": 0.0,
+        "wrong_rate": 0.0,
+        "questions_processed": 42,
+        "questions_total": 42,
+        "verifiable_coverage": 1.0,
+        "delivered_files": 31,
+        "delivered_files_attributed": null,
+        "safety_status": "PASS",
+        "safety_violations": 0,
+        "model_participated": false,
+        "agent_spec": "none",
+        "examinee_mode": "RULE_ONLY"
+      }
+    },
+    "status": "FAIL",
+    "failed_key_gates": [
+      "G3"
+    ],
+    "note": "★ 阈值来自**考试前冻结**的门禁文件；结果不得反过来改阈值（改阈值必须换版本并留差异说明）。★ observations 里的**实际读数**才是真相：门禁 PASS ≠ 指标完美（例：考试A 理解率 0.667 源于材料类型词表覆盖缺口，属**已知能力边界**，未掩盖、已留证）。"
+  },
+  "自动化覆盖率统计": {
+    "spec_id": "DDV1-ACCEPTANCE-ITEMS-V1",
+    "spec_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backend/config/dd_v1_acceptance_items.v1.json",
+    "spec_frozen_at": "2026-10-30T19:45:00+08:00",
+    "验收项总数": 54,
+    "可自动化项数": 51,
+    "已自动化且可重复执行": 50,
+    "本轮实际执行": 50,
+    "本轮通过": 50,
+    "自动化覆盖率": 0.9804,
+    "自动化测试通过率": 1.0,
+    "未自动化但可自动化": [
+      {
+        "id": "G5",
+        "title": "真实 DeepSeek 参与（进程 + 请求指纹 + 响应落盘）",
+        "status": "BLOCKED",
+        "reason": "BLOCKED-1：本机 dsh 凭证被服务端判 invalid",
+        "owner": "账号持有人（凭证修复后可复算）",
+        "blocked_by": "BLOCKED-1：本机 dsh 凭证被服务端判 invalid"
+      }
+    ],
+    "人工不可替代": [
+      {
+        "id": "I3",
+        "title": "Windows 真机兼容（路径/编码/cmd.exe/PowerShell 通配）",
+        "reason": "Mac 上无法复现 Windows 路径/编码/cmd.exe 行为 ⇒ 只能由 Windows 真机验证",
+        "owner": "刘江（Windows 授权环境）",
+        "blocked_by": "BLOCKED-4"
+      },
+      {
+        "id": "J1",
+        "title": "真实 42 题的业务准确性（Gold 本身对不对）",
+        "reason": "机器只能算「与 Gold 一致率」；「Gold 对不对」是业务判断，不是机器可判定项",
+        "owner": "波总 / 业务方",
+        "blocked_by": "BLOCKED-2 / BLOCKED-3"
+      },
+      {
+        "id": "J2",
+        "title": "披露授权（哪些材料可外发）",
+        "reason": "「哪些材料允许外发」是业务授权，非机器判定（合成考场口径不代表真实考场）",
+        "owner": "波总",
+        "blocked_by": "BLOCKED-2"
+      }
+    ],
+    "items": [
+      {
+        "id": "A1",
+        "group": "A. 拆题与义务口径",
+        "title": "42 题全部进入处理链路（一条清单项⇒至少一条义务，不丢题）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_all_42_questions_enter_the_contract [passed]",
+          "tests/test_dd_v1_obligation_contract_wp2.py::test_all_42_questions_enter_the_contract [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "A2",
+        "group": "A. 拆题与义务口径",
+        "title": "不同入口拆题结果一致（库侧契约 vs 桥接层）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_runner_and_library_agree_on_the_same_contract [passed]",
+          "tests/test_dd_v1_obligation_contract_wp2.py::test_runner_and_library_agree [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "A3",
+        "group": "A. 拆题与义务口径",
+        "title": "题号全程一致（清单题号 → 义务 → 答卷 → 成绩单）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_answer_sheet_rows_carry_both_cluster_and_authoritative_ids [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "A4",
+        "group": "A. 拆题与义务口径",
+        "title": "义务身份唯一且可追（权威 ID ＝ 库侧 ID）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_cluster_obligation_id_resolves_to_authoritative_id [passed]",
+          "tests/test_dd_v1_obligation_contract_wp2.py::test_contract_has_no_duplicate_or_missing [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "A5",
+        "group": "A. 拆题与义务口径",
+        "title": "并列连接词切成多条原子义务（「和/且/及」）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_parallel_connector_splits_into_two_obligations [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "A6",
+        "group": "A. 拆题与义务口径",
+        "title": "原文零丢失（拆分只作用于派生文本）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_original_text_is_never_lost_by_splitting [passed]",
+          "tests/test_dd_v1_obligation_contract_wp2.py::test_contract_keeps_original_text_verbatim [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "A7",
+        "group": "A. 拆题与义务口径",
+        "title": "清单/题号归一（分部目录名 vs 三级编号）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_obligation_contract_wp2.py::TestCanonicalQuestionId::test_section_directory_name_is_not_a_three_level_number [passed]",
+          "tests/test_dd_v1_obligation_contract_wp2.py::TestCanonicalQuestionId::test_join_tolerates_the_two_forms [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "B1",
+        "group": "B. 主体与期间",
+        "title": "主体多源分级（人工确认 > 路径 > 别名 > 正文 > 元数据 > 认不出）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_entity_resolution.py::TestMaterialEntityResolution::test_human_confirmed_map_wins [passed]",
+          "tests/test_dd_v1_entity_resolution.py::TestMaterialEntityResolution::test_no_registry_means_unresolved_not_guess [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "B2",
+        "group": "B. 主体与期间",
+        "title": "集团范围义务 ⇒ 多主体分簇且不跨法人混桶",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_multi_entity_evidence_never_crosses_legal_persons [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "B3",
+        "group": "B. 主体与期间",
+        "title": "分簇义务在阅卷时按库侧 ID 归并（D1 回归）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l2.py::test_exam_b_multi_entity_obligation_is_scored_against_the_library_id [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "B4",
+        "group": "B. 主体与期间",
+        "title": "跨年度不顶替（错年份材料不被选中）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_multi_year_materials_do_not_substitute_each_other [passed]",
+          "tests/test_dd_v1_fos71_player2_p0.py::test_wrong_year_candidate_is_rejected_by_semantic_gate [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "B5",
+        "group": "B. 主体与期间",
+        "title": "相对期间（「近三年」）按锚点解析",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_bridge_period_space_for_current_doc_types_is_current_only [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "B6",
+        "group": "B. 主体与期间",
+        "title": "主体未登记 ⇒ 不得拿目录名凑数",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_scaffold_ignores_directory_name_pollution [passed]",
+          "tests/test_dd_v1_alias.py::test_without_alias_subject_is_not_registered [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "C1",
+        "group": "C. 匹配与选材",
+        "title": "正确材料被选中（召回）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "C.results.scores.material_recall=1.0 == 1.0 → OK"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "C2",
+        "group": "C. 匹配与选材",
+        "title": "错误材料不被选中（精度）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "C.results.scores.selection_precision=1.0 == 1.0 → OK"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "C3",
+        "group": "C. 匹配与选材",
+        "title": "错误主体材料不被选中",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_wrong_year_candidate_is_rejected_by_semantic_gate [passed]",
+          "tests/test_dd_v1_bridge.py::test_bridge_does_not_mix_entities [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "C4",
+        "group": "C. 匹配与选材",
+        "title": "错误年份材料不被选中",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_wrong_year_candidate_is_rejected_by_semantic_gate [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "C5",
+        "group": "C. 匹配与选材",
+        "title": "候选触顶如实报数（「上限 X，另 N 份未看」）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_candidate_expansion.py::TestExpansionReadouts::test_reports_found_checked_unchecked_and_stop_reason [passed]",
+          "tests/test_dd_v1_candidate_expansion.py::TestExpansionReadouts::test_unread_candidates_are_never_called_missing [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "C6",
+        "group": "C. 匹配与选材",
+        "title": "多文件要求：缺一即 INCOMPLETE（并列多义务）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_multi_file_missing_one_is_not_complete [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "D1",
+        "group": "D. 审核与披露闸",
+        "title": "受限材料不得进正式交付包（负例）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l2.py::test_exam_c_safety_gate_passes_and_restricted_material_is_not_delivered [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "D2",
+        "group": "D. 审核与披露闸",
+        "title": "披露闸断言必须 fail-closed（找不到清单 ⇒ FAIL，不得报 PASS）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_uncertain_material_is_not_in_the_delivered_set [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "D3",
+        "group": "D. 审核与披露闸",
+        "title": "未批准不得复制原件",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_p0_delivery_gate.py::test_uncertain_obligation_material_is_not_copied_into_delivery [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "D4",
+        "group": "D. 审核与披露闸",
+        "title": "不确定材料不得混入正式包",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_uncertain_material_is_not_in_the_delivered_set [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "D5",
+        "group": "D. 审核与披露闸",
+        "title": "受限外发 / 越权交付安全闸独立计分",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_scoring.py::TestSafetyGate::test_wrong_entity_delivered_is_listed_and_caps_score [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "D6",
+        "group": "D. 审核与披露闸",
+        "title": "错主体/错年份/哈希不一致单列且封顶（≤59）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_scoring.py::TestSafetyGate::test_hash_mismatch_is_listed [passed]",
+          "tests/test_dd_v1_exam_scoring.py::TestSafetyGate::test_wrong_entity_selected_but_not_delivered_does_not_cap [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "D7",
+        "group": "D. 审核与披露闸",
+        "title": "披露口径按考场可配置（生产策略一字未改）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_public_release_list_is_still_license_only [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "E1",
+        "group": "E. 组包与交付",
+        "title": "交付链产物齐全",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_full_synthetic_chain_to_authorized_package [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "E2",
+        "group": "E. 组包与交付",
+        "title": "逐件 SHA256 复算一致",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_manifest.py::test_content_hash_matches_hashlib [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "E3",
+        "group": "E. 组包与交付",
+        "title": "0 件交付必须如实写「未产出正式交付件」",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_zero_delivery_with_valid_gold_scores_zero_not_not_scorable [passed]",
+          "tests/test_dd_v1_exam_e2e.py::TestFullSimulatedExam::test_zero_delivery_with_valid_gold_scores_zero [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "E4",
+        "group": "E. 组包与交付",
+        "title": "历史交付不得冒充本轮（残留 manifest）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_stale_delivery_manifest_is_not_counted_as_this_run [passed]",
+          "tests/test_dd_v1_exam_e2e.py::test_stale_delivery_manifest_is_not_counted_as_this_run_delivery [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "E5",
+        "group": "E. 组包与交付",
+        "title": "审核后原件变更 ⇒ 停止交付（审核失效）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_manifest.py::test_incremental_detects_content_change [passed]",
+          "tests/test_dd_v1_manifest.py::test_file_id_is_stable_and_path_based [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "E6",
+        "group": "E. 组包与交付",
+        "title": "正式包与候选包物理隔离",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_p0_delivery_gate.py::test_uncertain_obligation_material_is_not_copied_into_delivery [passed]",
+          "tests/test_dd_v1_manifest.py::test_data_plane_inside_library_is_refused [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F1",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "机器答卷逐题记录（理解/候选/选中/交付/弃答原因）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_answer_sheet_rows_carry_both_cluster_and_authoritative_ids [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F2",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "0 件交付 ⇒ 0 分（不是 NOT_SCORABLE）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_zero_delivery_with_valid_gold_scores_zero_not_not_scorable [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F3",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "Gold 未提供 ⇒ NOT_SCORABLE 且写明阻塞",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_missing_gold_is_not_scorable_and_says_why [passed]",
+          "tests/test_dd_v1_exam_suite_l2.py::test_missing_gold_makes_the_score_not_scorable [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F4",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "Gold 泄漏 ⇒ 不进入正式评分",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l2.py::test_gold_leak_stops_scoring [passed]",
+          "tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_gold_leak_is_safety_failure [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F5",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "Gold 按稳定键绑定（换快照仍能绑上）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l1.py::test_gold_binds_by_stable_key_even_when_uuid_changed [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F6",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "分层成绩单（保留全卷分母 + 缺口逐件）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l2.py::test_exam_b_keeps_the_full_denominator_and_reports_gaps [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F7",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "逐题明细 + 7 项指标 + 0—100 总分",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_scoring.py::TestScoringCorrectness::test_partial_correct_gives_partial_score [passed]",
+          "tests/test_dd_v1_exam_scoring.py::TestScoringSpec::test_spec_weights_sum_to_100 [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "F8",
+        "group": "F. 答卷 / 阅卷 / 评分",
+        "title": "安全闸封顶（命中 ⇒ ≤59）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_scoring.py::TestSafetyGate::test_wrong_entity_delivered_is_listed_and_caps_score [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "G1",
+        "group": "G. 模型参与",
+        "title": "RULE_ONLY 不得冒充模型参与",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_model_participation_l3.py::test_rule_only_run_is_not_credited_as_model_participation [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "G2",
+        "group": "G. 模型参与",
+        "title": "参与必须回执口径 + 盖章来源",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_model_participation_l3.py::test_missing_stamp_means_not_participated [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "G3",
+        "group": "G. 模型参与",
+        "title": "自造适配器 id 不得被认成 HARNESS_MODEL",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_model_participation_l3.py::test_spoofed_adapter_id_is_not_credited [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "G4",
+        "group": "G. 模型参与",
+        "title": "模型失败必须报错（超时/非零退出/不存在/垃圾输出）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_suite_l2.py::test_model_timeout_is_reported_as_timeout [passed]",
+          "tests/test_dd_v1_exam_suite_l2.py::test_model_nonzero_exit_is_reported_as_call_failed [passed]",
+          "tests/test_dd_v1_exam_suite_l2.py::test_missing_model_binary_is_reported_as_call_failed [passed]",
+          "tests/test_dd_v1_exam_suite_l2.py::test_malformed_model_output_yields_no_accepted_results [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "G5",
+        "group": "G. 模型参与",
+        "title": "真实 DeepSeek 参与（进程 + 请求指纹 + 响应落盘）",
+        "automatable": true,
+        "status": "BLOCKED",
+        "detail": "BLOCKED-1：本机 dsh 凭证被服务端判 invalid",
+        "evidence": [
+          "tests/test_dd_v1_model_participation_l3.py::test_real_deepseek_harness_probe [skipped]"
+        ],
+        "owner": "账号持有人（凭证修复后可复算）",
+        "blocked_by": "BLOCKED-1：本机 dsh 凭证被服务端判 invalid"
+      },
+      {
+        "id": "H1",
+        "group": "H. 安全与隔离",
+        "title": "Gold 与考生面物理分离（隔离闸拒绝仓内 Gold）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_exam_e2e.py::TestFullSimulatedExam::test_gold_inside_repo_is_refused [passed]",
+          "tests/test_dd_v1_local_run.py::test_gold_inside_material_or_run_dir_refused [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "H2",
+        "group": "H. 安全与隔离",
+        "title": "合成测试数据不污染真实业务库（隔离数据面在仓库之外）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_manifest.py::test_data_plane_inside_library_is_refused [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "H3",
+        "group": "H. 安全与隔离",
+        "title": "PII 脱敏（材料正文不进 prompt/产物）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_fos71_player2_p0.py::test_split_stage_output_faces_have_no_plaintext_pii [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "H4",
+        "group": "H. 安全与隔离",
+        "title": "命令行不含材料明文（Windows 注入面）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "tests/test_dd_v1_local_run.py::test_material_text_never_in_argv [passed]"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "I1",
+        "group": "I. 环境与兼容",
+        "title": "CI 与本机口径一致（代理变量污染、doctor 依赖）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "gate G1=PASS"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "I2",
+        "group": "I. 环境与兼容",
+        "title": "macOS 本机全量回归（0 失败）",
+        "automatable": true,
+        "status": "PASS",
+        "detail": "",
+        "evidence": [
+          "gate G1=PASS"
+        ],
+        "owner": "机器",
+        "blocked_by": null
+      },
+      {
+        "id": "I3",
+        "group": "I. 环境与兼容",
+        "title": "Windows 真机兼容（路径/编码/cmd.exe/PowerShell 通配）",
+        "automatable": false,
+        "status": "MANUAL",
+        "detail": "Mac 上无法复现 Windows 路径/编码/cmd.exe 行为 ⇒ 只能由 Windows 真机验证",
+        "evidence": [],
+        "owner": "刘江（Windows 授权环境）",
+        "blocked_by": "BLOCKED-4"
+      },
+      {
+        "id": "J1",
+        "group": "J. 业务判断",
+        "title": "真实 42 题的业务准确性（Gold 本身对不对）",
+        "automatable": false,
+        "status": "MANUAL",
+        "detail": "机器只能算「与 Gold 一致率」；「Gold 对不对」是业务判断，不是机器可判定项",
+        "evidence": [],
+        "owner": "波总 / 业务方",
+        "blocked_by": "BLOCKED-2 / BLOCKED-3"
+      },
+      {
+        "id": "J2",
+        "group": "J. 业务判断",
+        "title": "披露授权（哪些材料可外发）",
+        "automatable": false,
+        "status": "MANUAL",
+        "detail": "「哪些材料允许外发」是业务授权，非机器判定（合成考场口径不代表真实考场）",
+        "evidence": [],
+        "owner": "波总",
+        "blocked_by": "BLOCKED-2"
+      }
+    ]
+  },
+  "junit_cases_indexed": 2104,
+  "note": "★ 覆盖率与通过率**分列**，均由**机算**得出（test_refs 对 JUnit XML 的实际执行结果 ＋ exam_refs 对运行清单＋ gate_refs 对门禁报告）；ref 找不到 ⇒ NOT_AUTOMATED、ref 被 skip ⇒ BLOCKED，两者都**不充数**。"
+}

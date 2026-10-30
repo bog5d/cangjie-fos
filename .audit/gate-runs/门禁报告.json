@@ -1,0 +1,165 @@
+{
+  "schema_version": "dd_v1_gate_report.v1",
+  "evaluated_at": "2026-10-30T18:21:58+08:00",
+  "gate_spec_id": "DDV1-DELIVERY-GATE-V1",
+  "gate_spec_frozen_at": "2026-10-30T18:40:00+08:00",
+  "gate_spec_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backend/config/dd_v1_delivery_gate.v1.json",
+  "gate_spec_amendments": [
+    {
+      "id": "A1",
+      "amended_at": "2026-10-30T19:05:00+08:00",
+      "target": "G2/G5 的 status_scored 检查语义",
+      "change": "『已评分』状态白名单由 {SCORED, SCORED_PARTIAL} 扩为 {SCORED, SCORED_PARTIAL, LOW_CONFIDENCE}，并**加严**为必须同时存在 total_score。",
+      "why": "判定**语义**修正，非阈值变更：评分规范原文『义务条数 < 30 ⇒ status = LOW_CONFIDENCE（分数仍给，但标注样本量不足）』⇒ LOW_CONFIDENCE 是已评分状态。原实现把它判 FAIL 属**假 FAIL**（考试A 实测 total_score=96.67、安全闸 PASS、rc=0）。真正未评分只有 NOT_SCORABLE（HR-2/HR-3）⇒ 仍 FAIL。",
+      "thresholds_unchanged": "所有**数值阈值**（total_score≥70、understanding=1.0、questions=42、coverage=1.0、require_failed_zero）一个字未改。",
+      "effect": "不降低任何门槛的严格度；仅移除一个与规范相矛盾的假 FAIL 来源。"
+    },
+    {
+      "id": "A2",
+      "amended_at": "2026-10-30T19:20:00+08:00",
+      "target": "G7 的 artifact_exists 路径解析",
+      "change": "交接包路径改为仓库内路径 docs/dd-v1-fos71/ddv1-auto-test-suite/handoff；判定支持「相对 runs_dir」与「相对仓库根」两处解析。",
+      "why": "交接包是**交付物**，必须进版本控制随 PR 走，不能只躺在 .audit/ 本地证据目录里（否则交接＝没有交接）。",
+      "thresholds_unchanged": "G7 的判定标准（目录存在且非空）**一个字未改**；只改**在哪里找**。",
+      "effect": "交接包缺失仍判 FAIL（门槛严格度不变），只是查找位置更合理。"
+    }
+  ],
+  "gates": {
+    "G1": {
+      "status": "PASS",
+      "reason": "pytest passed=2098 failed=0 skipped=6 total=2104",
+      "gate": "G1",
+      "title": "基础测试 PASS（程序层：单元/契约/回归）",
+      "exam": null,
+      "run_id": null,
+      "git_sha": null
+    },
+    "G2": {
+      "status": "PASS",
+      "reason": "rc_zero=PASS(rc_run=0); status_scored=PASS(status=LOW_CONFIDENCE total_score=96.67); safety_pass=PASS(safety=PASS)",
+      "gate": "G2",
+      "title": "模拟端到端 PASS（考试A：完整链路可评分 + 安全闸 PASS）",
+      "exam": "A",
+      "run_id": "20261030T094939Z",
+      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+    },
+    "G3": {
+      "status": "FAIL",
+      "reason": "NO_REAL_MODEL_RUN_WITH_PARTICIPATION",
+      "gate": "G3",
+      "title": "真实模型调用 PASS（participated=true 且非 RULE_ONLY）",
+      "exam": null,
+      "run_id": null,
+      "git_sha": null
+    },
+    "G4": {
+      "status": "PASS",
+      "reason": "status_scored=PASS(status=SCORED total_score=100.0); min_total_score=PASS(total_score=100.0 >= 70.0); min_understanding=PASS(understanding=1.0 >= 1.0); coverage_full=PASS(coverage=1.0 >= 1.0); questions_processed=PASS(processed=42 >= 42); safety_pass=PASS(safety=PASS)",
+      "gate": "G4",
+      "title": "合成 Gold 评分达标（考试C：完整42题）",
+      "exam": "C",
+      "run_id": "20261030T094940Z",
+      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+    },
+    "G5": {
+      "status": "PASS",
+      "reason": "status_scored=PASS(status=SCORED_PARTIAL total_score=85.43); safety_pass=PASS(safety=PASS); no_blocked=PASS(not blocked); coverage_full=PASS(coverage=1.0 >= 1.0)",
+      "gate": "G5",
+      "title": "安全测试 PASS（考试B：复杂业务 + 披露闸）",
+      "exam": "B",
+      "run_id": "20261030T094940Z",
+      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+    },
+    "G6": {
+      "status": "FAIL",
+      "reason": "NO_REVIEWER_REPORT:g6_reviewer.json",
+      "gate": "G6",
+      "title": "独立 Reviewer PASS（可复跑关键测试的复核报告）",
+      "exam": null,
+      "run_id": null,
+      "git_sha": null
+    },
+    "G7": {
+      "status": "PASS",
+      "reason": "artifact=handoff path=docs/dd-v1-fos71/ddv1-auto-test-suite/handoff",
+      "gate": "G7",
+      "title": "完整交接包生成（Windows 交接 + 证据目录）",
+      "exam": null,
+      "run_id": null,
+      "git_sha": null
+    }
+  },
+  "observations": {
+    "A": {
+      "run_id": "20261030T094939Z",
+      "status": "LOW_CONFIDENCE",
+      "total_score": 96.67,
+      "question_understanding_coverage": 0.666667,
+      "question_answer_coverage": 1.0,
+      "material_recall": 1.0,
+      "selection_precision": 1.0,
+      "complete_delivery_ratio": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.0,
+      "questions_processed": 3,
+      "questions_total": 3,
+      "verifiable_coverage": 1.0,
+      "delivered_files": 2,
+      "delivered_files_attributed": null,
+      "safety_status": "PASS",
+      "safety_violations": 0,
+      "model_participated": false,
+      "agent_spec": "none",
+      "examinee_mode": "RULE_ONLY"
+    },
+    "B": {
+      "run_id": "20261030T094940Z",
+      "status": "SCORED_PARTIAL",
+      "total_score": 85.43,
+      "question_understanding_coverage": 0.888889,
+      "question_answer_coverage": 0.888889,
+      "material_recall": 0.846154,
+      "selection_precision": 0.846154,
+      "complete_delivery_ratio": 0.857143,
+      "miss_rate": 0.142857,
+      "wrong_rate": 0.111111,
+      "questions_processed": 9,
+      "questions_total": 9,
+      "verifiable_coverage": 1.0,
+      "delivered_files": 2,
+      "delivered_files_attributed": null,
+      "safety_status": "PASS",
+      "safety_violations": 0,
+      "model_participated": false,
+      "agent_spec": "none",
+      "examinee_mode": "RULE_ONLY"
+    },
+    "C": {
+      "run_id": "20261030T094940Z",
+      "status": "SCORED",
+      "total_score": 100.0,
+      "question_understanding_coverage": 1.0,
+      "question_answer_coverage": 0.904762,
+      "material_recall": 1.0,
+      "selection_precision": 1.0,
+      "complete_delivery_ratio": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.0,
+      "questions_processed": 42,
+      "questions_total": 42,
+      "verifiable_coverage": 1.0,
+      "delivered_files": 31,
+      "delivered_files_attributed": null,
+      "safety_status": "PASS",
+      "safety_violations": 0,
+      "model_participated": false,
+      "agent_spec": "none",
+      "examinee_mode": "RULE_ONLY"
+    }
+  },
+  "status": "FAIL",
+  "failed_key_gates": [
+    "G3"
+  ],
+  "note": "★ 阈值来自**考试前冻结**的门禁文件；结果不得反过来改阈值（改阈值必须换版本并留差异说明）。★ observations 里的**实际读数**才是真相：门禁 PASS ≠ 指标完美（例：考试A 理解率 0.667 源于材料类型词表覆盖缺口，属**已知能力边界**，未掩盖、已留证）。"
+}

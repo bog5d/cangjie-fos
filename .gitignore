@@ -65,3 +65,5 @@ htmlcov/
 # ★ 进 Git 的只有**机读证据**（运行清单 / 答卷 / 成绩单 / 门禁 / 覆盖率 / JUnit XML）
 .audit/exam-plane/
 backend/.audit/
+# ★ 例外：**失败证据**必须入库（BLOCKED-1 的真实模型 stderr 就是 .log）
+!.audit/**/*.log

@@ -1,0 +1,461 @@
+{
+  "schema_version": "dd_v1_exam_run_manifest.v1",
+  "run_id": "20261030T094940Z",
+  "exam": "C",
+  "exam_id": "DDV1-SYN-C",
+  "title": "考试C · 完整42题",
+  "started_at": "2026-10-30T17:49:42+08:00",
+  "finished_at": "2026-10-30T17:49:42+08:00",
+  "elapsed_s": 2.0,
+  "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e",
+  "git_dirty": true,
+  "environment": {
+    "platform": "darwin",
+    "python": "3.13.12",
+    "data_plane": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/data",
+    "out_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z",
+    "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库"
+  },
+  "model": {
+    "agent_spec": "none",
+    "agent_result_file": "",
+    "examinee_mode": "RULE_ONLY",
+    "participated": false
+  },
+  "test_data_version": {
+    "fixture": "backend/tests/fixtures/dd-v1-exam-suite/exams/C",
+    "materials": 41,
+    "questions": 42,
+    "contract_obligations": 42,
+    "contract_questions": 42
+  },
+  "gold_version": {
+    "path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/gold/gold-C.json",
+    "items": 42,
+    "fingerprint": "1d7b1b5ff50310b7339b443f671a641ad6a4b06b94e871dafadd518cc9017078"
+  },
+  "results": {
+    "rc_run": 0,
+    "rc_answer": 0,
+    "rc_grade": 0,
+    "status": "SCORED",
+    "scores": {
+      "question_understanding_coverage": 1.0,
+      "question_answer_coverage": 0.904762,
+      "material_recall": 1.0,
+      "selection_precision": 1.0,
+      "complete_delivery_ratio": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.0,
+      "total_score": 100.0
+    },
+    "safety_gate": {
+      "violations": 0,
+      "findings": [],
+      "by_kind": {},
+      "selection_mismatches": 0,
+      "selection_mismatch_detail": [],
+      "selection_mismatch_by_kind": {},
+      "note_selection": "错主体/错年份属**选材质量**问题，单列且**不封顶**；只有**实际交付**的件才进安全闸封顶；★ **期间（年份）只影响本单列指标**，不进安全闸、不封顶（派生元数据口径差异不算机器交错年份）",
+      "status": "PASS",
+      "note": "未发现安全闸违规"
+    },
+    "counts": {
+      "obligations": 42,
+      "obligations_with_expected_files": 38,
+      "expected_files": 50,
+      "selected_files": 50,
+      "hit_files": 50,
+      "extra_files": 0,
+      "delivered_files": 31,
+      "understood": 42,
+      "answered": 38,
+      "complete": 38,
+      "missed": 0,
+      "wrong": 0
+    },
+    "exam_coverage": {
+      "questions_total": 42,
+      "denominator_source": "LIBRARY_OBLIGATION_CONTRACT",
+      "questions_processed": 42,
+      "questions_correct": 38,
+      "questions_unmatched": 0,
+      "questions_ambiguous": 0,
+      "questions_incomplete": 0,
+      "questions_unanswered": 0,
+      "verifiable_coverage": 1.0,
+      "questions": [
+        {
+          "question_id": "3-9",
+          "item_no": "3-9",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2019年度审计报告"
+        },
+        {
+          "question_id": "3-18",
+          "item_no": "3-18",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2019年度审计报告"
+        },
+        {
+          "question_id": "3-27",
+          "item_no": "3-27",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2019年度审计报告"
+        },
+        {
+          "question_id": "3-36",
+          "item_no": "3-36",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2019年度审计报告"
+        },
+        {
+          "question_id": "3-1",
+          "item_no": "3-1",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2020年度审计报告"
+        },
+        {
+          "question_id": "3-2",
+          "item_no": "3-2",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2020年度审计报告"
+        },
+        {
+          "question_id": "3-3",
+          "item_no": "3-3",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2020年度纳税证明"
+        },
+        {
+          "question_id": "3-4",
+          "item_no": "3-4",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2020年度纳税证明"
+        },
+        {
+          "question_id": "3-5",
+          "item_no": "3-5",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2020年度纳税证明"
+        },
+        {
+          "question_id": "3-6",
+          "item_no": "3-6",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2020年度财务报表"
+        },
+        {
+          "question_id": "3-7",
+          "item_no": "3-7",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2020年度财务报表"
+        },
+        {
+          "question_id": "3-8",
+          "item_no": "3-8",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2020年度财务报表"
+        },
+        {
+          "question_id": "3-10",
+          "item_no": "3-10",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2021年度合同"
+        },
+        {
+          "question_id": "3-11",
+          "item_no": "3-11",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2021年度审计报告"
+        },
+        {
+          "question_id": "3-12",
+          "item_no": "3-12",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2021年度纳税证明"
+        },
+        {
+          "question_id": "3-13",
+          "item_no": "3-13",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2021年度纳税证明"
+        },
+        {
+          "question_id": "3-14",
+          "item_no": "3-14",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2021年度纳税证明"
+        },
+        {
+          "question_id": "3-15",
+          "item_no": "3-15",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2021年度财务报表"
+        },
+        {
+          "question_id": "3-16",
+          "item_no": "3-16",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2021年度财务报表"
+        },
+        {
+          "question_id": "3-17",
+          "item_no": "3-17",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2021年度财务报表"
+        },
+        {
+          "question_id": "3-19",
+          "item_no": "3-19",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2022年度审计报告"
+        },
+        {
+          "question_id": "3-20",
+          "item_no": "3-20",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2022年度合同"
+        },
+        {
+          "question_id": "3-21",
+          "item_no": "3-21",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2022年度纳税证明"
+        },
+        {
+          "question_id": "3-22",
+          "item_no": "3-22",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2022年度纳税证明"
+        },
+        {
+          "question_id": "3-23",
+          "item_no": "3-23",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2022年度纳税证明"
+        },
+        {
+          "question_id": "3-24",
+          "item_no": "3-24",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2022年度财务报表"
+        },
+        {
+          "question_id": "3-25",
+          "item_no": "3-25",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2022年度财务报表"
+        },
+        {
+          "question_id": "3-26",
+          "item_no": "3-26",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2022年度财务报表"
+        },
+        {
+          "question_id": "3-28",
+          "item_no": "3-28",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2023年度审计报告"
+        },
+        {
+          "question_id": "3-29",
+          "item_no": "3-29",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2023年度审计报告"
+        },
+        {
+          "question_id": "3-30",
+          "item_no": "3-30",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2023年度合同"
+        },
+        {
+          "question_id": "3-31",
+          "item_no": "3-31",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2023年度纳税证明"
+        },
+        {
+          "question_id": "3-32",
+          "item_no": "3-32",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2023年度纳税证明"
+        },
+        {
+          "question_id": "3-33",
+          "item_no": "3-33",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2023年度财务报表"
+        },
+        {
+          "question_id": "3-34",
+          "item_no": "3-34",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2023年度财务报表"
+        },
+        {
+          "question_id": "3-35",
+          "item_no": "3-35",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2023年度财务报表"
+        },
+        {
+          "question_id": "3-37",
+          "item_no": "3-37",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2024年度审计报告"
+        },
+        {
+          "question_id": "3-38",
+          "item_no": "3-38",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2024年度审计报告"
+        },
+        {
+          "question_id": "3-39",
+          "item_no": "3-39",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度纳税证明"
+        },
+        {
+          "question_id": "3-40",
+          "item_no": "3-40",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2024年度合同"
+        },
+        {
+          "question_id": "3-41",
+          "item_no": "3-41",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2024年度纳税证明"
+        },
+        {
+          "question_id": "3-42",
+          "item_no": "3-42",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2024年度财务报表"
+        }
+      ],
+      "note": "分母来自**库侧权威题单**"
+    },
+    "gold_library_binding": {
+      "gold_items": 42,
+      "bound_exact": 42,
+      "rebound_by_key": 0,
+      "rebound": [],
+      "unbound": 0,
+      "unbound_detail": [],
+      "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
+    },
+    "blocked_by": []
+  },
+  "failures": [],
+  "disclosure": {
+    "delivered_rows": 38,
+    "delivered_files": 31,
+    "manifest_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/data/deliveries/cef0d414cc0e414bb43a1271098ea310/组包manifest.tsv",
+    "blocked_materials": 168,
+    "violations": 0,
+    "violation_detail": [],
+    "status": "PASS",
+    "policy_sendable_doc_types": [
+      "audit_report",
+      "financial_statement",
+      "license",
+      "tax"
+    ],
+    "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
+  },
+  "artifacts": {
+    "answer_sheet": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z/answer/机器答卷-20261030-174942.json",
+    "scorecard_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z/grade",
+    "run_report_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z/run",
+    "gold_manifest": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/gold/gold-C.json"
+  }
+}

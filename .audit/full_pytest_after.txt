@@ -1,0 +1,12 @@
+  /Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backend/src/cangjie_fos/services/dd_v1_requirement_service.py:1199: DeprecationWarning: 'maxsplit' is passed as positional argument
+    head = re.split(r"[_＿]", raw, 1)[0].strip()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_dd_material_architecture.py::TestPhase1FullText::test_refine_overrides_confidence_when_not_satisfied
+FAILED tests/test_dd_material_architecture.py::TestPhase1FullText::test_refine_confirms_when_satisfied
+FAILED tests/test_dd_material_architecture.py::TestPhase2Verdict::test_verdict_assigned_without_content_no_llm
+FAILED tests/test_dd_material_architecture.py::TestPhase2Verdict::test_refine_circuit_breaker_on_llm_down
+FAILED tests/test_dd_redteam.py::TestPromptInjection::test_refine_zero_overlap_clamps_even_if_model_says_green
+FAILED tests/test_dd_redteam.py::TestPromptInjection::test_refine_keeps_green_when_overlap_real
+FAILED tests/test_doctor_script.py::test_doctor_script_exits_zero - Assertion...

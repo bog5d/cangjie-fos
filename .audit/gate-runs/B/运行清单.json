@@ -1,0 +1,217 @@
+{
+  "schema_version": "dd_v1_exam_run_manifest.v1",
+  "run_id": "20261030T094940Z",
+  "exam": "B",
+  "exam_id": "DDV1-SYN-B",
+  "title": "考试B · 复杂业务",
+  "started_at": "2026-10-30T17:49:40+08:00",
+  "finished_at": "2026-10-30T17:49:40+08:00",
+  "elapsed_s": 0.22,
+  "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e",
+  "git_dirty": true,
+  "environment": {
+    "platform": "darwin",
+    "python": "3.13.12",
+    "data_plane": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/data",
+    "out_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/runs/20261030T094940Z",
+    "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库"
+  },
+  "model": {
+    "agent_spec": "none",
+    "agent_result_file": "",
+    "examinee_mode": "RULE_ONLY",
+    "participated": false
+  },
+  "test_data_version": {
+    "fixture": "backend/tests/fixtures/dd-v1-exam-suite/exams/B",
+    "materials": 13,
+    "questions": 9,
+    "contract_obligations": 9,
+    "contract_questions": 9
+  },
+  "gold_version": {
+    "path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/gold/gold-B.json",
+    "items": 9,
+    "fingerprint": "41d285e39a6da8bce379d20747441adf0aaf10a63a2c2eb013cfac9df66387a1"
+  },
+  "results": {
+    "rc_run": 0,
+    "rc_answer": 0,
+    "rc_grade": 0,
+    "status": "SCORED_PARTIAL",
+    "scores": {
+      "question_understanding_coverage": 0.888889,
+      "question_answer_coverage": 0.888889,
+      "material_recall": 0.846154,
+      "selection_precision": 0.846154,
+      "complete_delivery_ratio": 0.857143,
+      "miss_rate": 0.142857,
+      "wrong_rate": 0.111111,
+      "total_score": 85.43
+    },
+    "safety_gate": {
+      "violations": 0,
+      "findings": [],
+      "by_kind": {},
+      "selection_mismatches": 0,
+      "selection_mismatch_detail": [],
+      "selection_mismatch_by_kind": {},
+      "note_selection": "错主体/错年份属**选材质量**问题，单列且**不封顶**；只有**实际交付**的件才进安全闸封顶；★ **期间（年份）只影响本单列指标**，不进安全闸、不封顶（派生元数据口径差异不算机器交错年份）",
+      "status": "PASS",
+      "note": "未发现安全闸违规"
+    },
+    "counts": {
+      "obligations": 9,
+      "obligations_with_expected_files": 7,
+      "expected_files": 13,
+      "selected_files": 13,
+      "hit_files": 11,
+      "extra_files": 2,
+      "delivered_files": 2,
+      "understood": 8,
+      "answered": 8,
+      "complete": 6,
+      "missed": 1,
+      "wrong": 1
+    },
+    "exam_coverage": {
+      "questions_total": 9,
+      "denominator_source": "LIBRARY_OBLIGATION_CONTRACT",
+      "questions_processed": 9,
+      "questions_correct": 6,
+      "questions_unmatched": 0,
+      "questions_ambiguous": 0,
+      "questions_incomplete": 1,
+      "questions_unanswered": 0,
+      "verifiable_coverage": 1.0,
+      "questions": [
+        {
+          "question_id": "2-4",
+          "item_no": "2-4",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2022年度审计报告"
+        },
+        {
+          "question_id": "2-6",
+          "item_no": "2-6",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司近三年经营情况说明"
+        },
+        {
+          "question_id": "2-2",
+          "item_no": "2-2",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2023年度审计报告"
+        },
+        {
+          "question_id": "2-1",
+          "item_no": "2-1",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2024年度审计报告"
+        },
+        {
+          "question_id": "2-3",
+          "item_no": "2-3",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2024年度审计报告"
+        },
+        {
+          "question_id": "2-5",
+          "item_no": "2-5",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度营业执照"
+        },
+        {
+          "question_id": "2-7",
+          "item_no": "2-7",
+          "state": "INCOMPLETE",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度审计报告和营业执照"
+        },
+        {
+          "question_id": "2-8",
+          "item_no": "2-8",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度审计报告"
+        },
+        {
+          "question_id": "2-9",
+          "item_no": "2-9",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度纳税证明"
+        }
+      ],
+      "note": "分母来自**库侧权威题单**"
+    },
+    "gold_library_binding": {
+      "gold_items": 9,
+      "bound_exact": 9,
+      "rebound_by_key": 0,
+      "rebound": [],
+      "unbound": 0,
+      "unbound_detail": [],
+      "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
+    },
+    "blocked_by": []
+  },
+  "failures": [
+    {
+      "obligation_id": "c252e92359714888a79198d113358681",
+      "item_no": "2-7",
+      "outcome": "INCOMPLETE",
+      "missed": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "extra": [],
+      "hit": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "resolution_state": "RESOLVED",
+      "cluster_ids": [
+        "c252e92359714888a79198d113358681"
+      ]
+    }
+  ],
+  "disclosure": {
+    "delivered_rows": 2,
+    "delivered_files": 2,
+    "manifest_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/data/deliveries/deb249d9fa2e42598b08a50b172fdd00/组包manifest.tsv",
+    "blocked_materials": 24,
+    "violations": 0,
+    "violation_detail": [],
+    "status": "PASS",
+    "policy_sendable_doc_types": [
+      "audit_report",
+      "financial_statement",
+      "license",
+      "tax"
+    ],
+    "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
+  },
+  "artifacts": {
+    "answer_sheet": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/runs/20261030T094940Z/answer/机器答卷-20261030-174940.json",
+    "scorecard_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/runs/20261030T094940Z/grade",
+    "run_report_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/runs/20261030T094940Z/run",
+    "gold_manifest": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/B/gold/gold-B.json"
+  }
+}

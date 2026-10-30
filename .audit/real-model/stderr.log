@@ -1,0 +1,2 @@
+dsh: all_proxy names a SOCKS proxy, which is not supported; connecting directly for that scheme — set an http:// or https:// proxy URL instead
+dsh: AUTH: Authentication Fails, Your api key: ****9bb5 is invalid (request_id: 7bc767da-46ba-4731-90e3-c7ba1fedb422)

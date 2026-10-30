@@ -1,0 +1,14 @@
+{
+  "adapter_id": "deepseek-harness",
+  "status": "CALL_FAILED",
+  "exit_code": 1,
+  "elapsed_s": 5.9,
+  "argv_summary": [
+    "/Users/mac/.npm-global/bin/dsh",
+    "--profile",
+    "headless",
+    "-"
+  ],
+  "provenance": {},
+  "workdir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/real-model"
+}
