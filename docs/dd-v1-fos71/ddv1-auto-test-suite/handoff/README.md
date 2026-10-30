@@ -14,7 +14,7 @@
 | **分支** | `feat/dd-v1-auto-test-harness-20261030`（**未合并 master**） |
 | **基线** | `bf68cf94c2744624445b6ea992e41fc3f0b1b78e`（＝ PR#86 的 head，PR#86 本身也**未合并**） |
 | **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`0f34ff41…`（见 §3 三个锚点） |
-| **测试规模** | pytest 全量 **2156 项 / 0 失败 / 6 skipped**（CI 口径：代理改写 ＋ 排除 doctor） |
+| **测试规模** | pytest 全量 **2174 项 / 0 失败 / 6 skipped**（CI 口径：代理改写 ＋ 排除 doctor） |
 | **自动化覆盖率** | **98.04%**（50/51，**机算**）｜**通过率 100%**（50/50，**机算**）—— 两个数**分列** |
 | **三场合成考试（规则基线）** | A 基础 3 题 96.67 分｜B 复杂 9 题 95.67 分｜C 完整 42 题 **100.0 分**，安全闸全 PASS |
 | **★ 三名真实 Agent 考生** | **dsh**（deepseek-flash）｜**pi**（MiniMax-M3.1-Flash-Preview）｜**codex**（gpt-5.6-sol）—— **全部真实调用成功、模型身份核实通过** |
@@ -49,13 +49,14 @@
 | 读数 | 文件（仓内 `.audit/gate-runs/`） |
 |---|---|
 | **G1—G8 门禁判定 ＋ 实际读数 ＋ 全部运行清单** | `门禁报告.json`（★ 新增 `all_runs`：每一次运行的模式/执行路径/模型身份/分数） |
-| **pytest 机读报告 ＋ JUnit XML** | `g1_pytest.json` / `g1_pytest.xml`（**2156** 个 testcase） |
+| **pytest 机读报告 ＋ JUnit XML** | `g1_pytest.json` / `g1_pytest.xml`（**2174** 个 testcase） |
 | **机算覆盖率与通过率** | `覆盖率报告.json` → `自动化覆盖率统计` |
 | 三场考试的运行清单 / 答卷 / 成绩单 | `{A,B,C}/运行清单.json`、`{A,B,C}/answer/机器答卷-*.json`、`{A,B,C}/grade/成绩单-*.json` |
 | ★ **三名真实 Agent 考生**的运行清单 / 答卷 / 成绩单 | `{A-dsh,A-pi,A-codex}/运行清单.json` 等（**同一份冻结题 A ＋ 同一份 Gold**） |
-| 真实模型调用证据 | `.audit/real-model/real-model-evidence.json`（dsh：status=OK、exit=0、8.76s、deepseek-flash、**身份核实 verified**）、`stderr.log`、`answer.txt` |
+| 真实模型调用证据 | `.audit/real-model/real-model-evidence.json`（dsh：status=OK、exit=0、**8.93s**、deepseek-flash、**身份核实 verified**）、`stderr.log`、`answer.txt` |
 | 独立 Reviewer 报告 | `g6_reviewer.json`（**第 3 轮**）＋ `g6_reviewer_round2.json` / `g6_reviewer_round1.json`（历史，保留原文） |
 | 四组对照（规则基线 vs 三名考生） | `.audit/exam-plane/P3-对照-终版.json`（`compare-runs` 命令产出） |
+| ★ **方差实测**（同 commit 干净树重复调用） | `.audit/variance/dsh-variance-v3.json`（7 次读数 ＋ 77.5 那次的定位） |
 
 ### ★ 这批证据对应哪个 commit？（**先说清楚，免得你核错**）
 
@@ -79,12 +80,12 @@
 
 | 门禁 | 状态 | 依据 |
 |---|---|---|
-| G1 基础测试 PASS | ✅ PASS | pytest passed=**2150** failed=0 skipped=6 total=**2156**（`counting_ok=true`） |
+| G1 基础测试 PASS | ✅ PASS | pytest passed=**2168** failed=0 skipped=6 total=**2174**（`counting_ok=true`，`git_dirty=false`） |
 | G2 模拟端到端 PASS | ✅ PASS | 考试A rc=0、status=LOW_CONFIDENCE(total=96.67)、安全闸 PASS |
-| **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T135406Z']`（dsh 真实调用、参与、身份核实过） |
+| **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T144559Z']`（dsh 真实调用、参与、身份核实过）；reason 另列 pi/codex（MINOR-4 已修） |
 | G4 合成 Gold 评分达标 | ✅ PASS | 考试C total=100.0 ≥ 70、理解=1.0、覆盖=1.0、42/42 题、安全 PASS |
 | G5 安全测试 PASS | ✅ PASS | 考试B status=SCORED_PARTIAL、安全 PASS、无 blocked、覆盖=1.0 |
-| **G6 独立 Reviewer PASS** | ⏳ **第 3 轮＝CONDITIONAL** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS（`g6_reviewer_round2.json`）→ **第 3 轮 CONDITIONAL**（`g6_reviewer.json`：R1—R9／X1—X3 PASS、R10=NOT_VERIFIED、两条 MAJOR ＋ 5 MINOR ＋ 2 NIT）⇒ **第 4 轮复验中，现在不算 PASS** |
+| **G6 独立 Reviewer PASS** | ⏳ **第 3 轮＝CONDITIONAL** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS（`g6_reviewer_round2.json`）→ **第 3 轮 CONDITIONAL**（`g6_reviewer.json`：R1—R9／X1—X3 PASS、R10=NOT_VERIFIED、两条 MAJOR ＋ 5 MINOR ＋ 2 NIT）⇒ 两条 MAJOR 已修（`cb03b51`／`a1fb96b`）＋ MINOR/NIT 全部处置（`0b1ec84`），**第 4 轮复验中 ⇒ 现在不算 PASS** |
 | G7 交接包生成 | ✅ PASS | 本目录存在且非空 |
 | **G8 真实模型参与门禁** | ✅ **PASS** | `real_model=3; rule_only=3; degraded=0; mock=0; identity_unknown=0` —— ★ **本轮新增**；读**真实考试产物**，不认人工说明字段 |
 
@@ -101,12 +102,12 @@
 
 | 运行 | 请求模式 | 实际执行路径 | 考生 | 模型 | 身份核实 | 总分 | 成绩名 |
 |---|---|---|---|---|---|---|---|
-| `A/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 96.67 | `RULE_BASELINE_SCORE` |
-| `A-dsh/` | AGENT_REQUIRED | **`REAL_MODEL`** | dsh | deepseek-flash | ✅ | 96.67 | `AI_SYSTEM_SCORE` |
-| `A-pi/` | AGENT_REQUIRED | **`REAL_MODEL`** | pi | MiniMax-M3.1-Flash-Preview | ✅ | 96.67 | `AI_SYSTEM_SCORE` |
-| `A-codex/` | AGENT_REQUIRED | **`REAL_MODEL`** | codex | gpt-5.6-sol | ✅ | 96.67 | `AI_SYSTEM_SCORE` |
-| `B/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 95.67 | `RULE_BASELINE_SCORE` |
-| `C/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 100.0 | `RULE_BASELINE_SCORE` |
+| `A/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 96.67（0.25s） | `RULE_BASELINE_SCORE` |
+| `A-dsh/` | AGENT_REQUIRED | **`REAL_MODEL`** | dsh | deepseek-flash | ✅ | 96.67（52.82s） | `AI_SYSTEM_SCORE` |
+| `A-pi/` | AGENT_REQUIRED | **`REAL_MODEL`** | pi | MiniMax-M3.1-Flash-Preview | ✅ | 96.67（34.67s） | `AI_SYSTEM_SCORE` |
+| `A-codex/` | AGENT_REQUIRED | **`REAL_MODEL`** | codex | gpt-5.6-sol | ✅ | 96.67（25.18s） | `AI_SYSTEM_SCORE` |
+| `B/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 95.67（0.26s） | `RULE_BASELINE_SCORE` |
+| `C/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 100.0（2.0s） | `RULE_BASELINE_SCORE` |
 
 ★ **规则基线分与 AI 系统分分列**；模型缺席时 AI 列 = `NOT_SCORED`（**不是 0 分**）。
 ★ ★ **如实结论**：**AI 并没有优于规则基线**（本轮打平）⇒ 这不是缺陷，是**事实**（详见 §4.1）。
@@ -183,11 +184,15 @@
 | 第 2 轮 | **PASS** | 10 条全部 closed（**逐条实测复验**）；新提 1 MINOR ＋ 2 NIT | 已修并回归 |
 | **第 3 轮** | **CONDITIONAL** | R1—R9／X1—X3 **PASS**、R10（Windows）**NOT_VERIFIED**；**2 MAJOR**（① 安全闸比冻结尺子松一档：错年度交付可拿 100 分且 `safety=PASS`；② 覆盖率报告自己记着 `git_dirty=true` ⇒ 按本项目自己的规则不可作交付证据，且 417d906 提交说明与本文第 73 行的「均为 false」**被产物证伪**）＋ 5 MINOR ＋ 2 NIT | **已修 MAJOR-1／MAJOR-2 ＋ 全部 MINOR/NIT**（见下节）；**第 4 轮复验中** ⇒ **G6 现在仍不算 PASS** |
 
-> ★ ★ **第 3 轮还做了一件比抓 bug 更重要的事：它证伪了我们自己的一条结论。**
-> 我们此前报告「**AI 成绩不可复现（同卷差 ±19.17 分）**」——
-> Reviewer 独立复跑发现：那 3 次 77.5 **全部**发生在 `git_dirty=true` 的工作区（其中两次之间代码还在变），
-> 而**干净树 17 次运行恒为 96.67、零方差** ⇒ **该结论已撤回**（全文更正见 §4.1 与 BLOCKED-8）。
-> ★ ⇒ **我们自己也会拿脏证据讲出一个漂亮的故事**；这条教训比任何单条 bug 都值钱。
+> ★ ★ **关于「AI 成绩是否可复现」，这句话本轮改了两次——两次都是被干净树上的复跑推翻的。**
+> - 我们此前报告「**AI 成绩不可复现（同卷差 ±19.17 分）**」；
+> - 第 3 轮独立复核查到那 3 次 77.5 **全部**发生在 `git_dirty=true` 的工作区，
+>   并给出「干净树 17 次恒 96.67、零方差」⇒ 我们据此**撤回**了「不可复现」；
+> - ★ **今天干净树重跑时，dsh 在 commit `0b1ec84`（`git_dirty=false`）打出 77.5**
+>   ⇒ **「零方差」被推翻** ⇒ **我们的撤回本身也要更正**（最终表述见 §4.1 与 BLOCKED-8）。
+>
+> ⇒ ★ **教训比任何单条 bug 都值钱**：**我们自己也会拿脏证据讲出一个漂亮的故事**；
+> 而**干净地重复跑**才是唯一能推翻它的办法 —— 这也是本轮把「最小方差实验」真跑出来的原因。
 
 > ★ 两轮复核报告**都入库**、**都保留原文**：
 > `.audit/gate-runs/g6_reviewer_round1.json`（第 1 轮，CONDITIONAL）＋ `g6_reviewer_round2.json`（第 2 轮，PASS）＋ `g6_reviewer.json`（**第 3 轮**：二轮施工的复核）。
@@ -248,7 +253,7 @@
 | 独立 Reviewer PASS | ⏳ **第 2 轮 PASS；第 3 轮（二轮施工）复核未出** ⇒ 现在**不能算 PASS** |
 | 新版本冻结 SHA | ✅ tag `ddv1-auto-exam-v1`（读法见 `版本锚点.md`） |
 | Windows 交接包完整 | ✅ 本包 |
-| **真实模型参与证明 PASS（G3）** | ✅ **PASS**（dsh 真实调用：exit=0、8.76s、deepseek-flash、身份核实 verified） |
+| **真实模型参与证明 PASS（G3）** | ✅ **PASS**（dsh 真实调用：exit=0、**8.93s**、deepseek-flash、身份核实 verified） |
 
 ⇒ **等这三件事**：① **G6 第 3 轮复核出结论**；② **业务方冻结真实 42 题的 Gold / 披露分级 / 合格线**；
 ③ **Windows 真机复跑通过**（BLOCKED-4）。
@@ -271,7 +276,7 @@
 | BLOCKED-5 | D4 修复合并后**真实考卷义务条数会变** ⇒ 旧读数不可直接比较 | 刘江 + 波总 |
 | BLOCKED-6 | 「实际交付件数」在 HR-1 判 0 分时以哪个口径为准（待冻结） | 波总 |
 | **BLOCKED-7** | **凭证腐烂没有主动告警**（旧 key 失效一个月才被撞上） | 账号持有人 + 工程 |
-| **BLOCKED-8** | **AI 成绩不可复现**（同卷同模型两次差 **19.17** 分）⇒ 单次分数不足以作验收依据 | 工程 + 业务方 |
+| **BLOCKED-8** | **AI 成绩存在方差**（已实测到 96.67 与 77.5 两档，**干净树上两者都出现过**）⇒ 单次分数不足以作验收依据 | 工程 + 业务方 |
 
 详见 `BLOCKED-清单.md`。
 
@@ -280,13 +285,24 @@
 > dsh / pi / codex **都是 96.67**（打平）⇒ **AI 没有带来可验证增益**。
 > ⇒ 且**模型诚实弃答扣分、规则链猜测得分** ⇒ 对比口径本身偏向规则基线（见 BLOCKED-8）。
 >
-> ★★ **更正（2026-10-31，独立 Reviewer 第 3 轮证伪）**：**「AI 成绩不可复现（同卷差 19.17 分）」撤回。**
-> 此前那 **3 次 77.5** **全部**发生在 `git_dirty=true` 的工作区（且其中两次之间代码还在变）；
-> 而**干净工作区上 17 次运行（3 次入库 ＋ Reviewer 独立复跑 14 次，含 dsh/pi/codex 真实调用）分数恒为 96.67、零方差**。
-> ⇒ 那个 ±19.17 是**证据链不干净**造成的，**不是**模型能力读数；
-> ⇒ 正确表述：「**AI 成绩方差尚未在受控条件下测量**（温度/提示词版本未钉死）」，**不是**「已证实不可复现」。
-> ⇒ 这**不是**「AI 没用的结论」，而是「**在当前口径与当前卷上，AI 没有带来可验证增益**」——
-> 要证明增益，须先固定温度/提示词版本、多次取分布、并做消融测试。
+> ★★★ **关于「AI 成绩是否可复现」：本轮改了两次说法，最终结论如下（请以这一条为准）**
+>
+> | 阶段 | 说法 | 为什么改 |
+> |---|---|---|
+> | ① 早期 | 「AI 成绩**不可复现**（同卷差 ±19.17）」 | 观察到 dsh/codex 各有一次 77.5 vs 96.67 |
+> | ② 第 3 轮复核后（**已撤回**） | 「**不可复现**撤回 ⇒ 脏工作区才不稳；干净树 17 次恒 96.67、零方差」 | Reviewer 查到那 3 次 77.5 **全部** `git_dirty=true`；当时按「干净树零方差」下了结论 |
+> | ③ **今天（最终）** | ★ **「AI 成绩存在方差」** —— 干净树上**也**出现过 77.5 | 干净树重跑时（commit `0b1ec84`，`git_dirty=false`）dsh 实测 **77.5**（模型少选了一份材料）⇒ **②的「零方差」被推翻** ⇒ **我的撤回本身也要更正** |
+>
+> ⇒ **最终正确表述（三句话）**：
+> ① **现象是真的**：同卷同模型，分数确实会在 **96.67** 与 **77.5** 之间跳（今天实测：同一 commit 干净树 4 次全 96.67，
+>    而紧邻的前一个 commit 干净树 1 次 77.5；历史另有 3 次脏树 77.5）。
+> ② **「脏工作区」不是原因**：脏树读数**不可作交付证据**（这是证据规则），
+>    但**干净树也会出 77.5** ⇒ 分数波动**不能**归因于脏工作区。
+> ③ **分布尚未在受控条件下测出**（温度/提示词版本未钉死、N 次采样未做）⇒
+>    **单次 AI 分数不足以作为业务验收依据**。
+>
+> ⇒ ★ 这三轮更正本身也是证据：**我们自己的历史结论也会被推翻，而且推翻它的正是干净树上的复跑。**
+> ⇒ 要给验收方一个**可信**的 AI 成绩，必须先固定温度/提示词版本、N 次取中位数、并做错误分类与消融测试。
 
 ---
 

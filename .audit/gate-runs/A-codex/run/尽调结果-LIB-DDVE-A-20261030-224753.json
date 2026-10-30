@@ -1,13 +1,13 @@
 {
   "library": "LIB-DDVE-A",
   "institution": "合成机构A",
-  "generated_at": "2026-10-30T21:55:16",
+  "generated_at": "2026-10-30T22:47:53",
   "input_snapshot": {
-    "input_snapshot_id": "cf753238b132320693cfe4f5b3493c92e70252410e43d604c8d19d3931784ce9",
+    "input_snapshot_id": "d73bdbca55f8f6fc98e870e30dc23f4168ecec41b4e75506b9e77cb94791fad1",
     "checklist_fingerprint": "2daf53abcdac2176",
     "material_digest": "3f9bc31423d4817adc8cbd72e3af7485a36970cd4d9094abd9ad97e44977ac20",
     "material_files": 5,
-    "code_sha": "0f34ff41724373d3a8c256884cf92a3613161cb0"
+    "code_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
   },
   "human_approval_required": true,
   "sent_to_institution": false,
@@ -145,7 +145,7 @@
       "role": "EXAMINEE_2",
       "status": "OK",
       "exit_code": 0,
-      "elapsed_s": 21.93,
+      "elapsed_s": 24.95,
       "model_id_or_unknown": "gpt-5.6-sol",
       "framework": "codex-cli",
       "model_identity": {
@@ -154,10 +154,10 @@
         "source": "CODEX_EXECUTION_RECORD",
         "verified": true,
         "binding": {
-          "thread_id": "01a18d17-9ba8-70d1-a0da-9b83bcf20d61",
-          "rollout": "/Users/mac/.codex/sessions/2026/10/30/rollout-2026-10-30T21-54-57-01a18d17-9ba8-70d1-a0da-9b83bcf20d61.jsonl",
-          "rollout_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-kvxf23yc",
-          "expected_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-kvxf23yc"
+          "thread_id": "01a18d47-bd04-7170-acdb-328a1d7facf7",
+          "rollout": "/Users/mac/.codex/sessions/2026/10/30/rollout-2026-10-30T22-47-31-01a18d47-bd04-7170-acdb-328a1d7facf7.jsonl",
+          "rollout_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-pzkdm5ep",
+          "expected_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-pzkdm5ep"
         },
         "note": "★ 来源：codex 自己的执行记录（rollout turn_context）"
       },
@@ -178,28 +178,28 @@
           "n": 1,
           "status": "OK",
           "exit_code": 0,
-          "elapsed_s": 21.93,
+          "elapsed_s": 24.95,
           "cost_usd_or_UNKNOWN": "UNKNOWN(ChatGPT subscription)",
           "token_usage_or_UNKNOWN": {
-            "input_tokens": 39479,
-            "cached_input_tokens": 33920,
+            "input_tokens": 60383,
+            "cached_input_tokens": 38272,
             "cache_write_input_tokens": 0,
-            "output_tokens": 1308,
-            "reasoning_output_tokens": 203
+            "output_tokens": 1583,
+            "reasoning_output_tokens": 399
           },
           "error_code": null,
-          "wall_elapsed_s": 21.93
+          "wall_elapsed_s": 24.96
         }
       ],
       "perf": {
-        "total_elapsed_s": 21.93,
+        "total_elapsed_s": 24.96,
         "cost_usd_or_UNKNOWN": "UNKNOWN(ChatGPT subscription)",
         "token_usage_or_UNKNOWN": {
-          "input_tokens": 39479,
-          "cached_input_tokens": 33920,
+          "input_tokens": 60383,
+          "cached_input_tokens": 38272,
           "cache_write_input_tokens": 0,
-          "output_tokens": 1308,
-          "reasoning_output_tokens": 203
+          "output_tokens": 1583,
+          "reasoning_output_tokens": 399
         },
         "attempts_cost": [
           "UNKNOWN(ChatGPT subscription)"
@@ -207,7 +207,7 @@
         "max_total_s": 602.0,
         "budget_exhausted": false
       },
-      "raw_digest": "sha256:bfa2cb50f868cc081a8997bdec950818c35372deda1a6fed0e1abafffd3d0a28",
+      "raw_digest": "sha256:62106074b75ad7779cef6ae6d0671107a97aad7142f384e2d0dd8764b498a73f",
       "provenance": "HARNESS_MODEL",
       "participated": true,
       "participated_scope": "RECEIPT",
@@ -216,8 +216,8 @@
       "provenance_mismatch": false,
       "implementation_verified": true,
       "executable": "codex",
-      "argv_digest": "sha256:29686845b062a55d97f31eb80075aee4d04eca9a0375c22819732263b8ff7e97",
-      "workdir_digest": "sha256:9bd1f31e8040caaa3ccfb05ca9136b636404a2e8fc0fef1b11dd1f20eb6d05f0",
+      "argv_digest": "sha256:3d1956662ae3641e89100367b032183a1ba6cb5a1cae13d736f07a6ce8741f3b",
+      "workdir_digest": "sha256:cc509aabb5b83b3e0590354e5a5ae8157c3604993b65e6c6524e2b5341e5e5d1",
       "accepted_results": 3,
       "note": "★ 回执只证明「哪个适配器实现、哪次调用、回了什么摘要」；**不证明**判断出自哪个模型 —— 模型身份由适配器**实现**决定，自填的 adapter_id 只能作旁证"
     },
@@ -236,15 +236,15 @@
     },
     "obligations": [
       {
-        "obligation_id": "cc5984139ada4b378485a0a80606a244",
-        "source_obligation_id": "cc5984139ada4b378485a0a80606a244",
+        "obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
+        "source_obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
         "item_no": "1-1",
         "question_id": "1-1",
         "text": "请提供合成母公司2024年度审计报告",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "cc5984139ada4b378485a0a80606a244",
+          "obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "",
           "confidence_or_uncertain": 0.99,
@@ -257,7 +257,7 @@
           "rejected_alternatives": [
             {
               "file_id": "e56df693642ab43b7db6d826063832d0",
-              "reason": "材料期间为2023年度，与要求的2024年度不符。"
+              "reason": "该审计报告期间为2023年度，与要求的2024年度不符。"
             }
           ],
           "discrimination": {
@@ -415,15 +415,15 @@
         ]
       },
       {
-        "obligation_id": "929eb23b2e804989ba7d85b840ab6c2b",
-        "source_obligation_id": "929eb23b2e804989ba7d85b840ab6c2b",
+        "obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
+        "source_obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
         "item_no": "1-2",
         "question_id": "1-2",
         "text": "请提供合成母公司2024年度营业执照",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "929eb23b2e804989ba7d85b840ab6c2b",
+          "obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "",
           "confidence_or_uncertain": 0.99,
@@ -592,35 +592,36 @@
         ]
       },
       {
-        "obligation_id": "cef053c42bd540e9843f3d02c525fa43",
-        "source_obligation_id": "cef053c42bd540e9843f3d02c525fa43",
+        "obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
+        "source_obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
         "item_no": "1-3",
         "question_id": "1-3",
         "text": "请提供合成母公司2024年度经营情况说明",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "cef053c42bd540e9843f3d02c525fa43",
-          "proposed_verdict": "MATCH",
-          "proposed_doc_type": "financial_statement",
-          "confidence_or_uncertain": 0.86,
+          "obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
+          "proposed_verdict": "UNCERTAIN",
+          "proposed_doc_type": "",
+          "confidence_or_uncertain": "UNCERTAIN",
           "agent_id": "codex-cli",
           "provider": "openai-codex",
           "model_id_or_unknown": "UNKNOWN",
-          "picked_file_ids": [
-            "0f032638fb8ade3e8426a6997b51d078"
+          "picked_file_ids": [],
+          "rejected_alternatives": [
+            {
+              "file_id": "0f032638fb8ade3e8426a6997b51d078",
+              "reason": "候选材料未标注文档类型，无法确认其属于限定的十类材料中的哪一类。"
+            }
           ],
-          "rejected_alternatives": [],
           "discrimination": {
             "pool_size": 1,
             "pool_doc_types": [],
             "pool_doc_type_count": 0,
-            "picked_file_ids": [
-              "0f032638fb8ade3e8426a6997b51d078"
-            ],
+            "picked_file_ids": [],
             "non_default_pick": false,
-            "rejected_count": 0,
-            "rejected_with_reason": 0,
+            "rejected_count": 1,
+            "rejected_with_reason": 1,
             "discrimination": "WEAK",
             "note": "PASS = 池子里有多种类型、且模型**没有**取第一个、且记录了排除理由 ⇒ 判断**不是**照抄第一个候选；★ 这**不证明**判断出自模型（模型身份看适配器回执）"
           },

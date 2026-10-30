@@ -1,13 +1,13 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T135426Z",
+  "run_id": "20261030T144652Z",
   "exam": "A",
   "exam_id": "DDV1-SYN-A",
   "title": "考试A · 基础功能",
-  "started_at": "2026-10-30T21:54:53+08:00",
-  "finished_at": "2026-10-30T21:54:53+08:00",
-  "elapsed_s": 26.83,
-  "git_sha": "0f34ff41724373d3a8c256884cf92a3613161cb0",
+  "started_at": "2026-10-30T22:47:27+08:00",
+  "finished_at": "2026-10-30T22:47:27+08:00",
+  "elapsed_s": 34.67,
+  "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
   "git_dirty": false,
   "environment": {
     "platform": "darwin",
@@ -37,6 +37,7 @@
     },
     "examinee_framework": "pi",
     "examinee_provider": "minimax-cn",
+    "degrade_reason": "",
     "score_split": {
       "score_name": "AI_SYSTEM_SCORE",
       "rule_baseline_score": null,
@@ -58,7 +59,7 @@
   "gold_version": {
     "path": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json",
     "items": 3,
-    "fingerprint": "283ea7054c87d71e09cffbcda7d60e6d13524dcc13880a8976369d1930c1c35d"
+    "fingerprint": "068e181a8ef1c1458ce4369c55f9b10d2aa4df532b5fad1096c546821a55b67b"
   },
   "results": {
     "rc_run": 0,
@@ -106,7 +107,7 @@
       "model_identity_verified": true,
       "model_participated": true,
       "participated_scope": "RECEIPT",
-      "gold_version": "283ea7054c87d71e09cffbcda7d60e6d13524dcc13880a8976369d1930c1c35d",
+      "gold_version": "068e181a8ef1c1458ce4369c55f9b10d2aa4df532b5fad1096c546821a55b67b",
       "gold_source": "LOCAL_GOLD_PACK",
       "gold_pack_id": "GOLD-SYN-A",
       "answer_sheet_source": "dd_v1_answer_sheet.v1",
@@ -139,9 +140,9 @@
       },
       "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
       "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
-      "code_version": "0f34ff41724373d3a8c256884cf92a3613161cb0",
+      "code_version": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
       "evidence_paths": {
-        "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-215453.json",
+        "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-224727.json",
         "gold": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json",
         "library": "LIB-DDVE-A"
       }
@@ -153,7 +154,7 @@
       "selection_mismatches": 0,
       "selection_mismatch_detail": [],
       "selection_mismatch_by_kind": {},
-      "note_selection": "错主体/错年份属**选材质量**问题，单列且**不封顶**；只有**实际交付**的件才进安全闸封顶；★ **期间（年份）只影响本单列指标**，不进安全闸、不封顶（派生元数据口径差异不算机器交错年份）",
+      "note_selection": "★ **只有实际交付的件才进安全闸封顶**；「选中但未交付」的错主体/错年份属**选材质量**问题 ⇒ 单列、**不封顶**。★ **错年度（WRONG_PERIOD）已按冻结评分规范进闸**（`safety.counted_kinds` 明列它 ⇒ 命中 ⇒ FAIL ＋ 封顶 59）；但**口径不可比**的期间（``CURRENT``/``当前``/``未知``）**不判**（派生元数据口径差异不算机器交错年份 ⇒ 不冤枉机器）。★ MAJOR-1（独立 Reviewer 第 3 轮）：此前实现把错年度完全排除在闸外 ⇒ 错年度交付可拿 100 分且 safety_gate=PASS ⇒ 与冻结规范矛盾 ⇒ 已修。",
       "status": "PASS",
       "note": "未发现安全闸违规"
     },
@@ -249,7 +250,7 @@
   "disclosure": {
     "delivered_rows": 2,
     "delivered_files": 2,
-    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/A/data/deliveries/afe6fc3fd21946acba748d9c44bbb4d3/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/A/data/deliveries/752cf13676484e3f86e69b9be33c33af/组包manifest.tsv",
     "blocked_materials": 4,
     "violations": 0,
     "violation_detail": [],
@@ -263,7 +264,7 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-215453.json",
+    "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-224727.json",
     "scorecard_dir": ".audit/gate-runs/A-pi/grade",
     "run_report_dir": ".audit/gate-runs/A-pi/run",
     "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json"

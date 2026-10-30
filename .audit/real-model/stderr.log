@@ -1,8 +1,12 @@
 dsh: reasoning:
-The user wants JSON only. I no tools. The packet has missing prompt_version and source_snapshot_id fields — not provided. "prompt_version 与 source_snapshot_id 原样照抄 packet" — they aren't in the packet. I must handle that: use whatever present; absent → empty string? Schema requires strings. Since packet lacks them, I'd use "" or "UNKNOWN". "原样照抄" — copy verbatim; nothing to copy. I'll use "" ... hmm risky. Better use "UNKNOWN" since packet has no value.
+The user wants only JSON output, no tools, no markdown, no file modification. I need to construct a result for obligation o1, item 1-1. Since I can't inspect files (told not to call tools), candidate_files should be empty. Verdict: MISSING or UNCERTAIN? The obligation asks to provide the 2024 audit report of the synthetic parent company. With no files/snapshot provided, and no tools allowed, the appropriate verdict is MISSING (no candidate files found) or UNCERTAIN. Since source_snapshot_id must be copied verbatim from packet — but packet has no source_snapshot_id or prompt_version fields. Hmm. "prompt_version 与 source_snapshot_id 原样照抄 packet" — packet doesn't include them. So they're unknown. The schema requires strings. I'd use "UNKNOWN".
 
-No candidate files. Verdict: MISSING? No snapshot was provided, so we cannot inspect. The obligation asks for audit report 2024. With no candidate files, MISSING or UNCERTAIN? Since no snapshot/files at all given to search, UNCERTAIN with abstain_reason is more honest. But verdict MISSING is defined for missing documents. Here no evidence base. I'll choose UNCERTAIN with abstain reason "packet 未提供任何快照与候选文件，无法核验是否存在合成母公司2024年度审计报告".
+Given no snapshot access and no evidence, abstain_reason should explain. Verdict UNCERTAIN is safer since we cannot verify absence — no tools allowed, so we cannot determine. But "MISSING" means confirmed absent. With zero candidate files and no access, UNCERTAIN with abstain reason is more honest.
 
-Confidence: "uncertain" string. warnings include note about prompt_version/source_snapshot_id absent, and doc_type given so no proposed_doc_type needed.
+proposed_doc_type is only required when obligation doc_type is empty. Here doc_type = "audit_report", so omit it.
 
-Output JSON only, no markdown, no tools.
+confidence_or_uncertain: "UNCERTAIN" string or 0.0? Use "UNCERTAIN".
+
+elapsed "UNKNOWN", token_usage_or_UNKNOWN "UNKNOWN".
+
+Output only JSON.

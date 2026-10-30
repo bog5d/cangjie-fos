@@ -2,7 +2,7 @@
   "adapter_id": "deepseek-harness",
   "status": "OK",
   "exit_code": 0,
-  "elapsed_s": 8.76,
+  "elapsed_s": 8.93,
   "argv_summary": [
     "/Users/mac/.npm-global/bin/dsh",
     "--profile",
@@ -18,9 +18,11 @@
       "binding": {
         "profile": "headless",
         "config_key": "agent-default-model",
-        "config_cwd": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/real-model"
+        "config_cwd": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/real-model",
+        "config_cwd_source": "process_cwd_of_dump（★ 本次真的在**这个目录**里取的配置）",
+        "binding_strength": "profile-config-resolved-at-cwd"
       },
-      "note": "★ 来源：dsh 自己的配置树（--dump-config）"
+      "note": "★ 来源：dsh 自己的配置树（--dump-config，**在该 profile 的解析目录**里取得）。★ **能证明**：该 profile 在该目录下的**默认模型**是谁。★ **不能证明**：本次请求没有被打到别的模型/回退 —— dsh 没有提供逐请求的模型回执 ⇒ 这是它官方元数据能给出的**最强**证明（对比 codex：执行记录里的 cwd 不符会 fail-closed 记 UNKNOWN）。"
     }
   },
   "workdir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/real-model"

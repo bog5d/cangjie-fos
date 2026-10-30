@@ -1,13 +1,13 @@
 {
   "library": "LIB-DDVE-A",
   "institution": "合成机构A",
-  "generated_at": "2026-10-30T21:54:53",
+  "generated_at": "2026-10-30T22:46:52",
   "input_snapshot": {
-    "input_snapshot_id": "cf753238b132320693cfe4f5b3493c92e70252410e43d604c8d19d3931784ce9",
+    "input_snapshot_id": "d73bdbca55f8f6fc98e870e30dc23f4168ecec41b4e75506b9e77cb94791fad1",
     "checklist_fingerprint": "2daf53abcdac2176",
     "material_digest": "3f9bc31423d4817adc8cbd72e3af7485a36970cd4d9094abd9ad97e44977ac20",
     "material_files": 5,
-    "code_sha": "0f34ff41724373d3a8c256884cf92a3613161cb0"
+    "code_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
   },
   "human_approval_required": true,
   "sent_to_institution": false,
@@ -140,89 +140,63 @@
       "evidence_total": 5
     },
     "agent_receipt": {
-      "adapter_id": "pi",
-      "vendor": "minimax-cn",
-      "role": "AUX",
+      "adapter_id": "deepseek-harness",
+      "vendor": "deepseek-harness",
+      "role": "EXAMINEE_3",
       "status": "OK",
       "exit_code": 0,
-      "elapsed_s": 26.61,
-      "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
-      "framework": "pi",
+      "elapsed_s": 52.55,
+      "model_id_or_unknown": "deepseek-flash",
+      "framework": "deepseek-harness",
       "model_identity": {
-        "model_id": "MiniMax-M3.1-Flash-Preview",
-        "provider": "minimax-cn",
-        "source": "AGENT_EVENT",
+        "model_id": "deepseek-flash",
+        "provider": "deepseek-official",
+        "source": "DSH_PROFILE_CONFIG",
         "verified": true,
         "binding": {
-          "event": "message_end"
+          "profile": "headless",
+          "config_key": "agent-default-model",
+          "config_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-i9zifaj5",
+          "config_cwd_source": "process_cwd_of_dump（★ 本次真的在**这个目录**里取的配置）",
+          "binding_strength": "profile-config-resolved-at-cwd"
         },
-        "note": "★ 来源：pi 自己的 message_end 事件"
+        "note": "★ 来源：dsh 自己的配置树（--dump-config，**在该 profile 的解析目录**里取得）。★ **能证明**：该 profile 在该目录下的**默认模型**是谁。★ **不能证明**：本次请求没有被打到别的模型/回退 —— dsh 没有提供逐请求的模型回执 ⇒ 这是它官方元数据能给出的**最强**证明（对比 codex：执行记录里的 cwd 不符会 fail-closed 记 UNKNOWN）。"
       },
-      "model_identity_source": "AGENT_EVENT",
+      "model_identity_source": "DSH_PROFILE_CONFIG",
       "model_identity_verified": true,
-      "cost_usd_or_UNKNOWN": 0,
+      "cost_usd_or_UNKNOWN": "UNKNOWN(operator dsh account)",
       "calls_used": 1,
       "budget": {
-        "timeout_s": 120.0,
+        "timeout_s": 300.0,
         "max_calls": 2,
         "max_cost_usd": 0.0,
         "require_known_cost": false,
         "retry_backoff_s": 2.0,
-        "max_total_s": 242.0
+        "max_total_s": 602.0
       },
       "attempts": [
         {
           "n": 1,
           "status": "OK",
           "exit_code": 0,
-          "elapsed_s": 26.61,
-          "cost_usd_or_UNKNOWN": 0,
-          "token_usage_or_UNKNOWN": {
-            "input": 5241,
-            "output": 3043,
-            "cacheRead": 189,
-            "cacheWrite": 0,
-            "totalTokens": 8473,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            },
-            "cacheWrite1h": 0,
-            "reasoning": 1863
-          },
+          "elapsed_s": 52.55,
+          "cost_usd_or_UNKNOWN": "UNKNOWN(operator dsh account)",
+          "token_usage_or_UNKNOWN": "UNKNOWN",
           "error_code": null,
-          "wall_elapsed_s": 26.63
+          "wall_elapsed_s": 52.62
         }
       ],
       "perf": {
-        "total_elapsed_s": 26.63,
-        "cost_usd_or_UNKNOWN": 0,
-        "token_usage_or_UNKNOWN": {
-          "input": 5241,
-          "output": 3043,
-          "cacheRead": 189,
-          "cacheWrite": 0,
-          "totalTokens": 8473,
-          "cost": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "total": 0
-          },
-          "cacheWrite1h": 0,
-          "reasoning": 1863
-        },
+        "total_elapsed_s": 52.62,
+        "cost_usd_or_UNKNOWN": "UNKNOWN(operator dsh account)",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
         "attempts_cost": [
-          0
+          "UNKNOWN(operator dsh account)"
         ],
-        "max_total_s": 242.0,
+        "max_total_s": 602.0,
         "budget_exhausted": false
       },
-      "raw_digest": "sha256:60d01f9a4e38cba80547ef64fd4e015c5d17320cad34f52b9428e7c02f57d94c",
+      "raw_digest": "sha256:ce9b63370bbed19500e692969a1002406dcfb23283bd720c75f4dde5d1c8fe0c",
       "provenance": "HARNESS_MODEL",
       "participated": true,
       "participated_scope": "RECEIPT",
@@ -230,9 +204,9 @@
       "declared_provenance": "HARNESS_MODEL",
       "provenance_mismatch": false,
       "implementation_verified": true,
-      "executable": "pi",
-      "argv_digest": "sha256:e2a4a9afdf47955dfcf336259f1194c51819e823254229e9beb025a977041751",
-      "workdir_digest": "sha256:0403e741f3ab40702575db099963635dca5c98b040eb8e4c52ea56ef0199b8ad",
+      "executable": "dsh",
+      "argv_digest": "sha256:de01708854eb14ed168fa584daa94134e76c6b9c767fd2b84503a6011bc93646",
+      "workdir_digest": "sha256:eea5f0e32421d6816a8e1ddc1be73cfbd360fd53f4540c63830a3902d7a6de94",
       "accepted_results": 3,
       "note": "★ 回执只证明「哪个适配器实现、哪次调用、回了什么摘要」；**不证明**判断出自哪个模型 —— 模型身份由适配器**实现**决定，自填的 adapter_id 只能作旁证"
     },
@@ -251,28 +225,28 @@
     },
     "obligations": [
       {
-        "obligation_id": "7482ebe26c4a47d2b82846f385dea0cd",
-        "source_obligation_id": "7482ebe26c4a47d2b82846f385dea0cd",
+        "obligation_id": "9b70ba98b07d4a46bf28a6a9cf626805",
+        "source_obligation_id": "9b70ba98b07d4a46bf28a6a9cf626805",
         "item_no": "1-1",
         "question_id": "1-1",
         "text": "请提供合成母公司2024年度审计报告",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "7482ebe26c4a47d2b82846f385dea0cd",
+          "obligation_id": "9b70ba98b07d4a46bf28a6a9cf626805",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "",
-          "confidence_or_uncertain": 0.99,
-          "agent_id": "pi",
-          "provider": "minimax-cn",
-          "model_id_or_unknown": "UNKNOWN",
+          "confidence_or_uncertain": 0.98,
+          "agent_id": "deepseek-harness",
+          "provider": "deepseek-harness",
+          "model_id_or_unknown": "deepseek-flash",
           "picked_file_ids": [
             "27681a252859095216dc33622627ae2e"
           ],
           "rejected_alternatives": [
             {
               "file_id": "e56df693642ab43b7db6d826063832d0",
-              "reason": "该审计报告年度为2023，与要求的2024年度不符。"
+              "reason": "该文件是2023年度审计报告，期间与要求的2024年度不符。"
             }
           ],
           "discrimination": {
@@ -430,21 +404,21 @@
         ]
       },
       {
-        "obligation_id": "973542f535d74adca1900afa67650658",
-        "source_obligation_id": "973542f535d74adca1900afa67650658",
+        "obligation_id": "e97c47c1a57d4474ad5fb4eaf09fdf3e",
+        "source_obligation_id": "e97c47c1a57d4474ad5fb4eaf09fdf3e",
         "item_no": "1-2",
         "question_id": "1-2",
         "text": "请提供合成母公司2024年度营业执照",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "973542f535d74adca1900afa67650658",
+          "obligation_id": "e97c47c1a57d4474ad5fb4eaf09fdf3e",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "",
-          "confidence_or_uncertain": 0.98,
-          "agent_id": "pi",
-          "provider": "minimax-cn",
-          "model_id_or_unknown": "UNKNOWN",
+          "confidence_or_uncertain": 0.97,
+          "agent_id": "deepseek-harness",
+          "provider": "deepseek-harness",
+          "model_id_or_unknown": "deepseek-flash",
           "picked_file_ids": [
             "4c76b41c7ab42e58c0a7afdcb7615ef9",
             "cd1a8a57478898e345812ef3b33977b6"
@@ -607,21 +581,21 @@
         ]
       },
       {
-        "obligation_id": "c245a7824f904c108687995e50d30d4f",
-        "source_obligation_id": "c245a7824f904c108687995e50d30d4f",
+        "obligation_id": "5fc9ea57a6274a54bd107ad49ebf357d",
+        "source_obligation_id": "5fc9ea57a6274a54bd107ad49ebf357d",
         "item_no": "1-3",
         "question_id": "1-3",
         "text": "请提供合成母公司2024年度经营情况说明",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "c245a7824f904c108687995e50d30d4f",
+          "obligation_id": "5fc9ea57a6274a54bd107ad49ebf357d",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "financial_statement",
-          "confidence_or_uncertain": 0.86,
-          "agent_id": "pi",
-          "provider": "minimax-cn",
-          "model_id_or_unknown": "UNKNOWN",
+          "confidence_or_uncertain": 0.8,
+          "agent_id": "deepseek-harness",
+          "provider": "deepseek-harness",
+          "model_id_or_unknown": "deepseek-flash",
           "picked_file_ids": [
             "0f032638fb8ade3e8426a6997b51d078"
           ],

@@ -1,13 +1,13 @@
 {
   "library": "LIB-DDVE-A",
   "institution": "合成机构A",
-  "generated_at": "2026-10-30T21:54:02",
+  "generated_at": "2026-10-30T22:47:27",
   "input_snapshot": {
-    "input_snapshot_id": "cf753238b132320693cfe4f5b3493c92e70252410e43d604c8d19d3931784ce9",
+    "input_snapshot_id": "d73bdbca55f8f6fc98e870e30dc23f4168ecec41b4e75506b9e77cb94791fad1",
     "checklist_fingerprint": "2daf53abcdac2176",
     "material_digest": "3f9bc31423d4817adc8cbd72e3af7485a36970cd4d9094abd9ad97e44977ac20",
     "material_files": 5,
-    "code_sha": "0f34ff41724373d3a8c256884cf92a3613161cb0"
+    "code_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
   },
   "human_approval_required": true,
   "sent_to_institution": false,
@@ -111,9 +111,9 @@
   },
   "semantic_bridge": {
     "ran": true,
-    "mode": "RULE_ONLY",
-    "degrade_reason": "NO_ADAPTER_PROVIDED：未接适配器，只出确定性规则提示（零外部调用、零费用）",
-    "external_model_calls": 0,
+    "mode": "AGENT_SUGGESTION",
+    "degrade_reason": null,
+    "external_model_calls": 1,
     "advisory_only": true,
     "review_required": true,
     "changes_hard_verdict": false,
@@ -139,30 +139,160 @@
       "obligations_with_evidence": 3,
       "evidence_total": 5
     },
-    "agent_receipt": {},
+    "agent_receipt": {
+      "adapter_id": "pi",
+      "vendor": "minimax-cn",
+      "role": "AUX",
+      "status": "OK",
+      "exit_code": 0,
+      "elapsed_s": 34.36,
+      "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
+      "framework": "pi",
+      "model_identity": {
+        "model_id": "MiniMax-M3.1-Flash-Preview",
+        "provider": "minimax-cn",
+        "source": "AGENT_EVENT",
+        "verified": true,
+        "binding": {
+          "event": "message_end"
+        },
+        "note": "★ 来源：pi 自己的 message_end 事件"
+      },
+      "model_identity_source": "AGENT_EVENT",
+      "model_identity_verified": true,
+      "cost_usd_or_UNKNOWN": 0,
+      "calls_used": 1,
+      "budget": {
+        "timeout_s": 120.0,
+        "max_calls": 2,
+        "max_cost_usd": 0.0,
+        "require_known_cost": false,
+        "retry_backoff_s": 2.0,
+        "max_total_s": 242.0
+      },
+      "attempts": [
+        {
+          "n": 1,
+          "status": "OK",
+          "exit_code": 0,
+          "elapsed_s": 34.36,
+          "cost_usd_or_UNKNOWN": 0,
+          "token_usage_or_UNKNOWN": {
+            "input": 5326,
+            "output": 4760,
+            "cacheRead": 128,
+            "cacheWrite": 0,
+            "totalTokens": 10214,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            },
+            "cacheWrite1h": 0,
+            "reasoning": 3790
+          },
+          "error_code": null,
+          "wall_elapsed_s": 34.45
+        }
+      ],
+      "perf": {
+        "total_elapsed_s": 34.45,
+        "cost_usd_or_UNKNOWN": 0,
+        "token_usage_or_UNKNOWN": {
+          "input": 5326,
+          "output": 4760,
+          "cacheRead": 128,
+          "cacheWrite": 0,
+          "totalTokens": 10214,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          },
+          "cacheWrite1h": 0,
+          "reasoning": 3790
+        },
+        "attempts_cost": [
+          0
+        ],
+        "max_total_s": 242.0,
+        "budget_exhausted": false
+      },
+      "raw_digest": "sha256:77833ff167859b4d22473ba8f4bacdc20b431b4bc304dfa3b750ba350a842515",
+      "provenance": "HARNESS_MODEL",
+      "participated": true,
+      "participated_scope": "RECEIPT",
+      "provenance_source": "ADAPTER_IMPLEMENTATION",
+      "declared_provenance": "HARNESS_MODEL",
+      "provenance_mismatch": false,
+      "implementation_verified": true,
+      "executable": "pi",
+      "argv_digest": "sha256:e2a4a9afdf47955dfcf336259f1194c51819e823254229e9beb025a977041751",
+      "workdir_digest": "sha256:c4bb3417a9979e946182ad2e7b55245a39177cd5041db84a8ec48bdd1a2ab0dd",
+      "accepted_results": 3,
+      "note": "★ 回执只证明「哪个适配器实现、哪次调用、回了什么摘要」；**不证明**判断出自哪个模型 —— 模型身份由适配器**实现**决定，自填的 adapter_id 只能作旁证"
+    },
     "model_participation": {
-      "participated": false,
-      "provenance": "RULE_ONLY",
-      "provenance_source": "",
-      "run_participated": false,
+      "participated": true,
+      "provenance": "HARNESS_MODEL",
+      "provenance_source": "ADAPTER_IMPLEMENTATION",
+      "run_participated": true,
       "participated_scope": "SELECTION",
       "run_participated_scope": "RECEIPT",
-      "declared_provenance": "",
-      "obligations_with_model_selection": 0,
+      "declared_provenance": "HARNESS_MODEL",
+      "obligations_with_model_selection": 3,
       "discrimination_pass": 0,
-      "discrimination_weak": 0,
+      "discrimination_weak": 3,
       "note": "★ **RULE_ONLY 与 MODEL 严格分开**：mode=RULE_ONLY ⇒ 全程没有模型参与；mode=AGENT_SUGGESTION ⇒ 有适配器回执。★ 排除式凭据只证明判断**不是照抄第一个候选**，不证明判断出自模型。"
     },
     "obligations": [
       {
-        "obligation_id": "6b2d34d219014b488d40968bc4e51851",
-        "source_obligation_id": "6b2d34d219014b488d40968bc4e51851",
+        "obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
+        "source_obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
         "item_no": "1-1",
         "question_id": "1-1",
         "text": "请提供合成母公司2024年度审计报告",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
-        "model_selection": {},
+        "model_selection": {
+          "obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
+          "proposed_verdict": "MATCH",
+          "proposed_doc_type": "audit_report",
+          "confidence_or_uncertain": 0.99,
+          "agent_id": "pi",
+          "provider": "minimax-cn",
+          "model_id_or_unknown": "UNKNOWN",
+          "picked_file_ids": [
+            "27681a252859095216dc33622627ae2e"
+          ],
+          "rejected_alternatives": [
+            {
+              "file_id": "e56df693642ab43b7db6d826063832d0",
+              "reason": "文件期间为2023年度，与要求的2024年度不符，不能作为本次匹配件。"
+            }
+          ],
+          "discrimination": {
+            "pool_size": 2,
+            "pool_doc_types": [
+              "audit_report"
+            ],
+            "pool_doc_type_count": 1,
+            "picked_file_ids": [
+              "27681a252859095216dc33622627ae2e"
+            ],
+            "non_default_pick": false,
+            "rejected_count": 1,
+            "rejected_with_reason": 1,
+            "discrimination": "WEAK",
+            "note": "PASS = 池子里有多种类型、且模型**没有**取第一个、且记录了排除理由 ⇒ 判断**不是**照抄第一个候选；★ 这**不证明**判断出自模型（模型身份看适配器回执）"
+          },
+          "review_required": true,
+          "approved": false
+        },
         "subject_verified": true,
         "doc_type": "audit_report",
         "period": "2024",
@@ -300,14 +430,45 @@
         ]
       },
       {
-        "obligation_id": "786b95a3701a414db1ad9aec408de5e8",
-        "source_obligation_id": "786b95a3701a414db1ad9aec408de5e8",
+        "obligation_id": "fc52982492df403db53fe07c815725d7",
+        "source_obligation_id": "fc52982492df403db53fe07c815725d7",
         "item_no": "1-2",
         "question_id": "1-2",
         "text": "请提供合成母公司2024年度营业执照",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
-        "model_selection": {},
+        "model_selection": {
+          "obligation_id": "fc52982492df403db53fe07c815725d7",
+          "proposed_verdict": "MATCH",
+          "proposed_doc_type": "license",
+          "confidence_or_uncertain": 0.98,
+          "agent_id": "pi",
+          "provider": "minimax-cn",
+          "model_id_or_unknown": "UNKNOWN",
+          "picked_file_ids": [
+            "4c76b41c7ab42e58c0a7afdcb7615ef9",
+            "cd1a8a57478898e345812ef3b33977b6"
+          ],
+          "rejected_alternatives": [],
+          "discrimination": {
+            "pool_size": 2,
+            "pool_doc_types": [
+              "license"
+            ],
+            "pool_doc_type_count": 1,
+            "picked_file_ids": [
+              "4c76b41c7ab42e58c0a7afdcb7615ef9",
+              "cd1a8a57478898e345812ef3b33977b6"
+            ],
+            "non_default_pick": false,
+            "rejected_count": 0,
+            "rejected_with_reason": 0,
+            "discrimination": "WEAK",
+            "note": "PASS = 池子里有多种类型、且模型**没有**取第一个、且记录了排除理由 ⇒ 判断**不是**照抄第一个候选；★ 这**不证明**判断出自模型（模型身份看适配器回执）"
+          },
+          "review_required": true,
+          "approved": false
+        },
         "subject_verified": true,
         "doc_type": "license",
         "period": "CURRENT",
@@ -446,14 +607,41 @@
         ]
       },
       {
-        "obligation_id": "372c803d905c4f43af6eac21ba8d167f",
-        "source_obligation_id": "372c803d905c4f43af6eac21ba8d167f",
+        "obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
+        "source_obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
         "item_no": "1-3",
         "question_id": "1-3",
         "text": "请提供合成母公司2024年度经营情况说明",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
-        "model_selection": {},
+        "model_selection": {
+          "obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
+          "proposed_verdict": "MATCH",
+          "proposed_doc_type": "financial_statement",
+          "confidence_or_uncertain": 0.84,
+          "agent_id": "pi",
+          "provider": "minimax-cn",
+          "model_id_or_unknown": "UNKNOWN",
+          "picked_file_ids": [
+            "0f032638fb8ade3e8426a6997b51d078"
+          ],
+          "rejected_alternatives": [],
+          "discrimination": {
+            "pool_size": 1,
+            "pool_doc_types": [],
+            "pool_doc_type_count": 0,
+            "picked_file_ids": [
+              "0f032638fb8ade3e8426a6997b51d078"
+            ],
+            "non_default_pick": false,
+            "rejected_count": 0,
+            "rejected_with_reason": 0,
+            "discrimination": "WEAK",
+            "note": "PASS = 池子里有多种类型、且模型**没有**取第一个、且记录了排除理由 ⇒ 判断**不是**照抄第一个候选；★ 这**不证明**判断出自模型（模型身份看适配器回执）"
+          },
+          "review_required": true,
+          "approved": false
+        },
         "subject_verified": true,
         "doc_type": "",
         "period": "2024",

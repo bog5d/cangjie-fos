@@ -1,13 +1,13 @@
 {
   "library": "LIB-DDVE-C",
   "institution": "合成机构C",
-  "generated_at": "2026-10-30T21:54:05",
+  "generated_at": "2026-10-30T22:45:58",
   "input_snapshot": {
-    "input_snapshot_id": "1f3768e5fd9af13b34a96a40f34fb4d71d7f6107b7483a1c45f3f6f576f39aec",
+    "input_snapshot_id": "d29bcede6436b2d74c5221216cce5fa879cb4696ebc6e110012b4dd3b050a178",
     "checklist_fingerprint": "15053dc52e89b2fc",
     "material_digest": "088c01ca7e58bc97d509a3b8dce4d04cca1cde4d0f5f8d5085559fc4bb1c06dd",
     "material_files": 41,
-    "code_sha": "0f34ff41724373d3a8c256884cf92a3613161cb0"
+    "code_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
   },
   "human_approval_required": true,
   "sent_to_institution": false,
@@ -110,7 +110,7 @@
     "candidates_unchecked_total": 0,
     "obligations": [
       {
-        "obligation_id": "6b37e236438f467a81378830ab4ea79a",
+        "obligation_id": "81744b88c91d4b4d8e06b1b5b373ac21",
         "verdict_before": "STALE",
         "verdict_after": "STALE",
         "files_before": 0,
@@ -123,7 +123,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
+        "obligation_id": "f8e4c5b8e84948eba5ac1253ff8b053a",
         "verdict_before": "STALE",
         "verdict_after": "STALE",
         "files_before": 0,
@@ -136,7 +136,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "17db0384dc6449f7a53970d95a97a012",
+        "obligation_id": "b4d92b51f8fc40259376aaaf4ae2e2ed",
         "verdict_before": "STALE",
         "verdict_after": "STALE",
         "files_before": 0,
@@ -149,7 +149,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
+        "obligation_id": "3d546191a0b2487cb605ff813e0eca5d",
         "verdict_before": "STALE",
         "verdict_after": "STALE",
         "files_before": 0,
@@ -162,7 +162,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "14543bf103a0481dae4aa6c59771d048",
+        "obligation_id": "ad8b5b4a09904eb5bf8b0fcaca39e8dd",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -175,7 +175,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "8829ba3c4d404c02a5f8a31cf2e3d76b",
+        "obligation_id": "4df3a3d760ff4d0396a00f285d261037",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -188,7 +188,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "f0366150a9144d0fadc00beb8748da8a",
+        "obligation_id": "8b1a53f8ed2f45a08671c9e8ad918df3",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -201,7 +201,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "90e64a0121f643f9a06e739021014a06",
+        "obligation_id": "acb09b6a23414f539bfb725004b4e67e",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -214,7 +214,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "6dffa4ba740548c791423af2d2ae3d3d",
+        "obligation_id": "3b3b5b2f0deb4b68a6965bb4b1ed760f",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -227,7 +227,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "0ebc46a0ddac4c3e908a03b0c7b0afa8",
+        "obligation_id": "f519c952e2b2412b98151cce653ad1ba",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -240,7 +240,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "dbf0fd11c4a942258bfefa97c0253be0",
+        "obligation_id": "65e731cf99ad48ff98ed4fac397e84e5",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -253,7 +253,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "a80d01992bea4443a0fe4d3a440ac6ab",
+        "obligation_id": "be6d9c6df4e7441a81960eae6cc77659",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -266,7 +266,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "c72f358ea1ff463694f06344c111413d",
+        "obligation_id": "80989241fe184670913349246c3f0d4f",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -279,7 +279,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "8cb040a193164f8abdc2f8b65fa7d75e",
+        "obligation_id": "400b790d57d347418a0f2adc673f4552",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -292,7 +292,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "3b3c8bc65e22404a9b9e20a26ffa017d",
+        "obligation_id": "4a789073a97d45fbb62e5c75d5bdb141",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -305,7 +305,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "60fb3a3e98054cc3b25af0191d7eca7a",
+        "obligation_id": "31052d156a1143b8bea01d6c7f841ef7",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -318,7 +318,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe",
+        "obligation_id": "85745819fb0e4773aa99c52730888b88",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -331,7 +331,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "db47ceed4fed43108366410093995c99",
+        "obligation_id": "e20a23fd6ac64c608c3b2302394b4c49",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -344,7 +344,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "e58e82d344b94cbaadbb33aa4287d7e7",
+        "obligation_id": "48c445d3dc204039a385e5067a95fb8f",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -357,7 +357,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "a1679786b26943f4bfd3e2b8a5f3f321",
+        "obligation_id": "8ad160ce8dba4f8092a1b142785a20f4",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -370,7 +370,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "68e5330fe0b240408e10e7c8735cb875",
+        "obligation_id": "bfa0bd9e58654127b0766620b2e33f77",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -383,7 +383,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "47affc7cf309498aa6024c3a64d794d8",
+        "obligation_id": "536a907d328042d6b78e7c6008fc0e9a",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -396,7 +396,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "5574e490deb84506b560d42ba46d1f24",
+        "obligation_id": "07e38f93b45e4920ae0195a036db2d3b",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -409,7 +409,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "437d6b008d494a0dab097aa38f901b4a",
+        "obligation_id": "a23ec8adafd54ae1b6b0b24926123b92",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -422,7 +422,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "b3b1ad0fcf0e49c4b7b715a58e5f0dde",
+        "obligation_id": "9e6243e834b742ffb1061f24e30478ee",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -435,7 +435,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "eb21655fb64c4f98a7a25071f77b28d2",
+        "obligation_id": "884002acc0e043c497b7181cb40f5239",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -448,7 +448,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "64e29b34c7fc497bade384fcb603683c",
+        "obligation_id": "33016c2f42544b35b3d40366de702d5e",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -461,7 +461,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "59fabdbd9e4f407d92da7d5cecfe7812",
+        "obligation_id": "8324964fd7d1427b82fc5cab67b4a6d2",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -474,7 +474,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "d9536148df884baa9f1a6da8099027fe",
+        "obligation_id": "df0d786e682647849d1d38ef52044f33",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -487,7 +487,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "3ace20f1230941328e24b8be188cb7a2",
+        "obligation_id": "b541fadfe913431eac6eff6c8ec10f6d",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -500,7 +500,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "0727b9ca42b1475c8921a9e7231bb39d",
+        "obligation_id": "99d793464df245e1aed5a0a721dbdbcb",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -513,7 +513,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "e5381e7c57cb43dc91b9b0091b352080",
+        "obligation_id": "acf63370a532446da7f83ca816b108e1",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -526,7 +526,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "611a9bde66b3444cb0fb1e96a60f8be9",
+        "obligation_id": "1d3b26024253489b9c2a923ac611f92a",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -539,7 +539,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "0dc0a309841d4e1b90ac6a62cd318590",
+        "obligation_id": "3caf0d5f2bc448ddb853483e3ce8eabb",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -552,7 +552,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "3d434c1ec33749edb38b59abe9126a24",
+        "obligation_id": "7506db1766f244a48b8581a9957b62b5",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -565,7 +565,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "c99b103ca9c741129ddd70263264d124",
+        "obligation_id": "4dce213f88d64f528445f4a5eafdfcee",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -578,7 +578,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "6b96d50279124deca937ce386edaa595",
+        "obligation_id": "51a12fcfd28d4b2cbdab595e07239e23",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -591,7 +591,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "8df6282394384418a831ca52b0be72f9",
+        "obligation_id": "40164d616f214749aabea736008a7d1e",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -604,7 +604,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "23f087b1635f48ec8d8205a635effd76",
+        "obligation_id": "38ecaca910fa49aa9f5b55b49c1189bc",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -617,7 +617,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "341f3f520e7a4b9397db8ef328f1c56c",
+        "obligation_id": "4df56f8c62924c5893cb8c6200adf9b7",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -630,7 +630,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "b412b9cbd13f4f1abde5a9a76b9346e7",
+        "obligation_id": "fe9b26e0db3946f981e33f74bea8e61c",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -643,7 +643,7 @@
         "note": "候选池已穷尽（检查 41 份），停止原因：VERDICT_STABLE"
       },
       {
-        "obligation_id": "41ccf0a085c74f3a8def3b446b187fa5",
+        "obligation_id": "96cebd6bf401481588f922b330231578",
         "verdict_before": "MATCHED",
         "verdict_after": "MATCHED",
         "files_before": 0,
@@ -704,8 +704,8 @@
     },
     "obligations": [
       {
-        "obligation_id": "6b37e236438f467a81378830ab4ea79a",
-        "source_obligation_id": "6b37e236438f467a81378830ab4ea79a",
+        "obligation_id": "81744b88c91d4b4d8e06b1b5b373ac21",
+        "source_obligation_id": "81744b88c91d4b4d8e06b1b5b373ac21",
         "item_no": "3-9",
         "question_id": "3-9",
         "text": "请提供合成母公司2019年度审计报告",
@@ -840,8 +840,8 @@
         ]
       },
       {
-        "obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
-        "source_obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
+        "obligation_id": "f8e4c5b8e84948eba5ac1253ff8b053a",
+        "source_obligation_id": "f8e4c5b8e84948eba5ac1253ff8b053a",
         "item_no": "3-18",
         "question_id": "3-18",
         "text": "请提供合成母公司2019年度审计报告",
@@ -976,8 +976,8 @@
         ]
       },
       {
-        "obligation_id": "17db0384dc6449f7a53970d95a97a012",
-        "source_obligation_id": "17db0384dc6449f7a53970d95a97a012",
+        "obligation_id": "b4d92b51f8fc40259376aaaf4ae2e2ed",
+        "source_obligation_id": "b4d92b51f8fc40259376aaaf4ae2e2ed",
         "item_no": "3-27",
         "question_id": "3-27",
         "text": "请提供合成母公司2019年度审计报告",
@@ -1112,8 +1112,8 @@
         ]
       },
       {
-        "obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
-        "source_obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
+        "obligation_id": "3d546191a0b2487cb605ff813e0eca5d",
+        "source_obligation_id": "3d546191a0b2487cb605ff813e0eca5d",
         "item_no": "3-36",
         "question_id": "3-36",
         "text": "请提供合成母公司2019年度审计报告",
@@ -1248,8 +1248,8 @@
         ]
       },
       {
-        "obligation_id": "14543bf103a0481dae4aa6c59771d048",
-        "source_obligation_id": "14543bf103a0481dae4aa6c59771d048",
+        "obligation_id": "ad8b5b4a09904eb5bf8b0fcaca39e8dd",
+        "source_obligation_id": "ad8b5b4a09904eb5bf8b0fcaca39e8dd",
         "item_no": "3-1",
         "question_id": "3-1",
         "text": "请提供合成子公司甲2020年度审计报告",
@@ -1421,8 +1421,8 @@
         ]
       },
       {
-        "obligation_id": "8829ba3c4d404c02a5f8a31cf2e3d76b",
-        "source_obligation_id": "8829ba3c4d404c02a5f8a31cf2e3d76b",
+        "obligation_id": "4df3a3d760ff4d0396a00f285d261037",
+        "source_obligation_id": "4df3a3d760ff4d0396a00f285d261037",
         "item_no": "3-2",
         "question_id": "3-2",
         "text": "请提供合成子公司乙2020年度审计报告",
@@ -1594,8 +1594,8 @@
         ]
       },
       {
-        "obligation_id": "f0366150a9144d0fadc00beb8748da8a",
-        "source_obligation_id": "f0366150a9144d0fadc00beb8748da8a",
+        "obligation_id": "8b1a53f8ed2f45a08671c9e8ad918df3",
+        "source_obligation_id": "8b1a53f8ed2f45a08671c9e8ad918df3",
         "item_no": "3-3",
         "question_id": "3-3",
         "text": "请提供合成母公司2020年度纳税证明",
@@ -1767,8 +1767,8 @@
         ]
       },
       {
-        "obligation_id": "90e64a0121f643f9a06e739021014a06",
-        "source_obligation_id": "90e64a0121f643f9a06e739021014a06",
+        "obligation_id": "acb09b6a23414f539bfb725004b4e67e",
+        "source_obligation_id": "acb09b6a23414f539bfb725004b4e67e",
         "item_no": "3-4",
         "question_id": "3-4",
         "text": "请提供合成子公司甲2020年度纳税证明",
@@ -1940,8 +1940,8 @@
         ]
       },
       {
-        "obligation_id": "6dffa4ba740548c791423af2d2ae3d3d",
-        "source_obligation_id": "6dffa4ba740548c791423af2d2ae3d3d",
+        "obligation_id": "3b3b5b2f0deb4b68a6965bb4b1ed760f",
+        "source_obligation_id": "3b3b5b2f0deb4b68a6965bb4b1ed760f",
         "item_no": "3-5",
         "question_id": "3-5",
         "text": "请提供合成子公司乙2020年度纳税证明",
@@ -2125,8 +2125,8 @@
         ]
       },
       {
-        "obligation_id": "0ebc46a0ddac4c3e908a03b0c7b0afa8",
-        "source_obligation_id": "0ebc46a0ddac4c3e908a03b0c7b0afa8",
+        "obligation_id": "f519c952e2b2412b98151cce653ad1ba",
+        "source_obligation_id": "f519c952e2b2412b98151cce653ad1ba",
         "item_no": "3-6",
         "question_id": "3-6",
         "text": "请提供合成母公司2020年度财务报表",
@@ -2310,8 +2310,8 @@
         ]
       },
       {
-        "obligation_id": "dbf0fd11c4a942258bfefa97c0253be0@合成母公司",
-        "source_obligation_id": "dbf0fd11c4a942258bfefa97c0253be0",
+        "obligation_id": "65e731cf99ad48ff98ed4fac397e84e5@合成母公司",
+        "source_obligation_id": "65e731cf99ad48ff98ed4fac397e84e5",
         "item_no": "3-7",
         "question_id": "3-7",
         "text": "请提供集团及下属公司2020年度财务报表",
@@ -2495,8 +2495,8 @@
         ]
       },
       {
-        "obligation_id": "dbf0fd11c4a942258bfefa97c0253be0@合成子公司甲",
-        "source_obligation_id": "dbf0fd11c4a942258bfefa97c0253be0",
+        "obligation_id": "65e731cf99ad48ff98ed4fac397e84e5@合成子公司甲",
+        "source_obligation_id": "65e731cf99ad48ff98ed4fac397e84e5",
         "item_no": "3-7",
         "question_id": "3-7",
         "text": "请提供集团及下属公司2020年度财务报表",
@@ -2680,8 +2680,8 @@
         ]
       },
       {
-        "obligation_id": "dbf0fd11c4a942258bfefa97c0253be0@合成子公司乙",
-        "source_obligation_id": "dbf0fd11c4a942258bfefa97c0253be0",
+        "obligation_id": "65e731cf99ad48ff98ed4fac397e84e5@合成子公司乙",
+        "source_obligation_id": "65e731cf99ad48ff98ed4fac397e84e5",
         "item_no": "3-7",
         "question_id": "3-7",
         "text": "请提供集团及下属公司2020年度财务报表",
@@ -2865,8 +2865,8 @@
         ]
       },
       {
-        "obligation_id": "a80d01992bea4443a0fe4d3a440ac6ab",
-        "source_obligation_id": "a80d01992bea4443a0fe4d3a440ac6ab",
+        "obligation_id": "be6d9c6df4e7441a81960eae6cc77659",
+        "source_obligation_id": "be6d9c6df4e7441a81960eae6cc77659",
         "item_no": "3-8",
         "question_id": "3-8",
         "text": "请提供合成子公司乙2020年度财务报表",
@@ -3050,8 +3050,8 @@
         ]
       },
       {
-        "obligation_id": "c72f358ea1ff463694f06344c111413d",
-        "source_obligation_id": "c72f358ea1ff463694f06344c111413d",
+        "obligation_id": "80989241fe184670913349246c3f0d4f",
+        "source_obligation_id": "80989241fe184670913349246c3f0d4f",
         "item_no": "3-10",
         "question_id": "3-10",
         "text": "请提供合成子公司甲2021年度合同",
@@ -3199,8 +3199,8 @@
         ]
       },
       {
-        "obligation_id": "8cb040a193164f8abdc2f8b65fa7d75e",
-        "source_obligation_id": "8cb040a193164f8abdc2f8b65fa7d75e",
+        "obligation_id": "400b790d57d347418a0f2adc673f4552",
+        "source_obligation_id": "400b790d57d347418a0f2adc673f4552",
         "item_no": "3-11",
         "question_id": "3-11",
         "text": "请提供合成子公司乙2021年度审计报告",
@@ -3372,8 +3372,8 @@
         ]
       },
       {
-        "obligation_id": "3b3c8bc65e22404a9b9e20a26ffa017d",
-        "source_obligation_id": "3b3c8bc65e22404a9b9e20a26ffa017d",
+        "obligation_id": "4a789073a97d45fbb62e5c75d5bdb141",
+        "source_obligation_id": "4a789073a97d45fbb62e5c75d5bdb141",
         "item_no": "3-12",
         "question_id": "3-12",
         "text": "请提供合成母公司2021年度纳税证明",
@@ -3545,8 +3545,8 @@
         ]
       },
       {
-        "obligation_id": "60fb3a3e98054cc3b25af0191d7eca7a",
-        "source_obligation_id": "60fb3a3e98054cc3b25af0191d7eca7a",
+        "obligation_id": "31052d156a1143b8bea01d6c7f841ef7",
+        "source_obligation_id": "31052d156a1143b8bea01d6c7f841ef7",
         "item_no": "3-13",
         "question_id": "3-13",
         "text": "请提供合成子公司甲2021年度纳税证明",
@@ -3718,8 +3718,8 @@
         ]
       },
       {
-        "obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe@合成母公司",
-        "source_obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe",
+        "obligation_id": "85745819fb0e4773aa99c52730888b88@合成母公司",
+        "source_obligation_id": "85745819fb0e4773aa99c52730888b88",
         "item_no": "3-14",
         "question_id": "3-14",
         "text": "请提供集团及下属公司2021年度纳税证明",
@@ -3891,8 +3891,8 @@
         ]
       },
       {
-        "obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe@合成子公司甲",
-        "source_obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe",
+        "obligation_id": "85745819fb0e4773aa99c52730888b88@合成子公司甲",
+        "source_obligation_id": "85745819fb0e4773aa99c52730888b88",
         "item_no": "3-14",
         "question_id": "3-14",
         "text": "请提供集团及下属公司2021年度纳税证明",
@@ -4064,8 +4064,8 @@
         ]
       },
       {
-        "obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe@合成子公司乙",
-        "source_obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe",
+        "obligation_id": "85745819fb0e4773aa99c52730888b88@合成子公司乙",
+        "source_obligation_id": "85745819fb0e4773aa99c52730888b88",
         "item_no": "3-14",
         "question_id": "3-14",
         "text": "请提供集团及下属公司2021年度纳税证明",
@@ -4249,8 +4249,8 @@
         ]
       },
       {
-        "obligation_id": "db47ceed4fed43108366410093995c99",
-        "source_obligation_id": "db47ceed4fed43108366410093995c99",
+        "obligation_id": "e20a23fd6ac64c608c3b2302394b4c49",
+        "source_obligation_id": "e20a23fd6ac64c608c3b2302394b4c49",
         "item_no": "3-15",
         "question_id": "3-15",
         "text": "请提供合成母公司2021年度财务报表",
@@ -4434,8 +4434,8 @@
         ]
       },
       {
-        "obligation_id": "e58e82d344b94cbaadbb33aa4287d7e7",
-        "source_obligation_id": "e58e82d344b94cbaadbb33aa4287d7e7",
+        "obligation_id": "48c445d3dc204039a385e5067a95fb8f",
+        "source_obligation_id": "48c445d3dc204039a385e5067a95fb8f",
         "item_no": "3-16",
         "question_id": "3-16",
         "text": "请提供合成子公司甲2021年度财务报表",
@@ -4619,8 +4619,8 @@
         ]
       },
       {
-        "obligation_id": "a1679786b26943f4bfd3e2b8a5f3f321",
-        "source_obligation_id": "a1679786b26943f4bfd3e2b8a5f3f321",
+        "obligation_id": "8ad160ce8dba4f8092a1b142785a20f4",
+        "source_obligation_id": "8ad160ce8dba4f8092a1b142785a20f4",
         "item_no": "3-17",
         "question_id": "3-17",
         "text": "请提供合成子公司乙2021年度财务报表",
@@ -4804,8 +4804,8 @@
         ]
       },
       {
-        "obligation_id": "68e5330fe0b240408e10e7c8735cb875",
-        "source_obligation_id": "68e5330fe0b240408e10e7c8735cb875",
+        "obligation_id": "bfa0bd9e58654127b0766620b2e33f77",
+        "source_obligation_id": "bfa0bd9e58654127b0766620b2e33f77",
         "item_no": "3-19",
         "question_id": "3-19",
         "text": "请提供合成子公司甲2022年度审计报告",
@@ -4977,8 +4977,8 @@
         ]
       },
       {
-        "obligation_id": "47affc7cf309498aa6024c3a64d794d8",
-        "source_obligation_id": "47affc7cf309498aa6024c3a64d794d8",
+        "obligation_id": "536a907d328042d6b78e7c6008fc0e9a",
+        "source_obligation_id": "536a907d328042d6b78e7c6008fc0e9a",
         "item_no": "3-20",
         "question_id": "3-20",
         "text": "请提供合成子公司乙2022年度合同",
@@ -5114,8 +5114,8 @@
         ]
       },
       {
-        "obligation_id": "5574e490deb84506b560d42ba46d1f24@合成母公司",
-        "source_obligation_id": "5574e490deb84506b560d42ba46d1f24",
+        "obligation_id": "07e38f93b45e4920ae0195a036db2d3b@合成母公司",
+        "source_obligation_id": "07e38f93b45e4920ae0195a036db2d3b",
         "item_no": "3-21",
         "question_id": "3-21",
         "text": "请提供集团及下属公司2022年度纳税证明",
@@ -5287,8 +5287,8 @@
         ]
       },
       {
-        "obligation_id": "5574e490deb84506b560d42ba46d1f24@合成子公司甲",
-        "source_obligation_id": "5574e490deb84506b560d42ba46d1f24",
+        "obligation_id": "07e38f93b45e4920ae0195a036db2d3b@合成子公司甲",
+        "source_obligation_id": "07e38f93b45e4920ae0195a036db2d3b",
         "item_no": "3-21",
         "question_id": "3-21",
         "text": "请提供集团及下属公司2022年度纳税证明",
@@ -5460,8 +5460,8 @@
         ]
       },
       {
-        "obligation_id": "5574e490deb84506b560d42ba46d1f24@合成子公司乙",
-        "source_obligation_id": "5574e490deb84506b560d42ba46d1f24",
+        "obligation_id": "07e38f93b45e4920ae0195a036db2d3b@合成子公司乙",
+        "source_obligation_id": "07e38f93b45e4920ae0195a036db2d3b",
         "item_no": "3-21",
         "question_id": "3-21",
         "text": "请提供集团及下属公司2022年度纳税证明",
@@ -5645,8 +5645,8 @@
         ]
       },
       {
-        "obligation_id": "437d6b008d494a0dab097aa38f901b4a",
-        "source_obligation_id": "437d6b008d494a0dab097aa38f901b4a",
+        "obligation_id": "a23ec8adafd54ae1b6b0b24926123b92",
+        "source_obligation_id": "a23ec8adafd54ae1b6b0b24926123b92",
         "item_no": "3-22",
         "question_id": "3-22",
         "text": "请提供合成子公司甲2022年度纳税证明",
@@ -5818,8 +5818,8 @@
         ]
       },
       {
-        "obligation_id": "b3b1ad0fcf0e49c4b7b715a58e5f0dde",
-        "source_obligation_id": "b3b1ad0fcf0e49c4b7b715a58e5f0dde",
+        "obligation_id": "9e6243e834b742ffb1061f24e30478ee",
+        "source_obligation_id": "9e6243e834b742ffb1061f24e30478ee",
         "item_no": "3-23",
         "question_id": "3-23",
         "text": "请提供合成子公司乙2022年度纳税证明",
@@ -6003,8 +6003,8 @@
         ]
       },
       {
-        "obligation_id": "eb21655fb64c4f98a7a25071f77b28d2",
-        "source_obligation_id": "eb21655fb64c4f98a7a25071f77b28d2",
+        "obligation_id": "884002acc0e043c497b7181cb40f5239",
+        "source_obligation_id": "884002acc0e043c497b7181cb40f5239",
         "item_no": "3-24",
         "question_id": "3-24",
         "text": "请提供合成母公司2022年度财务报表",
@@ -6188,8 +6188,8 @@
         ]
       },
       {
-        "obligation_id": "64e29b34c7fc497bade384fcb603683c",
-        "source_obligation_id": "64e29b34c7fc497bade384fcb603683c",
+        "obligation_id": "33016c2f42544b35b3d40366de702d5e",
+        "source_obligation_id": "33016c2f42544b35b3d40366de702d5e",
         "item_no": "3-25",
         "question_id": "3-25",
         "text": "请提供合成子公司甲2022年度财务报表",
@@ -6373,8 +6373,8 @@
         ]
       },
       {
-        "obligation_id": "59fabdbd9e4f407d92da7d5cecfe7812",
-        "source_obligation_id": "59fabdbd9e4f407d92da7d5cecfe7812",
+        "obligation_id": "8324964fd7d1427b82fc5cab67b4a6d2",
+        "source_obligation_id": "8324964fd7d1427b82fc5cab67b4a6d2",
         "item_no": "3-26",
         "question_id": "3-26",
         "text": "请提供合成子公司乙2022年度财务报表",
@@ -6558,8 +6558,8 @@
         ]
       },
       {
-        "obligation_id": "d9536148df884baa9f1a6da8099027fe@合成母公司",
-        "source_obligation_id": "d9536148df884baa9f1a6da8099027fe",
+        "obligation_id": "df0d786e682647849d1d38ef52044f33@合成母公司",
+        "source_obligation_id": "df0d786e682647849d1d38ef52044f33",
         "item_no": "3-28",
         "question_id": "3-28",
         "text": "请提供集团及下属公司2023年度审计报告",
@@ -6695,8 +6695,8 @@
         ]
       },
       {
-        "obligation_id": "d9536148df884baa9f1a6da8099027fe@合成子公司甲",
-        "source_obligation_id": "d9536148df884baa9f1a6da8099027fe",
+        "obligation_id": "df0d786e682647849d1d38ef52044f33@合成子公司甲",
+        "source_obligation_id": "df0d786e682647849d1d38ef52044f33",
         "item_no": "3-28",
         "question_id": "3-28",
         "text": "请提供集团及下属公司2023年度审计报告",
@@ -6868,8 +6868,8 @@
         ]
       },
       {
-        "obligation_id": "d9536148df884baa9f1a6da8099027fe@合成子公司乙",
-        "source_obligation_id": "d9536148df884baa9f1a6da8099027fe",
+        "obligation_id": "df0d786e682647849d1d38ef52044f33@合成子公司乙",
+        "source_obligation_id": "df0d786e682647849d1d38ef52044f33",
         "item_no": "3-28",
         "question_id": "3-28",
         "text": "请提供集团及下属公司2023年度审计报告",
@@ -7041,8 +7041,8 @@
         ]
       },
       {
-        "obligation_id": "3ace20f1230941328e24b8be188cb7a2",
-        "source_obligation_id": "3ace20f1230941328e24b8be188cb7a2",
+        "obligation_id": "b541fadfe913431eac6eff6c8ec10f6d",
+        "source_obligation_id": "b541fadfe913431eac6eff6c8ec10f6d",
         "item_no": "3-29",
         "question_id": "3-29",
         "text": "请提供合成子公司乙2023年度审计报告",
@@ -7214,8 +7214,8 @@
         ]
       },
       {
-        "obligation_id": "0727b9ca42b1475c8921a9e7231bb39d",
-        "source_obligation_id": "0727b9ca42b1475c8921a9e7231bb39d",
+        "obligation_id": "99d793464df245e1aed5a0a721dbdbcb",
+        "source_obligation_id": "99d793464df245e1aed5a0a721dbdbcb",
         "item_no": "3-30",
         "question_id": "3-30",
         "text": "请提供合成母公司2023年度合同",
@@ -7351,8 +7351,8 @@
         ]
       },
       {
-        "obligation_id": "e5381e7c57cb43dc91b9b0091b352080",
-        "source_obligation_id": "e5381e7c57cb43dc91b9b0091b352080",
+        "obligation_id": "acf63370a532446da7f83ca816b108e1",
+        "source_obligation_id": "acf63370a532446da7f83ca816b108e1",
         "item_no": "3-31",
         "question_id": "3-31",
         "text": "请提供合成子公司甲2023年度纳税证明",
@@ -7524,8 +7524,8 @@
         ]
       },
       {
-        "obligation_id": "611a9bde66b3444cb0fb1e96a60f8be9",
-        "source_obligation_id": "611a9bde66b3444cb0fb1e96a60f8be9",
+        "obligation_id": "1d3b26024253489b9c2a923ac611f92a",
+        "source_obligation_id": "1d3b26024253489b9c2a923ac611f92a",
         "item_no": "3-32",
         "question_id": "3-32",
         "text": "请提供合成子公司乙2023年度纳税证明",
@@ -7709,8 +7709,8 @@
         ]
       },
       {
-        "obligation_id": "0dc0a309841d4e1b90ac6a62cd318590",
-        "source_obligation_id": "0dc0a309841d4e1b90ac6a62cd318590",
+        "obligation_id": "3caf0d5f2bc448ddb853483e3ce8eabb",
+        "source_obligation_id": "3caf0d5f2bc448ddb853483e3ce8eabb",
         "item_no": "3-33",
         "question_id": "3-33",
         "text": "请提供合成母公司2023年度财务报表",
@@ -7894,8 +7894,8 @@
         ]
       },
       {
-        "obligation_id": "3d434c1ec33749edb38b59abe9126a24",
-        "source_obligation_id": "3d434c1ec33749edb38b59abe9126a24",
+        "obligation_id": "7506db1766f244a48b8581a9957b62b5",
+        "source_obligation_id": "7506db1766f244a48b8581a9957b62b5",
         "item_no": "3-34",
         "question_id": "3-34",
         "text": "请提供合成子公司甲2023年度财务报表",
@@ -8079,8 +8079,8 @@
         ]
       },
       {
-        "obligation_id": "c99b103ca9c741129ddd70263264d124@合成母公司",
-        "source_obligation_id": "c99b103ca9c741129ddd70263264d124",
+        "obligation_id": "4dce213f88d64f528445f4a5eafdfcee@合成母公司",
+        "source_obligation_id": "4dce213f88d64f528445f4a5eafdfcee",
         "item_no": "3-35",
         "question_id": "3-35",
         "text": "请提供集团及下属公司2023年度财务报表",
@@ -8264,8 +8264,8 @@
         ]
       },
       {
-        "obligation_id": "c99b103ca9c741129ddd70263264d124@合成子公司甲",
-        "source_obligation_id": "c99b103ca9c741129ddd70263264d124",
+        "obligation_id": "4dce213f88d64f528445f4a5eafdfcee@合成子公司甲",
+        "source_obligation_id": "4dce213f88d64f528445f4a5eafdfcee",
         "item_no": "3-35",
         "question_id": "3-35",
         "text": "请提供集团及下属公司2023年度财务报表",
@@ -8449,8 +8449,8 @@
         ]
       },
       {
-        "obligation_id": "c99b103ca9c741129ddd70263264d124@合成子公司乙",
-        "source_obligation_id": "c99b103ca9c741129ddd70263264d124",
+        "obligation_id": "4dce213f88d64f528445f4a5eafdfcee@合成子公司乙",
+        "source_obligation_id": "4dce213f88d64f528445f4a5eafdfcee",
         "item_no": "3-35",
         "question_id": "3-35",
         "text": "请提供集团及下属公司2023年度财务报表",
@@ -8634,8 +8634,8 @@
         ]
       },
       {
-        "obligation_id": "6b96d50279124deca937ce386edaa595",
-        "source_obligation_id": "6b96d50279124deca937ce386edaa595",
+        "obligation_id": "51a12fcfd28d4b2cbdab595e07239e23",
+        "source_obligation_id": "51a12fcfd28d4b2cbdab595e07239e23",
         "item_no": "3-37",
         "question_id": "3-37",
         "text": "请提供合成子公司甲2024年度审计报告",
@@ -8807,8 +8807,8 @@
         ]
       },
       {
-        "obligation_id": "8df6282394384418a831ca52b0be72f9",
-        "source_obligation_id": "8df6282394384418a831ca52b0be72f9",
+        "obligation_id": "40164d616f214749aabea736008a7d1e",
+        "source_obligation_id": "40164d616f214749aabea736008a7d1e",
         "item_no": "3-38",
         "question_id": "3-38",
         "text": "请提供合成子公司乙2024年度审计报告",
@@ -8980,8 +8980,8 @@
         ]
       },
       {
-        "obligation_id": "23f087b1635f48ec8d8205a635effd76",
-        "source_obligation_id": "23f087b1635f48ec8d8205a635effd76",
+        "obligation_id": "38ecaca910fa49aa9f5b55b49c1189bc",
+        "source_obligation_id": "38ecaca910fa49aa9f5b55b49c1189bc",
         "item_no": "3-39",
         "question_id": "3-39",
         "text": "请提供合成母公司2024年度纳税证明",
@@ -9153,8 +9153,8 @@
         ]
       },
       {
-        "obligation_id": "341f3f520e7a4b9397db8ef328f1c56c",
-        "source_obligation_id": "341f3f520e7a4b9397db8ef328f1c56c",
+        "obligation_id": "4df56f8c62924c5893cb8c6200adf9b7",
+        "source_obligation_id": "4df56f8c62924c5893cb8c6200adf9b7",
         "item_no": "3-40",
         "question_id": "3-40",
         "text": "请提供合成子公司甲2024年度合同",
@@ -9302,8 +9302,8 @@
         ]
       },
       {
-        "obligation_id": "b412b9cbd13f4f1abde5a9a76b9346e7",
-        "source_obligation_id": "b412b9cbd13f4f1abde5a9a76b9346e7",
+        "obligation_id": "fe9b26e0db3946f981e33f74bea8e61c",
+        "source_obligation_id": "fe9b26e0db3946f981e33f74bea8e61c",
         "item_no": "3-41",
         "question_id": "3-41",
         "text": "请提供合成子公司乙2024年度纳税证明",
@@ -9487,8 +9487,8 @@
         ]
       },
       {
-        "obligation_id": "41ccf0a085c74f3a8def3b446b187fa5@合成母公司",
-        "source_obligation_id": "41ccf0a085c74f3a8def3b446b187fa5",
+        "obligation_id": "96cebd6bf401481588f922b330231578@合成母公司",
+        "source_obligation_id": "96cebd6bf401481588f922b330231578",
         "item_no": "3-42",
         "question_id": "3-42",
         "text": "请提供集团及下属公司2024年度财务报表",
@@ -9672,8 +9672,8 @@
         ]
       },
       {
-        "obligation_id": "41ccf0a085c74f3a8def3b446b187fa5@合成子公司甲",
-        "source_obligation_id": "41ccf0a085c74f3a8def3b446b187fa5",
+        "obligation_id": "96cebd6bf401481588f922b330231578@合成子公司甲",
+        "source_obligation_id": "96cebd6bf401481588f922b330231578",
         "item_no": "3-42",
         "question_id": "3-42",
         "text": "请提供集团及下属公司2024年度财务报表",
@@ -9857,8 +9857,8 @@
         ]
       },
       {
-        "obligation_id": "41ccf0a085c74f3a8def3b446b187fa5@合成子公司乙",
-        "source_obligation_id": "41ccf0a085c74f3a8def3b446b187fa5",
+        "obligation_id": "96cebd6bf401481588f922b330231578@合成子公司乙",
+        "source_obligation_id": "96cebd6bf401481588f922b330231578",
         "item_no": "3-42",
         "question_id": "3-42",
         "text": "请提供集团及下属公司2024年度财务报表",

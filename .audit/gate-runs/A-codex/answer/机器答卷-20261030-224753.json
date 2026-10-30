@@ -1,7 +1,7 @@
 {
   "schema_version": "dd_v1_answer_sheet.v1",
   "exam_id": "DDV1-SYN-A",
-  "generated_at": "2026-10-30T21:54:25+08:00",
+  "generated_at": "2026-10-30T22:47:53+08:00",
   "delivered": [
     {
       "file_id": "27681a252859095216dc33622627ae2e",
@@ -33,134 +33,39 @@
     "participated": true,
     "participated_scope": "RECEIPT",
     "declared_provenance": "HARNESS_MODEL",
-    "adapter_id": "deepseek-harness",
-    "vendor": "deepseek-harness",
-    "framework": "deepseek-harness",
-    "model_id_or_unknown": "deepseek-flash",
+    "adapter_id": "codex-cli",
+    "vendor": "openai-codex",
+    "framework": "codex-cli",
+    "model_id_or_unknown": "gpt-5.6-sol",
     "model_identity": {
-      "model_id": "deepseek-flash",
-      "provider": "deepseek-official",
-      "source": "DSH_PROFILE_CONFIG",
+      "model_id": "gpt-5.6-sol",
+      "provider": "openai",
+      "source": "CODEX_EXECUTION_RECORD",
       "verified": true,
       "binding": {
-        "profile": "headless",
-        "config_key": "agent-default-model",
-        "config_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-8izl8lfj"
+        "thread_id": "01a18d47-bd04-7170-acdb-328a1d7facf7",
+        "rollout": "/Users/mac/.codex/sessions/2026/10/30/rollout-2026-10-30T22-47-31-01a18d47-bd04-7170-acdb-328a1d7facf7.jsonl",
+        "rollout_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-pzkdm5ep",
+        "expected_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-pzkdm5ep"
       },
-      "note": "★ 来源：dsh 自己的配置树（--dump-config）"
+      "note": "★ 来源：codex 自己的执行记录（rollout turn_context）"
     },
     "model_identity_verified": true,
-    "model_identity_source": "DSH_PROFILE_CONFIG",
+    "model_identity_source": "CODEX_EXECUTION_RECORD",
     "requested_mode": "AGENT_REQUIRED",
     "execution_path": "REAL_MODEL",
     "prompt_version": "",
     "source_snapshot_id": "",
     "degrade_reason": "",
-    "model_selection_obligations": 3,
-    "rule_selection_obligations": 0,
+    "model_selection_obligations": 2,
+    "rule_selection_obligations": 1,
     "note": "★ mode=RULE_ONLY ⇒ 本次**没有模型参与**（零外部调用、零费用）；mode=HARNESS_MODEL ⇒ 有本机 Harness 回执；mode=PREBAKED_RESULT ⇒ 是**贴进来的**回执，**不构成模型参与凭据**"
   },
   "obligations": [
     {
-      "obligation_id": "1804d61ad39d4033b297f2249b376f95",
-      "source_obligation_id": "1804d61ad39d4033b297f2249b376f95",
-      "obligation_cluster_id": "1804d61ad39d4033b297f2249b376f95",
-      "item_id": "1-2",
-      "text": "请提供合成母公司2024年度营业执照",
-      "interpretation": {
-        "doc_type": "license",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "合成母公司",
-        "entity_basis": "AUTHORITY",
-        "period": "CURRENT",
-        "required_parts": [],
-        "text": "请提供合成母公司2024年度营业执照",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [
-        {
-          "file_id": "4c76b41c7ab42e58c0a7afdcb7615ef9",
-          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
-          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
-          "entity": "合成母公司",
-          "period": "CURRENT",
-          "doc_type": "license",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L1",
-          "period_status": ""
-        },
-        {
-          "file_id": "cd1a8a57478898e345812ef3b33977b6",
-          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
-          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
-          "entity": "合成母公司",
-          "period": "CURRENT",
-          "doc_type": "license",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L1",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 2,
-      "selected": [
-        {
-          "file_id": "cd1a8a57478898e345812ef3b33977b6",
-          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
-          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
-          "locator": "L1-L1",
-          "match_reason": "MODEL_SELECTION",
-          "entity": "合成母公司",
-          "period": "CURRENT"
-        },
-        {
-          "file_id": "4c76b41c7ab42e58c0a7afdcb7615ef9",
-          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
-          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
-          "locator": "L1-L1",
-          "match_reason": "MODEL_SELECTION",
-          "entity": "合成母公司",
-          "period": "CURRENT"
-        }
-      ],
-      "selected_count": 2,
-      "selection_source": "MODEL",
-      "verdict": "MATCH",
-      "confidence": 0.9,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [
-        {
-          "file_id": "4c76b41c7ab42e58c0a7afdcb7615ef9",
-          "delivered_path": "1-2/合成母公司_2024年度_营业执照_副本.txt",
-          "source_sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
-          "copy_sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
-          "hash_match": true
-        }
-      ],
-      "delivered_count": 1,
-      "candidate_window": {
-        "cap": 6,
-        "found": 2,
-        "checked": 2,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "1a1c135804e94e99b1266f68ffaa09c4",
-      "source_obligation_id": "1a1c135804e94e99b1266f68ffaa09c4",
-      "obligation_cluster_id": "1a1c135804e94e99b1266f68ffaa09c4",
+      "obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
+      "source_obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
+      "obligation_cluster_id": "32445a3c6d764a43a78847cc7ec6a1c8",
       "item_id": "1-1",
       "text": "请提供合成母公司2024年度审计报告",
       "interpretation": {
@@ -217,7 +122,7 @@
       "selected_count": 1,
       "selection_source": "MODEL",
       "verdict": "MATCH",
-      "confidence": 0.95,
+      "confidence": 0.99,
       "abstained": false,
       "abstain_reason": "",
       "warnings": [],
@@ -245,9 +150,9 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "d20d228fede847ea8fea3548f2e81ca9",
-      "source_obligation_id": "d20d228fede847ea8fea3548f2e81ca9",
-      "obligation_cluster_id": "d20d228fede847ea8fea3548f2e81ca9",
+      "obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
+      "source_obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
+      "obligation_cluster_id": "a41f3545e5884b56bdeec93cd227ab18",
       "item_id": "1-3",
       "text": "请提供合成母公司2024年度经营情况说明",
       "interpretation": {
@@ -284,16 +189,16 @@
           "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
           "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
           "locator": "L1-L1",
-          "match_reason": "MODEL_SELECTION",
+          "match_reason": "MATCH",
           "entity": "合成母公司",
           "period": "2024"
         }
       ],
       "selected_count": 1,
-      "selection_source": "MODEL",
-      "verdict": "MATCH",
-      "confidence": 0.6,
-      "abstained": false,
+      "selection_source": "RULE_HINT",
+      "verdict": "UNCERTAIN",
+      "confidence": "UNCERTAIN",
+      "abstained": true,
       "abstain_reason": "",
       "warnings": [],
       "rejected": false,
@@ -310,13 +215,109 @@
       },
       "no_candidate_reason": null,
       "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
+      "source_obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
+      "obligation_cluster_id": "f96e0cdccccc44f8a83ad86b91973c0a",
+      "item_id": "1-2",
+      "text": "请提供合成母公司2024年度营业执照",
+      "interpretation": {
+        "doc_type": "license",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "period": "CURRENT",
+        "required_parts": [],
+        "text": "请提供合成母公司2024年度营业执照",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [
+        {
+          "file_id": "4c76b41c7ab42e58c0a7afdcb7615ef9",
+          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "doc_type": "license",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L1",
+          "period_status": ""
+        },
+        {
+          "file_id": "cd1a8a57478898e345812ef3b33977b6",
+          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "doc_type": "license",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L1",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 2,
+      "selected": [
+        {
+          "file_id": "4c76b41c7ab42e58c0a7afdcb7615ef9",
+          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+          "locator": "L1-L1",
+          "match_reason": "MODEL_SELECTION",
+          "entity": "合成母公司",
+          "period": "CURRENT"
+        },
+        {
+          "file_id": "cd1a8a57478898e345812ef3b33977b6",
+          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+          "locator": "L1-L1",
+          "match_reason": "MODEL_SELECTION",
+          "entity": "合成母公司",
+          "period": "CURRENT"
+        }
+      ],
+      "selected_count": 2,
+      "selection_source": "MODEL",
+      "verdict": "MATCH",
+      "confidence": 0.99,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [
+        {
+          "file_id": "4c76b41c7ab42e58c0a7afdcb7615ef9",
+          "delivered_path": "1-2/合成母公司_2024年度_营业执照_副本.txt",
+          "source_sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "copy_sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "hash_match": true
+        }
+      ],
+      "delivered_count": 1,
+      "candidate_window": {
+        "cap": 6,
+        "found": 2,
+        "checked": 2,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
     }
   ],
   "summary": {
     "obligations": 3,
     "understood": 2,
-    "answered": 3,
-    "abstained": 0,
+    "answered": 2,
+    "abstained": 1,
     "selected_files": 4,
     "delivered_files": 2,
     "delivered_files_attributed": 2,
