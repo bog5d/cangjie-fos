@@ -372,6 +372,7 @@ def evaluate_file(
     alias_map: dict | None = None,
     authority_entities: list[dict] | None = None,
     period_spec: dict | None = None,
+    multi_source_subject: dict | None = None,
 ) -> dict:
     """算出一份材料对一个义务的四维命中情况。**确定性，不含 LLM。**
 
@@ -382,8 +383,11 @@ def evaluate_file(
       用它区分「材料是**另一个法人**」与「材料主体**认不出**」
       （WP3-a：前者是**主体不一致**，后者是**不可判定**）。
     ★ `period_spec`：义务的期间四态口径（调用方取一次，避免每条候选重算）。
+    ★ `multi_source_subject`：**多源主体识别的补位结果**（`resolve_subject_multi_source`）。
+      只有主口径判「认不出（UNREGISTERED）」时它才起作用 ⇒ **既有判定口径不变**。
     """
     ent_ok = per_ok = doc_ok = seal_ok = 0
+    _ms_reason = ""
 
     # 主体维度（WP3-a）
     _alias = alias_map
@@ -393,6 +397,23 @@ def evaluate_file(
         _alias = _alias_map_for((manifest_row or {}).get("library_id") or "")
     _subject = resolve_card_subject(
         card, need_entities, authority_entities, _alias)
+    # ★ 多源主体识别**补位**（只在本口径「认不出」时接管）：
+    #   材料目录不带法人级（`#108` 实测 P0-2）⇒ 主口径认不出 ⇒ 主体维度不可判定。
+    # ★ 只在 UNREGISTERED 时补 ⇒ 主口径已判「另一个法人 / 已命中」的**一律不动**。
+    if _subject["state"] == SUBJECT_UNREGISTERED and multi_source_subject:
+        # ★ 允许传**可调用对象**（懒算）：多源识别要扫文件名/正文，
+        #   只在主口径真「认不出」时才算 ⇒ 不给每条候选平摊开销。
+        _ms = (multi_source_subject() if callable(multi_source_subject)
+               else multi_source_subject)
+        if (_ms and _ms.get("state") in (SUBJECT_MATCHED, SUBJECT_OTHER_LEGAL)):
+            _subject = _ms
+            # ★ 留痕必须**进 reasons**（`dd_v1_matches.evidence` 存的就是它）
+            #   ⇒ 事后审计能看出「主体是**哪一档证据**认出来的」。
+            _ms_note = next((e.get("note") for e in (_ms.get("evidence") or [])
+                             if e.get("kind") == "multi_source_subject"), "")
+            # ★ `reasons` 在后面才初始化 ⇒ 这里先记下，初始化后补进去
+            _ms_reason = (f"主体经**多源识别**确认（依据 {_ms.get('matched_by') or ''}）："
+                          f"{_ms_note}")
     if _subject["state"] == SUBJECT_NO_CONSTRAINT:
         # 义务没要求特定主体范围（如「贵司」）→ 主体维度不构成门槛
         ent_ok = 1
@@ -447,6 +468,8 @@ def evaluate_file(
     # 可交付性：不可读/解析失败/披露不可外发 → 不得自动纳入对外交付
     deliverable = 1
     reasons = []
+    if _ms_reason:
+        reasons.append(_ms_reason)
     if _is_index:
         reasons.append("索引/目录件，不是材料")
         deliverable = 0
@@ -520,6 +543,9 @@ def evaluate_file(
         "subject_display_name": _subject.get("display_name") or "",
         "subject_entity_id": _subject.get("entity_id") or "",
         "subject_evidence": _subject.get("evidence") or [],
+        # ★ 多源主体识别的**留痕**：是哪一档证据认出来的（机器可复核）
+        "subject_matched_by": _subject.get("matched_by") or "",
+        "subject_multi_source": bool(_subject.get("multi_source")),
         # ★ WP3-b：期间维度的**四态**（MATCH / MISMATCH / UNVERIFIABLE / NOT_A_CONSTRAINT）
         "period_status": _pstat,
         "period_reason": _compat.get("reason") or "",
@@ -744,8 +770,15 @@ def match_obligation(
     obligation_id: str,
     candidate_cap: int = DEFAULT_CANDIDATE_CAP,
     db_path: Path | None = None,
+    *,
+    confirmed_map: dict | None = None,
 ) -> dict:
-    """对一条原子义务做匹配并给出最终判定。"""
+    """对一条原子义务做匹配并给出最终判定。
+
+    ★ `confirmed_map`：**人工确认的主体映射表**（`sha256`／文件名／相对路径 → 主体）。
+      它是主体识别里**证据强度最高**的一档（`HUMAN_CONFIRMED`）⇒
+      运营方在 Windows 上确认过几份材料的主体后，可喂回来直接生效。
+    """
     conn = _conn(db_path)
     obl = conn.execute(
         "SELECT * FROM dd_v1_obligations WHERE obligation_id=?", (obligation_id,)
@@ -789,17 +822,33 @@ def match_obligation(
     # ★ WP3-b：义务的期间四态口径**取一次**，往下传（避免每条候选重算）。
     _period_spec = _period_spec_for(obl)
 
+    # ★ 正文缓存**取一次**（供多源主体识别的「正文命中登记全称」这一档用；
+    #   原来的 `_may_be_required_type` 也用同一份 ⇒ 仍然只读库一次）。
+    _textmap: dict[str, str] = {}
+    try:
+        for _row in conn.execute("SELECT file_id, text FROM dd_v1_text_cache"):
+            _textmap[str(_row["file_id"])] = str(_row["text"] or "")
+    except Exception:  # noqa: BLE001
+        _textmap = {}
+
     results = []
     for c in candidates:
         card = cs.get_card(c["file_id"], db_path=db_path)
         mrow = conn.execute(
             "SELECT * FROM dd_v1_manifest WHERE file_id=?", (c["file_id"],)
         ).fetchone()
-        ev = evaluate_file(obl, card, dict(mrow) if mrow else None, need_entities,
+        _mrow = dict(mrow) if mrow else None
+        # ★ 多源主体识别（**懒算**）：只有主口径「认不出」时才算 ⇒ 不平摊开销。
+        _ms = lambda: resolve_subject_multi_source(
+            _mrow, card, need_entities, authority_entities, _alias_map,
+            body_text=_textmap.get(c["file_id"]),
+            confirmed_map=confirmed_map)
+        ev = evaluate_file(obl, card, _mrow, need_entities,
                            alias_map=_alias_map, authority_entities=authority_entities,
-                           period_spec=_period_spec)
+                           period_spec=_period_spec,
+                           multi_source_subject=_ms)
         score = (ev["entity_ok"] + ev["period_ok"] + ev["doctype_ok"] + ev["seal_ok"]) / 4.0
-        results.append({**c, "card": card, "manifest": dict(mrow) if mrow else None,
+        results.append({**c, "card": card, "manifest": _mrow,
                         "ev": ev, "score": round(score, 4)})
 
     # ★ A2（G-A2-12 · 相关性闸）：给每条候选打「**是不是本义务要求的那一份**」的标记。
@@ -809,12 +858,6 @@ def match_obligation(
     #   ★ 留痕字段（unknown_entities / unknown_types）与冲突判定口径**一字不改**。
     _obl_dt = str(obl.get("doc_type") or "").strip()
     _obl_terms = rq.doc_type_search_terms(_obl_dt) if _obl_dt else []
-    _textmap: dict[str, str] = {}
-    try:
-        for _row in conn.execute("SELECT file_id, text FROM dd_v1_text_cache"):
-            _textmap[str(_row["file_id"])] = str(_row["text"] or "")
-    except Exception:  # noqa: BLE001
-        _textmap = {}
     for _r in results:
         _r["_may_be_required"] = _may_be_required_type(
             _r, _obl_dt, _obl_terms, _textmap)
@@ -838,6 +881,85 @@ def match_obligation(
                    truncated_count=truncated_count)
     _persist(conn, library_id, obligation_id, obl, results, status)
     return status
+
+
+# ── 多源主体识别（接线 `dd_v1_entity_resolution_service`）────────────────────
+# ★ `#108` 实测 P0-2 的正解：材料目录**不携带法人级**（分类目录）⇒
+#   主口径（整段逐字相等）认不出主体 ⇒ 主体维度不可判定 ⇒ 全盘 UNCERTAIN、0 交付。
+# ★ 本函数只做**补位**：主口径判 SUBJECT_UNREGISTERED 时，按**证据强度**再认一次
+#   （人工确认映射 ＞ 登记全称/别名命中文件名 ＞ 正文命中登记全称 ＞ 可信元数据）。
+# ★ 证据强度排序**只有一份**（在 `dd_v1_entity_resolution_service` 里）；
+#   本函数只把它的结果**翻译**成匹配层的四个主体状态，**不另造口径**。
+# ★ 认不出仍然认不出 ⇒ 不猜、不放行。
+def resolve_subject_multi_source(manifest_row: dict | None,
+                                 card: dict | None,
+                                 scope_entities: list[dict] | None,
+                                 authority_entities: list[dict] | None,
+                                 alias_map: dict | None,
+                                 *,
+                                 body_text: str | None = None,
+                                 confirmed_map: dict | None = None) -> dict:
+    """多源主体识别（补位用）。返回与 :func:`resolve_card_subject` 同构的字典。"""
+    from cangjie_fos.services import dd_v1_entity_resolution_service as ers
+
+    scope = list(scope_entities or [])
+    authority = list(authority_entities or []) or scope
+    # ★ **形状翻译**：manifest 表的列名是 `rel_path`/`file_name`/`content_hash`，
+    #   而多源模块认的是 `relative_path`/`sha256` ⇒ 不翻译 ⇒ 它永远拿不到路径与哈希
+    #   ⇒ 「文件名命中登记名」「人工确认映射」两档**永远不会触发**（我踩过）。
+    # ★ manifest **没有主体列** ⇒ 不给 `entity`/`entity_basis`
+    #   （免得把目录名当成材料自述的主体）。
+    _mrow = manifest_row or {}
+    _meta = {
+        "file_id": str(_mrow.get("file_id") or ""),
+        "relative_path": str(_mrow.get("rel_path") or _mrow.get("relative_path") or ""),
+        "file_name": str(_mrow.get("file_name") or ""),
+        "sha256": str(_mrow.get("content_hash") or _mrow.get("sha256") or ""),
+        "entity": "",
+        "entity_basis": "",
+    }
+    res = ers.resolve_material_entity(
+        _meta,
+        entities=authority,
+        alias_map=alias_map or {},
+        body_text=body_text,
+        confirmed_map=confirmed_map or {},
+    )
+    basis = str(res.get("basis") or es.UNKNOWN)
+    ent_id = str(res.get("entity_id") or "")
+    ent_name = str(res.get("entity") or "")
+    scope_ids = {str(e.get("entity_id") or "") for e in scope}
+    scope_names = {str(e.get("display_name") or "") for e in scope}
+    auth_ids = {str(e.get("entity_id") or "") for e in authority}
+    auth_names = {str(e.get("display_name") or "") for e in authority}
+
+    def _out(state: str, note: str) -> dict:
+        return {
+            "state": state,
+            "entity_id": ent_id,
+            "display_name": ent_name,
+            "basis": basis,
+            "matched_by": str(res.get("matched_by") or "UNRESOLVED"),
+            "raw": str((manifest_row or {}).get("entity") or ""),
+            "clue": "",
+            "evidence": list(res.get("evidence") or []) + [{"kind": "multi_source_subject",
+                                                            "note": note}],
+            "multi_source": True,
+            "unresolved_reason": str(res.get("unresolved_reason") or ""),
+        }
+
+    if basis not in (ers.FACT, ers.INFERRED) or not (ent_id or ent_name):
+        # ★ 认不出 ⇒ 仍然是「认不出」（不是「不符」）⇒ 判定层照旧降 UNCERTAIN。
+        return _out(SUBJECT_UNREGISTERED,
+                    "多源识别也认不出主体（人工确认映射/登记名/文件名/正文/元数据均未命中）")
+    if (ent_id and ent_id in scope_ids) or (ent_name and ent_name in scope_names):
+        return _out(SUBJECT_MATCHED,
+                    f"多源识别命中本义务要求的主体（依据 {res.get('matched_by')}）")
+    if (ent_id and ent_id in auth_ids) or (ent_name and ent_name in auth_names):
+        return _out(SUBJECT_OTHER_LEGAL,
+                    f"多源识别出这是**另一个已登记法人**的材料（依据 {res.get('matched_by')}）")
+    return _out(SUBJECT_UNREGISTERED,
+                "多源识别出的主体不在本库权威名单里 ⇒ 不认（不猜）")
 
 
 def _blocking_info(rows: list[dict], note: str) -> list[dict]:
@@ -1781,8 +1903,21 @@ def match_library(
     library_id: str,
     candidate_cap: int = DEFAULT_CANDIDATE_CAP,
     db_path: Path | None = None,
+    *,
+    expand_candidates: bool = True,
+    expansion_steps: tuple[int, ...] | None = None,
+    max_candidates: int = 180,
+    confirmed_map: dict | None = None,
 ) -> dict:
-    """批量匹配全库义务。"""
+    """批量匹配全库义务。
+
+    ★ `expand_candidates`：**候选分批扩展**（接线 `dd_v1_candidate_expansion_service`）。
+      第一遍有义务**触顶**（还有候选没看）⇒ 自动分批把窗口放大重跑，
+      直到「结论稳定且候选池穷尽」／预算用完／分批用完。
+    ★ 扩展的**读数必须外显**（扩了几条、看了多少、还剩多少没看、为什么停）⇒
+      否则「分批扩展」又是一句口号。
+    ★ `confirmed_map`：人工确认的主体映射表（见 :func:`match_obligation`）。
+    """
     conn = _conn(db_path)
     obl_ids = [r["obligation_id"] for r in conn.execute(
         "SELECT obligation_id FROM dd_v1_obligations WHERE library_id=?", (library_id,))]
@@ -1790,13 +1925,41 @@ def match_library(
     capped_obligations = 0
     truncated_total = 0
     candidates_seen = 0
+    statuses: dict[str, dict] = {}
     for oid in obl_ids:
-        st = match_obligation(library_id, oid, candidate_cap=candidate_cap, db_path=db_path)
+        st = match_obligation(library_id, oid, candidate_cap=candidate_cap, db_path=db_path,
+                               confirmed_map=confirmed_map)
+        statuses[oid] = st
         tally[st["verdict"]] = tally.get(st["verdict"], 0) + 1
         candidates_seen += int(st.get("candidate_count") or 0)
         if st.get("capped"):
             capped_obligations += 1
         truncated_total += int(st.get("truncated_candidate_count") or 0)
+
+    # ── 候选分批扩展（接线 `dd_v1_candidate_expansion_service`）─────────────
+    if expand_candidates:
+        expansion = _expand_capped_obligations(
+            library_id, statuses, candidate_cap=candidate_cap,
+            steps=expansion_steps, max_candidates=max_candidates, db_path=db_path,
+            confirmed_map=confirmed_map)
+    else:
+        expansion = {"enabled": False, "steps": [], "expanded_obligations": 0,
+                     "verdict_changed": 0, "stop_reasons": {},
+                     "candidates_checked_total": 0, "candidates_unchecked_total": 0,
+                     "obligations": [],
+                     "note": "本轮**未启用**候选分批扩展（开关关闭）⇒ 触顶义务的结论"
+                             "仍只覆盖窗口内的候选"}
+    if expansion["expanded_obligations"]:
+        # ★ 扩展后的结论**替换**第一遍的结论 ⇒ 判定分布要按新结论重算
+        #   （否则库级读数与逐条留痕对不上 ⇒ 又是一处「口径不一致」）。
+        tally = {}
+        for st in statuses.values():
+            tally[st["verdict"]] = tally.get(st["verdict"], 0) + 1
+        candidates_seen = sum(int(st.get("candidate_count") or 0) for st in statuses.values())
+        truncated_total = sum(int(st.get("truncated_candidate_count") or 0)
+                              for st in statuses.values())
+        capped_obligations = sum(1 for st in statuses.values() if st.get("capped"))
+
     return {
         "library_id": library_id,
         "obligations": len(obl_ids),
@@ -1807,12 +1970,81 @@ def match_library(
         "candidates_seen": candidates_seen,
         "capped_obligations": capped_obligations,
         "truncated_candidate_count": truncated_total,
+        # ★ 候选分批扩展的**读数**（库级）—— 与逐条留痕同源，不是另算的一套
+        "candidate_expansion": expansion,
         "candidate_cap_note": (
             f"候选上限 {candidate_cap}；本次共考察 {candidates_seen} 份候选；"
             f"{capped_obligations} 条义务触顶，被上限挡掉 {truncated_total} 份候选"
             + ("（触顶的义务结论只覆盖已进窗口的部分，未看部分不得当作「不存在」）"
                if capped_obligations else "")
         ),
+    }
+
+
+def _expand_capped_obligations(library_id: str,
+                               statuses: dict[str, dict],
+                               *,
+                               candidate_cap: int,
+                               steps: tuple[int, ...] | None,
+                               max_candidates: int,
+                               db_path: Path | None = None,
+                               confirmed_map: dict | None = None) -> dict:
+    """对**触顶**的义务做候选分批扩展（接线 `dd_v1_candidate_expansion_service`）。
+
+    ★ 只对「还有候选没看」的义务做（没触顶的扩展没有意义 ⇒ 不平摊成本）。
+    ★ 分批计划**从当前上限之上起步** ⇒ 不重复第一遍已经做过的那一窗。
+    ★ 扩展后的结论**替换**原结论；**读数必须外显**：
+      扩了几条／看了多少／还剩多少没看／为什么停 ⇒ 禁静默漏检。
+    """
+    from cangjie_fos.services import dd_v1_candidate_expansion_service as ces
+
+    _steps = tuple(int(s) for s in (steps or ces.DEFAULT_STEPS) if int(s) > int(candidate_cap))
+    if not _steps:
+        _steps = (max(int(candidate_cap) * 3, 60),)
+    capped = [oid for oid, st in statuses.items() if st.get("capped")]
+    rows: list[dict] = []
+    for oid in capped:
+        before = statuses.get(oid) or {}
+        # ★ **透传 confirmed_map**（第 5 轮独立复核缺陷 ①）：扩展后的最终结论
+        #   必须与第一遍**同一套口径**（人工确认是最强的一档证据 ⇒ 不能在扩展里丢掉）
+        exp = ces.match_with_expansion(library_id, oid, steps=_steps,
+                                       db_path=db_path, max_candidates=max_candidates,
+                                       confirmed_map=confirmed_map)
+        final = exp.get("raw") or {}
+        if final:
+            statuses[oid] = final
+        rows.append({
+            "obligation_id": oid,
+            "verdict_before": str(before.get("verdict") or ""),
+            "verdict_after": str((final or before).get("verdict") or ""),
+            "files_before": len([c for c in (before.get("candidates") or [])
+                                 if c.get("deliverable")]),
+            "files_after": len([c for c in (final or {}).get("candidates") or []
+                                if c.get("deliverable")]),
+            "stop_reason": str(exp.get("stop_reason") or ""),
+            "candidates_found": int(exp.get("candidates_found") or 0),
+            "candidates_checked": int(exp.get("candidates_checked") or 0),
+            "candidates_unchecked": int(exp.get("candidates_unchecked") or 0),
+            "expanded": bool(exp.get("expanded")),
+            "note": str(exp.get("note") or ""),
+        })
+    stop_reasons: dict[str, int] = {}
+    for r in rows:
+        stop_reasons[r["stop_reason"]] = stop_reasons.get(r["stop_reason"], 0) + 1
+    changed = [r for r in rows if r["verdict_before"] != r["verdict_after"]]
+    return {
+        "enabled": True,
+        "steps": list(_steps),
+        "expanded_obligations": len(rows),
+        "verdict_changed": len(changed),
+        "stop_reasons": stop_reasons,
+        "candidates_checked_total": sum(r["candidates_checked"] for r in rows),
+        "candidates_unchecked_total": sum(r["candidates_unchecked"] for r in rows),
+        "obligations": rows,
+        "note": (f"{len(rows)} 条义务触顶后做了分批扩展（分批 {_steps}）；"
+                 f"共检查 {sum(r['candidates_checked'] for r in rows)} 份候选，"
+                 f"还有 {sum(r['candidates_unchecked'] for r in rows)} 份未看；"
+                 f"其中 {len(changed)} 条义务的结论因扩展而改变"),
     }
 
 

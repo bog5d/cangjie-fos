@@ -138,6 +138,8 @@ def _fail(res: AdapterResult, code: int | None, err: str, timed_out: bool) -> Ad
 
 class CodexAdapter:
     adapter_id, vendor, role = "codex-cli", "openai-codex", "EXAMINEE_2"
+    # ★ 参与类别由**实现类**决定（不是自填字符串）⇒ 见模块末尾 ADAPTER_PARTICIPATION_CLASSES
+    participation_class = "HARNESS_MODEL"
 
     def __init__(self, binary: str | list[str] = "codex"):
         self.binary = [binary] if isinstance(binary, str) else list(binary)
@@ -173,6 +175,7 @@ class CodexAdapter:
 class MiniMaxPiAdapter:
     """AUX（scored=false, ranked=false）。董事长批准替补前不计入考生3。"""
     adapter_id, vendor, role = "pi", "minimax-cn", "AUX"
+    participation_class = "HARNESS_MODEL"
 
     def __init__(self, binary: str | list[str] = "pi", model: str | None = None):
         self.binary = [binary] if isinstance(binary, str) else list(binary)
@@ -215,9 +218,78 @@ class MiniMaxPiAdapter:
         return res
 
 
+class PrebakedResultAdapter:
+    """**预置回执**适配器：把一份已经写好的模型回执 JSON 当作本次调用结果。
+
+    ★ **它不是 Harness 运行**：回执是**别人贴进来的**（文件）⇒ 身份不可自证。
+    ⇒ 因此它的 ``adapter_id`` **不在** ``bridge_service.KNOWN_HARNESS_ADAPTERS`` 里
+      ⇒ 参与类别恒为 ``PREBAKED_RESULT`` ⇒ **不得**计为「模型参与」的凭据。
+    ★ 存在的意义：让「模型判过的结果」能**被真实消费**（驱动选材），
+      同时在成绩单上把「这是贴进来的回执」如实标出来。
+    """
+
+    adapter_id, vendor, role = "prebaked-result", "operator-prebaked", "MANUAL"
+    # ★ 预置回执 = **人工预置**，不是模型参与 ⇒ 类别 `PREBAKED_RESULT`
+    participation_class = "PREBAKED_RESULT"
+
+    def __init__(self, result_path: str | Path):
+        self.result_path = Path(result_path)
+
+    def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
+        res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK,
+                            workdir=str(workdir))
+        if not self.result_path.is_file():
+            res.status, res.reason = CALL_FAILED, f"RESULT_FILE_NOT_FOUND:{self.result_path}"
+            return res
+        data = self.result_path.read_bytes()
+        res.raw_text = data.decode("utf-8")
+        res.exit_code = 0
+        res.provenance = {
+            "reply_sha256": hashlib.sha256(data).hexdigest(),
+            "reply_source": "PREBAKED_FILE",
+            "declared_by": "UNKNOWN",
+            "independent_examinee_answer": False,
+            "note": "★ 预置回执：不是本机 Harness 运行 ⇒ 不构成「模型参与」的凭据",
+        }
+        res.model_id_or_unknown = "UNKNOWN"
+        return res
+
+
+def build_adapter(spec: str, *, result_path: str | Path | None = None,
+                  dsh_enabled: bool = False) -> Any:
+    """按名字建适配器（**薄入口**：CLI 只认这几个名字，不自己拼 argv）。
+
+    - ``codex``  → 本机 ``codex`` CLI（材料不出本机）
+    - ``pi``     → 本机 ``pi`` CLI
+    - ``dsh``    → 本机 ``dsh``（DeepSeek Harness；**要不要开由操作员自己决定**）
+    - ``manual`` → 人工交换（贴回执）
+    - ``prebaked``／给了 ``result_path`` → 预置回执（**不是 Harness 运行**）
+    """
+    s = str(spec or "").strip().lower()
+    if s in ("", "none", "rule_only", "rule-only"):
+        return None
+    if s in ("prebaked", "file", "result"):
+        if not result_path:
+            raise ValueError("PREBAKED_NEEDS_RESULT_PATH")
+        return PrebakedResultAdapter(result_path)
+    if result_path:
+        # 给了回执文件 ⇒ 走「预置回执」（不回落到真 Harness 运行）
+        return PrebakedResultAdapter(result_path)
+    if s in ("codex", "codex-cli"):
+        return CodexAdapter()
+    if s in ("pi", "minimax-pi"):
+        return MiniMaxPiAdapter()
+    if s in ("dsh", "deepseek", "deepseek-harness"):
+        return DeepSeekHarnessAdapter(enabled=bool(dsh_enabled))
+    if s in ("manual", "manual-exchange"):
+        return ManualExchangeAdapter()
+    raise ValueError(f"UNKNOWN_AGENT:{spec}")
+
+
 class ManualExchangeAdapter:
     """人工交换（#71 R2 第一 PoC）：导出 packet+schema，操作者把模型回复贴成 reply.json。"""
     adapter_id, vendor, role = "manual-exchange", "operator", "MANUAL"
+    participation_class = "HARNESS_MANUAL"
 
     def run(self, packet: dict[str, Any], workdir: Path, budget: Budget) -> AdapterResult:
         res = AdapterResult(self.adapter_id, self.vendor, self.role, status=OK, workdir=str(workdir))
@@ -295,6 +367,7 @@ class DeepSeekHarnessAdapter:
     最终回答取 stdout。本代码不上传、不外发任何东西；dsh 自己如何调用模型由操作员的 dsh 配置决定。
     """
     adapter_id, vendor = "deepseek-harness", "deepseek-harness"
+    participation_class = "HARNESS_MODEL"
 
     def __init__(self, enabled: bool = False, binary: str | list[str] = "dsh", profile: str = "headless",
                  mode: str = "stdin", role: str = "EXAMINEE_3", extra_args: list[str] | None = None):
@@ -395,3 +468,86 @@ def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
     }
     (wd / "run_record.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), "utf-8")
     return record
+
+
+#: ★ ★ `UNKNOWN_ADAPTER` **必须定义在这之前**（第 6 轮独立复核的 F16：import 地雷）
+#:   —— 推导式里 `or UNKNOWN_ADAPTER` 只在**类没写该属性**时求值；
+#:   那天 5 个类都写了 ⇒ 短路 ⇒ 右操作数**从未求值** ⇒ 地雷没炸；
+#:   一旦加了第 6 个适配器类忘了写 ⇒ **NameError at import** ⇒ 整个 backend 起不来。
+UNKNOWN_ADAPTER = "UNKNOWN_ADAPTER"
+
+# ══════════════════════════════════════════════════════════════════════
+# ★ 参与类别**注册表**（权威来源 = **适配器实现类**，不是任何自填字符串）
+# ══════════════════════════════════════════════════════════════════════
+#: 实现类 → 参与类别。**精确类型匹配**（不是 isinstance）：
+#:   ⇒ 自造一个 ``class _Spoof: adapter_id = "codex-cli"`` **拿不到** ``HARNESS_MODEL``；
+#:   ⇒ 连子类也不认（宁可不认，也不要认错）。
+#: ★ 由**类属性**生成（类属性是**唯一来源** ⇒ 不会出现「没人读的自填字段」）
+ADAPTER_PARTICIPATION_CLASSES: dict[type, str] = {
+    cls: str(getattr(cls, "participation_class", "") or UNKNOWN_ADAPTER)
+    for cls in (CodexAdapter, MiniMaxPiAdapter, DeepSeekHarnessAdapter,
+                ManualExchangeAdapter, PrebakedResultAdapter)
+}
+
+
+#: ★ **id 级声明表**（只是**旁证**；权威判定在 :func:`participation_class_of`）
+#:   —— 放在实现侧，是因为「这个 id 对应哪一类」是**适配器实现**的知识。
+KNOWN_ADAPTER_ID_CLASSES: dict[str, str] = {
+    "codex-cli": "HARNESS_MODEL",
+    "deepseek-harness": "HARNESS_MODEL",
+    "pi": "HARNESS_MODEL",
+    "manual-exchange": "HARNESS_MANUAL",
+    "prebaked-result": "PREBAKED_RESULT",
+}
+
+
+#: ★ 参与类别的**合法取值**（答卷层只认这几个；其余一律 UNDECLARED）
+PARTICIPATION_CATEGORIES = ("HARNESS_MODEL", "HARNESS_MANUAL", "PREBAKED_RESULT",
+                             "UNKNOWN_ADAPTER", "RULE_ONLY",
+                             "MODEL_SELECTION_WITHOUT_RECEIPT")
+
+
+def participated_flag(adapter_result: dict[str, Any] | None) -> bool:
+    """适配器**真的跑出了回执**吗？（第 6 轮独立复核的 F1，已修）
+
+    ★ ★ **为什么要这一层**：参与**类别**只说明「适配器实现是哪一个」，
+      **不说明**「它这次真的跑成功了」——
+      二进制不在 PATH（exit 127）／人工还没贴回执（``PENDING_MANUAL``）／
+      贴进来的文件不存在（``RESULT_FILE_NOT_FOUND``）⇒ **都没跑出回执**。
+      ⇒ 若只看类别 ⇒ 答卷与成绩单会自称「有本机 Harness 参与」⇒ **假凭据**。
+      ⇒ 正解：**类别 ＋ 跑出回执** 两个条件都满足，才算「这次有模型参与」。
+    """
+    a = adapter_result or {}
+    if str(a.get("status") or "") != OK:
+        return False
+    raw = str(a.get("raw_text") or "")
+    if not raw:
+        return False
+    return True
+
+
+def declared_class_of(adapter_id: str) -> str:
+    """适配器 **id** → id 级**声明**类别（**旁证，不构成参与主张**）。"""
+    return KNOWN_ADAPTER_ID_CLASSES.get(str(adapter_id or "").strip(), UNKNOWN_ADAPTER)
+
+
+def participation_class_of(adapter: Any) -> str:
+    """适配器**对象** → 参与类别（权威判定，按实现类）。
+
+    ★ 这是「模型参与」这件事在**判词层**的判定入口：
+      **不看** ``adapter_id``、**不看** ``vendor``、**不看**任何自填字符串
+      ⇒ 自填字符串**不可能**把一个非 Harness 适配器变成 ``HARNESS_MODEL``。
+    ★ 认不出 ⇒ ``UNKNOWN_ADAPTER``（不猜、不放行）。
+    ★ ★ **边界要说清（不是安全边界）**：**进程内**的代码理论上能替换实现
+      （monkeypatch ``CodexAdapter.run``、改 ``__class__`` …）⇒ 本判定挡的是
+      **「自填字段/自造替身冒充」**这一类，**挡不住**「进程内改实现」。
+      ⇒ 真正不可伪造的那一段是**下游只认盖章**（`provenance_source=ADAPTER_IMPLEMENTATION`，
+        由实现侧产生并随回执落盘）⇒ 伪造要连**盖章**一起造（那就不是「自填」了）。
+    """
+    if adapter is None:
+        return UNKNOWN_ADAPTER
+    cls = ADAPTER_PARTICIPATION_CLASSES.get(type(adapter))
+    if cls:
+        return cls
+    # ★ 子类也不认：宁可判 UNKNOWN，也不要把「长得像」当成「就是」
+    return UNKNOWN_ADAPTER

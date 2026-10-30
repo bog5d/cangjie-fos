@@ -75,6 +75,25 @@ def check_deps(fix: bool) -> tuple[bool, str, list[str]]:
     return False, "依赖安装失败", ["手动运行：cd backend && uv sync --extra dev"]
 
 
+def _probe_backend_alive() -> bool:
+    """探测 8000 端口上是不是**本仓自己的后端**（而不是别的程序占了端口）。
+
+    ★ `#108` 实测 P1-3：交接文档要求「先起后端、再跑 doctor」，
+      而 doctor 旧口径要求「端口 8000 空闲」⇒ **顺序必然报红**。
+      ⇒ 端口被**本仓后端**占用时应当判 OK（这正是正常运行态）。
+    """
+    import urllib.error
+    import urllib.request
+    for path in ("/health", "/api/v1/ready"):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:8000{path}", timeout=2) as resp:
+                if resp.status == 200:
+                    return True
+        except (urllib.error.URLError, OSError, ValueError):
+            continue
+    return False
+
+
 def check_port(fix: bool) -> tuple[bool, str, list[str]]:
     try:
         with socket.create_connection(("127.0.0.1", 8000), timeout=1):
@@ -85,8 +104,13 @@ def check_port(fix: bool) -> tuple[bool, str, list[str]]:
 
     if not in_use:
         return True, "端口 8000 空闲", []
+    # ★ 端口被**本仓后端**占用 ⇒ 这是**正常态**（后端已启动）⇒ 判 OK，不杀进程。
+    if _probe_backend_alive():
+        return True, "端口 8000 已被仓颉FOS后端占用（正常：后端已启动）", []
     if not fix:
-        return False, "端口 8000 已被占用", ["运行 --fix 可自动释放"]
+        return False, "端口 8000 已被占用（非本仓后端）", ["运行 --fix 可自动释放"]
+    if fix and _probe_backend_alive():
+        return True, "端口 8000 已被仓颉FOS后端占用（正常：后端已启动）", []
 
     if _is_windows():
         r = subprocess.run(["netstat", "-ano"], capture_output=True, text=True)
@@ -180,19 +204,48 @@ def check_env(fix: bool) -> tuple[bool, str, list[str]]:
 
 
 def check_node_modules(fix: bool) -> tuple[bool, str, list[str]]:
+    """前端依赖检查。
+
+    ★ Windows 上 ``npm`` 是 ``npm.cmd`` / ``npm.ps1``，**裸名 ``npm`` 调不起来**
+      （``FileNotFoundError [WinError 2]``）⇒ 旧实现会让整个 ``--fix`` 中断，
+      连 ``data/`` 目录都建不出来（#108 实测 P1-2）。
+    ⇒ 这里按平台解析可执行名，并**捕获所有异常**：前端依赖是可选项，
+      绝不该把整个诊断流程带崩。
+    """
     nm = _project_root() / "frontend" / "node_modules"
     if nm.exists():
         return True, "frontend/node_modules 存在", []
     if not fix:
         return False, "前端依赖未安装", ["运行：cd frontend && npm ci"]
-    print("    → 运行: npm ci")
-    r = subprocess.run(["npm", "ci"], cwd=str(_project_root() / "frontend"))
+    npm = _npm_executable()
+    if not npm:
+        return False, "前端依赖未安装（未找到 npm）", [
+            "下载 Node.js 18+：https://nodejs.org/",
+            "然后运行：cd frontend && npm ci",
+        ]
+    print(f"    → 运行: {npm} ci")
+    try:
+        r = subprocess.run([npm, "ci"], cwd=str(_project_root() / "frontend"))
+    except (OSError, subprocess.SubprocessError) as exc:
+        return False, f"npm ci 无法执行：{exc}", [
+            "下载 Node.js 18+：https://nodejs.org/",
+            "然后运行：cd frontend && npm ci",
+        ]
     if r.returncode == 0:
         return True, "前端依赖安装完成", []
     return False, "npm ci 失败，请检查 Node.js 是否已安装", [
         "下载 Node.js 18+：https://nodejs.org/",
         "然后运行：cd frontend && npm ci",
     ]
+
+
+def _npm_executable() -> str:
+    """解析 ``npm`` 的可执行名（Windows 上是 ``npm.cmd``，不是裸名 ``npm``）。"""
+    if platform.system() == "Windows":
+        for name in ("npm.cmd", "npm.exe", "npm.ps1"):
+            if shutil.which(name):
+                return name
+    return shutil.which("npm") or ""
 
 
 # ── 主流程 ──────────────────────────────────────────────────────────────────

@@ -244,19 +244,94 @@ def _period_anchor_arg(raw: str | None) -> dict | None:
     return out
 
 
+
+# ── WP2：库侧**权威拆解**的消费入口（#108 实测 P0-2）──────────────────────
+# ★ 同一张 42 题考卷，库侧拆 91 条（覆盖 42 题）、运行器侧只拆 15 条（覆盖 12 题）
+#   ⇒ 根因是**两套拆解**并存 ⇒ 且 **Gold 引的是库侧那条 obligation_id**
+#   ⇒ 运行器用另一套 ⇒ **答卷与标准答案根本对不上**。
+# ⇒ 处置（**不开发第三套**）：**库侧那套是唯一权威** ⇒ 运行器**消费**它。
+
+def _load_library_contract(library_id: str) -> dict:
+    """读库侧权威义务契约（``dd_v1_requirement_service`` 导出）。"""
+    return rq.export_obligation_contract(library_id)
+
+
+def _match_obligations_to_items(obligations: list[dict], items: list[dict]) -> tuple:
+    """按**题号**把库侧义务挂到运行器条目上 ⇒ 返回 (挂上的, 没挂上的)。
+
+    ★ join 键**两级**（与实体映射同思路）：① 题号**逐字**相同；
+      ② **归一**题号相同（``canonical_question_id``）—— ★ 归一只用于 join，
+      ★ **不改写机构原编号**。
+    ★ ★ **挂不上的必须显式报出**（``unmatched_items`` / ``unmatched_obligations``）：
+      静默丢题 ⇒ 覆盖率被低报 ⇒ **这正是 P0-2 的形态** ⇒ 绝不静默。
+    """
+    by_exact: dict[str, list[dict]] = {}
+    by_canon: dict[str, list[dict]] = {}
+    for o in obligations:
+        by_exact.setdefault(str(o.get("item_id") or ""), []).append(o)
+        by_canon.setdefault(str(o.get("question_id") or ""), []).append(o)
+    used: set[str] = set()
+    out: list[dict] = []
+    unmatched_items: list[dict] = []
+    for it in items:
+        iid = str(it.get("item_id") or "")
+        hits = by_exact.get(iid) or by_canon.get(rq.canonical_question_id(iid)) or []
+        if not hits:
+            unmatched_items.append({"item_id": iid,
+                                    "canonical_id": rq.canonical_question_id(iid),
+                                    "text_head": str(it.get("text") or "")[:80]})
+            continue
+        for o in hits:
+            v = dict(o)
+            v["item_id"] = iid
+            v["_join"] = "EXACT" if by_exact.get(iid) else "CANONICAL"
+            out.append(v)
+            used.add(str(o.get("obligation_id") or ""))
+    unmatched_obl = [o for o in obligations
+                     if str(o.get("obligation_id") or "") not in used]
+    return out, unmatched_items, unmatched_obl
+
 # GM:A4A:CLI:SPLIT
 def cmd_split(a) -> int:
     items = _maybe_blind_items(a, _load_items(Path(a.items)))
     anchor = _period_anchor_arg(getattr(a, "period_anchor", None))
-    obs, flags = sem.split_items(items, period_anchor=anchor)
+    coverage = None
+    unmatched_items: list[dict] = []
+    unmatched_obl: list[dict] = []
+    library_id = str(getattr(a, "library", "") or "")
+    if library_id:
+        # ★★ **权威路径**：库侧那套拆解（**永不丢题**）⇒ 运行器**消费**它。
+        contract = _load_library_contract(library_id)
+        obs, unmatched_items, unmatched_obl = _match_obligations_to_items(
+            contract["obligations"], items)
+        coverage = {"source": "LIBRARY_CONTRACT", "library_id": library_id,
+                    "obligations_in_library": contract["counts"]["obligations"],
+                    "questions_in_library": contract["counts"]["questions"],
+                    "questions_matched": len({o["question_id"] for o in obs}),
+                    "unmatched_items": unmatched_items,
+                    "unmatched_obligations": len(unmatched_obl)}
+        flags = [{"item_id": o.get("item_id"), "status": "NEEDS_HUMAN_SPLIT",
+                  "obligation_id": o.get("obligation_id"),
+                  "reason": "NO_KNOWN_DOC_TYPE"}
+                 for o in obs if o.get("needs_human_split")]
+    else:
+        # ★ 旧路径（**规则侧拆解**）：★ **会丢题**（无材料类型关键词 ⇒ 整题丢弃）
+        #   ⇒ 保留只为兼容既有用法 ⇒ ★ **打印显式警告**，不假装与库侧一致。
+        obs, flags = sem.split_items(items, period_anchor=anchor)
+        coverage = {"source": "LOCAL_RULE_SPLIT",
+                    "warning": "LOCAL_RULE_SPLIT_DROPS_ITEMS:本地规则拆解会丢掉"
+                               "「无材料类型关键词」的整题 ⇒ 覆盖率被低报；"
+                               "★ 请用 --library <LIB> 走库侧权威拆解"}
     # ★ 输出面脱敏：写盘 / 打印的文本一律走 dd_v1_pii_service（不另抄正则）。
     #   检索与摘录仍用原文（摘录的检索键是类型词/期间/附件，不含义务文本）⇒ 不退化。
     obs, flags = sem.redact_for_output(obs, flags)
     Path(a.out).write_text(json.dumps(obs, ensure_ascii=False, indent=1), "utf-8")
-    print(json.dumps({"obligations": len(obs),
-                      "needs_human_split": [f for f in flags if f.get("status") in ("NEEDS_HUMAN_SPLIT", "PARTIAL_SPLIT")],
-                      "ambiguous_splits": [f for f in flags if f.get("status") == "AMBIGUOUS_SPLIT"],
-                      "out": str(a.out)}, ensure_ascii=False))
+    out = {"obligations": len(obs),
+           "coverage": coverage,
+           "needs_human_split": [f for f in flags if f.get("status") in ("NEEDS_HUMAN_SPLIT", "PARTIAL_SPLIT")],
+           "ambiguous_splits": [f for f in flags if f.get("status") == "AMBIGUOUS_SPLIT"],
+           "out": str(a.out)}
+    print(json.dumps(out, ensure_ascii=False))
     return 0
 
 
@@ -399,6 +474,23 @@ def cmd_run(a) -> int:
         return 3
     items = _maybe_blind_items(a, _load_items(Path(a.items)))
     obligations = _json(Path(a.obligations)) if a.obligations else None
+    # ★★ WP2（#108 实测 P0-2）：给了 --library ⇒ **用库侧权威拆解**的义务。
+    #   旧路径（不��� --library）走本机规则拆解 ⇒ **无材料类型关键词的整题被丢**
+    #   ⇒ 同一张考卷只有 12/42 题进入处理链 ⇒ 「覆盖率」被低报成 28.6%。
+    coverage_note: dict = {}
+    if not obligations and str(getattr(a, "library", "") or ""):
+        _contract = _load_library_contract(a.library)
+        _obs, _unmatched_items, _unmatched_obl = _match_obligations_to_items(
+            _contract["obligations"], items)
+        obligations = _obs
+        coverage_note = {
+            "source": "LIBRARY_CONTRACT", "library_id": a.library,
+            "obligations_in_library": _contract["counts"]["obligations"],
+            "questions_in_library": _contract["counts"]["questions"],
+            "obligations_matched_to_items": len(_obs),
+            "items_without_obligations": _unmatched_items,
+            "obligations_not_matched": len(_unmatched_obl),
+        }
     text_root = Path(a.text_root).resolve() if a.text_root else None
     budget = ad.Budget(timeout_s=a.timeout, max_calls=a.max_calls)
     per_item = not a.single_pack
@@ -442,7 +534,8 @@ def cmd_run(a) -> int:
                 return 3
         rec = sem.run_semantic(_adapter(a), snap_dir, meta, g, budget, workdir=wd,
                                obligations=obs_g, text_root=text_root,
-                               period_anchor=anchor)
+                               period_anchor=anchor,
+                               resolve_doc_type=bool(getattr(a, "resolve_doc_type", False)))
         calls_total += rec.get("calls_used", 1)
         v = rec["semantic_validation"]
         rows = _six_state_rows(rec)
@@ -457,6 +550,7 @@ def cmd_run(a) -> int:
                         "obligations": rows})
         print(json.dumps(summary[-1], ensure_ascii=False), flush=True)
     (out / "run_summary.json").write_text(json.dumps({"limits": limits, "calls_total": calls_total,
+                                                      "coverage": coverage_note,
                                                       "groups": summary}, ensure_ascii=False, indent=1), "utf-8")
     # ★ 六态的**人读面**（与薄入口同款口径：只透传语义层结论，不在入口另造原因表）。
     #   落在输出目录里（不进 run-<tag> 工作目录：那里有 adapter 的白名单约束）。
@@ -546,6 +640,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--entity", default="")
 # GM:A4A:CLI:ARG-SPLIT
     s = sub.add_parser("split"); s.add_argument("--items", required=True); s.add_argument("--out", required=True)
+    s.add_argument("--library", default="",
+                   help="★ 库 ID：给了就走**库侧权威拆解**（永不丢题，与 Gold 的 obligation_id 同源）；"
+                        "不给则用旧的本机规则拆解（★ 会丢题 ⇒ 覆盖率低报）")
     s.add_argument("--period-anchor", default="",
                    help="相对期间的可验证锚点（JSON）：'{\"date\": \"2024-12-31\"}' 或 '{\"year\": 2024}'。"
                         "锚点优先级：显式配置 > 原文声明 > 材料自身年度；"
@@ -557,6 +654,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--period-anchor", default="",
                    help="同 split：相对期间的可验证锚点（JSON）")
     r.add_argument("--items", required=True); r.add_argument("--obligations", default=None)
+    r.add_argument("--library", default="",
+                   help="★ 库 ID：给了就用**库侧权威拆解**的义务（覆盖全部题目，且 obligation_id 与 Gold 同源）")
     r.add_argument("--text-root", default=None); r.add_argument("--out", required=True)
     r.add_argument("--adapter", choices=sorted(ad.ADAPTERS), default="deepseek-harness",
                    help="默认 deepseek-harness（主力）；codex 只作刘江的备用")
@@ -575,6 +674,11 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--timeout", type=float, default=600.0); r.add_argument("--max-calls", type=int, default=2)
     r.add_argument("--per-item", action="store_true", help="（已是默认，保留兼容）")
     r.add_argument("--single-pack", action="store_true", help="把所有条目合成一个包跑（小清单才用）")
+    r.add_argument("--resolve-doc-type", action="store_true",
+                   help="★ 打开「规则层拆不出材料类型 ⇒ 交给模型判定」这条通道："
+                        "这类条目会额外产出一条「类型待判定」义务送模型，模型须给出 "
+                        "proposed_doc_type（权威 10 类）或诚实弃答。"
+                        "默认关闭：拆不出就不调用模型（不浪费付费调用）")
 # GM:A4A:CLI:ARG-RUN
     r.add_argument("--resume", action="store_true", help="跳过已有 run_record.json 的条目")
     r.add_argument("--blind-material-out", default=None,

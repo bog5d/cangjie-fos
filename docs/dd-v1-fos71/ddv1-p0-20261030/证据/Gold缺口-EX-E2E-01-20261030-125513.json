@@ -1,0 +1,148 @@
+{
+  "schema_version": "dd_v1_gold_gap_report.v1",
+  "gold_pack_id": "GOLD-E2E",
+  "exam_id": "EX-E2E-01",
+  "counts": {
+    "obligations": 42,
+    "expected_files": 40,
+    "resolved": 32,
+    "gaps": 10,
+    "by_class": {
+      "A_MISSING": 8,
+      "F_NEEDS_HUMAN_CONFIRM": 2
+    }
+  },
+  "gaps": [
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料30.pdf",
+      "gold_sha256": "0000000000000000000000000000000000000000000000000000000000000025",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "e328e7f254524d56ad088fcaec08b207",
+      "item_no": "q30"
+    },
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料31.pdf",
+      "gold_sha256": "0000000000000000000000000000000000000000000000000000000000000026",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "16eb3ab0131d4d5b827dc696a49caae9",
+      "item_no": "q31"
+    },
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料32.pdf",
+      "gold_sha256": "0000000000000000000000000000000000000000000000000000000000000027",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "7f4b277b37514f90b41900cc2cee30a3",
+      "item_no": "q32"
+    },
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料33.pdf",
+      "gold_sha256": "0000000000000000000000000000000000000000000000000000000000000028",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "a53399713b614560a58f3c54e840e130",
+      "item_no": "q33"
+    },
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料34.pdf",
+      "gold_sha256": "0000000000000000000000000000000000000000000000000000000000000029",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "255d0d43086f448293929aa88f66ae3f",
+      "item_no": "q34"
+    },
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料35.pdf",
+      "gold_sha256": "000000000000000000000000000000000000000000000000000000000000002a",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "9287b8e64ec44034b7d92f9f0db5c331",
+      "item_no": "q35"
+    },
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料36.pdf",
+      "gold_sha256": "000000000000000000000000000000000000000000000000000000000000002b",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "69861a5b21484117bb4997f1a5e63ad6",
+      "item_no": "q36"
+    },
+    {
+      "resolution": "MISSING_IN_LIBRARY",
+      "resolution_note": "标准答案材料的内容指纹在当前图书馆快照中找不到⇒ 该份在库里不存在（或已被替换）⇒ 不得当成「答案正确」",
+      "gold_relative_path": "人工包/缺料37.pdf",
+      "gold_sha256": "000000000000000000000000000000000000000000000000000000000000002c",
+      "gold_entity": "母公司",
+      "gold_period": "2023",
+      "gap_class": "A_MISSING",
+      "candidates": [],
+      "remedy": "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）",
+      "obligation_id": "7416db1ab8ce488bb1321d4d2b0b5f16",
+      "item_no": "q37"
+    },
+    {
+      "obligation_id": "8f67763a56f643ec815a197ba71116c2",
+      "item_no": "q40",
+      "resolution": "NO_EXPECTED_FILES",
+      "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+      "gold_relative_path": "",
+      "gold_sha256": "",
+      "gold_entity": "",
+      "gold_period": "",
+      "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+      "candidates": [],
+      "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+    },
+    {
+      "obligation_id": "f7828f86d8f2411b8b2c1d9ca544d62f",
+      "item_no": "q41",
+      "resolution": "NO_EXPECTED_FILES",
+      "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+      "gold_relative_path": "",
+      "gold_sha256": "",
+      "gold_entity": "",
+      "gold_period": "",
+      "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+      "candidates": [],
+      "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+    }
+  ],
+  "note": "逐件待处置清单：★ **不删 Gold、不改 Gold**；A/B/C/D/E 由人工核对后**在本地纠正映射**，A（确实缺料）单列进补料清单"
+}

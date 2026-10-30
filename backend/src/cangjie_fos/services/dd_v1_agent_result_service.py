@@ -36,6 +36,13 @@ RESULT_FIELDS = (
     "confidence_or_uncertain", "abstain_reason", "warnings", "elapsed",
     "token_usage_or_UNKNOWN",
 )
+#: ★ WP2：规则层解析不出材料类型时，由**模型**提出该题要哪一类材料。
+#:   **可选**字段（schema 里在 ``properties``、不在 ``required``）；
+#:   取值域限权威 10 类（``dd_v1_requirement_service.CURRENT_DOC_TYPE_KEYS``），
+#:   域外值在语义层被拒（``DOC_TYPE_PROPOSAL_MISMATCH`` 等）。
+OPTIONAL_RESULT_FIELDS = ("proposed_doc_type", "rejected_alternatives")
+#: 排除式选择凭据的字段（可选；每条必须有 file_id + reason）
+REJECTED_ALT_FIELDS = ("file_id", "reason")
 EVIDENCE_VERDICTS = ("MATCH", "PARTIAL", "OUTDATED")
 CANDIDATE_FIELDS = ("file_id", "relative_path", "sha256", "locator", "entity", "period", "match_reason")
 
@@ -173,11 +180,12 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
     if not isinstance(r, dict):
         return ["RESULT_NOT_OBJECT"]
     errs: list[str] = []
-    missing = [k for k in RESULT_FIELDS if k not in r]
+    required = [k for k in RESULT_FIELDS if k not in OPTIONAL_RESULT_FIELDS]
+    missing = [k for k in required if k not in r]
     if missing:
         errs.append("MISSING_FIELDS:" + ",".join(missing))
         return errs
-    extra = sorted(set(r) - set(RESULT_FIELDS))
+    extra = sorted(set(r) - set(RESULT_FIELDS) - set(OPTIONAL_RESULT_FIELDS))
     if extra:  # schema additionalProperties:false（复核 N1）
         errs.append("UNKNOWN_FIELDS:" + ",".join(extra))
     ob = obligations.get(r["obligation_id"])
@@ -192,6 +200,29 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
         errs.append("FORBIDDEN_VERDICT")  # 模型不能置 approved/deliverable（R4）
     elif verdict not in ALLOWED_VERDICTS:
         errs.append("INVALID_VERDICT")
+    # ★ 排除式选择凭据（可选）：每条必须有 file_id + reason；
+    #   file_id 必须在快照内（**不得**引用不存在的文件），
+    #   且**不得**是本次选中的那几件（否则「排除」自相矛盾）。
+    _picked = {str((cf or {}).get("file_id") or "")
+               for cf in (r.get("candidate_files") or []) if isinstance(cf, dict)}
+    _rej = r.get("rejected_alternatives")
+    if _rej is not None:
+        if not isinstance(_rej, list):
+            errs.append("REJECTED_ALTERNATIVES_NOT_LIST")
+        else:
+            for _i, _ra in enumerate(_rej):
+                if not isinstance(_ra, dict) or any(k not in _ra for k in REJECTED_ALT_FIELDS):
+                    errs.append(f"REJECTED_ALT_{_i}_MISSING_FIELDS")
+                    continue
+                if set(_ra) - set(REJECTED_ALT_FIELDS):
+                    errs.append(f"REJECTED_ALT_{_i}_UNKNOWN_FIELDS")
+                if not str(_ra.get("reason") or "").strip():
+                    errs.append(f"REJECTED_ALT_{_i}_EMPTY_REASON")
+                _fid = str(_ra.get("file_id") or "")
+                if _fid not in snap:
+                    errs.append(f"REJECTED_ALT_{_i}_NOT_IN_SNAPSHOT")
+                elif _fid in _picked:
+                    errs.append(f"REJECTED_ALT_{_i}_IS_PICKED")
     c = r["confidence_or_uncertain"]
     if not (c == "UNCERTAIN" or (isinstance(c, (int, float)) and not isinstance(c, bool) and 0 <= c <= 1)):
         errs.append("INVALID_CONFIDENCE")
