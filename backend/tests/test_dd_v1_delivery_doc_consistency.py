@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -212,6 +213,104 @@ def test_handoff_sha256sums_selfcheck_passes():
         elif _sha256(target) != digest.strip():
             bad.append(f"{name}: 哈希不符")
     assert not bad, "交接包 SHA256SUMS 自核失败：" + "；".join(bad)
+
+
+def test_handoff_sha256sums_scope_is_complete():
+    """**范围完整性** —— 目录里的每个文件都必须被登记（唯一排除项是 SHA256SUMS 自己）。
+
+    ★ 为什么单列一条：只验「已登记的文件哈希对不对」是不够的 ——
+      **新加的文件忘了登记**时，它就**不在**校验范围内 ⇒ 包残缺却「验过」。
+    ★ 排除项写死为**一个**：``SHA256SUMS`` 自己（自引用不可收敛 ⇒ 唯一合法排除）。
+    """
+    sums = HANDOFF / "SHA256SUMS"
+    if not sums.is_file():
+        pytest.skip("交接包没有 SHA256SUMS")
+    listed = set()
+    for line in sums.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        _, _, name = line.partition("  ")
+        listed.add(name.strip())
+    on_disk = {p.name for p in HANDOFF.glob("*") if p.is_file()}
+    uncovered = sorted(on_disk - listed - {"SHA256SUMS"})
+    assert not uncovered, (
+        "交接包里这些文件**不在校验范围**（新加的文件忘了登记）：" + "、".join(uncovered)
+    )
+    # 登记了但文件不存在 ⇒ 清单里有幽灵条目
+    ghosts = sorted(n for n in listed if not (HANDOFF / n).is_file())
+    assert not ghosts, "SHA256SUMS 登记了不存在的文件：" + "、".join(ghosts)
+
+
+def test_anchor_doc_amendment_count_matches_frozen_spec(spec: dict):
+    """交接包《版本锚点.md》里写的 amendment 条数必须等于冻结规格里的实际条数。
+
+    ★ 防止「文档说 6 条、规格里已经 9 条」这种**陈旧计数**（实测出现过）。
+    """
+    anchor = HANDOFF / "版本锚点.md"
+    if not anchor.is_file():
+        pytest.skip("交接包没有 版本锚点.md")
+    doc = anchor.read_text(encoding="utf-8")
+    m = re.search(r"现已记\s*(\d+)\s*条\s*amendment", doc)
+    if not m:
+        pytest.skip("版本锚点.md 没有声明 amendment 条数")
+    claimed = int(m.group(1))
+    actual = len(spec.get("amendments") or [])
+    assert claimed == actual, (
+        f"版本锚点.md 声明「现已记 {claimed} 条 amendment」，"
+        f"冻结规格里实际是 {actual} 条 ⇒ 计数陈旧"
+    )
+
+
+def test_handoff_sha256sums_selfcheck_detects_tampering(tmp_path):
+    """★ **负向**：改了文件却没重算清单 ⇒ 自核**必须失败**（否则 A9 那道门是装饰品）。
+
+    ★ 用**临时目录**构造，不碰真实交接包（不制造假红）。
+    """
+    import hashlib
+
+    sys.path.insert(0, str(REPO / "tools"))
+    import dd_v1_exam_suite as suite
+
+    pkg = tmp_path / "handoff"
+    pkg.mkdir()
+    (pkg / "a.md").write_text("A", encoding="utf-8")
+    (pkg / "b.md").write_text("B", encoding="utf-8")
+
+    # 情形一：**范围不完整**（b.md 没登记）⇒ 必须判不通过
+    ha = hashlib.sha256(b"A").hexdigest()
+    (pkg / "SHA256SUMS").write_text(f"{ha}  a.md\n", encoding="utf-8")
+    res = suite._handoff_sha256sums_selfcheck(pkg)
+    assert res["ok"] is False, "范围不完整却判通过 ⇒ 自检形同虚设"
+    assert res["missing_from_scope"] == ["b.md"]
+    assert res["excluded"] == ["SHA256SUMS"]
+
+    # 情形二：**哈希不符**（a.md 被篡改）⇒ 必须判不通过
+    hb = hashlib.sha256(b"B").hexdigest()
+    (pkg / "SHA256SUMS").write_text(f"{ha}  a.md\n{hb}  b.md\n", encoding="utf-8")
+    (pkg / "a.md").write_text("tampered", encoding="utf-8")
+    res2 = suite._handoff_sha256sums_selfcheck(pkg)
+    assert res2["ok"] is False, "文件被篡改却判通过 ⇒ 自检形同虚设"
+    assert any("a.md" in m for m in res2["mismatches"])
+
+    # 情形三：一切正常 ⇒ 必须判通过（防「永远判红」的假红）
+    (pkg / "a.md").write_text("A", encoding="utf-8")
+    res3 = suite._handoff_sha256sums_selfcheck(pkg)
+    assert res3["ok"] is True, res3
+    assert res3["mismatches"] == [] and res3["missing_from_scope"] == []
+    anchor = HANDOFF / "版本锚点.md"
+    if not anchor.is_file():
+        pytest.skip("交接包没有 版本锚点.md")
+    doc = anchor.read_text(encoding="utf-8")
+    m = re.search(r"现已记\s*(\d+)\s*条\s*amendment", doc)
+    if not m:
+        pytest.skip("版本锚点.md 没有声明 amendment 条数")
+    claimed = int(m.group(1))
+    actual = len(spec.get("amendments") or [])
+    assert claimed == actual, (
+        f"版本锚点.md 声明「现已记 {claimed} 条 amendment」，"
+        f"冻结规格里实际是 {actual} 条 ⇒ 计数陈旧"
+    )
 
 
 def test_gate_report_handoff_selfcheck_matches_current_files(machine: dict):

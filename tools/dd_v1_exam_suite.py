@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -536,7 +537,16 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
         "git_dirty": _git_dirty(),
         "environment": {
             "platform": sys.platform,
+            # ★ **平台细节**（R10「Windows 真机」的可核证据）：
+            #   只记 `platform`（`win32`）**不足以**让人确认「这真是 Windows 真机」——
+            #   补 **OS 版本 / 机器架构 / Python 实现**，让复核者能核「哪台机器、哪个系统」。
+            "platform_release": platform.platform(),
+            "platform_version": platform.version(),
+            "os_name": platform.system(),
+            "machine": platform.machine(),
             "python": sys.version.split()[0],
+            "python_implementation": platform.python_implementation(),
+            "python_version_full": sys.version.replace("\n", " "),
             "data_plane": str(data_dir),
             "out_dir": str(out),
             "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库",
@@ -741,6 +751,9 @@ def evaluate_gate(runs_dir: str, gate_spec: dict[str, Any] | None = None) -> dic
         #   ⇒ 这里记下交接包关键文件的 **sha256 快照** ⇒ 验收方可直接比对，
         #   且「工作区版与提交版不一致」这件事**可核验、不再隐形**。
         "handoff_sha256_selfcheck": _handoff_sha256_snapshot(),
+        # ★ **A9**：交接包 ``SHA256SUMS`` 的**自核结果**（范围完整 ＋ 哈希逐位相符）。
+        #   单独列出来，是为了让「包自己说自己是完整的」**可被第三方复核**。
+        "handoff_sha256sums_selfcheck": _handoff_sha256sums_selfcheck(),
         "note": ("★ 阈值来自**考试前冻结**的门禁文件；"
                  "结果不得反过来改阈值（改阈值必须换版本并留差异说明）。"
                  "★ observations 里的**实际读数**才是真相：门禁 PASS ≠ 指标完美"
@@ -763,6 +776,62 @@ def _handoff_sha256_snapshot() -> dict[str, Any]:
             out["files"][p.name] = _sha256_file(p)
         except Exception as exc:  # noqa: BLE001
             out["files"][p.name] = f"ERROR:{exc}"
+    return out
+
+
+def _handoff_sha256sums_selfcheck(handoff: Path | None = None) -> dict[str, Any]:
+    """交接包 ``SHA256SUMS`` **自核**（只读）。
+
+    ★ **校验范围**（写死并对外声明，避免"验了一部分就说验过了"）：
+      - **覆盖**：交接包目录下**全部文件**，唯一排除项是 ``SHA256SUMS`` **自身**
+        （它装着别人的哈希 ⇒ 不可能包含自己的哈希 ⇒ 放进去就**不收敛**）；
+      - **不含**：目录外的任何文件（仓内其它文档不进包）。
+    ★ 返回三件事：**哈希是否逐位相符**、**范围是否完整**（有没有漏登记的文件）、
+      **被排除的文件**（应当只有 ``SHA256SUMS`` 自己）。
+    """
+    handoff = handoff or (REPO / "docs" / "dd-v1-fos71" / "ddv1-auto-test-suite" / "handoff")
+    sums = handoff / "SHA256SUMS"
+    out: dict[str, Any] = {
+        "path": str(sums),
+        "present": sums.is_file(),
+        "scope_rule": "交接包目录内全部文件；唯一排除项＝SHA256SUMS 自身（自引用不可收敛）",
+        "listed": {},
+        "mismatches": [],
+        "missing_from_scope": [],
+        "excluded": [],
+        "ok": False,
+    }
+    if not out["present"]:
+        out["error"] = "SHA256SUMS_MISSING"
+        return out
+    try:
+        lines = [l for l in sums.read_text("utf-8").splitlines() if l.strip()]
+    except OSError as exc:
+        out["error"] = f"UNREADABLE:{exc}"
+        return out
+
+    for line in lines:
+        digest, _, name = line.partition("  ")
+        name = name.strip()
+        if not name:
+            continue
+        out["listed"][name] = digest.strip()
+        target = handoff / name
+        if not target.is_file():
+            out["mismatches"].append(f"{name}: 文件不存在")
+            continue
+        try:
+            actual = _sha256_file(target)
+        except Exception as exc:  # noqa: BLE001
+            out["mismatches"].append(f"{name}: 读取失败 {exc}")
+            continue
+        if actual != digest.strip():
+            out["mismatches"].append(f"{name}: 期望 {digest.strip()[:12]} ≠ 实际 {actual[:12]}")
+
+    on_disk = {p.name for p in handoff.glob("*") if p.is_file()}
+    out["missing_from_scope"] = sorted(on_disk - set(out["listed"]) - {"SHA256SUMS"})
+    out["excluded"] = sorted({"SHA256SUMS"} & on_disk)
+    out["ok"] = not out["mismatches"] and not out["missing_from_scope"]
     return out
 
 
@@ -862,6 +931,25 @@ def _gate_check(g: dict[str, Any], m: dict[str, Any] | None, *,
                 continue
         if hit is None:
             return "FAIL", f"NO_ARTIFACT:{raw} (checked {len(cands)} paths)"
+        # ★ **A9 加严**：若这个产物目录自带 ``SHA256SUMS``（= 交接包这种
+        #   「带校验清单的包」），则**清单自核必须通过**才算这道门 PASS。
+        #   动机：实测发现 —— 改了交接包文件却**没重算清单**时，
+        #   旧读数照样「看起来完整」⇒ 证据自证失效。
+        #   ★ 只**加严**，不改任何数值阈值（amendment A9 留档）。
+        sums_file = hit / "SHA256SUMS" if hit.is_dir() else None
+        if sums_file is not None and sums_file.is_file():
+            sc = _handoff_sha256sums_selfcheck(hit)
+            if not sc.get("ok"):
+                detail = []
+                if sc.get("mismatches"):
+                    detail.append("哈希不符:" + ",".join(sc["mismatches"][:5]))
+                if sc.get("missing_from_scope"):
+                    detail.append("未登记:" + ",".join(sc["missing_from_scope"][:5]))
+                return "FAIL", ("HANDOFF_SHA256SUMS_SELFCHECK_FAILED: "
+                                + ("; ".join(detail) or "未知原因"))
+            return "PASS", (f"artifact={hit.name} path={hit} "
+                            f"sha256sums_selfcheck=PASS(covered={len(sc.get('listed') or {})},"
+                            f"excluded={','.join(sc.get('excluded') or []) or 'none'})")
         return "PASS", f"artifact={hit.name} path={hit}"
     if kind == "real_model_participated":
         hits = []

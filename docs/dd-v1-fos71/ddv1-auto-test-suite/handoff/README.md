@@ -264,7 +264,7 @@
 | Gold 评分有效 | ⚠️ **合成卷有效**；**真实 42 题的 Gold / 披露分级 / 合格线业务方还没冻结**（BLOCKED-2/3） |
 | 独立 Reviewer PASS | ❌ **第 4 轮＝CONDITIONAL**（两条 MAJOR 与 9 条 MINOR/NIT 均已闭环；R10 Windows 未验）⇒ 现在**不能算 PASS** ⇒ 机器门禁 `status=FAIL`、`failed_key_gates=["G6"]`（A7/A8） |
 | 新版本冻结 SHA | ✅ tag `ddv1-auto-exam-v1`（读法见 `版本锚点.md`） |
-| Windows 交接包完整 | ✅ 本包 |
+| Windows 交接包完整 | ✅ 本包（含 **一键复跑入口**：§「一键复跑」） |
 | **真实模型参与证明 PASS（G3）** | ✅ **PASS**（dsh 真实调用：exit=0、**8.93s**、deepseek-flash、身份核实 verified） |
 
 ⇒ **等这三件事**：① **G6 复核出 PASS 结论**（当前轮第 4 轮＝CONDITIONAL；**R10 Windows 真机**须刘江在 Windows 上复跑并产出带 `platform=Windows` 的运行清单）；② **业务方冻结真实 42 题的 Gold / 披露分级 / 合格线**；
