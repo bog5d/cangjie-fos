@@ -1,13 +1,13 @@
 {
   "library": "LIB-DDVE-A",
   "institution": "合成机构A",
-  "generated_at": "2026-10-30T22:47:53",
+  "generated_at": "2026-10-30T23:23:09",
   "input_snapshot": {
-    "input_snapshot_id": "d73bdbca55f8f6fc98e870e30dc23f4168ecec41b4e75506b9e77cb94791fad1",
+    "input_snapshot_id": "b724656b9762a9d5a44cef24de044e17550af8040e67d35976310623c3ca3feb",
     "checklist_fingerprint": "2daf53abcdac2176",
     "material_digest": "3f9bc31423d4817adc8cbd72e3af7485a36970cd4d9094abd9ad97e44977ac20",
     "material_files": 5,
-    "code_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
+    "code_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf"
   },
   "human_approval_required": true,
   "sent_to_institution": false,
@@ -140,30 +140,31 @@
       "evidence_total": 5
     },
     "agent_receipt": {
-      "adapter_id": "codex-cli",
-      "vendor": "openai-codex",
-      "role": "EXAMINEE_2",
+      "adapter_id": "deepseek-harness",
+      "vendor": "deepseek-harness",
+      "role": "EXAMINEE_3",
       "status": "OK",
       "exit_code": 0,
-      "elapsed_s": 24.95,
-      "model_id_or_unknown": "gpt-5.6-sol",
-      "framework": "codex-cli",
+      "elapsed_s": 39.6,
+      "model_id_or_unknown": "deepseek-flash",
+      "framework": "deepseek-harness",
       "model_identity": {
-        "model_id": "gpt-5.6-sol",
-        "provider": "openai",
-        "source": "CODEX_EXECUTION_RECORD",
+        "model_id": "deepseek-flash",
+        "provider": "deepseek-official",
+        "source": "DSH_PROFILE_CONFIG",
         "verified": true,
         "binding": {
-          "thread_id": "01a18d47-bd04-7170-acdb-328a1d7facf7",
-          "rollout": "/Users/mac/.codex/sessions/2026/10/30/rollout-2026-10-30T22-47-31-01a18d47-bd04-7170-acdb-328a1d7facf7.jsonl",
-          "rollout_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-pzkdm5ep",
-          "expected_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-pzkdm5ep"
+          "profile": "headless",
+          "config_key": "agent-default-model",
+          "config_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-nc4najdy",
+          "config_cwd_source": "process_cwd_of_dump（★ 本次真的在**这个目录**里取的配置）",
+          "binding_strength": "profile-config-resolved-at-cwd"
         },
-        "note": "★ 来源：codex 自己的执行记录（rollout turn_context）"
+        "note": "★ 来源：dsh 自己的配置树（--dump-config，**在该 profile 的解析目录**里取得）。★ **能证明**：该 profile 在该目录下的**默认模型**是谁。★ **不能证明**：本次请求没有被打到别的模型/回退 —— dsh 没有提供逐请求的模型回执 ⇒ 这是它官方元数据能给出的**最强**证明（对比 codex：执行记录里的 cwd 不符会 fail-closed 记 UNKNOWN）。"
       },
-      "model_identity_source": "CODEX_EXECUTION_RECORD",
+      "model_identity_source": "DSH_PROFILE_CONFIG",
       "model_identity_verified": true,
-      "cost_usd_or_UNKNOWN": "UNKNOWN(ChatGPT subscription)",
+      "cost_usd_or_UNKNOWN": "UNKNOWN(operator dsh account)",
       "calls_used": 1,
       "budget": {
         "timeout_s": 300.0,
@@ -178,36 +179,24 @@
           "n": 1,
           "status": "OK",
           "exit_code": 0,
-          "elapsed_s": 24.95,
-          "cost_usd_or_UNKNOWN": "UNKNOWN(ChatGPT subscription)",
-          "token_usage_or_UNKNOWN": {
-            "input_tokens": 60383,
-            "cached_input_tokens": 38272,
-            "cache_write_input_tokens": 0,
-            "output_tokens": 1583,
-            "reasoning_output_tokens": 399
-          },
+          "elapsed_s": 39.6,
+          "cost_usd_or_UNKNOWN": "UNKNOWN(operator dsh account)",
+          "token_usage_or_UNKNOWN": "UNKNOWN",
           "error_code": null,
-          "wall_elapsed_s": 24.96
+          "wall_elapsed_s": 39.72
         }
       ],
       "perf": {
-        "total_elapsed_s": 24.96,
-        "cost_usd_or_UNKNOWN": "UNKNOWN(ChatGPT subscription)",
-        "token_usage_or_UNKNOWN": {
-          "input_tokens": 60383,
-          "cached_input_tokens": 38272,
-          "cache_write_input_tokens": 0,
-          "output_tokens": 1583,
-          "reasoning_output_tokens": 399
-        },
+        "total_elapsed_s": 39.72,
+        "cost_usd_or_UNKNOWN": "UNKNOWN(operator dsh account)",
+        "token_usage_or_UNKNOWN": "UNKNOWN",
         "attempts_cost": [
-          "UNKNOWN(ChatGPT subscription)"
+          "UNKNOWN(operator dsh account)"
         ],
         "max_total_s": 602.0,
         "budget_exhausted": false
       },
-      "raw_digest": "sha256:62106074b75ad7779cef6ae6d0671107a97aad7142f384e2d0dd8764b498a73f",
+      "raw_digest": "sha256:8b49e405cc23803ec03a7b66b2565f21517a98aaade24f45dd8a93a7c853d715",
       "provenance": "HARNESS_MODEL",
       "participated": true,
       "participated_scope": "RECEIPT",
@@ -215,10 +204,10 @@
       "declared_provenance": "HARNESS_MODEL",
       "provenance_mismatch": false,
       "implementation_verified": true,
-      "executable": "codex",
-      "argv_digest": "sha256:3d1956662ae3641e89100367b032183a1ba6cb5a1cae13d736f07a6ce8741f3b",
-      "workdir_digest": "sha256:cc509aabb5b83b3e0590354e5a5ae8157c3604993b65e6c6524e2b5341e5e5d1",
-      "accepted_results": 3,
+      "executable": "dsh",
+      "argv_digest": "sha256:de01708854eb14ed168fa584daa94134e76c6b9c767fd2b84503a6011bc93646",
+      "workdir_digest": "sha256:91f4592516d24d5e4d90e46c3f1a44611b197d30874a4e8aa6c34de47c63f05f",
+      "accepted_results": 2,
       "note": "★ 回执只证明「哪个适配器实现、哪次调用、回了什么摘要」；**不证明**判断出自哪个模型 —— 模型身份由适配器**实现**决定，自填的 adapter_id 只能作旁证"
     },
     "model_participation": {
@@ -229,35 +218,35 @@
       "participated_scope": "SELECTION",
       "run_participated_scope": "RECEIPT",
       "declared_provenance": "HARNESS_MODEL",
-      "obligations_with_model_selection": 3,
+      "obligations_with_model_selection": 2,
       "discrimination_pass": 0,
-      "discrimination_weak": 3,
+      "discrimination_weak": 2,
       "note": "★ **RULE_ONLY 与 MODEL 严格分开**：mode=RULE_ONLY ⇒ 全程没有模型参与；mode=AGENT_SUGGESTION ⇒ 有适配器回执。★ 排除式凭据只证明判断**不是照抄第一个候选**，不证明判断出自模型。"
     },
     "obligations": [
       {
-        "obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
-        "source_obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
+        "obligation_id": "cab7e5d8ad2846d09e70c8184c77c7b9",
+        "source_obligation_id": "cab7e5d8ad2846d09e70c8184c77c7b9",
         "item_no": "1-1",
         "question_id": "1-1",
         "text": "请提供合成母公司2024年度审计报告",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "32445a3c6d764a43a78847cc7ec6a1c8",
+          "obligation_id": "cab7e5d8ad2846d09e70c8184c77c7b9",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "",
-          "confidence_or_uncertain": 0.99,
-          "agent_id": "codex-cli",
-          "provider": "openai-codex",
-          "model_id_or_unknown": "UNKNOWN",
+          "confidence_or_uncertain": 0.97,
+          "agent_id": "deepseek-harness",
+          "provider": "deepseek-harness",
+          "model_id_or_unknown": "deepseek-flash",
           "picked_file_ids": [
             "27681a252859095216dc33622627ae2e"
           ],
           "rejected_alternatives": [
             {
               "file_id": "e56df693642ab43b7db6d826063832d0",
-              "reason": "该审计报告期间为2023年度，与要求的2024年度不符。"
+              "reason": "该件为2023年度审计报告，年度不在义务要求的2024年度内，期间不符，不能作为本条证据。"
             }
           ],
           "discrimination": {
@@ -415,24 +404,24 @@
         ]
       },
       {
-        "obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
-        "source_obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
+        "obligation_id": "4238644251f546209d84d2202388a9d0",
+        "source_obligation_id": "4238644251f546209d84d2202388a9d0",
         "item_no": "1-2",
         "question_id": "1-2",
         "text": "请提供合成母公司2024年度营业执照",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "f96e0cdccccc44f8a83ad86b91973c0a",
+          "obligation_id": "4238644251f546209d84d2202388a9d0",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "",
-          "confidence_or_uncertain": 0.99,
-          "agent_id": "codex-cli",
-          "provider": "openai-codex",
-          "model_id_or_unknown": "UNKNOWN",
+          "confidence_or_uncertain": 0.93,
+          "agent_id": "deepseek-harness",
+          "provider": "deepseek-harness",
+          "model_id_or_unknown": "deepseek-flash",
           "picked_file_ids": [
-            "4c76b41c7ab42e58c0a7afdcb7615ef9",
-            "cd1a8a57478898e345812ef3b33977b6"
+            "cd1a8a57478898e345812ef3b33977b6",
+            "4c76b41c7ab42e58c0a7afdcb7615ef9"
           ],
           "rejected_alternatives": [],
           "discrimination": {
@@ -442,10 +431,10 @@
             ],
             "pool_doc_type_count": 1,
             "picked_file_ids": [
-              "4c76b41c7ab42e58c0a7afdcb7615ef9",
-              "cd1a8a57478898e345812ef3b33977b6"
+              "cd1a8a57478898e345812ef3b33977b6",
+              "4c76b41c7ab42e58c0a7afdcb7615ef9"
             ],
-            "non_default_pick": false,
+            "non_default_pick": true,
             "rejected_count": 0,
             "rejected_with_reason": 0,
             "discrimination": "WEAK",
@@ -592,42 +581,14 @@
         ]
       },
       {
-        "obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
-        "source_obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
+        "obligation_id": "097973742260455d8a29fffb10140b38",
+        "source_obligation_id": "097973742260455d8a29fffb10140b38",
         "item_no": "1-3",
         "question_id": "1-3",
         "text": "请提供合成母公司2024年度经营情况说明",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
-        "model_selection": {
-          "obligation_id": "a41f3545e5884b56bdeec93cd227ab18",
-          "proposed_verdict": "UNCERTAIN",
-          "proposed_doc_type": "",
-          "confidence_or_uncertain": "UNCERTAIN",
-          "agent_id": "codex-cli",
-          "provider": "openai-codex",
-          "model_id_or_unknown": "UNKNOWN",
-          "picked_file_ids": [],
-          "rejected_alternatives": [
-            {
-              "file_id": "0f032638fb8ade3e8426a6997b51d078",
-              "reason": "候选材料未标注文档类型，无法确认其属于限定的十类材料中的哪一类。"
-            }
-          ],
-          "discrimination": {
-            "pool_size": 1,
-            "pool_doc_types": [],
-            "pool_doc_type_count": 0,
-            "picked_file_ids": [],
-            "non_default_pick": false,
-            "rejected_count": 1,
-            "rejected_with_reason": 1,
-            "discrimination": "WEAK",
-            "note": "PASS = 池子里有多种类型、且模型**没有**取第一个、且记录了排除理由 ⇒ 判断**不是**照抄第一个候选；★ 这**不证明**判断出自模型（模型身份看适配器回执）"
-          },
-          "review_required": true,
-          "approved": false
-        },
+        "model_selection": {},
         "subject_verified": true,
         "doc_type": "",
         "period": "2024",

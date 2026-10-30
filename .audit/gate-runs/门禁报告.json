@@ -1,7 +1,7 @@
 {
   "schema_version": "dd_v1_gate_report.v1",
-  "evaluated_at": "2026-10-30T22:47:54+08:00",
-  "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+  "evaluated_at": "2026-10-30T23:23:56+08:00",
+  "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
   "git_dirty": false,
   "gate_spec_id": "DDV1-DELIVERY-GATE-V1",
   "gate_spec_frozen_at": "2026-10-30T18:18:38+08:00",
@@ -62,6 +62,24 @@
       "why": "★ 独立 Reviewer 第 3 轮要求对这两条给出**书面处置**，否则「已知缺陷」与「被藏起来的缺陷」无法区分。\n  ★ 施工纪律：**已知缺陷要写下来**（可核验），比「修到看不出来」更安全。",
       "thresholds_unchanged": "★ **G1—G8 的任何判定标准与数值阈值一个字未改**（可用 git diff 核验）。\n  ★ 本条**不含任何判定逻辑**，只是把已知限制写进机读规格里。",
       "effect": "已知限制（MINOR-5 / NIT-2）在**机读规格**里可核验 ⇒ 独立复核者不必翻文档即可确认施工者未隐瞒。"
+    },
+    {
+      "id": "A7",
+      "amended_at": "2026-10-31T01:40:00+08:00",
+      "target": "**G6 只认 PASS**（独立 Reviewer 第 4 轮 MINOR-1）＋ 门禁报告新增机器可读的 `reviewer_verdict`",
+      "change": "★ **G6**：复核报告的 `verdict` **只有等于 `PASS` 才判 G6 PASS**；\n  `CONDITIONAL` ⇒ **FAIL**（reason 串如实带出 `reviewer verdict=CONDITIONAL`，**不隐瞒**）。\n  ★ 门禁报告新增顶层字段 **`reviewer_verdict`**（`verdict` / `present` / `round` / `reviewed_commit`）\n  ⇒ 人和机器都**不必**从 reason 串里猜复核结论。",
+      "why": "★ **独立 Reviewer 第 4 轮 MINOR-1**：冻结门禁规格里 G6 的 title 明写「独立 Reviewer **PASS**」，\n  而实现原先把 `PASS` 与 `CONDITIONAL` **都**判 PASS\n  ⇒ **同一套交付包里两份产物互相打架**：机器门禁报告说「G6 PASS」、人读交接包说「G6 不算 PASS」。\n  ⇒ 该 Reviewer 把它定为 MINOR（而非 MAJOR）的客观理由：G6 **不在 `key_gates`**\n  ⇒ 即使改判 FAIL，**整体门禁 status 不变** ⇒ 属「逐门读数/表述」层，不是「放行」层。\n  ★ 本条**只让实现与自己的规格一致**（= 收紧），**不改任何数值阈值**。",
+      "thresholds_unchanged": "★ **G1—G8 的任何数值阈值一个字未改**（可用 git diff 核验：gates 段逐字未动）。\n  ★ `key_gates` **未变**（仍是 G1/G2/G3/G4/G5/G8）⇒ 整体放行口径**未变**；\n  ★ 本条只把 **G6 这一道门**的判定收紧到与它的 title 一致。",
+      "effect": "G6 与「独立 Reviewer PASS」这一口径**逐字一致**（CONDITIONAL 不再被当成 PASS）；\n  门禁报告**机器可读**地暴露复核结论 ⇒ 交付包内部不再自相矛盾。"
+    },
+    {
+      "id": "A8",
+      "amended_at": "2026-10-31T01:55:00+08:00",
+      "target": "**G6 进入 `key_gates`**（独立 Reviewer 第 4 轮 NIT-2 的「明确 G6 在 key_gates 里的角色」）",
+      "change": "★ `key_gates` 由 `[G1,G2,G3,G4,G5,G8]` 变为 `[G1,G2,G3,G4,G5,**G6**,G8]`\n  ⇒ **G6 失败 ⇒ 整体门禁 `status=FAIL` 且 `failed_key_gates` 里出现 `G6`**。\n  ★ **只加严、不放松**：A7 让 G6 只认 `PASS`；本条让「G6 不算 PASS」这件事**真正拦住「宣布完成」**。\n  ★ 门禁报告同时新增 **`handoff_sha256_selfcheck`**（交接包关键文件 sha256 快照）⇒ 解决 NIT-1\n  （交接包目录被 `_git_dirty()` 有意豁免 ⇒ 它的完整性此前落在证据自证之外）。",
+      "why": "★ **施工令 WP5** 明写：G6「独立 Reviewer PASS」是门禁之一，且「**任何关键门槛失败 ⇒ 不得宣布开发完成、不得向人工发出正式验收请求**」。\n  ★ 而 A7 之前，G6 即使判 FAIL 也**不在 key_gates** ⇒ 整体 `status` 仍是 `PASS`\n  ⇒ **机器会认为「可以宣布完成」** ⇒ 与施工令、与交接包人读口径（「G6 不算 PASS」）**都矛盾**\n  ⇒ 独立 Reviewer 第 4 轮 NIT-2 点名了这处不一致。\n  ★ 先例：A3 加 G8 时同样是「只加门 + 进 key_gates」。",
+      "thresholds_unchanged": "★ **G1—G8 的任何数值阈值一个字未改**（可用 git diff 核验）。\n  ★ `key_gates` **只增** G6（原列表一个都没删）⇒ **只收紧**。\n  ★ ⚠️ **直接后果（如实写出）**：在独立复核给出 `PASS` 之前，整体门禁 `status` 会是 `FAIL`\n  （唯一原因＝G6）⇒ 这与交接包人读口径（「现在不算 PASS」「不能发正式验收请求」）**一致**。\n  ★ 若业务方认为 G6 不应进关键门槛，**改回即可**（只需删掉 key_gates 里的 G6，本条作废）⇒ **决策权在业务方**。",
+      "effect": "机器门禁与交接包人读口径**完全一致**：G6 不是 PASS ⇒ 整体就不是 PASS ⇒ 「不得宣布开发完成」由机器强制执行。"
     }
   ],
   "gate_spec_chronology": {
@@ -81,7 +99,7 @@
   "gates": {
     "G1": {
       "status": "PASS",
-      "reason": "pytest passed=2168 failed=0 skipped=6 total=2174",
+      "reason": "pytest passed=2172 failed=0 skipped=6 total=2178",
       "gate": "G1",
       "title": "基础测试 PASS（程序层：单元/契约/回归）",
       "exam": null,
@@ -94,12 +112,12 @@
       "gate": "G2",
       "title": "模拟端到端 PASS（考试A：完整链路可评分 + 安全闸 PASS）",
       "exam": "A",
-      "run_id": "20261030T144555Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
+      "run_id": "20261030T152225Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf"
     },
     "G3": {
       "status": "PASS",
-      "reason": "real_model_runs=['20261030T144559Z'] | 另有真实模型考生 ['codex:20261030T144728Z', 'pi:20261030T144652Z']（见 all_runs / G8）",
+      "reason": "real_model_runs=['20261030T152229Z'] | 另有真实模型考生 ['codex:20261030T152329Z', 'pi:20261030T152310Z']（见 all_runs / G8）",
       "gate": "G3",
       "title": "真实模型调用 PASS（participated=true 且非 RULE_ONLY）",
       "exam": null,
@@ -112,8 +130,8 @@
       "gate": "G4",
       "title": "合成 Gold 评分达标（考试C：完整42题）",
       "exam": "C",
-      "run_id": "20261030T144556Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
+      "run_id": "20261030T152227Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf"
     },
     "G5": {
       "status": "PASS",
@@ -121,12 +139,12 @@
       "gate": "G5",
       "title": "安全测试 PASS（考试B：复杂业务 + 披露闸）",
       "exam": "B",
-      "run_id": "20261030T144556Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
+      "run_id": "20261030T152226Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf"
     },
     "G6": {
-      "status": "PASS",
-      "reason": "reviewer verdict=CONDITIONAL",
+      "status": "FAIL",
+      "reason": "reviewer verdict=CONDITIONAL（独立复核**未给 PASS** ⇒ G6 不算 PASS；spec title=「独立 Reviewer PASS」⇒ 本门只认 PASS）",
       "gate": "G6",
       "title": "独立 Reviewer PASS（可复跑关键测试的复核报告）",
       "exam": null,
@@ -144,7 +162,7 @@
     },
     "G8": {
       "status": "PASS",
-      "reason": "real_model=3; rule_only=3; degraded=0; mock=0; identity_unknown=0 | real=['A:20261030T144728Z', 'A:20261030T144559Z', 'A:20261030T144652Z']",
+      "reason": "real_model=3; rule_only=3; degraded=0; mock=0; identity_unknown=0 | real=['A:20261030T152329Z', 'A:20261030T152229Z', 'A:20261030T152310Z']",
       "gate": "G8",
       "title": "真实模型参与门禁（按运行模式判定；读真实考试产物）",
       "exam": null,
@@ -154,7 +172,7 @@
   },
   "observations": {
     "A": {
-      "run_id": "20261030T144555Z",
+      "run_id": "20261030T152225Z",
       "status": "LOW_CONFIDENCE",
       "total_score": 96.67,
       "question_understanding_coverage": 0.666667,
@@ -176,7 +194,7 @@
       "examinee_mode": "RULE_ONLY"
     },
     "B": {
-      "run_id": "20261030T144556Z",
+      "run_id": "20261030T152226Z",
       "status": "SCORED_PARTIAL",
       "total_score": 95.67,
       "question_understanding_coverage": 0.9,
@@ -198,7 +216,7 @@
       "examinee_mode": "RULE_ONLY"
     },
     "C": {
-      "run_id": "20261030T144556Z",
+      "run_id": "20261030T152227Z",
       "status": "SCORED",
       "total_score": 100.0,
       "question_understanding_coverage": 1.0,
@@ -223,8 +241,8 @@
   "all_runs": [
     {
       "exam": "A",
-      "run_id": "20261030T144555Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+      "run_id": "20261030T152225Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
       "requested_mode": "RULE_ONLY",
       "execution_path": "RULE_ONLY",
       "agent_spec": "none",
@@ -237,8 +255,8 @@
     },
     {
       "exam": "A",
-      "run_id": "20261030T144559Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+      "run_id": "20261030T152229Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
       "requested_mode": "AGENT_REQUIRED",
       "execution_path": "REAL_MODEL",
       "agent_spec": "dsh",
@@ -251,8 +269,8 @@
     },
     {
       "exam": "A",
-      "run_id": "20261030T144652Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+      "run_id": "20261030T152310Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
       "requested_mode": "AGENT_REQUIRED",
       "execution_path": "REAL_MODEL",
       "agent_spec": "pi",
@@ -265,8 +283,8 @@
     },
     {
       "exam": "A",
-      "run_id": "20261030T144728Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+      "run_id": "20261030T152329Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
       "requested_mode": "AGENT_REQUIRED",
       "execution_path": "REAL_MODEL",
       "agent_spec": "codex",
@@ -279,8 +297,8 @@
     },
     {
       "exam": "B",
-      "run_id": "20261030T144556Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+      "run_id": "20261030T152226Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
       "requested_mode": "RULE_ONLY",
       "execution_path": "RULE_ONLY",
       "agent_spec": "none",
@@ -293,8 +311,8 @@
     },
     {
       "exam": "C",
-      "run_id": "20261030T144556Z",
-      "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+      "run_id": "20261030T152227Z",
+      "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
       "requested_mode": "RULE_ONLY",
       "execution_path": "RULE_ONLY",
       "agent_spec": "none",
@@ -306,7 +324,28 @@
       "score_name": "RULE_BASELINE_SCORE"
     }
   ],
-  "status": "PASS",
-  "failed_key_gates": [],
+  "status": "FAIL",
+  "failed_key_gates": [
+    "G6"
+  ],
+  "reviewer_verdict": {
+    "verdict": "CONDITIONAL",
+    "present": true,
+    "round": 4,
+    "reviewed_commit": "934ec95"
+  },
+  "handoff_sha256_selfcheck": {
+    "path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/docs/dd-v1-fos71/ddv1-auto-test-suite/handoff",
+    "files": {
+      "BLOCKED-清单.md": "fe555ecf47962880be8f3aa397f09e274ab2e95eb91ba1877555d9545251864f",
+      "README.md": "786f2ec078993c5aeac938a88dbcda78ba3d0643405939aa29c0412d7feb8ac1",
+      "REVIEWER-REPORT-V3.md": "a30921f257985fced75bf027eb5614dd5f597c381322e397e8cbf711d3d289da",
+      "REVIEWER-REPORT-V4.md": "1e26690fe8bf6b34e13d72e752834f0c54405d57f185fb280ca71a45f5502bbe",
+      "SHA256SUMS": "9386b47c20f46449bdcc177270cf5c166a7be47f89e87304e9d74476cd07b7eb",
+      "兼容性清单.md": "7f0c9e19e265382f8d2a7a1d67c0cd0f79679730e0913dc3e39932a4ebcfc4dc",
+      "复跑命令.md": "306ba9f6712e017856cb299497a2445acc5845da91e73bf5a199e9c1b1e93c88",
+      "版本锚点.md": "695e8f747d6177e74417800b7c59cf187595178b8e210e5eb56840c387de1fa9"
+    }
+  },
   "note": "★ 阈值来自**考试前冻结**的门禁文件；结果不得反过来改阈值（改阈值必须换版本并留差异说明）。★ observations 里的**实际读数**才是真相：门禁 PASS ≠ 指标完美（例：考试A 理解率 0.667 源于材料类型词表覆盖缺口，属**已知能力边界**，未掩盖、已留证）。"
 }

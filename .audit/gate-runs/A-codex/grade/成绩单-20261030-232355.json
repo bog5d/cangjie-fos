@@ -2,10 +2,10 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "",
   "status": "LOW_CONFIDENCE",
-  "graded_at": "2026-10-30T22:47:27+08:00",
+  "graded_at": "2026-10-30T23:23:55+08:00",
   "scores": {
     "question_understanding_coverage": 0.666667,
-    "question_answer_coverage": 1.0,
+    "question_answer_coverage": 0.666667,
     "material_recall": 1.0,
     "selection_precision": 1.0,
     "complete_delivery_ratio": 1.0,
@@ -23,16 +23,16 @@
     "delivered_files": 2,
     "delivered_files_attributed": 2,
     "understood": 2,
-    "answered": 3,
+    "answered": 2,
     "complete": 3,
     "missed": 0,
     "wrong": 0
   },
   "rows": [
     {
-      "obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
+      "obligation_id": "aec84410231040e89c4bbe4878ee53ed",
       "cluster_ids": [
-        "d53cc66fa77c4228b1dc632f6b2175e9"
+        "aec84410231040e89c4bbe4878ee53ed"
       ],
       "cluster_count": 1,
       "item_no": "1-1",
@@ -60,9 +60,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "fc52982492df403db53fe07c815725d7",
+      "obligation_id": "33ea2b8b21e948a8815d8ad53be1d24c",
       "cluster_ids": [
-        "fc52982492df403db53fe07c815725d7"
+        "33ea2b8b21e948a8815d8ad53be1d24c"
       ],
       "cluster_count": 1,
       "item_no": "1-2",
@@ -93,9 +93,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
+      "obligation_id": "642b22558be64851b8a0d215354b37ae",
       "cluster_ids": [
-        "9e2d10e62502456ba3b90b0af2cd6a98"
+        "642b22558be64851b8a0d215354b37ae"
       ],
       "cluster_count": 1,
       "item_no": "1-3",
@@ -113,8 +113,8 @@
       "extra": [],
       "missed": [],
       "expected_verdict": "MATCH",
-      "agent_verdict": "MATCH",
-      "answered": true,
+      "agent_verdict": "UNCERTAIN",
+      "answered": false,
       "understood": false,
       "doc_type_source": "UNRESOLVED",
       "abstain_reason": "",
@@ -185,7 +185,7 @@
   },
   "evidence_diff": [
     {
-      "obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
+      "obligation_id": "aec84410231040e89c4bbe4878ee53ed",
       "item_no": "1-1",
       "outcome": "CORRECT",
       "correct": true,
@@ -224,7 +224,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "fc52982492df403db53fe07c815725d7",
+      "obligation_id": "33ea2b8b21e948a8815d8ad53be1d24c",
       "item_no": "1-2",
       "outcome": "CORRECT",
       "correct": true,
@@ -280,7 +280,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
+      "obligation_id": "642b22558be64851b8a0d215354b37ae",
       "item_no": "1-3",
       "outcome": "CORRECT",
       "correct": true,
@@ -301,7 +301,7 @@
           "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
           "entity": "合成母公司",
           "period": "2024",
-          "match_reason": "MODEL_SELECTION"
+          "match_reason": "MATCH"
         }
       ],
       "hit": [
@@ -310,7 +310,7 @@
       "extra": [],
       "missed": [],
       "delivered_files": [],
-      "agent_verdict": "MATCH",
+      "agent_verdict": "UNCERTAIN",
       "expected_verdict": "MATCH",
       "abstain_reason": "",
       "resolution_state": "RESOLVED",
@@ -333,7 +333,7 @@
     "exam_id": "DDV1-SYN-A",
     "items": [
       {
-        "obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
+        "obligation_id": "aec84410231040e89c4bbe4878ee53ed",
         "item_no": "1-1",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -356,7 +356,7 @@
         "note": ""
       },
       {
-        "obligation_id": "fc52982492df403db53fe07c815725d7",
+        "obligation_id": "33ea2b8b21e948a8815d8ad53be1d24c",
         "item_no": "1-2",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -391,7 +391,7 @@
         "note": ""
       },
       {
-        "obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
+        "obligation_id": "642b22558be64851b8a0d215354b37ae",
         "item_no": "1-3",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -455,19 +455,22 @@
   "run_provenance": {
     "requested_mode": "AGENT_REQUIRED",
     "execution_path": "REAL_MODEL",
-    "examinee_agent": "pi",
-    "examinee_framework": "pi",
-    "examinee_provider": "minimax-cn",
-    "actual_model": "MiniMax-M3.1-Flash-Preview",
+    "examinee_agent": "codex-cli",
+    "examinee_framework": "codex-cli",
+    "examinee_provider": "openai-codex",
+    "actual_model": "gpt-5.6-sol",
     "model_identity": {
-      "model_id": "MiniMax-M3.1-Flash-Preview",
-      "provider": "minimax-cn",
-      "source": "AGENT_EVENT",
+      "model_id": "gpt-5.6-sol",
+      "provider": "openai",
+      "source": "CODEX_EXECUTION_RECORD",
       "verified": true,
       "binding": {
-        "event": "message_end"
+        "thread_id": "01a18d68-bb85-7f92-b4d9-af7e8e1b08f1",
+        "rollout": "/Users/mac/.codex/sessions/2026/10/30/rollout-2026-10-30T23-23-33-01a18d68-bb85-7f92-b4d9-af7e8e1b08f1.jsonl",
+        "rollout_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-8_gj2oz7",
+        "expected_cwd": "/private/var/folders/lq/x9j31j_9391b27z41979czp40000gn/T/fos71-agent-8_gj2oz7"
       },
-      "note": "★ 来源：pi 自己的 message_end 事件"
+      "note": "★ 来源：codex 自己的执行记录（rollout turn_context）"
     },
     "model_identity_verified": true,
     "model_participated": true,
@@ -480,7 +483,7 @@
     "total_score": 96.67,
     "scores": {
       "question_understanding_coverage": 0.666667,
-      "question_answer_coverage": 1.0,
+      "question_answer_coverage": 0.666667,
       "material_recall": 1.0,
       "selection_precision": 1.0,
       "complete_delivery_ratio": 1.0,
@@ -505,9 +508,9 @@
     },
     "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
     "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
-    "code_version": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+    "code_version": "a7984649d01484afda6762ae74e6972ceb5af6cf",
     "evidence_paths": {
-      "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-224727.json",
+      "answer_sheet": ".audit/gate-runs/A-codex/answer/机器答卷-20261030-232355.json",
       "gold": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json",
       "library": "LIB-DDVE-A"
     }
@@ -519,7 +522,8 @@
     "note": "Gold 泄漏 ⇒ 安全失败，不得进入正式评分；本检测只覆盖结构面，不覆盖进程级隔离"
   },
   "selection_source": {
-    "MODEL": 3
+    "MODEL": 2,
+    "RULE_HINT": 1
   },
   "scoring_spec_fingerprint": "bd02ad8ba4ee71f19f13fdb8027ae52c08000e2e6b904bc5d77b378fe3d7bd9e",
   "scoring_spec_id": "DDV1-EXAM-SCORING-V1",

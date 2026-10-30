@@ -13,8 +13,8 @@
 | **本轮做了什么** | 建「自动考试台」（隔离考场 ＋ 三层自动考试 ＋ 自动标准答案评分 ＋ 冻结阈值交付门禁），修掉 **4 个活缺陷** ＋ **3 处假绿**；**二轮**再补：**三种运行模式**、**G8 真实模型参与门禁**、**模型身份核实**、**分 Agent 超时预算**、**14 条假绿反例回归** |
 | **分支** | `feat/dd-v1-auto-test-harness-20261030`（**未合并 master**） |
 | **基线** | `bf68cf94c2744624445b6ea992e41fc3f0b1b78e`（＝ PR#86 的 head，PR#86 本身也**未合并**） |
-| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`a1fb96b…`（证据生成于该提交的干净树，见 §3 三个锚点） |
-| **测试规模** | pytest 全量 **2174 项 / 0 失败 / 6 skipped**（CI 口径：代理改写 ＋ 排除 doctor） |
+| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`a798464…`（证据生成于该提交的干净树，见 §3 三个锚点） |
+| **测试规模** | pytest 全量 **2178 项 / 0 失败 / 6 skipped**（CI 口径：代理改写 ＋ 排除 doctor） |
 | **自动化覆盖率** | **98.04%**（50/51，**机算**）｜**通过率 100%**（50/50，**机算**）—— 两个数**分列** |
 | **三场合成考试（规则基线）** | A 基础 3 题 96.67 分｜B 复杂 9 题 95.67 分｜C 完整 42 题 **100.0 分**，安全闸全 PASS |
 | **★ 三名真实 Agent 考生** | **dsh**（deepseek-flash）｜**pi**（MiniMax-M3.1-Flash-Preview）｜**codex**（gpt-5.6-sol）—— **全部真实调用成功、模型身份核实通过** |
@@ -49,7 +49,7 @@
 | 读数 | 文件（仓内 `.audit/gate-runs/`） |
 |---|---|
 | **G1—G8 门禁判定 ＋ 实际读数 ＋ 全部运行清单** | `门禁报告.json`（★ 新增 `all_runs`：每一次运行的模式/执行路径/模型身份/分数） |
-| **pytest 机读报告 ＋ JUnit XML** | `g1_pytest.json` / `g1_pytest.xml`（**2174** 个 testcase） |
+| **pytest 机读报告 ＋ JUnit XML** | `g1_pytest.json` / `g1_pytest.xml`（**2178** 个 testcase） |
 | **机算覆盖率与通过率** | `覆盖率报告.json` → `自动化覆盖率统计` |
 | 三场考试的运行清单 / 答卷 / 成绩单 | `{A,B,C}/运行清单.json`、`{A,B,C}/answer/机器答卷-*.json`、`{A,B,C}/grade/成绩单-*.json` |
 | ★ **三名真实 Agent 考生**的运行清单 / 答卷 / 成绩单 | `{A-dsh,A-pi,A-codex}/运行清单.json` 等（**同一份冻结题 A ＋ 同一份 Gold**） |
@@ -81,7 +81,7 @@
 
 | 门禁 | 状态 | 依据 |
 |---|---|---|
-| G1 基础测试 PASS | ✅ PASS | pytest passed=**2168** failed=0 skipped=6 total=**2174**（`counting_ok=true`，`git_dirty=false`） |
+| G1 基础测试 PASS | ✅ PASS | pytest passed=**2172** failed=0 skipped=6 total=**2178**（`counting_ok=true`，`git_dirty=false`） |
 | G2 模拟端到端 PASS | ✅ PASS | 考试A rc=0、status=LOW_CONFIDENCE(total=96.67)、安全闸 PASS |
 | **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T144559Z']`（dsh 真实调用、参与、身份核实过）；reason 另列 pi/codex（MINOR-4 已修） |
 | G4 合成 Gold 评分达标 | ✅ PASS | 考试C total=100.0 ≥ 70、理解=1.0、覆盖=1.0、42/42 题、安全 PASS |
@@ -103,12 +103,12 @@
 
 | 运行 | 请求模式 | 实际执行路径 | 考生 | 模型 | 身份核实 | 总分 | 成绩名 |
 |---|---|---|---|---|---|---|---|
-| `A/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 96.67（0.25s） | `RULE_BASELINE_SCORE` |
-| `A-dsh/` | AGENT_REQUIRED | **`REAL_MODEL`** | dsh | deepseek-flash | ✅ | 96.67（52.82s） | `AI_SYSTEM_SCORE` |
-| `A-pi/` | AGENT_REQUIRED | **`REAL_MODEL`** | pi | MiniMax-M3.1-Flash-Preview | ✅ | 96.67（34.67s） | `AI_SYSTEM_SCORE` |
-| `A-codex/` | AGENT_REQUIRED | **`REAL_MODEL`** | codex | gpt-5.6-sol | ✅ | 96.67（25.18s） | `AI_SYSTEM_SCORE` |
-| `B/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 95.67（0.26s） | `RULE_BASELINE_SCORE` |
-| `C/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 100.0（2.0s） | `RULE_BASELINE_SCORE` |
+| `A/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 96.67（0.19s） | `RULE_BASELINE_SCORE` |
+| `A-dsh/` | AGENT_REQUIRED | **`REAL_MODEL`** | dsh | deepseek-flash | ✅ | 96.67（39.97s） | `AI_SYSTEM_SCORE` |
+| `A-pi/` | AGENT_REQUIRED | **`REAL_MODEL`** | pi | MiniMax-M3.1-Flash-Preview | ✅ | 96.67（17.72s） | `AI_SYSTEM_SCORE` |
+| `A-codex/` | AGENT_REQUIRED | **`REAL_MODEL`** | codex | gpt-5.6-sol | ✅ | 96.67（25.47s） | `AI_SYSTEM_SCORE` |
+| `B/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 95.67（0.24s） | `RULE_BASELINE_SCORE` |
+| `C/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 100.0（2.02s） | `RULE_BASELINE_SCORE` |
 
 ★ **规则基线分与 AI 系统分分列**；模型缺席时 AI 列 = `NOT_SCORED`（**不是 0 分**）。
 ★ ★ **如实结论**：**AI 并没有优于规则基线**（本轮打平）⇒ 这不是缺陷，是**事实**（详见 §4.1）。

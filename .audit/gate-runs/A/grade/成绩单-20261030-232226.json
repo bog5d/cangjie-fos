@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "",
   "status": "LOW_CONFIDENCE",
-  "graded_at": "2026-10-30T22:45:55+08:00",
+  "graded_at": "2026-10-30T23:22:26+08:00",
   "scores": {
     "question_understanding_coverage": 0.666667,
     "question_answer_coverage": 1.0,
@@ -30,9 +30,9 @@
   },
   "rows": [
     {
-      "obligation_id": "74795d80468544bdbd80665f394fc490",
+      "obligation_id": "f2b7f7547bea4a059a0376662f94a305",
       "cluster_ids": [
-        "74795d80468544bdbd80665f394fc490"
+        "f2b7f7547bea4a059a0376662f94a305"
       ],
       "cluster_count": 1,
       "item_no": "1-1",
@@ -60,9 +60,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "0051e5eccf4d4c3a80ea7ce52eb4a1d8",
+      "obligation_id": "ed80b5bc8fb0465b95951c0413a2ff19",
       "cluster_ids": [
-        "0051e5eccf4d4c3a80ea7ce52eb4a1d8"
+        "ed80b5bc8fb0465b95951c0413a2ff19"
       ],
       "cluster_count": 1,
       "item_no": "1-2",
@@ -93,9 +93,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "e560d6361f7c4ff384232cc132c51515",
+      "obligation_id": "6e405bbc489b4e52a533acd1a0d78bf3",
       "cluster_ids": [
-        "e560d6361f7c4ff384232cc132c51515"
+        "6e405bbc489b4e52a533acd1a0d78bf3"
       ],
       "cluster_count": 1,
       "item_no": "1-3",
@@ -185,7 +185,7 @@
   },
   "evidence_diff": [
     {
-      "obligation_id": "74795d80468544bdbd80665f394fc490",
+      "obligation_id": "f2b7f7547bea4a059a0376662f94a305",
       "item_no": "1-1",
       "outcome": "CORRECT",
       "correct": true,
@@ -224,7 +224,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "0051e5eccf4d4c3a80ea7ce52eb4a1d8",
+      "obligation_id": "ed80b5bc8fb0465b95951c0413a2ff19",
       "item_no": "1-2",
       "outcome": "CORRECT",
       "correct": true,
@@ -280,7 +280,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "e560d6361f7c4ff384232cc132c51515",
+      "obligation_id": "6e405bbc489b4e52a533acd1a0d78bf3",
       "item_no": "1-3",
       "outcome": "CORRECT",
       "correct": true,
@@ -333,7 +333,7 @@
     "exam_id": "DDV1-SYN-A",
     "items": [
       {
-        "obligation_id": "74795d80468544bdbd80665f394fc490",
+        "obligation_id": "f2b7f7547bea4a059a0376662f94a305",
         "item_no": "1-1",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -356,7 +356,7 @@
         "note": ""
       },
       {
-        "obligation_id": "0051e5eccf4d4c3a80ea7ce52eb4a1d8",
+        "obligation_id": "ed80b5bc8fb0465b95951c0413a2ff19",
         "item_no": "1-2",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -391,7 +391,7 @@
         "note": ""
       },
       {
-        "obligation_id": "e560d6361f7c4ff384232cc132c51515",
+        "obligation_id": "6e405bbc489b4e52a533acd1a0d78bf3",
         "item_no": "1-3",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -496,9 +496,9 @@
     },
     "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
     "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
-    "code_version": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+    "code_version": "a7984649d01484afda6762ae74e6972ceb5af6cf",
     "evidence_paths": {
-      "answer_sheet": ".audit/gate-runs/A/answer/机器答卷-20261030-224555.json",
+      "answer_sheet": ".audit/gate-runs/A/answer/机器答卷-20261030-232226.json",
       "gold": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json",
       "library": "LIB-DDVE-A"
     }

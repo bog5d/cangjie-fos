@@ -1,13 +1,13 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T144652Z",
+  "run_id": "20261030T152310Z",
   "exam": "A",
   "exam_id": "DDV1-SYN-A",
   "title": "考试A · 基础功能",
-  "started_at": "2026-10-30T22:47:27+08:00",
-  "finished_at": "2026-10-30T22:47:27+08:00",
-  "elapsed_s": 34.67,
-  "git_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+  "started_at": "2026-10-30T23:23:28+08:00",
+  "finished_at": "2026-10-30T23:23:28+08:00",
+  "elapsed_s": 17.72,
+  "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
   "git_dirty": false,
   "environment": {
     "platform": "darwin",
@@ -140,9 +140,9 @@
       },
       "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
       "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
-      "code_version": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba",
+      "code_version": "a7984649d01484afda6762ae74e6972ceb5af6cf",
       "evidence_paths": {
-        "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-224727.json",
+        "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-232328.json",
         "gold": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json",
         "library": "LIB-DDVE-A"
       }
@@ -250,7 +250,7 @@
   "disclosure": {
     "delivered_rows": 2,
     "delivered_files": 2,
-    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/A/data/deliveries/752cf13676484e3f86e69b9be33c33af/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/A/data/deliveries/fee4fdab54cd4666b38c46eefd859d66/组包manifest.tsv",
     "blocked_materials": 4,
     "violations": 0,
     "violation_detail": [],
@@ -264,7 +264,7 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-224727.json",
+    "answer_sheet": ".audit/gate-runs/A-pi/answer/机器答卷-20261030-232328.json",
     "scorecard_dir": ".audit/gate-runs/A-pi/grade",
     "run_report_dir": ".audit/gate-runs/A-pi/run",
     "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json"

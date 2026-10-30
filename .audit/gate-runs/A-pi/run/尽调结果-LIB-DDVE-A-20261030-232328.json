@@ -1,13 +1,13 @@
 {
   "library": "LIB-DDVE-A",
   "institution": "合成机构A",
-  "generated_at": "2026-10-30T22:47:27",
+  "generated_at": "2026-10-30T23:23:28",
   "input_snapshot": {
-    "input_snapshot_id": "d73bdbca55f8f6fc98e870e30dc23f4168ecec41b4e75506b9e77cb94791fad1",
+    "input_snapshot_id": "b724656b9762a9d5a44cef24de044e17550af8040e67d35976310623c3ca3feb",
     "checklist_fingerprint": "2daf53abcdac2176",
     "material_digest": "3f9bc31423d4817adc8cbd72e3af7485a36970cd4d9094abd9ad97e44977ac20",
     "material_files": 5,
-    "code_sha": "a1fb96bdc92e6ae9c9a5826c638e28d4761cecba"
+    "code_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf"
   },
   "human_approval_required": true,
   "sent_to_institution": false,
@@ -145,7 +145,7 @@
       "role": "AUX",
       "status": "OK",
       "exit_code": 0,
-      "elapsed_s": 34.36,
+      "elapsed_s": 17.39,
       "model_id_or_unknown": "MiniMax-M3.1-Flash-Preview",
       "framework": "pi",
       "model_identity": {
@@ -175,14 +175,14 @@
           "n": 1,
           "status": "OK",
           "exit_code": 0,
-          "elapsed_s": 34.36,
+          "elapsed_s": 17.39,
           "cost_usd_or_UNKNOWN": 0,
           "token_usage_or_UNKNOWN": {
-            "input": 5326,
-            "output": 4760,
+            "input": 5318,
+            "output": 2346,
             "cacheRead": 128,
             "cacheWrite": 0,
-            "totalTokens": 10214,
+            "totalTokens": 7792,
             "cost": {
               "input": 0,
               "output": 0,
@@ -191,21 +191,21 @@
               "total": 0
             },
             "cacheWrite1h": 0,
-            "reasoning": 3790
+            "reasoning": 1402
           },
           "error_code": null,
-          "wall_elapsed_s": 34.45
+          "wall_elapsed_s": 17.4
         }
       ],
       "perf": {
-        "total_elapsed_s": 34.45,
+        "total_elapsed_s": 17.4,
         "cost_usd_or_UNKNOWN": 0,
         "token_usage_or_UNKNOWN": {
-          "input": 5326,
-          "output": 4760,
+          "input": 5318,
+          "output": 2346,
           "cacheRead": 128,
           "cacheWrite": 0,
-          "totalTokens": 10214,
+          "totalTokens": 7792,
           "cost": {
             "input": 0,
             "output": 0,
@@ -214,7 +214,7 @@
             "total": 0
           },
           "cacheWrite1h": 0,
-          "reasoning": 3790
+          "reasoning": 1402
         },
         "attempts_cost": [
           0
@@ -222,7 +222,7 @@
         "max_total_s": 242.0,
         "budget_exhausted": false
       },
-      "raw_digest": "sha256:77833ff167859b4d22473ba8f4bacdc20b431b4bc304dfa3b750ba350a842515",
+      "raw_digest": "sha256:f64c6dff243b960566ce481ee78fcfb687182dde857346bdffec82c63b7c6369",
       "provenance": "HARNESS_MODEL",
       "participated": true,
       "participated_scope": "RECEIPT",
@@ -232,7 +232,7 @@
       "implementation_verified": true,
       "executable": "pi",
       "argv_digest": "sha256:e2a4a9afdf47955dfcf336259f1194c51819e823254229e9beb025a977041751",
-      "workdir_digest": "sha256:c4bb3417a9979e946182ad2e7b55245a39177cd5041db84a8ec48bdd1a2ab0dd",
+      "workdir_digest": "sha256:c9f90fee263e4d063109b78b9394aa7e8c050c875388f63b542f66b5c422d3e2",
       "accepted_results": 3,
       "note": "★ 回执只证明「哪个适配器实现、哪次调用、回了什么摘要」；**不证明**判断出自哪个模型 —— 模型身份由适配器**实现**决定，自填的 adapter_id 只能作旁证"
     },
@@ -251,17 +251,17 @@
     },
     "obligations": [
       {
-        "obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
-        "source_obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
+        "obligation_id": "5036355564d04f8fb95dd765a3b10b9e",
+        "source_obligation_id": "5036355564d04f8fb95dd765a3b10b9e",
         "item_no": "1-1",
         "question_id": "1-1",
         "text": "请提供合成母公司2024年度审计报告",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "d53cc66fa77c4228b1dc632f6b2175e9",
+          "obligation_id": "5036355564d04f8fb95dd765a3b10b9e",
           "proposed_verdict": "MATCH",
-          "proposed_doc_type": "audit_report",
+          "proposed_doc_type": "",
           "confidence_or_uncertain": 0.99,
           "agent_id": "pi",
           "provider": "minimax-cn",
@@ -272,7 +272,7 @@
           "rejected_alternatives": [
             {
               "file_id": "e56df693642ab43b7db6d826063832d0",
-              "reason": "文件期间为2023年度，与要求的2024年度不符，不能作为本次匹配件。"
+              "reason": "该审计报告期间为2023年，与要求的2024年度不符。"
             }
           ],
           "discrimination": {
@@ -430,18 +430,18 @@
         ]
       },
       {
-        "obligation_id": "fc52982492df403db53fe07c815725d7",
-        "source_obligation_id": "fc52982492df403db53fe07c815725d7",
+        "obligation_id": "02911efcf6e6495a9839271c5cc28b75",
+        "source_obligation_id": "02911efcf6e6495a9839271c5cc28b75",
         "item_no": "1-2",
         "question_id": "1-2",
         "text": "请提供合成母公司2024年度营业执照",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "fc52982492df403db53fe07c815725d7",
+          "obligation_id": "02911efcf6e6495a9839271c5cc28b75",
           "proposed_verdict": "MATCH",
-          "proposed_doc_type": "license",
-          "confidence_or_uncertain": 0.98,
+          "proposed_doc_type": "",
+          "confidence_or_uncertain": 0.99,
           "agent_id": "pi",
           "provider": "minimax-cn",
           "model_id_or_unknown": "UNKNOWN",
@@ -607,18 +607,18 @@
         ]
       },
       {
-        "obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
-        "source_obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
+        "obligation_id": "bed00a2d608e4abaa885d497ffca473e",
+        "source_obligation_id": "bed00a2d608e4abaa885d497ffca473e",
         "item_no": "1-3",
         "question_id": "1-3",
         "text": "请提供合成母公司2024年度经营情况说明",
         "entity": "合成母公司",
         "entity_basis": "AUTHORITY",
         "model_selection": {
-          "obligation_id": "9e2d10e62502456ba3b90b0af2cd6a98",
+          "obligation_id": "bed00a2d608e4abaa885d497ffca473e",
           "proposed_verdict": "MATCH",
           "proposed_doc_type": "financial_statement",
-          "confidence_or_uncertain": 0.84,
+          "confidence_or_uncertain": 0.9,
           "agent_id": "pi",
           "provider": "minimax-cn",
           "model_id_or_unknown": "UNKNOWN",
