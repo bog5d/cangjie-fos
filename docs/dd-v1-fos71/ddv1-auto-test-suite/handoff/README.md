@@ -38,6 +38,7 @@
 
 > ★ **仓内配套文档**（不在本包内，在 `docs/dd-v1-fos71/ddv1-auto-test-suite/`）：
 > `WP0-AUDIT.md`（缺陷审计）、`COVERAGE.md`（覆盖率报告）、`SKILLS-CANDIDATES.md`（Skills 候选）、
+> ★ **`证据来源与口径.md`**（★ 每份机器读数**在哪个 commit、什么环境、谁跑出来的**；含「云端无模型凭证 ⇒ 真实模型证据未在云端重生成」的明确标注）、
 > `真实Agent考试报告-V3.md`（**二轮**执行报告：真实 Agent 参与证据 ＋ 三模式 ＋ G8 ＋ 对照结论）、
 > `真实42题业务草案-V3.md`（Gold / 披露分级 / 合格线**草案**，**未冻结**）、
 > `施工令交付物对照表.md`（施工令 12 项交付物逐项对照 ＋ 门禁逐条现状）。
@@ -83,15 +84,15 @@
 |---|---|---|
 | G1 基础测试 PASS | ✅ PASS | pytest passed=**2172** failed=0 skipped=6 total=**2178**（`counting_ok=true`，`git_dirty=false`） |
 | G2 模拟端到端 PASS | ✅ PASS | 考试A rc=0、status=LOW_CONFIDENCE(total=96.67)、安全闸 PASS |
-| **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T144559Z']`（dsh 真实调用、参与、身份核实过）；reason 另列 pi/codex（MINOR-4 已修） |
+| **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T152229Z']`（dsh 真实调用、参与、身份核实过）；reason 另列 pi/codex（MINOR-4 已修） |
 | G4 合成 Gold 评分达标 | ✅ PASS | 考试C total=100.0 ≥ 70、理解=1.0、覆盖=1.0、42/42 题、安全 PASS |
 | G5 安全测试 PASS | ✅ PASS | 考试B status=SCORED_PARTIAL、安全 PASS、无 blocked、覆盖=1.0 |
 | **G6 独立 Reviewer PASS** | ❌ **FAIL（verdict＝CONDITIONAL）** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS → **第 3 轮 CONDITIONAL** → **第 4 轮 CONDITIONAL**（`REVIEWER-REPORT-V4.md`：R1—R9／C1—C4／C6／C8 PASS、R10＝NOT_VERIFIED、C5＝PARTIAL；**两条 MAJOR 真闭环**、**9 条 MINOR/NIT 全闭环**；新提 3 MINOR ＋ 3 NIT ⇒ 已修 3 MINOR ＋ 2 NIT）。<br>★ **amendment A7**：G6 **只认 `PASS`**（`CONDITIONAL` ⇒ FAIL）＋ 门禁报告新增机器可读 `reviewer_verdict`；**A8**：G6 进入 `key_gates` ⇒ 整体 `status=FAIL`、`failed_key_gates=["G6"]`（**与本表人读口径一致**） |
 | G7 交接包生成 | ✅ PASS | 本目录存在且非空 |
 | **G8 真实模型参与门禁** | ✅ **PASS** | `real_model=3; rule_only=3; degraded=0; mock=0; identity_unknown=0` —— ★ **本轮新增**；读**真实考试产物**，不认人工说明字段 |
 
-> ★ **关键门槛（`key_gates`）＝ G1/G2/G3/G4/G5/G8 ⇒ 全部 PASS** ⇒ `status=PASS`、`failed_key_gates=[]`。
-> ★ **但整体 PASS ≠ 可以验收**：**G6（第 3 轮复核）未出** ＋ **真实 42 题的 Gold/披露/合格线未冻结**（BLOCKED-2/3）
+> ★ **关键门槛（`key_gates`）＝ G1/G2/G3/G4/G5/**G6**/G8（★ amendment A8：G6 已进关键门槛）** ⇒ 其中 **G6＝FAIL** ⇒ **整体 `status=FAIL`、`failed_key_gates=["G6"]`**。
+> ★ **整体 FAIL ≠ 可以验收**：**G6（第 4 轮复核＝CONDITIONAL，R10 Windows 真机未验）** ＋ **真实 42 题的 Gold/披露/合格线未冻结**（BLOCKED-2/3）
 > ＋ **Windows 真机未验**（BLOCKED-4）⇒ **仍不得向刘江发正式验收请求**（见 §6）。
 
 > ★ **门禁 PASS ≠ 指标完美**。门禁报告的 `observations` 区把**实际读数原样摊开**，
@@ -196,8 +197,8 @@
 > ⇒ ★ **教训比任何单条 bug 都值钱**：**我们自己也会拿脏证据讲出一个漂亮的故事**；
 > 而**干净地重复跑**才是唯一能推翻它的办法 —— 这也是本轮把「最小方差实验」真跑出来的原因。
 
-> ★ 两轮复核报告**都入库**、**都保留原文**：
-> `.audit/gate-runs/g6_reviewer_round1.json`（第 1 轮，CONDITIONAL）＋ `g6_reviewer_round2.json`（第 2 轮，PASS）＋ `g6_reviewer.json`（**第 3 轮**：二轮施工的复核）。
+> ★ **两轮复核报告**都入库、都保留原文：
+> `.audit/gate-runs/g6_reviewer_round1.json`（第 1 轮，CONDITIONAL）＋ `g6_reviewer_round2.json`（第 2 轮，PASS）＋ `g6_reviewer_round3.json`（第 3 轮，CONDITIONAL）＋ `g6_reviewer.json`（**当前轮＝第 4 轮**，CONDITIONAL）。
 > **不删改历史报告**——这比「只有一份 PASS」更可信。
 > ★ 第 1 轮最值钱的一条：**它发现证据链是断的**（分数偏低 ⇒ 不是虚高，但证据对不上代码）。
 > 用「**只回退一个文件**」的对照实验定位到根因（D4 修复前后），重跑后逐位复现 ⇒ 已修正。
@@ -266,7 +267,7 @@
 | Windows 交接包完整 | ✅ 本包 |
 | **真实模型参与证明 PASS（G3）** | ✅ **PASS**（dsh 真实调用：exit=0、**8.93s**、deepseek-flash、身份核实 verified） |
 
-⇒ **等这三件事**：① **G6 第 3 轮复核出结论**；② **业务方冻结真实 42 题的 Gold / 披露分级 / 合格线**；
+⇒ **等这三件事**：① **G6 复核出 PASS 结论**（当前轮第 4 轮＝CONDITIONAL；**R10 Windows 真机**须刘江在 Windows 上复跑并产出带 `platform=Windows` 的运行清单）；② **业务方冻结真实 42 题的 Gold / 披露分级 / 合格线**；
 ③ **Windows 真机复跑通过**（BLOCKED-4）。
 在此之前，刘江侧可按 `复跑命令.md` 做**自检**（**不是**正式验收）。
 
