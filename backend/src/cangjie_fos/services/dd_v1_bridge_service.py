@@ -520,8 +520,23 @@ def bridge_library(
                 "exit_code": _a.get("exit_code"),
                 "elapsed_s": _a.get("elapsed_s"),
                 "model_id_or_unknown": str(_a.get("model_id_or_unknown") or "UNKNOWN"),
+                # ★★ **框架 ≠ 服务商**（施工令 V3.0 §5.2）：pi 是框架，minimax-cn 是服务商
+                "framework": str(_a.get("framework") or ""),
+                # ★★ **模型身份的来源与核实状态**（施工令 V3.0 §7.1）
+                #   ★ `model_id_or_unknown` 只是「模型 id」；**核实过没有**是另一件事。
+                #   ★ 身份**只认 Agent 自己的元数据**（dsh 配置树 / pi 事件 / codex 执行记录），
+                #     拿不到就是 UNKNOWN ⇒ **不猜**。
+                "model_identity": dict((_a.get("provenance") or {}).get("model_identity") or {})
+                if isinstance(_a.get("provenance"), dict) else {},
+                "model_identity_source": str(_a.get("model_identity_source") or "UNKNOWN"),
+                "model_identity_verified": bool(_a.get("model_identity_verified")),
                 "cost_usd_or_UNKNOWN": _a.get("cost_usd_or_UNKNOWN", "UNKNOWN"),
                 "calls_used": external_model_calls,
+                # ★★ **P5 性能与成本账**（施工令 V3.0 §P5）：分 Agent 超时预算 / 重试明细 /
+                #   逐次成本 / 总耗时 ⇒ **跟成绩单一起留证**，不只躺在临时 workdir 里。
+                "budget": dict(rec.get("budget") or {}),
+                "attempts": list(rec.get("attempts") or []),
+                "perf": dict(rec.get("perf") or {}),
                 "raw_digest": ("sha256:" + hashlib.sha256(_raw.encode("utf-8")).hexdigest())
                 if _raw else "",
                 # ★ ★ **权威参与类别：按适配器**实现类**判定**（不看自填 id）

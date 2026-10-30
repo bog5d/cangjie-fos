@@ -293,6 +293,7 @@ def cmd_run(a) -> int:
     # ★ **模型参与**：只有显式 `--agent` 才接适配器 ⇒ 默认全程 RULE_ONLY。
     #   适配器在**本机**跑（材料不出本机）⇒ 不向未授权模型外发保密资料。
     _adapter = None
+    _budget = None
     _agent_spec = str(getattr(a, "agent", "") or "").strip()
     _agent_result = str(getattr(a, "agent_result", "") or "").strip()
     if _agent_spec or _agent_result:
@@ -301,14 +302,30 @@ def cmd_run(a) -> int:
             _adapter = ad.build_adapter(
                 _agent_spec or "prebaked",
                 result_path=_agent_result or None,
-                dsh_enabled=(_agent_spec.lower() in ("dsh", "deepseek", "deepseek-harness")))
+                dsh_enabled=(_agent_spec.lower() in ("dsh", "deepseek", "deepseek-harness")),
+                # ★ codex 落盘**执行记录**（rollout）⇒ 模型身份才可核实（否则恒 UNKNOWN）。
+                #   ★ 默认**关闭**：rollout 里含完整提示词 ⇒ 真实材料场景下会把材料写进
+                #     ~/.codex/sessions ⇒ 合成考场可开，真实考场需谨慎。
+                codex_persist_session=bool(getattr(a, "codex_persist_session", False)))
             print(f"  · 已接模型适配器：{getattr(_adapter, 'adapter_id', '?')}"
                   f"（本机运行，材料不出本机）")
+            # ★ P5：**分 Agent 超时预算**（按真实耗时定，不是统一 420）
+            _fw = ad.adapter_framework(_adapter)
+            _budget = ad.budget_for_framework(
+                _fw,
+                max_calls=max(1, int(getattr(a, "agent_max_calls", 2) or 2)),
+                timeout_s=getattr(a, "agent_timeout", None),
+                retry_backoff_s=(float(getattr(a, "agent_retry_backoff"))
+                                 if getattr(a, "agent_retry_backoff", None) is not None
+                                 else ad.RETRY_BACKOFF_S))
+            print(f"  · 调用预算：框架 {_fw}｜单次超时 {_budget.timeout_s:.0f}s"
+                  f"｜最多调用 {_budget.max_calls} 次｜退避 {_budget.retry_backoff_s:.0f}s"
+                  f"｜总墙钟上限 {_budget.max_total_s:.0f}s")
         except Exception as exc:  # noqa: BLE001
             print(f"  ⚠️ 模型适配器没接上：{type(exc).__name__}: {exc}"
                   f"⇒ 本次仍走**纯规则**（RULE_ONLY）")
             _adapter = None
-    bridge = _run_bridge(lib, root, a, adapter=_adapter)
+    bridge = _run_bridge(lib, root, a, adapter=_adapter, budget=_budget)
     if bridge.get("ok"):
         b = bridge["result"]
         c = b["counts"]
@@ -538,7 +555,7 @@ def _run_package(pack: dict, a) -> int:
     return EXIT_OK
 
 
-def _run_bridge(lib, root: Path, a, adapter=None) -> dict:
+def _run_bridge(lib, root: Path, a, adapter=None, budget=None) -> dict:
     """跑一次语义层桥接。**任何失败都不得影响入口 A 的原有输出。**
 
     返回：
@@ -553,6 +570,8 @@ def _run_bridge(lib, root: Path, a, adapter=None) -> dict:
         res = br.bridge_library(
             lib, material_root=root, db_path=None,
             adapter=adapter,
+            # ★ P5：分 Agent 超时预算/重试预算（None ⇒ 用适配器层默认值）
+            budget=budget,
             allow_real_material=bool(getattr(a, "allow_real_material", False)),
             # ★ 类型待判定通道：**显式打开**才生效（默认关闭 ⇒ 既有六态口径一字不变）。
             resolve_doc_type=bool(getattr(a, "resolve_doc_type", False)))
@@ -1196,6 +1215,12 @@ def cmd_answer(a) -> int:
                               "vendor": str(_rc.get("vendor") or ""),
                               "status": str(_rc.get("status") or ""),
                               "model_id_or_unknown": str(_rc.get("model_id_or_unknown") or "UNKNOWN"),
+                              # ★★ **框架 ≠ 服务商**（施工令 V3.0 §5.2）
+                              "framework": str(_rc.get("framework") or ""),
+                              # ★★ **模型身份**：来源 ＋ 核实状态（`model_id` 只是 id，核实是另一件事）
+                              "model_identity": dict(_rc.get("model_identity") or {}),
+                              "model_identity_source": str(_rc.get("model_identity_source") or "UNKNOWN"),
+                              "model_identity_verified": bool(_rc.get("model_identity_verified")),
                               "provenance": str(_rc.get("provenance") or ""),
                               # ★ 带**盖章**（下游只认盖章；不带 ⇒ 只作旁证）
                               "provenance_source": str(_rc.get("provenance_source") or ""),
@@ -1224,7 +1249,8 @@ def cmd_answer(a) -> int:
             print(f"[警告] 交付清单读不到或为空：{_dl}"
                   "（本次按「0 件交付」计 ⇒ 阅卷会按 HR-1 强制 0 分）")
     sheet = ex.build_answer_sheet(rec, pkt, exam_id=getattr(a, "exam_id", "") or "",
-                                  delivered=delivered)
+                                  delivered=delivered,
+                                  requested_mode=str(getattr(a, "run_mode", "") or "RULE_ONLY"))
     out = _exam_out_dir(a)
     stem = f"机器答卷-{_exam_ts()}"
     (out / f"{stem}.json").write_text(json.dumps(sheet, ensure_ascii=False, indent=2), "utf-8")
@@ -1235,6 +1261,17 @@ def cmd_answer(a) -> int:
           f"｜候选触顶 {s.get('truncated_obligations')} 条")
     print(f"[落盘] {out / (stem + '.json')}")
     return EXIT_OK
+
+
+def _code_sha() -> str:
+    """当前代码版本（``git rev-parse HEAD``）—— 成绩单里「证据对应哪份代码」的那一栏。
+
+    ★ 拿不到就返回空串（**不编造**）⇒ 下游看到空值就知道「版本未绑定」。
+    """
+    try:
+        return os.popen(f"git -C {_REPO} rev-parse HEAD").read().strip()
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def cmd_grade(a) -> int:
@@ -1304,6 +1341,13 @@ def cmd_grade(a) -> int:
         exam_id=str(contract.get("exam_id") or ""),
         leak_report=leak,
         exam_questions=_questions,
+        # ★★ 施工令 V3.0 §7.3：**17 项全量账**里的「代码 SHA」「证据位置」「标准答案来源」
+        #   —— 阅卷时就写进成绩单（事后补 = 不可信）。
+        code_version=_code_sha(),
+        evidence_paths={"answer_sheet": str(getattr(a, "answer", "") or ""),
+                        "gold": str(getattr(a, "gold", "") or ""),
+                        "library": str(library_id or "")},
+        gold_source=("LOCAL_GOLD_PACK" if manifest is not None else ""),
         # ★★ 标准答案 ↔ 图书馆的**义务键绑定**（库内主键是 uuid4，换快照即变；
         #   标准答案只存 uuid ⇒ 静默对不上 ⇒ 全场落空 ⇒ 分数恒 0）。
         library_contract=_lib_contract or None)
@@ -1408,9 +1452,20 @@ def build_parser() -> argparse.ArgumentParser:
                         "—— 主体识别里证据强度最高的一档")
     r.add_argument("--agent", default="",
                    help="接**模型**做语义判断：codex｜pi｜dsh｜manual｜none（默认 none＝纯规则）")
+    r.add_argument("--codex-persist-session", action="store_true",
+                   help="让 codex 落盘执行记录（rollout）⇒ **模型身份可核实**；"
+                        "默认关闭（rollout 含完整提示词）")
     r.add_argument("--agent-result", default="",
                    help="Harness 回执 JSON 路径（模型在**本机**跑完后回传；"
                         "材料不出本机 ⇒ 不向未授权模型外发保密资料）")
+    # ── P5：分 Agent 超时预算 / 重试 / 退避（**不给就用按真实耗时定的默认**）──
+    r.add_argument("--agent-timeout", type=float, default=None,
+                   help="单次 Agent 调用硬超时秒数（不给 ⇒ 按框架用实测预算："
+                        "dsh 300／pi 120／codex 300；**不**机械统一 420）")
+    r.add_argument("--agent-max-calls", type=int, default=2,
+                   help="最多调用次数（含重试；默认 2 ⇒ TIMEOUT/CALL_FAILED 会重试 1 次）")
+    r.add_argument("--agent-retry-backoff", type=float, default=None,
+                   help="重试退避秒数（不给 ⇒ 默认 2s，固定值不抖动 ⇒ 考试可复现）")
     r.add_argument("--parse-limit", type=int, default=2000, help="本次最多抽取多少份正文")
     r.add_argument("--out", default=None, help="报告输出目录")
     r.add_argument("--no-bridge", action="store_true",
@@ -1459,6 +1514,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="组包manifest.tsv（**实际交付**清单）；"
                          "给了它就以它为准（阅卷的「实际交付件数」只看这一份）")
     an.add_argument("--exam-id", default="", help="考场标识")
+    an.add_argument("--run-mode", default="RULE_ONLY",
+                    help="★ 请求的运行模式（施工令 V3.0 §6）："
+                         "RULE_ONLY（规则基线）｜AGENT_REQUIRED（必须真模型，否则考试 FAIL）｜AUTO（可降级，如实记录）")
     an.add_argument("--out", default="", help="输出目录")
     an.set_defaults(func=cmd_answer)
 

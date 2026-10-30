@@ -52,6 +52,10 @@ ACCEPTANCE_SPEC = BACKEND / "config" / "dd_v1_acceptance_items.v1.json"
 
 EXAM_IDS = ("A", "B", "C")
 
+# ★ 运行模式常量（施工令 V3.0 §6）—— 门禁判定也要用 ⇒ 提到**模块级**
+sys.path.insert(0, str(BACKEND / "src"))
+from cangjie_fos.services import dd_v1_run_modes as rm  # noqa: E402
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
@@ -336,8 +340,24 @@ def build_gold(exam: str, contract: dict[str, Any], meta: list[dict[str, Any]],
 
 def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
              allow_local_dsh: bool = False, reset: bool = True,
-             out_dir: str = "", keep_gold: bool = False) -> dict[str, Any]:
-    """跑一场完整考试 ⇒ 返回运行清单（含成绩与失败项）。"""
+             out_dir: str = "", keep_gold: bool = False,
+             run_mode: str = "RULE_ONLY",
+             codex_persist_session: bool = False,
+             agent_timeout: float | None = None,
+             agent_max_calls: int = 2) -> dict[str, Any]:
+    """跑一场完整考试 ⇒ 返回运行清单（含成绩与失败项）。
+
+    ★ ``run_mode``：**请求的运行模式**（RULE_ONLY / AGENT_REQUIRED / AUTO）
+      —— 施工令 V3.0 §6。**请求的模式**与**实际执行路径**在运行清单里**分列**，
+      两者不同 ⇒ 就是「降级」，如实记录，**不冒充 AI 成绩**。
+    """
+    _req_mode = rm.normalize_mode(run_mode)
+    # ★ AGENT_REQUIRED ⇒ **必须**有 Agent；没给 Agent 直接拒绝（fail-loud，不静默跑规则）
+    if _req_mode == rm.MODE_AGENT_REQUIRED and str(agent or "none") == "none":
+        raise SystemExit(
+            "❌ --run-mode AGENT_REQUIRED 要求真实 Agent，但没给 --agent。\n"
+            "   可选：dsh（真实 DeepSeek Harness）｜codex｜pi\n"
+            "   ⇒ **不允许**在 AGENT_REQUIRED 下静默跑成规则考试。")
     spec = _spec(exam)
     plane = _prepare_plane(exam, reset=reset)
     data_dir = plane / "data"
@@ -420,6 +440,13 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
                 "--out", str(out / "run")]
     if agent and agent != "none":
         run_args += ["--agent", agent]
+    # ★ P5：分 Agent 超时预算/重试预算（不给 ⇒ 按框架用实测预算）
+    if agent and agent != "none":
+        run_args += ["--agent-max-calls", str(int(agent_max_calls or 2))]
+        if agent_timeout is not None:
+            run_args += ["--agent-timeout", str(float(agent_timeout))]
+    if codex_persist_session:
+        run_args += ["--codex-persist-session"]
     if agent_result:
         run_args += ["--agent-result", str(agent_result)]
     if agent == "dsh" and allow_local_dsh:
@@ -439,7 +466,8 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
     answer_dir = out / "answer"
     answer_dir.mkdir(parents=True, exist_ok=True)
     answer_args = ["answer", "--out", str(answer_dir),
-                   "--exam-id", str(spec.get("exam_id") or "")]
+                   "--exam-id", str(spec.get("exam_id") or ""),
+                   "--run-mode", _req_mode]
     if run_js:
         answer_args += ["--bridge-json", str(run_js[-1])]
     manifest_tsv = sorted((out / "run").rglob("组包manifest.tsv"))
@@ -460,13 +488,29 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
         if cards_:
             card = json.loads(cards_[0].read_text("utf-8"))
 
+    _rp = dict(card.get("run_provenance") or {})
     model_participation = {
         "agent_spec": agent,
         "agent_result_file": agent_result or "",
         "examinee_mode": str(card.get("examinee_mode") or "UNKNOWN"),
-        "participated": bool((card.get("examinee") or {}).get("participated"))
-        if isinstance(card.get("examinee"), dict) else False,
+        # ★ **回执口径**的参与标记（成绩单的 17 项账里那一项）⇒
+        #   成绩单**没有** `examinee` 块（那是答卷的），读错字段 ⇒ 永远 False（⇒ 假绿）。
+        "participated": bool(_rp.get("model_participated")),
+        # ★★ 施工令 V3.0 §6：请求的模式 ＋ 实际执行路径 ＋ 模型身份（**分列**）
+        "requested_mode": _req_mode,
+        "execution_path": str((card.get("run_provenance") or {}).get("execution_path") or ""),
+        "actual_model": str((card.get("run_provenance") or {}).get("actual_model") or "UNKNOWN"),
+        "model_identity_verified": bool((card.get("run_provenance") or {}).get("model_identity_verified")),
+        "model_identity": dict((card.get("run_provenance") or {}).get("model_identity") or {}),
+        "examinee_framework": str((card.get("run_provenance") or {}).get("examinee_framework") or ""),
+        "examinee_provider": str((card.get("run_provenance") or {}).get("examinee_provider") or ""),
+        # ★ 成绩两列（规则基线分 vs AI 系统分）—— 模型缺席时 AI 列 NOT_SCORED
+        "score_split": dict(card.get("score_split") or {}),
     }
+    # ★★ 施工令 V3.0 §6：**考试状态**由「实际执行路径」决定（不是只看阅卷状态）
+    _exec_path = str(model_participation.get("execution_path") or "")
+    _exam_status = rm.exam_status_for(_exec_path, str(card.get("status") or "NO_SCORECARD"))
+
     manifest = {
         "schema_version": "dd_v1_exam_run_manifest.v1",
         "run_id": run_id,
@@ -500,8 +544,13 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
         },
         "results": {
             "rc_run": rc_run, "rc_answer": rc_answer, "rc_grade": rc_grade,
-            "status": str(card.get("status") or "NO_SCORECARD"),
+            # ★★ 施工令 V3.0 §6：AGENT_REQUIRED 且模型没参与 ⇒ **考试状态 FAIL**
+            #   （**不是**降级成规则考试，也不是把规则分当 AI 分）
+            "status": _exam_status,
+            "scorecard_status": str(card.get("status") or "NO_SCORECARD"),
             "scores": card.get("scores"),
+            "score_split": dict(card.get("score_split") or {}),
+            "run_provenance": dict(card.get("run_provenance") or {}),
             "safety_gate": card.get("safety_gate"),
             "counts": card.get("counts"),
             "exam_coverage": card.get("exam_coverage"),
@@ -566,17 +615,35 @@ def evaluate_gate(runs_dir: str, gate_spec: dict[str, Any] | None = None) -> dic
                 "gates": {k: {"status": "UNKNOWN", "reason": "NO_RUN"} for k in gates}}
     latest: dict[str, dict[str, Any]] = {}
     all_manifests: list[dict[str, Any]] = []
+    runs_by_exam: dict[str, list[dict[str, Any]]] = {}
     for p in runs:
         m = json.loads(p.read_text("utf-8"))
-        latest[m.get("exam") or p.parent.name] = m
         all_manifests.append(m)
+        exam_key = str(m.get("exam") or p.parent.name)
+        runs_by_exam.setdefault(exam_key, []).append(m)
+    # ═══════════════════════════════════════════════════════════════════════
+    # ★ **绑定确定性**（amendment A4）：同一场考试**可能有多次运行**
+    #   （规则基线 ＋ 若干次真实模型）。原来按**路径排序**取最后一个
+    #   ⇒ 换一个目录名就可能换掉被判定的那一次 ⇒ **判定结果与证据目录名耦合**。
+    #   ⇒ 现在：**按考试绑定的门槛（G2/G4/G5 等）一律绑定到该考试的「规则基线」运行**
+    #     （``requested_mode == RULE_ONLY``；同键多条时取 ``run_id`` 字典序最大者，
+    #      仍并列则取路径序最大者 ⇒ 完全确定性）。
+    #   ★ **G3 / G8 仍然看** ``all_manifests``（**全部**运行，含真实模型运行）
+    #     ⇒ **没有任何门槛被放松**；只是「同一考试绑定哪一次」不再随机。
+    # ═══════════════════════════════════════════════════════════════════════
+    for exam_key, ms in runs_by_exam.items():
+        base = [m for m in ms
+                if str((m.get("model") or {}).get("requested_mode") or "RULE_ONLY") == "RULE_ONLY"]
+        pool = base or ms
+        latest[exam_key] = sorted(pool, key=lambda m: (str(m.get("run_id") or ""),
+                                                       str(m.get("exam") or "")))[-1]
     out: dict[str, Any] = {}
     for gid, g in gates.items():
         exam = str(g.get("exam") or "")
         m = latest.get(exam)
         if m is None and str(g.get("check") or "") not in (
                 "pytest_report", "reviewer_report", "artifact_exists",
-                "real_model_participated"):
+                "real_model_participated", "model_participation_mode"):
             out[gid] = {"status": "FAIL", "reason": f"NO_RUN_FOR_EXAM_{exam}",
                         "gate": gid, "title": g.get("title")}
             continue
@@ -630,6 +697,27 @@ def evaluate_gate(runs_dir: str, gate_spec: dict[str, Any] | None = None) -> dic
         "gate_spec_chronology": spec.get("chronology") or {},
         "gates": out,
         "observations": observations,
+        # ★★ **全部运行清单**（amendment A4）：同一场考试可能有多次运行
+        #   （规则基线 ＋ 真实模型）⇒ 这里**如实列出每一次**，
+        #   避免「observations 只显示被绑定的那一次」看起来像只有一次。
+        "all_runs": [
+            {
+                "exam": str(m.get("exam") or ""),
+                "run_id": str(m.get("run_id") or ""),
+                "git_sha": str(m.get("git_sha") or ""),
+                "requested_mode": str((m.get("model") or {}).get("requested_mode") or ""),
+                "execution_path": str((m.get("model") or {}).get("execution_path") or ""),
+                "agent_spec": str((m.get("model") or {}).get("agent_spec") or ""),
+                "participated": bool((m.get("model") or {}).get("participated")),
+                "model_identity_verified": bool((m.get("model") or {}).get("model_identity_verified")),
+                "actual_model": str((m.get("model") or {}).get("actual_model") or ""),
+                "total_score": ((m.get("results") or {}).get("scores") or {}).get("total_score"),
+                "status": (m.get("results") or {}).get("status"),
+                "score_name": str(((m.get("model") or {}).get("score_split") or {}).get("score_name") or ""),
+            }
+            for m in sorted(all_manifests, key=lambda x: (str(x.get("exam") or ""),
+                                                          str(x.get("run_id") or "")))
+        ],
         "status": "PASS" if not key_fail else "FAIL",
         "failed_key_gates": [g["gate"] for g in key_fail],
         "note": ("★ 阈值来自**考试前冻结**的门禁文件；"
@@ -723,6 +811,58 @@ def _gate_check(g: dict[str, Any], m: dict[str, Any] | None, *,
                 hits.append(mm.get("run_id"))
         return ("PASS", f"real_model_runs={hits}") if hits else \
             ("FAIL", "NO_REAL_MODEL_RUN_WITH_PARTICIPATION")
+    if kind == "model_participation_mode":
+        # ═══════════════════════════════════════════════════════════════════
+        # ★★ **G8：真实模型参与门禁（按运行模式判定）**（施工令 V3.0 §7.2）
+        #   ★ **读真实考试产物**（运行清单里的 model 块），**不**依赖人工填写的说明字段。
+        #   ★ 三种模式**分别**判（这是本门禁与 G3 的根本区别）：
+        #     · AGENT_REQUIRED ⇒ 必须 ``execution_path == REAL_MODEL``
+        #       （真模型参与 **且** 身份核实过）⇒ 否则 **FAIL**
+        #       （模型参与了但身份核实不出来 ⇒ ``MODEL_ID_UNKNOWN`` ⇒ 同样 FAIL）
+        #     · RULE_ONLY      ⇒ 模型没参与是**预期行为** ⇒ **不**因此判 FAIL
+        #     · AUTO           ⇒ **按实际执行路径分类**：
+        #         REAL_MODEL ⇒ 计入；DEGRADED ⇒ 如实记为降级（**不**算 AI 成绩，
+        #         但**不**因此判 FAIL —— 降级本身是 AUTO 的合法行为）
+        #   ★ 另外要求：**存在**至少一场真实模型参与的考试
+        #     （否则「整批证据里一条真模型都没跑」⇒ 整门禁 FAIL）。
+        # ═══════════════════════════════════════════════════════════════════
+        all_m = list(manifests or [])
+        if not all_m:
+            return "FAIL", "NO_EXAM_MANIFEST_TO_JUDGE"
+        real_runs: list[str] = []
+        required_bad: list[str] = []
+        degraded: list[str] = []
+        rule_only: list[str] = []
+        mock_runs: list[str] = []
+        identity_unknown: list[str] = []
+        for mm in all_m:
+            mp = mm.get("model") or {}
+            exam = str(mm.get("exam") or "")
+            rid = str(mm.get("run_id") or "")
+            req = str(mp.get("requested_mode") or "RULE_ONLY")
+            path = str(mp.get("execution_path") or "")
+            ident_ok = bool(mp.get("model_identity_verified"))
+            if path == rm.EXEC_PATH_REAL_MODEL:
+                real_runs.append(f"{exam}:{rid}")
+            elif path == rm.EXEC_PATH_MODEL_ID_UNKNOWN:
+                identity_unknown.append(f"{exam}:{rid}")
+            elif path == rm.EXEC_PATH_MOCK_MODEL:
+                mock_runs.append(f"{exam}:{rid}")
+            elif path == rm.EXEC_PATH_DEGRADED:
+                degraded.append(f"{exam}:{rid}")
+            else:
+                rule_only.append(f"{exam}:{rid}")
+            if req == rm.MODE_AGENT_REQUIRED and path != rm.EXEC_PATH_REAL_MODEL:
+                required_bad.append(f"{exam}:{rid}(req={req},path={path or 'UNKNOWN'})")
+        parts = [f"real_model={len(real_runs)}", f"rule_only={len(rule_only)}",
+                 f"degraded={len(degraded)}", f"mock={len(mock_runs)}",
+                 f"identity_unknown={len(identity_unknown)}"]
+        if required_bad:
+            return "FAIL", ("; ".join(parts) + f" | AGENT_REQUIRED_WITHOUT_REAL_MODEL={required_bad}")
+        if not real_runs:
+            return "FAIL", ("; ".join(parts) +
+                            " | NO_REAL_MODEL_RUN_AT_ALL（整批证据里一条真模型都没跑）")
+        return "PASS", "; ".join(parts) + f" | real={real_runs}"
     if kind == "rc_zero":
         rc = res.get("rc_run")
         return ("PASS", f"rc_run={rc}") if rc == 0 else ("FAIL", f"rc_run={rc}")
@@ -1052,6 +1192,17 @@ def main(argv: list[str] | None = None) -> int:
                     help="none（纯规则）｜prebaked（预置回执＝模拟模型）｜dsh（真实 DeepSeek Harness）")
     rp.add_argument("--agent-result", default="", help="预置回执 JSON 路径（--agent prebaked）")
     rp.add_argument("--allow-local-dsh", action="store_true", help="显式打开本机 dsh（真实模型）")
+    rp.add_argument("--agent-timeout", type=float, default=None,
+                    help="P5：单次 Agent 调用硬超时秒数（不给 ⇒ 按框架实测预算 dsh300/pi120/codex300）")
+    rp.add_argument("--agent-max-calls", type=int, default=2,
+                    help="P5：最多调用次数（含重试；默认 2）")
+    rp.add_argument("--run-mode", default="RULE_ONLY",
+                    help="★ 请求的运行模式（施工令 V3.0 §6）："
+                         "RULE_ONLY（规则基线，成绩名 RULE_BASELINE_SCORE）｜"
+                         "AGENT_REQUIRED（必须真模型，否则考试 FAIL、AI 成绩 NOT_SCORED）｜"
+                         "AUTO（可降级，降级如实记录，不得记为 AI 成绩）")
+    rp.add_argument("--codex-persist-session", action="store_true",
+                    help="让 codex 落盘执行记录 ⇒ **模型身份可核实**（合成考场可开）")
     rp.add_argument("--out", default="", help="输出目录（默认在考试台数据面下）")
     rp.add_argument("--keep-db", action="store_true", help="保留本次数据面（默认重建）")
     rp.set_defaults(func=cmd_run)
@@ -1060,6 +1211,12 @@ def main(argv: list[str] | None = None) -> int:
     gp.add_argument("--runs", required=True, help="运行清单目录")
     gp.add_argument("--out", default="", help="门禁报告输出路径")
     gp.set_defaults(func=cmd_gate)
+
+    cp = sub.add_parser("compare-runs",
+                        help="P3 对照：多份运行清单横向比（考生|真实模型|模式|总分|相对规则增量|安全门禁）")
+    cp.add_argument("--manifests", nargs="+", required=True, help="运行清单 JSON 路径（多个）")
+    cp.add_argument("--out", default="", help="对照报告输出路径")
+    cp.set_defaults(func=cmd_compare_runs)
 
     cp = sub.add_parser("coverage", help="自动化覆盖率报告")
     cp.add_argument("--runs", required=True)
@@ -1075,14 +1232,43 @@ def main(argv: list[str] | None = None) -> int:
     return int(a.func(a))
 
 
+def _proxy_sanitized_env(base: dict[str, str]) -> tuple[dict[str, str], str]:
+    """把代理环境整理成「**不随操作员设置漂移**」的口径 ⇒ 返回 (env, 口径说明)。
+
+    ★★ **为什么不是「直接 unset」**（本轮实测）：
+      ``httpx`` 的 ``trust_env`` 会回落到 **macOS 系统代理**
+      （``urllib.request.getproxies()`` 读 SystemConfiguration）⇒ 系统代理若是 **SOCKS**，
+      客户端在**构造阶段**就抛 ``ImportError: Using SOCKS proxy, but 'socksio' is not installed``
+      ⇒ 6 条 DD 精判用例在**与业务无关**的地方红（假红）。
+      ⇒ 口径：**SOCKS 改写成同端口的 http 代理**；改写不了才清空。
+    """
+    env = dict(base)
+    http_proxy = (env.get("https_proxy") or env.get("HTTPS_PROXY")
+                  or env.get("http_proxy") or env.get("HTTP_PROXY") or "")
+    for k in ("all_proxy", "ALL_PROXY", "http_proxy", "HTTP_PROXY",
+              "https_proxy", "HTTPS_PROXY"):
+        env.pop(k, None)
+    if http_proxy.startswith(("http://", "https://")):
+        for k in ("all_proxy", "ALL_PROXY", "http_proxy", "HTTP_PROXY",
+                  "https_proxy", "HTTPS_PROXY"):
+            env[k] = http_proxy
+        return env, f"SOCKS_PROXY_OVERRIDDEN_TO_HTTP:{http_proxy}"
+    return env, ("PROXY_VARS_CLEARED（无可用 http 代理；注意：macOS 系统代理若为 SOCKS "
+                 "仍会导致 httpx 构造失败 ⇒ 6 条 DD 精判用例会假红）")
+
+
 def cmd_pytest_report(a) -> int:
     """跑 pytest ⇒ 机读报告（G1 门禁只认机读证据）。
 
     ★ **环境口径**（两条，都**如实记进报告**，不是隐藏失败）：
-      ① **代理环境变量清空**：本机 ``all_proxy`` 是 SOCKS 代理，而 ``httpx`` 未装
+      ① **代理口径**：本机 ``all_proxy`` 是 SOCKS 代理，而 ``httpx`` 未装
          ``socks`` 扩展 ⇒ SDK 客户端**在构造阶段**就抛错 ⇒ 6 条 DD 精判用例
-         在**与业务无关**的地方红（实测：清空代理变量后这 6 条全绿）。
-         ⇒ 测试结果**不应随操作员的代理设置漂移** ⇒ 统一清空。
+         在**与业务无关**的地方红（**假红**）。
+         ★★ **本轮实测修正**：**单纯清空代理变量并不够** —— ``httpx`` 的 ``trust_env``
+         会回落到 **macOS 系统代理**（同样是 SOCKS）⇒ 照样构造失败。
+         ⇒ 现在的口径是：**把 SOCKS 改写成同端口的 http 代理**（改写不了才清空），
+         并把**实际生效的口径**写进报告的 ``env_hygiene.proxy_policy``。
+         ⇒ 测试结果**不应随操作员的代理设置漂移**。
       ② **排除 ``tests/test_doctor_script.py``**：它要求仓内有 ``.env`` 与
          ``frontend/node_modules``（本机与沙箱都没有）⇒ **生产 CI 同样排除**
          （见 ``.github/workflows/ci.yml``）⇒ 口径与 CI 一致，**不是**为了让门禁变绿。
@@ -1093,9 +1279,15 @@ def cmd_pytest_report(a) -> int:
     if not Path(py).is_file():
         py = sys.executable
     env = dict(os.environ)
-    for k in ("all_proxy", "ALL_PROXY", "http_proxy", "HTTP_PROXY",
-              "https_proxy", "HTTPS_PROXY"):
-        env.pop(k, None)
+    # ★★ **代理口径（本轮实测修正过一次）**
+    #   原做法：把 all_proxy/http_proxy/... 全部 **unset**。
+    #   ★ **在本机这条不成立**：`httpx` 的 `trust_env` 会回落到 **macOS 系统代理**
+    #     （`urllib.request.getproxies()` 读 SystemConfiguration）⇒ 系统代理是 **SOCKS** ⇒
+    #     客户端在**构造阶段**就抛 `ImportError: Using SOCKS proxy, but 'socksio' is not installed`
+    #     ⇒ 6 条 DD 精判用例在**与业务无关**的地方红（假红）。
+    #   ⇒ 现在：**把 SOCKS 代理改写成同端口的 http 代理**（能连上就都走 http 通道），
+    #     改写不了才 unset；并把**实际生效的代理口径**写进报告（不隐藏）。
+    env, _proxy_note = _proxy_sanitized_env(os.environ)
     # ★ **绝对路径**：pytest 的 cwd 是 ``backend``，相对路径会被解析到
     #   ``backend/.audit/...``（目录不存在）⇒ **XML 静默不生成**
     #   ⇒ 计数回落成 total=0 却 exit=0 ⇒ **假绿**（本轮实测踩过）。
@@ -1181,6 +1373,13 @@ def cmd_pytest_report(a) -> int:
         "command": " ".join(cmd),
         "env_hygiene": {
             "proxy_vars_cleared": True,
+            "proxy_policy": _proxy_note,
+            "proxy_policy_note": ("★ 本轮实测修正：单纯 unset 代理变量**不够** —— "
+                                  "httpx 的 trust_env 会回落到 macOS 系统代理（可能是 SOCKS），"
+                                  "而本机未装 socksio ⇒ SDK 客户端在构造阶段就抛 ImportError ⇒ "
+                                  "6 条 DD 精判用例在**与业务无关**的地方红（假红）。"
+                                  "⇒ 现在把 SOCKS 改写成同端口的 http 代理；"
+                                  "改写不了才 unset，并在此如实记录。"),
             "excluded_tests": ["tests/test_doctor_script.py"],
             "exclusion_reason": ("该文件要求仓内有 .env 与 frontend/node_modules；"
                                  "生产 CI 同样排除（见 .github/workflows/ci.yml）"),
@@ -1226,7 +1425,10 @@ def cmd_list(a) -> int:
 def cmd_run(a) -> int:
     m = run_exam(a.exam, agent=a.agent, agent_result=a.agent_result,
                  allow_local_dsh=a.allow_local_dsh, reset=not a.keep_db,
-                 out_dir=a.out)
+                 out_dir=a.out, run_mode=str(getattr(a, "run_mode", "") or "RULE_ONLY"),
+                 codex_persist_session=bool(getattr(a, "codex_persist_session", False)),
+                 agent_timeout=getattr(a, "agent_timeout", None),
+                 agent_max_calls=int(getattr(a, "agent_max_calls", 2) or 2))
     # ★ 独立 Reviewer 第 2 轮建议：0 件交付要**显式醒目告警**。
     #   否则「跑挂了（0 交付）」与「跑通了但分低」在摘要里长得一样（都是 SCORED/LOW_CONFIDENCE），
     #   容易被当成正常读数。
@@ -1263,6 +1465,93 @@ def cmd_gate(a) -> int:
         Path(a.out).write_text(text, "utf-8")
     print(text)
     return 0 if rep.get("status") == "PASS" else 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# P3 对照：同一份冻结题 + Gold，多名考生（规则基线 / 真模型）横向比
+# ═══════════════════════════════════════════════════════════════════════════
+
+def compare_runs(manifest_paths: list[str]) -> dict[str, Any]:
+    """把多份**运行清单**横向对比（施工令 V3.0 §8 要求的表）。
+
+    表头：**考生 | 真实模型 | 模式 | 总分 | 相对规则增量 | 安全门禁**
+
+    ★ **规则基线是参照系**：第一个 ``RULE_ONLY`` 的场次即基线；
+      其它场次给出「相对规则增量」= 本场 AI 分 − 规则基线分。
+    ★ ★ **增量不是因果贡献**（§8 明文）：两场运行不是受控对照实验
+      （环境/时序/材料快照都可能不同）⇒ 这里只给数，**不给因果结论**。
+    ★ 三列成绩**永远分列**：模型缺席时 AI 列 NOT_SCORED（**不是** 0）。
+    """
+    rows: list[dict[str, Any]] = []
+    for raw in manifest_paths:
+        p = Path(raw)
+        m = json.loads(p.read_text("utf-8"))
+        mp = dict(m.get("model") or {})
+        res = dict(m.get("results") or {})
+        split = dict(res.get("score_split") or {})
+        safety = dict(res.get("safety_gate") or {})
+        rows.append({
+            "source": str(p),
+            "exam": str(m.get("exam") or ""),
+            "run_id": str(m.get("run_id") or ""),
+            "git_sha": str(m.get("git_sha") or ""),
+            "candidate": str(mp.get("agent_spec") or "none"),
+            "actual_model": str(mp.get("actual_model") or "UNKNOWN"),
+            "model_identity_verified": bool(mp.get("model_identity_verified")),
+            "requested_mode": str(mp.get("requested_mode") or "RULE_ONLY"),
+            "execution_path": str(mp.get("execution_path") or ""),
+            "score_name": str(split.get("score_name") or ""),
+            "total_score": (res.get("scores") or {}).get("total_score"),
+            "rule_baseline_score": split.get("rule_baseline_score"),
+            "ai_system_score": split.get("ai_system_score"),
+            "ai_system_score_status": split.get("ai_system_score_status"),
+            "safety_gate": str(safety.get("status") or ""),
+            "elapsed_s": (m.get("elapsed_s")),
+        })
+    # ★ 规则基线：第一个 ``RULE_ONLY`` 场次（**参照系**）
+    baseline = next((r for r in rows if r["execution_path"] in
+                     (rm.EXEC_PATH_RULE_ONLY, rm.EXEC_PATH_DEGRADED)
+                     and isinstance(r.get("total_score"), (int, float))), None)
+    base_score = baseline.get("total_score") if baseline else None
+    for r in rows:
+        ts = r.get("total_score")
+        r["delta_vs_rule_baseline"] = (round(float(ts) - float(base_score), 2)
+                                       if isinstance(ts, (int, float))
+                                       and isinstance(base_score, (int, float)) else None)
+    return {
+        "schema_version": "dd_v1_exam_comparison.v1",
+        "generated_at": _now(),
+        "rule_baseline": {
+            "source": (baseline or {}).get("source", ""),
+            "run_id": (baseline or {}).get("run_id", ""),
+            "total_score": base_score,
+            "git_sha": (baseline or {}).get("git_sha", ""),
+        },
+        "rows": rows,
+        "table_header": ["考生", "真实模型", "模式", "总分", "相对规则增量", "安全门禁"],
+        "note": ("★ **增量不是因果贡献**：各场次不是受控对照实验"
+                 "（环境/时序/快照可能不同）⇒ 要归因须走**错误分类 ＋ 消融测试**。\n"
+                 "★ **规则基线分与 AI 系统分分列**：模型缺席时 AI 列 = NOT_SCORED（**不是** 0 分）。\n"
+                 "★ 若某模型方案**不优于**规则基线 ⇒ **如实报告**（不因用了 AI 就默认更先进）。"),
+    }
+
+
+def cmd_compare_runs(a) -> int:
+    rep = compare_runs(list(a.manifests or []))
+    text = json.dumps(rep, ensure_ascii=False, indent=2)
+    if a.out:
+        Path(a.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.out).write_text(text, "utf-8")
+    # 人看的表
+    print("考生 | 真实模型 | 模式 | 总分 | 相对规则增量 | 安全门禁")
+    for r in rep["rows"]:
+        print(f"{r['candidate']} | {r['actual_model']}"
+              f"{'' if r['model_identity_verified'] else '(身份未核实)'}"
+              f" | {r['requested_mode']}→{r['execution_path']}"
+              f" | {r['total_score']} | {r['delta_vs_rule_baseline']} | {r['safety_gate']}")
+    print()
+    print(rep["note"])
+    return 0
 
 
 def cmd_coverage(a) -> int:

@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from cangjie_fos.services import dd_v1_gold_service as gold_svc
+from cangjie_fos.services import dd_v1_run_modes as rm
 
 #: 机器答卷版本
 ANSWER_SHEET_SCHEMA = "dd_v1_answer_sheet.v1"
@@ -268,12 +269,15 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
                        exam_id: str = "",
                        delivered: list[dict[str, Any]] | None = None,
                        gold_resolution: dict[str, Any] | None = None,
+                       requested_mode: str = "RULE_ONLY",
                        ) -> dict[str, Any]:
     """由 run_record + packet 产出**机器答卷**。
 
     ``delivered``：实际组包交付清单（``file_id`` / 交付路径 / 源 SHA256 / 副本 SHA256）。
     ``gold_resolution``：**不参与**本函数（考生侧不读 Gold）——保留形参只为让调用方
     在同一处传参时不会误以为它生效；阅卷在 ``grade_answer_sheet`` 里单独做。
+    ``requested_mode``：**请求的运行模式**（RULE_ONLY / AGENT_REQUIRED / AUTO）——
+    施工令 V3.0 §6；由调用方（考试台）显式传入，不在这里猜。
     """
     rec = run_record or {}
     pkt = packet or {}
@@ -528,6 +532,18 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
                     "⇒ 本次**没有可采信的模型参与** ⇒ 参与类别按 RULE_ONLY 记，不自称模型凭据"
                     "（★ 回执本身若在别处留存，请以回执为准）")
 
+    # ★★ **运行模式**：请求的模式 ＋ 实际执行路径（施工令 V3.0 §6）
+    #   ★ 实际执行路径由**既有**参与判定派生 ⇒ 不新建平行判定口径。
+    _requested_mode = rm.normalize_mode(requested_mode)
+    _exec_path = rm.derive_execution_path(
+        requested_mode=_requested_mode,
+        examinee_mode=_examinee_mode,
+        participated=_participated,
+        provenance_class=_prov,
+        model_identity_verified=bool(adapter.get("model_identity_verified")),
+        degrade_reason=_degrade or str(sem.get("degrade_reason") or ""),
+    )
+
     return {
         "schema_version": ANSWER_SHEET_SCHEMA,
         "exam_id": exam_id,
@@ -563,7 +579,23 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
                                     else ("UNDECLARED" if _declared else "")),
             "adapter_id": str(adapter.get("adapter_id") or ""),
             "vendor": str(adapter.get("vendor") or ""),
+            # ★★ **框架 ≠ 服务商**（施工令 V3.0 §5.2）：pi 是框架，minimax-cn 是服务商
+            "framework": str(adapter.get("framework") or ""),
             "model_id_or_unknown": str(adapter.get("model_id_or_unknown") or "UNKNOWN"),
+            # ★★ **模型身份的来源与核实状态**（施工令 V3.0 §7.1）
+            #   ★ `model_id_or_unknown` 只是「模型 id」；**身份核实过没有**是另一件事。
+            #   ★ 身份来自 `adapter.model_identity`（由**适配器实现**盖章）——
+            #     **不**从 `adapter.provenance` 取（那个字段是**参与类别字符串**，不是 dict）。
+            "model_identity": dict(adapter.get("model_identity") or {})
+            if isinstance(adapter.get("model_identity"), dict) else {},
+            "model_identity_verified": bool(adapter.get("model_identity_verified")),
+            "model_identity_source": str(adapter.get("model_identity_source") or "UNKNOWN"),
+            # ★★ **请求的运行模式** ＋ **实际执行路径**（施工令 V3.0 §6）
+            #   ★ 这两个字段回答两个**不同**的问题：
+            #     requested_mode ＝ 「我这次**要求**用哪种方式跑」
+            #     execution_path ＝ 「**实际上**走的是哪条路」（可能与请求不同 ⇒ 降级）
+            "requested_mode": str(_requested_mode),
+            "execution_path": str(_exec_path),
             "prompt_version": str(rec.get("prompt_version") or ""),
             "source_snapshot_id": str(rec.get("source_snapshot_id") or ""),
             "degrade_reason": " ｜ ".join(x for x in (str(sem.get("degrade_reason") or ""), _degrade) if x),
@@ -963,6 +995,11 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
                        library_fingerprint: str = "",
                        checklist_sha256: str = "",
                        library_contract: dict[str, Any] | None = None,
+                       requested_mode: str = "RULE_ONLY",
+                       rule_baseline_score: float | None = None,
+                       code_version: str = "",
+                       evidence_paths: dict[str, Any] | None = None,
+                       gold_source: str = "",
                        ) -> dict[str, Any]:
     """**隔离阅卷**：机器答卷 × 人工标准答案 ⇒ 逐题明细 + 7 项指标 + 0—100 总成绩。
 
@@ -1154,6 +1191,65 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
         "wrong_rate": wrong_rate,
         "total_score": total,
     }
+    # ★★ **规则基线分 与 AI 系统分 分列**（施工令 V3.0 §7.3 / §8）
+    #   ★ 这份成绩单**自己**只能给出「本次这一列」的数；
+    #     另一列要靠**配对的规则基线运行** ⇒ 没配对就如实留空，**不拿本列顶替**。
+    _exec_path = str((_examinee or {}).get("execution_path") or "")
+    if not _exec_path:
+        _exec_path = rm.derive_execution_path(
+            requested_mode=requested_mode,
+            examinee_mode=str((_examinee or {}).get("mode") or ""),
+            participated=bool((_examinee or {}).get("participated")),
+            provenance_class=str((_examinee or {}).get("provenance") or ""),
+            model_identity_verified=bool((_examinee or {}).get("model_identity_verified")),
+            degrade_reason=str((_examinee or {}).get("degrade_reason") or ""),
+        )
+    _split = rm.split_scores(total, execution_path=_exec_path,
+                             rule_baseline_score=rule_baseline_score)
+    # ★★ **成绩单的「这次考试是怎么跑的」全量账**（施工令 §7.3 列的 17 项，逐项落地）
+    _run_provenance = {
+        # ① 考试模式（请求的）
+        "requested_mode": str((_examinee or {}).get("requested_mode")
+                              or rm.normalize_mode(requested_mode)),
+        # ② 实际执行模式
+        "execution_path": _exec_path,
+        # ③ 考生 Agent（**框架**与**服务商**分开）
+        "examinee_agent": str((_examinee or {}).get("adapter_id") or ""),
+        "examinee_framework": str((_examinee or {}).get("framework") or ""),
+        "examinee_provider": str((_examinee or {}).get("vendor") or ""),
+        # ④ 实际模型 ＋ ⑤ 模型参与状态
+        "actual_model": str((_examinee or {}).get("model_id_or_unknown") or "UNKNOWN"),
+        "model_identity": dict((_examinee or {}).get("model_identity") or {}),
+        "model_identity_verified": bool((_examinee or {}).get("model_identity_verified")),
+        "model_participated": bool((_examinee or {}).get("participated")),
+        "participated_scope": str((_examinee or {}).get("participated_scope") or ""),
+        # ⑥ Gold 版本 ＋ ⑦ 标准答案来源
+        #   ★ 指纹是**算出来的**（`gold_fingerprint`）⇒ 不是清单里自称的字段 ⇒ 不能被手填。
+        "gold_version": (gold_svc.gold_fingerprint(gold_manifest)
+                         if gold_manifest else ""),
+        "gold_source": gold_source or "",
+        "gold_pack_id": str((gold_manifest or {}).get("gold_pack_id") or ""),
+        # ⑧ 实际答卷来源
+        "answer_sheet_source": str((answer_sheet or {}).get("schema_version") or ""),
+        "source_snapshot_id": str((_examinee or {}).get("source_snapshot_id") or ""),
+        # ⑨ 总分 ＋ ⑩ 分项得分
+        "total_score": total,
+        "scores": scores,
+        # ⑪⑫⑬ 规则基线分 / AI 参与系统分 / 分数差异
+        "score_split": _split,
+        # ⑭ 披露安全结论
+        "disclosure_safety": {"status": safety_status,
+                              "violations": int(safety.get("violations") or 0),
+                              "findings_count": len(safety.get("findings") or [])},
+        # ⑮ 门禁状态（★ 门禁在考试**之后**统一判定 ⇒ 这里如实写「未在阅卷时判定」）
+        "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
+        "gate_note": ("交付门禁由 delivery gate 在全部考试跑完后统一判定"
+                      "（见 .audit/gate-runs/门禁报告.json）；"
+                      "阅卷阶段**不**自行宣布门禁结果。"),
+        # ⑯ 代码 SHA ＋ ⑰ 证据位置
+        "code_version": code_version or "",
+        "evidence_paths": dict(evidence_paths or {}),
+    }
     return {
         "schema_version": SCORECARD_SCHEMA,
         "exam_id": exam_id,
@@ -1197,6 +1293,10 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
         # ★ 成绩单带**来源模式**：一份 RULE_ONLY 的分与模型跑的分**必须可区分**
         #   （独立 Reviewer 探针 P11：旧口径成绩单里没有这两个字段）。
         "examinee_mode": str(_examinee.get("mode") or "UNKNOWN"),
+        # ★★ **规则基线分 vs AI 系统分**：两列**分列**，模型缺席时 AI 成绩 NOT_SCORED
+        "score_split": _split,
+        # ★★ **17 项全量账**（模式/考生/实际模型/Gold/答卷来源/安全/门禁/代码 SHA/证据位置）
+        "run_provenance": _run_provenance,
         # ★ 泄漏检测**查过了**这件事也要留痕（没有泄漏时也要有这一行）
         "leak_report": leak_report if leak_report is not None else {"leaked": False},
         "selection_source": _src_tally,
