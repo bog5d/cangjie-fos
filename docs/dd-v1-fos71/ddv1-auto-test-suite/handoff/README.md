@@ -48,6 +48,21 @@
 | 三场考试的运行清单 / 答卷 / 成绩单 | `{A,B,C}/运行清单.json`、`{A,B,C}/机器答卷-*.json`、`{A,B,C}/grade/成绩单-*.json` |
 | 真实模型失败证据 | `.audit/real-model/stderr.log`、`real-model-evidence.json` |
 
+### ★ 这批证据对应哪个 commit？（**先说清楚，免得你核错**）
+
+| 锚点 | 是什么 | 怎么读 |
+|---|---|---|
+| **被测代码** | 证据里的 `git_sha` 指向的那一个提交（**代码定稿**） | `g1_pytest.json` / `门禁报告.json` / 各 `运行清单.json` 里的 `git_sha` |
+| **证据入库** | 把这批证据**提交进仓库**的那一个提交（可能比被测代码晚 1 个） | `git log -1 --format=%H -- .audit/gate-runs/` |
+| **交接包版本** | 本目录内容所在提交 | `git log -1 --format=%H -- docs/dd-v1-fos71/ddv1-auto-test-suite/handoff/` |
+
+> ★ **为什么会有两个**：证据必须**先在被测代码那个提交上跑出来**（否则 `git_sha` 对不上），
+> 然后**再提交进仓库** ⇒ 「跑的代码」与「入库的动作」天然是两个提交。
+> ★ 判定「证据是否可信」看 **证据里的 `git_sha` + `git_dirty`**：
+> **`git_dirty=false` ⇒ 测的就是那个 commit 的代码，一一对应**；
+> `git_dirty=true` ⇒ 测的是**工作区**代码，**不能**对应任何 commit ⇒ 不可作为交付证据。
+> ★ 本轮这批证据均为 `git_dirty=false`。
+
 ### 门禁逐条
 
 | 门禁 | 状态 | 依据 |
