@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "EX-E2E-01",
   "status": "SCORED_PARTIAL",
-  "graded_at": "2026-10-30T12:32:27+08:00",
+  "graded_at": "2026-10-30T12:55:25+08:00",
   "scores": {
     "question_understanding_coverage": 1.0,
     "question_answer_coverage": 1.0,
@@ -993,347 +993,347 @@
     "questions_total": 42,
     "denominator_source": "LIBRARY_OBLIGATION_CONTRACT",
     "questions_processed": 42,
-    "questions_correct": 0,
-    "questions_unmatched": 42,
+    "questions_correct": 30,
+    "questions_unmatched": 0,
     "questions_ambiguous": 0,
-    "questions_incomplete": 0,
+    "questions_incomplete": 2,
     "questions_unanswered": 0,
     "verifiable_coverage": 1.0,
     "questions": [
       {
         "question_id": "1-2-1",
         "item_no": "1-2-1",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲2024年度审计报告"
       },
       {
         "question_id": "1-4-3",
         "item_no": "1-4-3",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司2024年度审计报告"
       },
       {
         "question_id": "1-6-5",
         "item_no": "1-6-5",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙2024年度审计报告"
       },
       {
         "question_id": "1-8-7",
         "item_no": "1-8-7",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲2024年度审计报告"
       },
       {
         "question_id": "1-10-9",
         "item_no": "1-10-9",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司2024年度审计报告"
       },
       {
         "question_id": "2-2-11",
         "item_no": "2-2-11",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙2024年度审计报告"
       },
       {
         "question_id": "2-4-13",
         "item_no": "2-4-13",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲2024年度审计报告"
       },
       {
         "question_id": "2-6-15",
         "item_no": "2-6-15",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司2024年度审计报告"
       },
       {
         "question_id": "2-8-17",
         "item_no": "2-8-17",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙2024年度审计报告"
       },
       {
         "question_id": "2-10-19",
         "item_no": "2-10-19",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲2024年度审计报告"
       },
       {
         "question_id": "3-2-21",
         "item_no": "3-2-21",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司2024年度审计报告"
       },
       {
         "question_id": "3-4-23",
         "item_no": "3-4-23",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙2024年度审计报告"
       },
       {
         "question_id": "3-6-25",
         "item_no": "3-6-25",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲2024年度审计报告"
       },
       {
         "question_id": "3-8-27",
         "item_no": "3-8-27",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司2024年度审计报告"
       },
       {
         "question_id": "3-10-29",
         "item_no": "3-10-29",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙2024年度审计报告"
       },
       {
         "question_id": "4-2-31",
         "item_no": "4-2-31",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲2024年度审计报告"
       },
       {
         "question_id": "4-4-33",
         "item_no": "4-4-33",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司2024年度审计报告"
       },
       {
         "question_id": "4-6-35",
         "item_no": "4-6-35",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙2024年度审计报告"
       },
       {
         "question_id": "4-8-37",
         "item_no": "4-8-37",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲2024年度审计报告"
       },
       {
         "question_id": "4-10-39",
         "item_no": "4-10-39",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司2024年度审计报告"
       },
       {
         "question_id": "5-2-41",
         "item_no": "5-2-41",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙2024年度审计报告"
       },
       {
         "question_id": "1-3-2",
         "item_no": "1-3-2",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙近三年经营情况说明"
       },
       {
         "question_id": "1-5-4",
         "item_no": "1-5-4",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲近三年经营情况说明"
       },
       {
         "question_id": "1-7-6",
         "item_no": "1-7-6",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司近三年经营情况说明"
       },
       {
         "question_id": "1-9-8",
         "item_no": "1-9-8",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙近三年经营情况说明"
       },
       {
         "question_id": "2-1-10",
         "item_no": "2-1-10",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲近三年经营情况说明"
       },
       {
         "question_id": "2-3-12",
         "item_no": "2-3-12",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司近三年经营情况说明"
       },
       {
         "question_id": "2-5-14",
         "item_no": "2-5-14",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙近三年经营情况说明"
       },
       {
         "question_id": "2-7-16",
         "item_no": "2-7-16",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲近三年经营情况说明"
       },
       {
         "question_id": "2-9-18",
         "item_no": "2-9-18",
-        "state": "NOT_IN_GOLD",
+        "state": "CORRECT",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司近三年经营情况说明"
       },
       {
         "question_id": "3-1-20",
         "item_no": "3-1-20",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙近三年经营情况说明"
       },
       {
         "question_id": "3-3-22",
         "item_no": "3-3-22",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲近三年经营情况说明"
       },
       {
         "question_id": "3-5-24",
         "item_no": "3-5-24",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司近三年经营情况说明"
       },
       {
         "question_id": "3-7-26",
         "item_no": "3-7-26",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙近三年经营情况说明"
       },
       {
         "question_id": "3-9-28",
         "item_no": "3-9-28",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲近三年经营情况说明"
       },
       {
         "question_id": "4-1-30",
         "item_no": "4-1-30",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司近三年经营情况说明"
       },
       {
         "question_id": "4-3-32",
         "item_no": "4-3-32",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙近三年经营情况说明"
       },
       {
         "question_id": "4-5-34",
         "item_no": "4-5-34",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲近三年经营情况说明"
       },
       {
         "question_id": "4-7-36",
         "item_no": "4-7-36",
-        "state": "NOT_IN_GOLD",
+        "state": "PARTIAL",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司近三年经营情况说明"
       },
       {
         "question_id": "4-9-38",
         "item_no": "4-9-38",
-        "state": "NOT_IN_GOLD",
+        "state": "PARTIAL",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司乙近三年经营情况说明"
       },
       {
         "question_id": "5-1-40",
         "item_no": "5-1-40",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供子公司甲近三年经营情况说明"
       },
       {
         "question_id": "5-3-42",
         "item_no": "5-3-42",
-        "state": "NOT_IN_GOLD",
+        "state": "NO_EXPECTED_FILES",
         "obligations": 1,
-        "graded_obligations": 0,
+        "graded_obligations": 1,
         "original_text_head": "请提供母公司近三年经营情况说明"
       }
     ],

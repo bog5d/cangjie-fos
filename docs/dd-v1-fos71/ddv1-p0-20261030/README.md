@@ -81,9 +81,12 @@
 | **本轮新增用例** | `test_dd_v1_preflight_p0_empty.py`(**16**) ＋ `test_dd_v1_obligation_contract_wp2.py`(**11**) ＋ `test_dd_v1_gold_gap_and_scorecard_wp4.py`(**15**) ＝ **42 条**（★ 以 `--junitxml` 实测为准；★ **零新增失败**） |
 | **合成 42 题端到端** | 建库 84 份材料 ＋ 42 题清单 ⇒ 库侧拆 **42 条义务／42 题**；运行器 `--library` 路径 **42 条／42 题（0 挂不上）**；★ **旧路径对照：21 条／21 题 ⇒ 丢一半题**（与刘江实测 15／12 同形态） |
 | **预检 e2e** | 合成 Gold（30 可解析 ＋ 8 缺料 ＋ 2 无期望文件）⇒ 状态 `TEST_BLOCKED_GOLD_BROKEN`、**档位 `DIAGNOSTIC`**、**逐件缺口 10 件**（A_MISSING 8 ＋ F 2） |
-| **阅卷 e2e** | 三组：① 题数 42（分母来源 `LIBRARY_OBLIGATION_CONTRACT`）｜已处理 42｜正确 30｜未匹配 0｜未完成 2｜覆盖率 1.0 ② 可评分 32（分母）｜正确 30｜错误 2｜未纳入 {MISSING_IN_LIBRARY: 8, NO_EXPECTED_FILES: 2} ③ 证据差异 42 条 |
+| **阅卷 e2e** | 三组：① 题数 42（分母来源 `LIBRARY_OBLIGATION_CONTRACT`）｜已处理 42｜正确 30｜未匹配 0｜未完成 2｜覆盖率 1.0 ② 可评分 32（分母）｜正确 30｜错误 2｜得分率 0.9375｜未纳入 {MISSING_IN_LIBRARY: 8, NO_EXPECTED_FILES: 2} ③ 证据差异 42 条 |
+| **合成 run 的总分口径** | ★ `total_score = 0.0`，★ **因为合成答卷的 `delivered_files = 0`** ⇒ 命中既有硬口径「**有效标准答案 ＋ 0 件交付 ⇒ 总分强制 0**（不是 NOT_SCORABLE）」⇒ ★ **这个 0 分与业务成绩无关**，★ 也不代表真实考卷会是 0 分 |
 
 ★ 端到端产物：`证据/`（预检 md/json ＋ Gold 缺口 json ＋ 成绩单 json，**全部合成数据**）。
+★ ★ **本目录的产物已用**最终代码**重跑一遍**（2026-10-30T12:55Z）：★ **每份产物都对应同一份最终字节**⇒ ★ 目录里**只有一份**成绩单（★ 早期修复过程中的中间产物已删除 ⇒ ★ 避免有人读到**上一轮的旧读数**）。
+★ Gold 缺口逐件字段：`item_no`（题号）／`gold_relative_path`（原始路径）／`gold_sha256`（指纹）／`gold_entity`（主体）／`gold_period`（期间）／`gap_class`（A–F 分类）／`candidates`（候选）／`remedy`（修复动作）／`obligation_id`。
 
 ## 五、尚未解决 / 如实标注
 
