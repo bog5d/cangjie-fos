@@ -406,3 +406,77 @@ def test_wrong_entity_delivery_is_listed_in_safety_gate():
     assert safety["by_kind"].get("WRONG_ENTITY", 0) >= 1, safety
     # ★ 安全闸命中 ⇒ 总分封顶（业务分不得抵消安全失败）
     assert card["scores"]["total_score"] <= 59.0, card["scores"]
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# ★ D3 回归：交付件数的**两个口径** ＋ 阅卷取**并集**
+# ────────────────────────────────────────────────────────────────────────────
+
+def _delivered(fid: str) -> dict:
+    """一个交付件（字段与 ``build_answer_sheet`` 产出一致）。"""
+    return {"file_id": fid, "delivered_path": f"交付/{fid}",
+            "source_sha256": "", "copy_sha256": "", "hash_match": True}
+
+
+class TestDeliveredCountCalibers:
+    """★ D3：交付件数有**两个口径**，且阅卷侧取**并集**。
+
+    ★ 背景（本轮 D3）：真实考卷里出现过「7 vs 46」两个交付件数 ⇒ 口径分歧。
+      现在答卷同时给出：
+        · ``delivered_files``            —— 交付件**总数**（按 file_id 去重）
+        · ``delivered_files_attributed`` —— **可归属到义务**的件数之和
+      阅卷侧（``grade_answer_sheet``）取**并集**（顶层 ``delivered`` ∪ 逐行 ``delivered``），
+      **两个口径都不漏** ⇒ 不会把「已交付」误判成「0 交付」（HR-1）。
+    """
+
+    def test_answer_sheet_reports_both_calibers(self):
+        """答卷 summary 必须**同时**给出两个口径（否则阅卷无从取舍）。"""
+        sheet = _sheet({"O1": ["F1"], "O2": ["F2"], "O3": ["F3"]})
+        s = sheet["summary"]
+        assert "delivered_files" in s, s
+        assert "delivered_files_attributed" in s, s
+        # 两个口径的**值**可以不同（这正是 D3 的由来）⇒ 只能**都给出**，不能只给一个
+        assert isinstance(s["delivered_files"], int), s
+        assert isinstance(s["delivered_files_attributed"], int), s
+
+    def test_grading_counts_the_union_of_top_level_and_row_deliveries(self):
+        """★ 顶层与逐行的交付件**取并集**：只挂一边的也要被算进「实际交付件数」。
+
+        ★ 这条锁死的是 HR-1 的**前半段**：只要**确实交付过**，就**不能**判成 0 交付。
+          （只看其中一侧 ⇒ 另一侧的交付被静默丢弃 ⇒ 误判 0 分。）
+        """
+        sheet = _sheet({"O1": ["F1"], "O2": ["F2"], "O3": ["F3"]})
+        for r in sheet["obligations"]:
+            r["delivered"] = []
+        # 逐行只挂 F1（挂 O1）
+        sheet["obligations"][0]["delivered"] = [_delivered("F1")]
+        # 顶层额外挂 F2（**不在任何一行**）⇒ 只看逐行会漏掉它
+        sheet["delivered"] = [_delivered("F2")]
+
+        idx = gold_svc.index_from_snapshot(None, META)
+        manifest = _gold_manifest(GOLD_ITEMS)
+        card = ex.grade_answer_sheet(sheet, manifest, library_index=idx,
+                                     gold_provided=True, exam_id="EX-TEST-01",
+                                     min_obligations=3)
+        assert int(card["counts"]["delivered_files"]) == 2, card["counts"]
+        # ★ 并集 ≠ 0 ⇒ **不得**触发 HR-1 的 0 分强制
+        assert not card.get("zero_delivery_forced_zero"), card
+        assert card["scores"]["total_score"] > 0.0, card["scores"]
+
+    def test_zero_delivery_still_forces_zero_when_neither_side_has_files(self):
+        """★ 反例：顶层与逐行**都没有**交付件 ⇒ 确实 0 交付 ⇒ 如实 0 分（HR-1 不许被绕过）。"""
+        sheet = _sheet({"O1": ["F1"], "O2": ["F2"], "O3": ["F3"]})
+        for r in sheet["obligations"]:
+            r["delivered"] = []
+        sheet["delivered"] = []
+
+        idx = gold_svc.index_from_snapshot(None, META)
+        manifest = _gold_manifest(GOLD_ITEMS)
+        card = ex.grade_answer_sheet(sheet, manifest, library_index=idx,
+                                     gold_provided=True, exam_id="EX-TEST-01",
+                                     min_obligations=3)
+        assert int(card["counts"]["delivered_files"]) == 0, card["counts"]
+        assert card.get("zero_delivery_forced_zero") is True, card
+        assert card["scores"]["total_score"] == 0.0, card["scores"]
+        # ★ 有有效标准答案 + 0 交付 ⇒ status 仍应是 SCORED（**不是** NOT_SCORABLE）
+        assert card["status"] == "SCORED", card["status"]

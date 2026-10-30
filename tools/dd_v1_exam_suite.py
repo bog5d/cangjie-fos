@@ -582,10 +582,13 @@ def evaluate_gate(runs_dir: str, gate_spec: dict[str, Any] | None = None) -> dic
     return {
         "schema_version": "dd_v1_gate_report.v1",
         "evaluated_at": _now(),
+        "git_sha": _git_sha(),
+        "git_dirty": _git_dirty(),
         "gate_spec_id": str(spec.get("spec_id") or ""),
         "gate_spec_frozen_at": str(spec.get("frozen_at") or ""),
         "gate_spec_path": str(GATE_SPEC),
         "gate_spec_amendments": spec.get("amendments") or [],
+        "gate_spec_chronology": spec.get("chronology") or {},
         "gates": out,
         "observations": observations,
         "status": "PASS" if not key_fail else "FAIL",
@@ -1119,6 +1122,12 @@ def cmd_pytest_report(a) -> int:
         "schema_version": "dd_v1_pytest_report.v1",
         "generated_at": _now(),
         "git_sha": _git_sha(),
+        # ★★ **溯源完整性**（独立 Reviewer 指出）：光记 SHA 不够 ——
+        #   若生成报告时工作区是**脏的**，那么「测的代码」≠「HEAD 的代码」。
+        #   ⇒ 必须把 dirty 状态**一并落盘**，否则证据无法自证对应哪份代码。
+        "git_dirty": _git_dirty(),
+        "git_dirty_note": ("★ git_dirty=true ⇒ 本次测试跑的是**工作区代码**，"
+                           "与 HEAD **可能不一致** ⇒ 证据只能对应工作区，不能对应某个 commit。"),
         "command": " ".join(cmd),
         "env_hygiene": {
             "proxy_vars_cleared": True,

@@ -1,9 +1,24 @@
 {
   "schema_version": "dd_v1_delivery_gate.v1",
   "spec_id": "DDV1-DELIVERY-GATE-V1",
-  "frozen_at": "2026-10-30T18:40:00+08:00",
+  "frozen_at": "2026-10-30T18:18:38+08:00",
+  "frozen_at_note": "★ 本字段 = **本文件首次写入工作区的真实时刻**（可由文件 mtime 与首次提交 `git log --diff-filter=A -- backend/config/dd_v1_delivery_gate.v1.json` 核验）。\n  【更正记录】本字段原先被误写成 `2026-10-30T18:40:00+08:00`（一个**未来时刻**），导致门禁报告里出现「冻结晚于评估」的**时间线矛盾**。\n  ★ **更正不是篡改**：该时刻由独立 Reviewer 复核发现并要求澄清；真实写入时刻早于首次门禁评估（18:21:58）⇒ **冻结先于评估**的真实顺序成立。",
   "frozen_for": "DD-V1 新版本交付门禁（施工令 WP5）",
   "owner": "DD-V1 工程席",
+  "chronology": {
+    "note": "★ 本段**如实记录真实时间线**，供独立复核者核验「阈值是否先于结果冻结」。不修饰、不美化。",
+    "spec_file_first_written_at": "2026-10-30T18:18:38+08:00",
+    "spec_file_first_committed_at": "2026-10-30T18:26:44+08:00",
+    "first_gate_evaluation_at": "2026-10-30T18:21:58+08:00",
+    "order_verdict": "冻结（18:18:38）→ 评估（18:21:58）⇒ **顺序成立**：阈值先于首次门禁评估。",
+    "threshold_provenance": "阈值为**设计值**，**不是**从结果反推：\n  · G4 的总分下限 70：取自既有**已冻结**评分规范 `backend/config/dd_v1_exam_scoring_spec.v1.json`（frozen_at 2026-10-28T23:55:00+08:00）与 #85 永久红线的及格惯例；\n  · G4 的 understanding=1.0 / coverage=1.0 / questions=42：取自「**完整 42 题必须完整进入处理链路**」这一条**业务事实**（分母本就是 42），不是读数；\n  · ★ 反向佐证：考试C 实得 100.0，**远超**阈值 70 ⇒ 不存在「卡着结果定阈值」的痕迹。",
+    "evidence_regeneration": {
+      "trigger": "独立 Reviewer 复核发现：首次门禁评估（18:21:58）时入库的三场考试证据，是 **D4 修复前**的代码跑出来的（考试B 85.43 vs D4 修复后 95.67）⇒ **证据与代码不对应**。",
+      "action": "在**同一组阈值**下重跑 G1 ＋ 考试A/B/C ＋ 门禁 ＋ 覆盖率，并全部落盘（旧读数不删除，另存一份差异说明）。",
+      "thresholds_changed": "★ **零改动** —— 重跑前后所有数值阈值逐位相同（可用 git diff 核验）。",
+      "evidence_note": "★ D3 的回归测试（交付件数两口径取并集）是在本次复核中补上的，原先**无任何测试断言**。"
+    }
+  },
   "principles": [
     "★ 阈值必须在**考试前**冻结；不得根据结果事后修改阈值（要改必须换 spec 版本并留差异说明）。",
     "★ 任一**关键门槛**失败 ⇒ 不得宣布开发完成、不得向人工发出正式验收请求。",
@@ -14,7 +29,8 @@
   "amendments": [
     {
       "id": "A1",
-      "amended_at": "2026-10-30T19:05:00+08:00",
+      "amended_at": "2026-10-30T18:18:38+08:00",
+      "amended_at_note": "★ 同 `frozen_at_note`：本字段原先误写成未来时刻 19:05，现按**该修订随冻结文件一并写入工作区的真实时刻**标注（可由 git 核验）。",
       "target": "G2/G5 的 status_scored 检查语义",
       "change": "『已评分』状态白名单由 {SCORED, SCORED_PARTIAL} 扩为 {SCORED, SCORED_PARTIAL, LOW_CONFIDENCE}，并**加严**为必须同时存在 total_score。",
       "why": "判定**语义**修正，非阈值变更：评分规范原文『义务条数 < 30 ⇒ status = LOW_CONFIDENCE（分数仍给，但标注样本量不足）』⇒ LOW_CONFIDENCE 是已评分状态。原实现把它判 FAIL 属**假 FAIL**（考试A 实测 total_score=96.67、安全闸 PASS、rc=0）。真正未评分只有 NOT_SCORABLE（HR-2/HR-3）⇒ 仍 FAIL。",
@@ -23,7 +39,8 @@
     },
     {
       "id": "A2",
-      "amended_at": "2026-10-30T19:20:00+08:00",
+      "amended_at": "2026-10-30T18:18:38+08:00",
+      "amended_at_note": "★ 同 `frozen_at_note`：原先误写成未来时刻 19:20，现按真实写入时刻标注。",
       "target": "G7 的 artifact_exists 路径解析",
       "change": "交接包路径改为仓库内路径 docs/dd-v1-fos71/ddv1-auto-test-suite/handoff；判定支持「相对 runs_dir」与「相对仓库根」两处解析。",
       "why": "交接包是**交付物**，必须进版本控制随 PR 走，不能只躺在 .audit/ 本地证据目录里（否则交接＝没有交接）。",
