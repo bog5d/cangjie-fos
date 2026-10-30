@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -870,6 +871,28 @@ def _safety_findings(rows: list[dict[str, Any]],
             per = per or str(meta.get("period") or "")
         return ent, per
 
+    def _comparable_period(p: str) -> str:
+        """**可比期间**：必须是「具体期间」（含年份），否则不可比 ⇒ 不判。
+
+        ★★ **为什么要这道闸**（保留原实现的顾虑）：
+          材料解析出的期间可能是 ``CURRENT``/``当前``/``未知``，而标准答案里是人工写的
+          ``2024`` ⇒ **两种口径**，不是「机器交错了年份」⇒ 直接比会**冤枉机器**。
+        ★★ **但冻结规范要求它进闸**（`dd_v1_exam_scoring_spec.v1.json` 的
+          ``safety.counted_kinds`` 明列 ``WRONG_PERIOD``，且「命中任一 ⇒ FAIL ＋ 封顶 59」）
+          ⇒ 真正「**交了 2023 的那份、该交 2024 的**」**必须**进闸、封顶。
+          ⇒ 这里只排除**不可比的口径差异**，**不放过**真正交错年份。
+          （独立 Reviewer 第 3 轮 MAJOR-1：此前实现把错年度完全排除在闸外
+            ⇒ 错年度交付可拿 100 分且 ``safety_gate=PASS`` ⇒ 与冻结规范矛盾。）
+        """
+        s = str(p or "").strip()
+        if not s:
+            return ""
+        if not re.search(r"\d{4}", s):
+            return ""          # 没有年份 ⇒ 不是具体期间 ⇒ 不可比
+        if any(k in s.upper() for k in ("CURRENT", "UNKNOWN", "N/A", "至今", "当前", "未知")):
+            return ""          # 相对/未知口径 ⇒ 不可比
+        return s
+
     for r in rows:
         oid = r["obligation_id"]
         g = gold_by_oid.get(oid) or {}
@@ -930,7 +953,7 @@ def _safety_findings(rows: list[dict[str, Any]],
                 # ★ 期间**只影响单列指标**（不进安全闸、不封顶）
                 selection_mismatches.append({
                     "kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
-                    "detail": ("已交付材料的**期间**与该义务的期望期间不一致（不进安全闸、不封顶）"
+                    "detail": ("已交付材料的**期间**与该义务的期望期间不一致（另见安全闸）"
                                if fid in delivered_ids else
                                "**选中但未交付**的材料期间与该义务的期望期间不一致（不进安全闸、不封顶）"),
                     "delivered": fid in delivered_ids})
@@ -939,15 +962,25 @@ def _safety_findings(rows: list[dict[str, Any]],
             got_ent, got_per = _file_meta(fid, d)
             exp = exp_files.get(fid)
             if exp is not None:
-                # ★ 同上：**主体**要比（法律事实）；**期间**不比（派生元数据口径）
+                # ★ 同上：**主体**要比（法律事实）；**期间**也比（冻结规范要求）
                 #   （但**哈希一致性**照样要查 ⇒ 不能 `continue`）
                 exp_ent = str(exp.get("gold_entity") or "")
+                exp_per = _comparable_period(str(exp.get("gold_period") or ""))
             else:
+                # ★ 多交的材料（标准答案没列它）⇒ 按**义务级**期望年度比
                 exp_ent = _exp_one(exp_ent_all)
+                exp_per = _comparable_period(_exp_one(exp_per_all))
             if exp_ent and got_ent and exp_ent != got_ent:
                 findings.append({"kind": "WRONG_ENTITY", "obligation_id": oid, "file_id": fid,
                                  "detail": "**交付**材料的主体与该义务的期望主体不一致"})
-            # ★ 交付件的**期间**不比（派生元数据口径差异不算机器交错年份；与「选中」口径一致）
+            # ★★ **错年度 ⇒ 进安全闸 + 封顶**（MAJOR-1 修复；与 `WRONG_ENTITY` 同口径：
+            #   **交付**了 ⇒ 交付事故；只是「选中未交付」⇒ 仍只单列、不封顶）
+            if exp_per:
+                got_per_c = _comparable_period(got_per)
+                if got_per_c and got_per_c != exp_per:
+                    findings.append({"kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,
+                                     "detail": ("**交付**材料的期间（%s）与该义务的期望期间（%s）不一致"
+                                                % (got_per_c, exp_per))})
             if not d.get("hash_match", True):
                 findings.append({"kind": "HASH_MISMATCH", "obligation_id": oid,
                                  "file_id": d.get("file_id"),
@@ -973,10 +1006,14 @@ def _safety_findings(rows: list[dict[str, Any]],
         "selection_mismatch_by_kind": {
             k: sum(1 for f in selection_mismatches if f["kind"] == k)
             for k in sorted({f["kind"] for f in selection_mismatches})},
-        "note_selection": ("错主体/错年份属**选材质量**问题，单列且**不封顶**；"
-                           "只有**实际交付**的件才进安全闸封顶；"
-                           "★ **期间（年份）只影响本单列指标**，不进安全闸、不封顶"
-                           "（派生元数据口径差异不算机器交错年份）"),
+        "note_selection": ("★ **只有实际交付的件才进安全闸封顶**；"
+                           "「选中但未交付」的错主体/错年份属**选材质量**问题 ⇒ 单列、**不封顶**。"
+                           "★ **错年度（WRONG_PERIOD）已按冻结评分规范进闸**"
+                           "（`safety.counted_kinds` 明列它 ⇒ 命中 ⇒ FAIL ＋ 封顶 59）；"
+                           "但**口径不可比**的期间（``CURRENT``/``当前``/``未知``）**不判**"
+                           "（派生元数据口径差异不算机器交错年份 ⇒ 不冤枉机器）。"
+                           "★ MAJOR-1（独立 Reviewer 第 3 轮）：此前实现把错年度完全排除在闸外 ⇒ "
+                           "错年度交付可拿 100 分且 safety_gate=PASS ⇒ 与冻结规范矛盾 ⇒ 已修。"),
     }
 
 

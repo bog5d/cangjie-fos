@@ -489,6 +489,14 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
             card = json.loads(cards_[0].read_text("utf-8"))
 
     _rp = dict(card.get("run_provenance") or {})
+    # ★ MINOR-1：降级原因**也**在答卷里（examinee.degrade_reason）⇒ 一并取，避免只查一处
+    _degrade_reason_from_sheet = ""
+    if sheet_path:
+        try:
+            _sh = json.loads(Path(sheet_path).read_text("utf-8"))
+            _degrade_reason_from_sheet = str((_sh.get("examinee") or {}).get("degrade_reason") or "")
+        except Exception:  # noqa: BLE001 —— 取不到就留空，**不猜**
+            _degrade_reason_from_sheet = ""
     model_participation = {
         "agent_spec": agent,
         "agent_result_file": agent_result or "",
@@ -504,6 +512,10 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
         "model_identity": dict((card.get("run_provenance") or {}).get("model_identity") or {}),
         "examinee_framework": str((card.get("run_provenance") or {}).get("examinee_framework") or ""),
         "examinee_provider": str((card.get("run_provenance") or {}).get("examinee_provider") or ""),
+        # ★★ MINOR-1 修复：施工令 §6 要求「**降级原因**」必须记录 ——
+        #   此前只在**答卷**里有，运行清单（门禁读的那份）**恒为空** ⇒ 复核者只看清单看不出为什么降级。
+        "degrade_reason": str((card.get("run_provenance") or {}).get("degrade_reason")
+                              or _degrade_reason_from_sheet or ""),
         # ★ 成绩两列（规则基线分 vs AI 系统分）—— 模型缺席时 AI 列 NOT_SCORED
         "score_split": dict(card.get("score_split") or {}),
     }
@@ -804,13 +816,23 @@ def _gate_check(g: dict[str, Any], m: dict[str, Any] | None, *,
         return "PASS", f"artifact={hit.name} path={hit}"
     if kind == "real_model_participated":
         hits = []
+        others = []
         for mm in (manifests or []):
             mp = mm.get("model") or {}
-            if str(mp.get("agent_spec") or "") in ("dsh", "deepseek", "deepseek-harness") \
-                    and bool(mp.get("participated")):
+            spec = str(mp.get("agent_spec") or "")
+            if spec in ("dsh", "deepseek", "deepseek-harness") and bool(mp.get("participated")):
                 hits.append(mm.get("run_id"))
-        return ("PASS", f"real_model_runs={hits}") if hits else \
-            ("FAIL", "NO_REAL_MODEL_RUN_WITH_PARTICIPATION")
+            # ★ MINOR-4 修复：G3 的**判定口径一字未改**（仍以 dsh 为准），
+            #   但 reason **如实补上**本批其它真实模型考生
+            #   （否则读这一行会以为「只跑了一个模型」）。
+            elif str(mp.get("execution_path") or "") == rm.EXEC_PATH_REAL_MODEL:
+                others.append(f"{spec or '?'}:{mm.get('run_id')}")
+        reason = f"real_model_runs={hits}"
+        if others:
+            reason += f" | 另有真实模型考生 {others}（见 all_runs / G8）"
+        return ("PASS", reason) if hits else \
+            ("FAIL", "NO_REAL_MODEL_RUN_WITH_PARTICIPATION"
+             + (f"（但本批另有真实模型考生 {others}）" if others else ""))
     if kind == "model_participation_mode":
         # ═══════════════════════════════════════════════════════════════════
         # ★★ **G8：真实模型参与门禁（按运行模式判定）**（施工令 V3.0 §7.2）
@@ -859,6 +881,13 @@ def _gate_check(g: dict[str, Any], m: dict[str, Any] | None, *,
                  f"identity_unknown={len(identity_unknown)}"]
         if required_bad:
             return "FAIL", ("; ".join(parts) + f" | AGENT_REQUIRED_WITHOUT_REAL_MODEL={required_bad}")
+        # ★★ NIT-1 修复（**加严**）：「真模型参与了、但**身份核实不出来**」的运行
+        #   ⇒ 它**不得**通过「模型身份」门禁（施工令 §6 明写）。
+        #   ⇒ 此前 AUTO 模式下这种运行只是被计数、**不拦** ⇒ 现改为 **FAIL**。
+        if identity_unknown:
+            return "FAIL", ("; ".join(parts) +
+                            f" | MODEL_ID_UNKNOWN_NOT_ACCEPTED={identity_unknown}"
+                            "（真模型参与但身份核实不出来 ⇒ 不得通过模型身份门禁）")
         if not real_runs:
             return "FAIL", ("; ".join(parts) +
                             " | NO_REAL_MODEL_RUN_AT_ALL（整批证据里一条真模型都没跑）")

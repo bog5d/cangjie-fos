@@ -570,12 +570,19 @@ def gold_fingerprint(manifest: dict[str, Any]) -> str:
     """标准答案包的**内容指纹**（清单自身，不含真实材料字节）。
 
     用于「同一场考试用的是同一份标准答案」的自证；**不含**任何路径或文件名。
+
+    ★★ **MINOR-2 修复**（独立 Reviewer 第 3 轮）：此前指纹把 ``obligation_id``
+      （**uuid4，每次建库都变**）一起 hash ⇒ **同一份 Gold 每次指纹都不同**
+      ⇒ 这个字段**自证不了**「用的是同一份标准答案」（假信号）。
+      ⇒ 现在改用**内容派生的稳定键** ``obligation_key``（无 key 时退回 ``obligation_id``）。
     """
     h = hashlib.sha256()
     h.update(str(manifest.get("gold_pack_id") or "").encode("utf-8"))
     h.update(b"\x1f")
-    for it in sorted(manifest.get("items") or [], key=lambda x: str(x.get("obligation_id"))):
-        h.update(str(it.get("obligation_id") or "").encode("utf-8"))
+    for it in sorted(manifest.get("items") or [],
+                      key=lambda x: str(x.get("obligation_key") or x.get("obligation_id"))):
+        # ★ **稳定键优先**（内容派生）⇒ 同一份 Gold ⇒ 同一指纹
+        h.update(str(it.get("obligation_key") or it.get("obligation_id") or "").encode("utf-8"))
         h.update(b"\x1f")
         h.update(str(it.get("expected_verdict") or "").encode("utf-8"))
         h.update(b"\x1f")

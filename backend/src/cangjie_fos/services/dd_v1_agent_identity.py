@@ -140,8 +140,14 @@ def resolve_dsh_identity(profile: str = "headless", *, binary: str = "dsh",
     ``provider`` / ``model``）⇒ 这是 harness 的**官方**自述，不是我们猜的。
     """
     try:
+        # ★★ MINOR-3 修复（独立 Reviewer 第 3 轮）：此前**不传 cwd**，
+        #   而 binding["config_cwd"] 只是把 expected_cwd **原样写进去**（装饰性的），
+        #   ⇒ 身份证明的是「profile `headless` 的默认模型」，**没有**指向本次调用所在目录。
+        #   ⇒ 现在**在 expected_cwd 里**取配置（profile 的配置是**按目录解析**的）
+        #   ⇒ binding 里的 config_cwd 是**这次真的取配置的目录**（不是抄来的）。
         proc = subprocess.run([binary, "--profile", profile, "--dump-config"],
-                              capture_output=True, text=True, timeout=timeout_s)
+                              capture_output=True, text=True, timeout=timeout_s,
+                              cwd=expected_cwd or None)
     except (OSError, subprocess.SubprocessError) as exc:
         return ModelIdentity.unknown(f"DSH_DUMP_CONFIG_FAILED:{type(exc).__name__}")
     if proc.returncode != 0:
@@ -155,9 +161,16 @@ def resolve_dsh_identity(profile: str = "headless", *, binary: str = "dsh",
             binding={"profile": profile})
     binding: dict[str, Any] = {"profile": profile, "config_key": _DSH_MODEL_ID}
     if expected_cwd:
-        binding["config_cwd"] = expected_cwd
+        binding["config_cwd"] = str(expected_cwd)
+        binding["config_cwd_source"] = "process_cwd_of_dump（★ 本次真的在**这个目录**里取的配置）"
+        binding["binding_strength"] = "profile-config-resolved-at-cwd"
     return ModelIdentity(model, provider or PROVIDER_UNKNOWN, SOURCE_DSH_PROFILE,
-                         True, binding, "★ 来源：dsh 自己的配置树（--dump-config）")
+                         True, binding,
+                         "★ 来源：dsh 自己的配置树（--dump-config，**在该 profile 的解析目录**里取得）。"
+                         "★ **能证明**：该 profile 在该目录下的**默认模型**是谁。"
+                         "★ **不能证明**：本次请求没有被打到别的模型/回退 —— "
+                         "dsh 没有提供逐请求的模型回执 ⇒ 这是它官方元数据能给出的**最强**证明"
+                         "（对比 codex：执行记录里的 cwd 不符会 fail-closed 记 UNKNOWN）。")
 
 
 # ═══════════════════════════════════════════════════════════════════════════

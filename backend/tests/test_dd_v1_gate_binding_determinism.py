@@ -187,3 +187,48 @@ def test_proxy_policy_is_deterministic_across_calls():
     e1, n1 = suite._proxy_sanitized_env(base)
     e2, n2 = suite._proxy_sanitized_env(base)
     assert e1 == e2 and n1 == n2
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# NIT-1（AUTO + 身份 UNKNOWN 不许放行）＋ MINOR-4（G3 reason 补全参与面）
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_g8_fails_when_any_run_has_unverified_model_identity(tmp_path):
+    """★ AUTO + ``MODEL_ID_UNKNOWN`` ⇒ **G8 FAIL**（施工令 §6：不得通过模型身份门禁）。
+
+    ★ 此前（NIT-1）它只是被计数、**不拦** ⇒ 批次里有一次已核实真模型就能整体 PASS
+      ⇒ 现改为**加严**：只要有「真模型参与但身份核实不出来」的运行 ⇒ FAIL。
+    """
+    runs = _write(tmp_path, {
+        "A": _manifest("A", "20261030T010000Z", mode="RULE_ONLY", path="RULE_ONLY"),
+        "A-dsh": _manifest("A", "20261030T020000Z", mode="AGENT_REQUIRED", path="REAL_MODEL",
+                           participated=True, verified=True, agent="dsh"),
+        "A-auto": _manifest("A", "20261030T030000Z", mode="AUTO", path="MODEL_ID_UNKNOWN",
+                            participated=True, verified=False, agent="pi"),
+    })
+    rep = _gate(runs)
+    assert rep["gates"]["G8"]["status"] == "FAIL", rep["gates"]["G8"]
+    assert "MODEL_ID_UNKNOWN_NOT_ACCEPTED" in rep["gates"]["G8"]["reason"]
+
+
+def test_g3_reason_lists_other_real_model_examinees(tmp_path):
+    """★ MINOR-4：G3 的 reason 必须如实带上**本批其它真实模型考生**（判定口径不变）。"""
+    runs = _write(tmp_path, {
+        "A": _manifest("A", "20261030T010000Z", mode="RULE_ONLY", path="RULE_ONLY"),
+        "A-dsh": _manifest("A", "20261030T020000Z", mode="AGENT_REQUIRED", path="REAL_MODEL",
+                           participated=True, verified=True, agent="dsh"),
+        "A-pi": _manifest("A", "20261030T030000Z", mode="AGENT_REQUIRED", path="REAL_MODEL",
+                          participated=True, verified=True, agent="pi"),
+    })
+    rep = _gate(runs)
+    g3 = rep["gates"]["G3"]
+    assert g3["status"] == "PASS", g3
+    assert "pi" in g3["reason"], g3["reason"]
+    assert "codex" not in g3["reason"], g3["reason"]
+
+
+def test_gate_spec_has_amendment_a5_alignment():
+    """★ A5：实现与冻结评分规范对齐（错年度进闸）必须在冻结文件里留 amendment。"""
+    a5 = next(a for a in GATE_SPEC["amendments"] if a["id"] == "A5")
+    assert "WRONG_PERIOD" in a5["change"] or "错年度" in a5["change"]
+    assert "thresholds_unchanged" in a5 and a5["thresholds_unchanged"]
