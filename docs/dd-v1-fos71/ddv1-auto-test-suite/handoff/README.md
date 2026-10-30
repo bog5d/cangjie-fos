@@ -20,6 +20,9 @@
 | **★ 三名真实 Agent 考生** | **dsh**（deepseek-flash）｜**pi**（MiniMax-M3.1-Flash-Preview）｜**codex**（gpt-5.6-sol）—— **全部真实调用成功、模型身份核实通过** |
 | **交付门禁** | **G1—G5、G7、G8 PASS**；★ **G6＝FAIL**（独立复核第 4 轮 verdict＝**CONDITIONAL**，**不是** PASS）⇒ **整体 `status=FAIL`、`failed_key_gates=["G6"]`**（amendment A7/A8：G6 只认 PASS，且 G6 已进关键门槛） |
 | **★ 三种运行模式** | `RULE_ONLY`（成绩名 `RULE_BASELINE_SCORE`）｜`AGENT_REQUIRED`（模型缺席 ⇒ 考试 FAIL ＋ AI 成绩 `NOT_SCORED`）｜`AUTO`（降级如实标注） |
+| **★ 一键复跑入口** | `tools/dd_v1_platform_selfcheck.py`：**preflight → 全量复跑 → 产物自检** 三条命令覆盖「环境预检 → L1/L2/L3 → 三场考试 → 门禁 G1—G8 → 覆盖率 → 产物哈希清单 → 一屏摘要」；产物落**自有输出目录**，**不覆盖**仓内 `.audit\gate-runs\`（详见 `复跑命令.md` §0'） |
+| **★ 凭证活性探针** | `tools/dd_v1_credential_probe.py`：**开考前**判定 key 还在不在（**不做付费调用**，只用免费鉴权端点）｜**绝不输出密钥原文**（只有 sha256 指纹前 12 位）｜「没配」与「配了但坏了」**分列**｜5xx/连不上 ⇒ `UNKNOWN`（**不猜**）⇒ **BLOCKED-7 的工程侧已处置**（残余＝触发面，见 `BLOCKED-清单.md`） |
+| **★ 考场并发保护** | 数据面按考场**共享** ⇒ 两个进程跑同一场会互撞（旧形态：后一个炸在 `rmtree` 的「目录非空」）。现已加**排他锁**：占用时报人话 `EXAM_PLANE_BUSY:<考场>`，锁**随进程退出自动释放**（不残留） |
 | **独立复核** | 第 1 轮 **CONDITIONAL**（4 MAJOR＋4 MINOR＋2 NIT，**逐条已修并回归**）→ 第 2 轮 **PASS** → **第 3 轮 CONDITIONAL**（2 MAJOR＋5 MINOR＋2 NIT，**已逐条修并回归**）→ **第 4 轮 CONDITIONAL**（两条 MAJOR 真闭环、9 条 MINOR/NIT 全闭环；**新提 3 MINOR ＋ 3 NIT**，已修 3 MINOR ＋ 2 NIT） |
 | **★ 尚不可正式验收** | **G6＝CONDITIONAL（第 4 轮），机器与人读口径一致 ⇒ 不算 PASS** ＋ **真实 42 题的 Gold / 披露分级 / 合格线未冻结** ＋ **Windows 真机未验** ⇒ 按施工令第六节，**现在不得向刘江发正式验收请求** |
 

@@ -93,3 +93,84 @@ def test_lock_file_lives_outside_the_plane_dir(plane):
     # 复位（reset=True）之后锁文件仍在 ⇒ 复位没有把锁删掉
     suite._prepare_plane("D", reset=True)
     assert (plane / ".locks" / "D.lock").exists()
+
+
+# ── Windows 兼容性（★ 交接包要在 Windows 上跑） ─────────────────────────
+
+#: 只封 ``fcntl``（**不封 msvcrt**）⇒ subprocess 自身在 POSIX 上不 import msvcrt，
+#: 所以这个模拟**不会**打断解释器自身。
+FCNTL_BLOCKED_SIM = textwrap.dedent(
+    """
+    import sys
+    class Blocker:
+        def find_spec(self, name, path=None, target=None):
+            if name == "fcntl":
+                raise ImportError("blocked on purpose: " + name)
+            return None
+    sys.meta_path.insert(0, Blocker())
+    sys.path.insert(0, {tools!r})
+    import dd_v1_exam_suite as s
+    print("IMPORT_OK", s.LOCK_BACKEND)
+    """
+)
+
+
+def test_module_imports_without_posix_only_fcntl(tmp_path):
+    """★ **`fcntl` 在 Windows 上不存在** ⇒ 直接 import 会 ImportError
+    ⇒ 整个考试台在 Windows 上起不来。
+
+    ⇒ 这里把 ``fcntl`` **封掉**再 import：能 import ⇒ 模块**没有**平台专属硬依赖；
+      且 ``LOCK_BACKEND`` 必须如实报 ``none``（**降级要说出来，不假装有保护**）。
+    """
+    code = FCNTL_BLOCKED_SIM.format(tools=str(REPO / "tools"))
+    proc = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                          text=True, timeout=120)
+    assert proc.returncode == 0, f"封掉 fcntl 后 import 失败：\n{proc.stderr}"
+    assert "IMPORT_OK none" in proc.stdout, proc.stdout
+
+
+class _FakeMsvcrt:
+    """最小 msvcrt 替身：记下 ``locking()`` 的调用（**按字节区间**语义）。"""
+
+    LK_NBLCK = 1
+    LK_UNLCK = 2
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, int]] = []
+        self.locked: set[int] = set()
+
+    def locking(self, fd: int, mode: int, nbytes: int) -> None:
+        self.calls.append((mode, nbytes))
+        if mode == self.LK_NBLCK:
+            if fd in self.locked:
+                raise OSError("already locked")
+            self.locked.add(fd)
+        else:
+            self.locked.discard(fd)
+
+
+def test_windows_branch_uses_byte_range_lock(monkeypatch, tmp_path):
+    """★ Windows 分支（``msvcrt``）必须**按字节区间**锁，且**占用时报 False**
+    （⇒ 上层报 ``EXAM_PLANE_BUSY``），**不得抛异常**。"""
+    fake = _FakeMsvcrt()
+    monkeypatch.setattr(suite, "_fcntl", None)
+    monkeypatch.setattr(suite, "_msvcrt", fake)
+    h = (tmp_path / "x.lock").open("a+", encoding="utf-8")
+    try:
+        assert suite._lock_exclusive(h) is True
+        assert fake.calls[0] == (fake.LK_NBLCK, 1), fake.calls
+        # ★ 同一 fd 再锁一次 ⇒ **被占** ⇒ 返回 False（不是抛异常）
+        assert suite._lock_exclusive(h) is False
+        suite._unlock_exclusive(h)
+        assert fake.calls[-1] == (fake.LK_UNLCK, 1), fake.calls
+        # 解锁后可再拿
+        assert suite._lock_exclusive(h) is True
+    finally:
+        h.close()
+
+
+def test_lock_backend_is_reported_and_not_silently_faked(plane):
+    """★ 锁后端必须**如实**报出来（复核者要能判断「这次有没有锁在起作用」）。"""
+    assert suite.LOCK_BACKEND in ("fcntl", "msvcrt", "none")
+    assert suite.LOCK_BACKEND == "none" or suite.LOCK_BACKEND == "fcntl", (
+        "本机是 POSIX ⇒ 应当走 fcntl")

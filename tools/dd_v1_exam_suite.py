@@ -27,7 +27,6 @@
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 import os
 import platform
@@ -45,6 +44,68 @@ FIXTURES = BACKEND / "tests" / "fixtures" / "dd-v1-exam-suite"
 EXAMS_DIR = FIXTURES / "exams"
 
 #: 考试台数据面（**默认在仓库之外** ⇒ 合成数据绝不污染真实业务库）
+
+# ── 跨平台排他锁（★ 交接包要在 Windows 上跑 ⇒ 不能用 POSIX 专属的 fcntl） ──────
+# ★ `fcntl` 在 Windows 上**不存在** ⇒ 直接 import 会 ImportError ⇒
+#   **整个考试台在 Windows 上起不来**。故：能 fcntl 就用 fcntl，
+#   否则用 msvcrt（Windows 原生），都没有就**降级为不锁并显式记录**（不假装有保护）。
+try:  # pragma: no cover - 平台相关
+    import fcntl as _fcntl
+except ImportError:  # pragma: no cover - Windows
+    _fcntl = None  # type: ignore[assignment]
+try:  # pragma: no cover - 平台相关
+    import msvcrt as _msvcrt
+except ImportError:  # pragma: no cover - POSIX
+    _msvcrt = None  # type: ignore[assignment]
+
+
+#: 本机实际生效的锁后端：``fcntl``（POSIX）／``msvcrt``（Windows）／``none``（**降级**）。
+#: ★ 写进运行清单的 ``environment`` ⇒ 复核者能知道「这次是哪套锁在起作用」。
+LOCK_BACKEND = ("fcntl" if _fcntl is not None
+                else ("msvcrt" if _msvcrt is not None else "none"))
+
+
+def _lock_exclusive(handle: Any) -> bool:
+    """非阻塞排他锁。返回 True=拿到，False=**被别人占着**。
+
+    ★ POSIX 用 ``flock``（整文件语义）；Windows 用 ``msvcrt.locking``
+      （**按字节区间**）⇒ 锁**第 0 个字节**，pid 等正文写到第 1 字节起
+      （★ 写进被锁区间在 Windows 上会 PermissionError）。
+    """
+    if _fcntl is not None:
+        try:
+            _fcntl.flock(handle.fileno(), _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+            return True
+        except BlockingIOError:
+            return False
+        except OSError:
+            return False
+    if _msvcrt is not None:
+        try:
+            handle.seek(0)
+            _msvcrt.locking(handle.fileno(), _msvcrt.LK_NBLCK, 1)
+            return True
+        except OSError:
+            return False
+    # ★ 两边都没有 ⇒ 拿不到锁能力（极少见）。**如实降级**，不假装有保护。
+    return True
+
+
+def _unlock_exclusive(handle: Any) -> None:
+    """释放排他锁（★ 异常路径也必须释放）。"""
+    if _fcntl is not None:
+        try:
+            _fcntl.flock(handle.fileno(), _fcntl.LOCK_UN)
+        except OSError:
+            pass
+        return
+    if _msvcrt is not None:
+        try:
+            handle.seek(0)
+            _msvcrt.locking(handle.fileno(), _msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+
 PLANE = Path(os.environ.get("DDV1_EXAM_PLANE")
              or (Path.home() / ".cangjie-ddv1-exams"))
 #: 冻结门禁阈值（**考试前冻结**；不随结果改）
@@ -141,18 +202,28 @@ def _acquire_plane_lock(exam: str) -> None:
     locks = PLANE / ".locks"
     locks.mkdir(parents=True, exist_ok=True)
     handle = (locks / f"{exam}.lock").open("a+", encoding="utf-8")
+    # ★ Windows 的 msvcrt 锁**按字节区间** ⇒ 锁前先保证文件至少 1 字节，
+    #   否则 locking() 会失败（文件太短）。
     try:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
+        if handle.seek(0, os.SEEK_END) == 0:
+            handle.write("\n")
+            handle.flush()
+    except OSError:
+        pass
+    if not _lock_exclusive(handle):
         handle.close()
         raise SystemExit(
             f"EXAM_PLANE_BUSY:{exam}（该考场数据面正被另一个进程占用；"
             f"等它跑完，或改跑别的考场）"
         )
-    handle.seek(0)
-    handle.truncate()
-    handle.write(f"pid={os.getpid()}\n")
-    handle.flush()
+    # ★ pid 正文写在**第 1 字节起**（Windows 上写进被锁区间会 PermissionError）
+    try:
+        handle.seek(1)
+        handle.truncate()
+        handle.write(f"pid={os.getpid()}\n")
+        handle.flush()
+    except OSError:
+        pass
     _PLANE_LOCKS[exam] = handle
 
 
@@ -599,6 +670,7 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
             "python_version_full": sys.version.replace("\n", " "),
             "data_plane": str(data_dir),
             "out_dir": str(out),
+            "plane_lock_backend": LOCK_BACKEND,
             "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库",
         },
         "model": model_participation,

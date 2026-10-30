@@ -1,13 +1,13 @@
 {
   "library": "LIB-DDVE-B",
   "institution": "合成机构B",
-  "generated_at": "2026-10-30T23:22:26",
+  "generated_at": "2026-10-31T00:40:44",
   "input_snapshot": {
-    "input_snapshot_id": "8c32a5d553a2a8cd3b91bc1c4fc657fb8f62442464623c58f0009750c560e4f1",
+    "input_snapshot_id": "c1f59483275a21f8c4c7982bea70d030a11aae58f22a3928ed3408362851f5f7",
     "checklist_fingerprint": "5a7ce9bbd809a93b",
     "material_digest": "b3a2439b231e23e18778afc992a6e6b4055abe5d09522b23c0f59a47a0ff685a",
     "material_files": 13,
-    "code_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf"
+    "code_sha": "8e5bcd117187655555d2f203a95038046ed4fa7c"
   },
   "human_approval_required": true,
   "sent_to_institution": false,
@@ -156,8 +156,8 @@
     },
     "obligations": [
       {
-        "obligation_id": "dfe04739c9e044c29d7e5c5be0e8dcdd",
-        "source_obligation_id": "dfe04739c9e044c29d7e5c5be0e8dcdd",
+        "obligation_id": "c769875422954331b2359c84f5d4042d",
+        "source_obligation_id": "c769875422954331b2359c84f5d4042d",
         "item_no": "2-7",
         "question_id": "2-7",
         "text": "营业执照",
@@ -304,8 +304,8 @@
         ]
       },
       {
-        "obligation_id": "60ebeca1a65a4d42b92653042296a694",
-        "source_obligation_id": "60ebeca1a65a4d42b92653042296a694",
+        "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+        "source_obligation_id": "b6db6e633e9841078977f6681fc6c56c",
         "item_no": "2-4",
         "question_id": "2-4",
         "text": "请提供合成子公司乙2022年度审计报告",
@@ -444,8 +444,8 @@
         ]
       },
       {
-        "obligation_id": "56a8d844c2dc437d87e4ae9ac210ab87",
-        "source_obligation_id": "56a8d844c2dc437d87e4ae9ac210ab87",
+        "obligation_id": "d8537d53bb0f4ec29000044d6b26f999",
+        "source_obligation_id": "d8537d53bb0f4ec29000044d6b26f999",
         "item_no": "2-6",
         "question_id": "2-6",
         "text": "请提供合成母公司近三年经营情况说明",
@@ -609,8 +609,8 @@
         ]
       },
       {
-        "obligation_id": "2f1b46aaa360423f9ceba59d7c591a5b",
-        "source_obligation_id": "2f1b46aaa360423f9ceba59d7c591a5b",
+        "obligation_id": "9f593f92b8914de19fa39fb9e1cb0c84",
+        "source_obligation_id": "9f593f92b8914de19fa39fb9e1cb0c84",
         "item_no": "2-2",
         "question_id": "2-2",
         "text": "请提供合成子公司甲2023年度审计报告",
@@ -750,8 +750,8 @@
         ]
       },
       {
-        "obligation_id": "bd572b5ed5304b328f6197a3703cf757@合成母公司",
-        "source_obligation_id": "bd572b5ed5304b328f6197a3703cf757",
+        "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7@合成母公司",
+        "source_obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
         "item_no": "2-1",
         "question_id": "2-1",
         "text": "请提供集团及下属公司2024年度审计报告",
@@ -909,8 +909,8 @@
         ]
       },
       {
-        "obligation_id": "bd572b5ed5304b328f6197a3703cf757@合成子公司甲",
-        "source_obligation_id": "bd572b5ed5304b328f6197a3703cf757",
+        "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7@合成子公司甲",
+        "source_obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
         "item_no": "2-1",
         "question_id": "2-1",
         "text": "请提供集团及下属公司2024年度审计报告",
@@ -1050,8 +1050,8 @@
         ]
       },
       {
-        "obligation_id": "bd572b5ed5304b328f6197a3703cf757@合成子公司乙",
-        "source_obligation_id": "bd572b5ed5304b328f6197a3703cf757",
+        "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7@合成子公司乙",
+        "source_obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
         "item_no": "2-1",
         "question_id": "2-1",
         "text": "请提供集团及下属公司2024年度审计报告",
@@ -1191,8 +1191,8 @@
         ]
       },
       {
-        "obligation_id": "2d2fc7763b0543d0b0226f4e92a691e8",
-        "source_obligation_id": "2d2fc7763b0543d0b0226f4e92a691e8",
+        "obligation_id": "bc2da82e7ba04c5a803e4270cd8e38b5",
+        "source_obligation_id": "bc2da82e7ba04c5a803e4270cd8e38b5",
         "item_no": "2-3",
         "question_id": "2-3",
         "text": "请提供合成子公司乙2024年度审计报告",
@@ -1332,8 +1332,8 @@
         ]
       },
       {
-        "obligation_id": "07b8100dbdb04793b226ff3025f5e91f",
-        "source_obligation_id": "07b8100dbdb04793b226ff3025f5e91f",
+        "obligation_id": "bcd1e0e676574e7d90da7c91f3865a86",
+        "source_obligation_id": "bcd1e0e676574e7d90da7c91f3865a86",
         "item_no": "2-5",
         "question_id": "2-5",
         "text": "请提供合成母公司2024年度营业执照",
@@ -1480,8 +1480,8 @@
         ]
       },
       {
-        "obligation_id": "0c99a3c04baa4842b22b7b463ccb71ab",
-        "source_obligation_id": "0c99a3c04baa4842b22b7b463ccb71ab",
+        "obligation_id": "defdcfd90b1a41789bd09e80c2af6865",
+        "source_obligation_id": "defdcfd90b1a41789bd09e80c2af6865",
         "item_no": "2-7",
         "question_id": "2-7",
         "text": "请提供合成母公司2024年度审计报告",
@@ -1639,8 +1639,8 @@
         ]
       },
       {
-        "obligation_id": "31a09913dece4a83b83757da9a11bc74",
-        "source_obligation_id": "31a09913dece4a83b83757da9a11bc74",
+        "obligation_id": "b0d0fa8de23f400e9327bf06859ca204",
+        "source_obligation_id": "b0d0fa8de23f400e9327bf06859ca204",
         "item_no": "2-8",
         "question_id": "2-8",
         "text": "请提供合成母公司2024年度审计报告",
@@ -1798,8 +1798,8 @@
         ]
       },
       {
-        "obligation_id": "e719edd47596481896a47c5d76ad370b",
-        "source_obligation_id": "e719edd47596481896a47c5d76ad370b",
+        "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+        "source_obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
         "item_no": "2-9",
         "question_id": "2-9",
         "text": "请提供合成母公司2024年度纳税证明",

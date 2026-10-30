@@ -1,19 +1,25 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T152226Z",
+  "run_id": "20261030T163914Z",
   "exam": "B",
   "exam_id": "DDV1-SYN-B",
   "title": "考试B · 复杂业务",
-  "started_at": "2026-10-30T23:22:26+08:00",
-  "finished_at": "2026-10-30T23:22:26+08:00",
-  "elapsed_s": 0.24,
-  "git_sha": "a7984649d01484afda6762ae74e6972ceb5af6cf",
+  "started_at": "2026-10-31T00:40:56+08:00",
+  "finished_at": "2026-10-31T00:40:56+08:00",
+  "elapsed_s": 102.42,
+  "git_sha": "8e5bcd117187655555d2f203a95038046ed4fa7c",
   "git_dirty": false,
   "environment": {
-    "platform": "darwin",
-    "python": "3.13.12",
-    "data_plane": "/Users/mac/.cangjie-ddv1-exams/B/data",
-    "out_dir": ".audit/gate-runs/B",
+    "platform": "linux",
+    "platform_release": "Linux-5.10.134-18.0.12.lifsea8.x86_64-x86_64-with-glibc2.36",
+    "platform_version": "#1 SMP Tue Aug 4 16:35:16 CST 2026",
+    "os_name": "Linux",
+    "machine": "x86_64",
+    "python": "3.11.2",
+    "python_implementation": "CPython",
+    "python_version_full": "3.11.2 (main, May 12 2026, 05:17:27) [GCC 12.2.0]",
+    "data_plane": "/workspace/plane-regen/B/data",
+    "out_dir": "/workspace/fos/.audit/gate-runs/B",
     "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库"
   },
   "model": {
@@ -48,7 +54,7 @@
     "contract_questions": 9
   },
   "gold_version": {
-    "path": "/Users/mac/.cangjie-ddv1-exams/B/gold/gold-B.json",
+    "path": "/workspace/plane-regen/B/gold/gold-B.json",
     "items": 10,
     "fingerprint": "6ef9d45d010d0c7a00be9fcd26dde5d9a54ad58b26b58ea96706cb22da2437bf"
   },
@@ -122,10 +128,10 @@
       },
       "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
       "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
-      "code_version": "a7984649d01484afda6762ae74e6972ceb5af6cf",
+      "code_version": "8e5bcd117187655555d2f203a95038046ed4fa7c",
       "evidence_paths": {
-        "answer_sheet": ".audit/gate-runs/B/answer/机器答卷-20261030-232226.json",
-        "gold": "/Users/mac/.cangjie-ddv1-exams/B/gold/gold-B.json",
+        "answer_sheet": "/workspace/fos/.audit/gate-runs/B/answer/机器答卷-20261031-004055.json",
+        "gold": "/workspace/plane-regen/B/gold/gold-B.json",
         "library": "LIB-DDVE-B"
       }
     },
@@ -303,11 +309,11 @@
             }
           ],
           "remedy": "人工核对：库里同路径件的内容指纹与 Gold 记的不一致 ⇒ 是内容被替换，还是 Gold 记错",
-          "obligation_id": "e719edd47596481896a47c5d76ad370b",
+          "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
           "item_no": "2-9"
         },
         {
-          "obligation_id": "60ebeca1a65a4d42b92653042296a694",
+          "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
           "item_no": "2-4",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -328,7 +334,7 @@
   "disclosure": {
     "delivered_rows": 2,
     "delivered_files": 2,
-    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/B/data/deliveries/0146965366de40ecb8ff3ade36e08c04/组包manifest.tsv",
+    "manifest_path": "/workspace/plane-regen/B/data/deliveries/7c74a104cf964b47b37f254f4fcbb2fb/组包manifest.tsv",
     "blocked_materials": 25,
     "violations": 0,
     "violation_detail": [],
@@ -342,9 +348,9 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": ".audit/gate-runs/B/answer/机器答卷-20261030-232226.json",
-    "scorecard_dir": ".audit/gate-runs/B/grade",
-    "run_report_dir": ".audit/gate-runs/B/run",
-    "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/B/gold/gold-B.json"
+    "answer_sheet": "/workspace/fos/.audit/gate-runs/B/answer/机器答卷-20261031-004055.json",
+    "scorecard_dir": "/workspace/fos/.audit/gate-runs/B/grade",
+    "run_report_dir": "/workspace/fos/.audit/gate-runs/B/run",
+    "gold_manifest": "/workspace/plane-regen/B/gold/gold-B.json"
   }
 }
