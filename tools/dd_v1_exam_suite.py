@@ -369,6 +369,29 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = Path(out_dir) if out_dir else (plane / "runs" / run_id)
+    # ★★ **fail-closed：--out 不得撞数据面**（独立 Reviewer 第 2 轮 MINOR）
+    #   事故机制：`--out` 若**等于数据面本身**（或它的祖先）⇒ 下面的 `shutil.rmtree(out)`
+    #   会把**刚写下的考场披露策略**（exam-policy-<exam>.json）一起删掉
+    #   ⇒ 回落到**生产默认策略**（最严 RESTRICTED）⇒ 全部材料被拦
+    #   ⇒ **0 件交付 ⇒ 总分被强制为 0**，而且**全程不报错、退出码 0、状态仍显示 SCORED**。
+    #   ⇒ 这是一个「静默毁面」陷阱：**用错命令 ⇒ 静默的假分数**。
+    #   ⇒ 这里**直接拒绝执行**并说明正确用法（fail-loud）。
+    try:
+        _out_r = out.resolve()
+        _plane_r = plane.resolve()
+    except OSError:
+        _out_r, _plane_r = out, plane
+    if _out_r == _plane_r or _plane_r.is_relative_to(_out_r):
+        raise SystemExit(
+            "❌ --out 与考试数据面冲突，已拒绝执行。\n"
+            f"   数据面（本场）: {_plane_r}\n"
+            f"   --out 解析为  : {_out_r}\n"
+            "   原因：--out 指向数据面本身或它的祖先时，运行前的清理会删掉"
+            "**考场披露策略文件**，导致披露闸回落到生产默认（最严）策略 ⇒\n"
+            "        全部材料被拦 ⇒ 0 件交付 ⇒ 总分被强制为 0，**且不报错**。\n"
+            "   正确用法：--out 指向**数据面之外**的目录；"
+            "或干脆不传 --out（默认写到 <数据面>/runs/<run_id>）。"
+        )
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -966,6 +989,9 @@ def coverage_report(runs_dir: str, gate_report: dict[str, Any] | None = None) ->
         cov = res.get("exam_coverage") or {}
         rows.append({
             "exam": m.get("exam"), "run_id": m.get("run_id"), "git_sha": m.get("git_sha"),
+            # ★ 独立 Reviewer 第 2 轮 NIT：runs[] 也要带 dirty
+            #   （否则单看这一层无法自证「这场考试跑的是不是当前代码」）
+            "git_dirty": m.get("git_dirty"),
             "status": res.get("status"),
             "total_score": scores.get("total_score"),
             "understanding": scores.get("question_understanding_coverage"),
@@ -993,6 +1019,10 @@ def coverage_report(runs_dir: str, gate_report: dict[str, Any] | None = None) ->
     return {
         "schema_version": "dd_v1_coverage_report.v1",
         "generated_at": _now(),
+        # ★ 独立 Reviewer 第 2 轮 NIT：顶层也要带 sha/dirty
+        #   （否则单看覆盖率报告这一份文件，无法自证「这份覆盖率是用哪个 commit 的代码算出来的」）
+        "git_sha": _git_sha(),
+        "git_dirty": _git_dirty(),
         "runs_dir": str(runs_dir),
         "runs": rows,
         "gate": gate or {},
@@ -1197,14 +1227,32 @@ def cmd_run(a) -> int:
     m = run_exam(a.exam, agent=a.agent, agent_result=a.agent_result,
                  allow_local_dsh=a.allow_local_dsh, reset=not a.keep_db,
                  out_dir=a.out)
+    # ★ 独立 Reviewer 第 2 轮建议：0 件交付要**显式醒目告警**。
+    #   否则「跑挂了（0 交付）」与「跑通了但分低」在摘要里长得一样（都是 SCORED/LOW_CONFIDENCE），
+    #   容易被当成正常读数。
+    _cnt = (m["results"].get("counts") or {})
+    _delivered = int(_cnt.get("delivered_files") or 0)
+    if _delivered == 0:
+        print("🚨 警告：**本场 0 件交付** —— 总分被强制为 0（HR-1）。"
+              "请先确认：① 考场披露策略文件是否还在（`exam-policy-*.json`）；"
+              "② 材料是否被判成受限；③ `--out` 是否误指向了数据面。",
+              flush=True)
     print(json.dumps({"exam": m["exam"], "run_id": m["run_id"], "status": m["results"]["status"],
                       "scores": m["results"]["scores"],
+                      "delivered_files": _delivered,
+                      "delivered_files_attributed": _cnt.get("delivered_files_attributed"),
                       "safety": (m["results"].get("safety_gate") or {}).get("status"),
                       "failures": len(m["failures"]),
                       "manifest": str(Path(a.out or (exam_plane(a.exam) / "runs" / m["run_id"]))
                                      / "运行清单.json")},
                      ensure_ascii=False, indent=2))
-    return 0 if m["results"]["status"] in ("SCORED", "SCORED_PARTIAL") else 1
+    # ★ 退出码口径（与门禁 `status_scored` **同一语义**，别再分叉）：
+    #   SCORED / SCORED_PARTIAL / LOW_CONFIDENCE = **已评分**（分数照给）⇒ 退出码 0
+    #   ★ LOW_CONFIDENCE 只表示「义务条数 < 30、样本量不足」的**标注**，
+    #     评分规范原文就是「**分数仍给**」⇒ 让它退出码非 0 会让交接方
+    #     按文档跑完看到 exit=1 却拿到 96.67 分 ⇒ **误判为失败**。
+    #   NOT_SCORABLE（未评分）/ DIAGNOSTIC_ONLY（只诊断）⇒ 退出码非 0（**真的没出分**）。
+    return 0 if m["results"]["status"] in ("SCORED", "SCORED_PARTIAL", "LOW_CONFIDENCE") else 1
 
 
 def cmd_gate(a) -> int:
