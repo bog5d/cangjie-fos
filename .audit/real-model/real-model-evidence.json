@@ -2,7 +2,7 @@
   "adapter_id": "deepseek-harness",
   "status": "CALL_FAILED",
   "exit_code": 1,
-  "elapsed_s": 5.9,
+  "elapsed_s": 5.78,
   "argv_summary": [
     "/Users/mac/.npm-global/bin/dsh",
     "--profile",

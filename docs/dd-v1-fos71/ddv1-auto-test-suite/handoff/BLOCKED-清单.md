@@ -12,6 +12,8 @@
 |---|---|
 | **现象** | 本机 `~/.dsh/.credentials.yaml` 里的 key（尾号 `9bb5`）被服务端判 `invalid` |
 | **证据** | `.audit/real-model/stderr.log`（原始 stderr）、`.audit/real-model/real-model-evidence.json` |
+| **★ 二次复现（2026-10-30，本轮收尾时重试）** | 仍然 `CALL_FAILED`（exit=1），但**服务端返回了新的 request_id `df2d27e3-6a18-4041-ac9b-afdb43e7da63`** ⇒ **请求确实发出、确实到达服务端、确实被拒** |
+| **★ 网络是通的（不是网络问题）** | stderr 首行：`dsh: all_proxy names a SOCKS proxy, which is not supported; connecting directly for that scheme` ⇒ dsh **直连**成功到达 DeepSeek 服务端 ⇒ 拿到的是**认证失败**而非连接失败 ⇒ **唯一问题是凭证本身** |
 | **影响** | **G3（真实模型调用 PASS）判 FAIL** ⇒ 交付门禁整体不绿 |
 | **责任方** | **账号持有人**（更新 API key） |
 | **解锁后复跑** | `cd backend && .venv/bin/python -m pytest -q tests/test_dd_v1_model_participation_l3.py -k real_deepseek`（Mac）<br>`.\.venv\Scripts\python -m pytest -q tests\test_dd_v1_model_participation_l3.py -k real_deepseek`（Windows）<br>★ 需要 `DDV1_ALLOW_REAL_MODEL=1` 显式 opt-in |
