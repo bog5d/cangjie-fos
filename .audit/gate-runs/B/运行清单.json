@@ -1,13 +1,13 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T103939Z",
+  "run_id": "20261030T105531Z",
   "exam": "B",
   "exam_id": "DDV1-SYN-B",
   "title": "考试B · 复杂业务",
-  "started_at": "2026-10-30T18:39:39+08:00",
-  "finished_at": "2026-10-30T18:39:39+08:00",
+  "started_at": "2026-10-30T18:55:31+08:00",
+  "finished_at": "2026-10-30T18:55:31+08:00",
   "elapsed_s": 0.21,
-  "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f",
+  "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018",
   "git_dirty": false,
   "environment": {
     "platform": "darwin",
@@ -32,7 +32,7 @@
   "gold_version": {
     "path": "/Users/mac/.cangjie-ddv1-exams/B/gold/gold-B.json",
     "items": 10,
-    "fingerprint": "962c5d6ae07da04e3ec32a79235dc52bd7a7f375b414b4a24c62b7f735c701c6"
+    "fingerprint": "ee3290d1de10af2757a416273dc6da7427b120f53d0b76c3ceba38874c7440ca"
   },
   "results": {
     "rc_run": 0,
@@ -68,6 +68,7 @@
       "hit_files": 13,
       "extra_files": 2,
       "delivered_files": 2,
+      "delivered_files_attributed": 3,
       "understood": 9,
       "answered": 9,
       "complete": 8,
@@ -222,11 +223,11 @@
             }
           ],
           "remedy": "人工核对：库里同路径件的内容指纹与 Gold 记的不一致 ⇒ 是内容被替换，还是 Gold 记错",
-          "obligation_id": "dbf47909791646bca628db65e6a4d377",
+          "obligation_id": "ee47763d6ce044aba85bcfc958830a7e",
           "item_no": "2-9"
         },
         {
-          "obligation_id": "830b9023a1ab4fb0890a121f56f71846",
+          "obligation_id": "b68b26a7b8f8451fac0b7178adc2a0e4",
           "item_no": "2-4",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -247,7 +248,7 @@
   "disclosure": {
     "delivered_rows": 2,
     "delivered_files": 2,
-    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/B/data/deliveries/c5bccde4c84b420c860b4608362e2c3b/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/B/data/deliveries/8a347a01abe2491c805da0b01fc29dd3/组包manifest.tsv",
     "blocked_materials": 25,
     "violations": 0,
     "violation_detail": [],
@@ -261,7 +262,7 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": ".audit/exam-plane/B/answer/机器答卷-20261030-183939.json",
+    "answer_sheet": ".audit/exam-plane/B/answer/机器答卷-20261030-185531.json",
     "scorecard_dir": ".audit/exam-plane/B/grade",
     "run_report_dir": ".audit/exam-plane/B/run",
     "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/B/gold/gold-B.json"

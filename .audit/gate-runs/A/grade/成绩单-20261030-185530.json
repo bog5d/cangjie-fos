@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "",
   "status": "LOW_CONFIDENCE",
-  "graded_at": "2026-10-30T18:39:38+08:00",
+  "graded_at": "2026-10-30T18:55:30+08:00",
   "scores": {
     "question_understanding_coverage": 0.666667,
     "question_answer_coverage": 1.0,
@@ -21,6 +21,7 @@
     "hit_files": 4,
     "extra_files": 0,
     "delivered_files": 2,
+    "delivered_files_attributed": 2,
     "understood": 2,
     "answered": 3,
     "complete": 3,
@@ -29,9 +30,9 @@
   },
   "rows": [
     {
-      "obligation_id": "c39d852c05434e08970e92b27c7f99c2",
+      "obligation_id": "43e696367a2945d6bfaccf730a1bcfe3",
       "cluster_ids": [
-        "c39d852c05434e08970e92b27c7f99c2"
+        "43e696367a2945d6bfaccf730a1bcfe3"
       ],
       "cluster_count": 1,
       "item_no": "1-1",
@@ -59,9 +60,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "066d069443eb479d8f7d23f01d64fd21",
+      "obligation_id": "873d0ae82cd94f2faef05a1c9105fa81",
       "cluster_ids": [
-        "066d069443eb479d8f7d23f01d64fd21"
+        "873d0ae82cd94f2faef05a1c9105fa81"
       ],
       "cluster_count": 1,
       "item_no": "1-2",
@@ -92,9 +93,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "1149606a1b7c473aa512d5a3047fc7d7",
+      "obligation_id": "98511bf6d47440f689c30109a7487e0a",
       "cluster_ids": [
-        "1149606a1b7c473aa512d5a3047fc7d7"
+        "98511bf6d47440f689c30109a7487e0a"
       ],
       "cluster_count": 1,
       "item_no": "1-3",
@@ -184,7 +185,7 @@
   },
   "evidence_diff": [
     {
-      "obligation_id": "c39d852c05434e08970e92b27c7f99c2",
+      "obligation_id": "43e696367a2945d6bfaccf730a1bcfe3",
       "item_no": "1-1",
       "outcome": "CORRECT",
       "correct": true,
@@ -223,7 +224,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "066d069443eb479d8f7d23f01d64fd21",
+      "obligation_id": "873d0ae82cd94f2faef05a1c9105fa81",
       "item_no": "1-2",
       "outcome": "CORRECT",
       "correct": true,
@@ -279,7 +280,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "1149606a1b7c473aa512d5a3047fc7d7",
+      "obligation_id": "98511bf6d47440f689c30109a7487e0a",
       "item_no": "1-3",
       "outcome": "CORRECT",
       "correct": true,
@@ -332,7 +333,7 @@
     "exam_id": "DDV1-SYN-A",
     "items": [
       {
-        "obligation_id": "c39d852c05434e08970e92b27c7f99c2",
+        "obligation_id": "43e696367a2945d6bfaccf730a1bcfe3",
         "item_no": "1-1",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -355,7 +356,7 @@
         "note": ""
       },
       {
-        "obligation_id": "066d069443eb479d8f7d23f01d64fd21",
+        "obligation_id": "873d0ae82cd94f2faef05a1c9105fa81",
         "item_no": "1-2",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -390,7 +391,7 @@
         "note": ""
       },
       {
-        "obligation_id": "1149606a1b7c473aa512d5a3047fc7d7",
+        "obligation_id": "98511bf6d47440f689c30109a7487e0a",
         "item_no": "1-3",
         "expected_verdict": "MATCH",
         "expected_files": [

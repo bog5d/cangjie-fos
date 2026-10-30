@@ -1,7 +1,7 @@
 {
   "schema_version": "dd_v1_answer_sheet.v1",
   "exam_id": "DDV1-SYN-B",
-  "generated_at": "2026-10-30T18:39:39+08:00",
+  "generated_at": "2026-10-30T18:55:31+08:00",
   "delivered": [
     {
       "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
@@ -45,9 +45,9 @@
   },
   "obligations": [
     {
-      "obligation_id": "1c8b1d4ddfda4435a5927d1360665397",
-      "source_obligation_id": "1c8b1d4ddfda4435a5927d1360665397",
-      "obligation_cluster_id": "1c8b1d4ddfda4435a5927d1360665397",
+      "obligation_id": "18194f0ee24d439c8be60ee13c4972ec",
+      "source_obligation_id": "18194f0ee24d439c8be60ee13c4972ec",
+      "obligation_cluster_id": "18194f0ee24d439c8be60ee13c4972ec",
       "item_id": "2-7",
       "text": "营业执照",
       "interpretation": {
@@ -141,10 +141,177 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "1d0b57a254c2451d958f8823b5cb2eb4",
-      "source_obligation_id": "1d0b57a254c2451d958f8823b5cb2eb4",
-      "obligation_cluster_id": "1d0b57a254c2451d958f8823b5cb2eb4",
-      "item_id": "2-8",
+      "obligation_id": "2c3ad3e57a3046248d044693ca45924e",
+      "source_obligation_id": "2c3ad3e57a3046248d044693ca45924e",
+      "obligation_cluster_id": "2c3ad3e57a3046248d044693ca45924e",
+      "item_id": "2-3",
+      "text": "请提供合成子公司乙2024年度审计报告",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "合成子公司乙",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "请提供合成子公司乙2024年度审计报告",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [
+        {
+          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        },
+        {
+          "file_id": "c5d22032df3f59aa210ea984155a0d6a",
+          "sha256": "1848f05fa12d7de1d9f037b479f18e3b83bb6a9b42f4e758d96b18a6657b71ab",
+          "relative_path": "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2023",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 2,
+      "selected": [
+        {
+          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+          "locator": "L1-L3",
+          "match_reason": "MATCH",
+          "entity": "合成子公司乙",
+          "period": "2024"
+        }
+      ],
+      "selected_count": 1,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 2,
+        "checked": 2,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "4b41c56015874b409279da61f8202c52",
+      "source_obligation_id": "4b41c56015874b409279da61f8202c52",
+      "obligation_cluster_id": "4b41c56015874b409279da61f8202c52",
+      "item_id": "2-6",
+      "text": "请提供合成母公司近三年经营情况说明",
+      "interpretation": {
+        "doc_type": "",
+        "doc_type_label": "",
+        "doc_type_source": "UNRESOLVED",
+        "doc_type_unresolved": true,
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "period": "2022-2024",
+        "required_parts": [],
+        "text": "请提供合成母公司近三年经营情况说明",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": false
+      },
+      "candidates": [
+        {
+          "file_id": "29ba53b6e613697220ebf8c13d7b0271",
+          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "doc_type": "",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        },
+        {
+          "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
+          "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
+          "relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+          "entity": "合成母公司",
+          "period": "2023",
+          "doc_type": "",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 2,
+      "selected": [
+        {
+          "file_id": "29ba53b6e613697220ebf8c13d7b0271",
+          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+          "locator": "L1-L3",
+          "match_reason": "MATCH",
+          "entity": "合成母公司",
+          "period": "2024"
+        },
+        {
+          "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
+          "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
+          "relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+          "locator": "L1-L3",
+          "match_reason": "MATCH",
+          "entity": "合成母公司",
+          "period": "2023"
+        }
+      ],
+      "selected_count": 2,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 2,
+        "checked": 2,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "aa429682a9f24dc288b330f55bebe382",
+      "source_obligation_id": "aa429682a9f24dc288b330f55bebe382",
+      "obligation_cluster_id": "aa429682a9f24dc288b330f55bebe382",
+      "item_id": "2-7",
       "text": "请提供合成母公司2024年度审计报告",
       "interpretation": {
         "doc_type": "audit_report",
@@ -232,9 +399,157 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "307158f660064ac78c21c0fcbe5b85c2@合成子公司乙",
-      "source_obligation_id": "307158f660064ac78c21c0fcbe5b85c2",
-      "obligation_cluster_id": "307158f660064ac78c21c0fcbe5b85c2@合成子公司乙",
+      "obligation_id": "acf477b1befe422c8eb2bafc1c9f5b11",
+      "source_obligation_id": "acf477b1befe422c8eb2bafc1c9f5b11",
+      "obligation_cluster_id": "acf477b1befe422c8eb2bafc1c9f5b11",
+      "item_id": "2-2",
+      "text": "请提供合成子公司甲2023年度审计报告",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "合成子公司甲",
+        "entity_basis": "AUTHORITY",
+        "period": "2023",
+        "required_parts": [],
+        "text": "请提供合成子公司甲2023年度审计报告",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [
+        {
+          "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
+          "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
+          "relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+          "entity": "合成子公司甲",
+          "period": "2023",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        },
+        {
+          "file_id": "131dc51c758d767b6fab7d7594baa437",
+          "sha256": "aad89e1a1073cd414edb09eb286b99ea5b5049ba0b1e3b58d985377d52b80026",
+          "relative_path": "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司甲",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 2,
+      "selected": [
+        {
+          "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
+          "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
+          "relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+          "locator": "L1-L3",
+          "match_reason": "MATCH",
+          "entity": "合成子公司甲",
+          "period": "2023"
+        }
+      ],
+      "selected_count": 1,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 2,
+        "checked": 2,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "b68b26a7b8f8451fac0b7178adc2a0e4",
+      "source_obligation_id": "b68b26a7b8f8451fac0b7178adc2a0e4",
+      "obligation_cluster_id": "b68b26a7b8f8451fac0b7178adc2a0e4",
+      "item_id": "2-4",
+      "text": "请提供合成子公司乙2022年度审计报告",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "合成子公司乙",
+        "entity_basis": "AUTHORITY",
+        "period": "2022",
+        "required_parts": [],
+        "text": "请提供合成子公司乙2022年度审计报告",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [
+        {
+          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        },
+        {
+          "file_id": "c5d22032df3f59aa210ea984155a0d6a",
+          "sha256": "1848f05fa12d7de1d9f037b479f18e3b83bb6a9b42f4e758d96b18a6657b71ab",
+          "relative_path": "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2023",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 2,
+      "selected": [],
+      "selected_count": 0,
+      "selection_source": "",
+      "verdict": "",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 2,
+        "checked": 2,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "PERIOD_OR_VERSION_MISMATCH"
+    },
+    {
+      "obligation_id": "bf0ba380f7d24c5e96b2e3b54f5f5906@合成子公司乙",
+      "source_obligation_id": "bf0ba380f7d24c5e96b2e3b54f5f5906",
+      "obligation_cluster_id": "bf0ba380f7d24c5e96b2e3b54f5f5906@合成子公司乙",
       "item_id": "2-1",
       "text": "请提供集团及下属公司2024年度审计报告",
       "interpretation": {
@@ -311,9 +626,9 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "307158f660064ac78c21c0fcbe5b85c2@合成子公司甲",
-      "source_obligation_id": "307158f660064ac78c21c0fcbe5b85c2",
-      "obligation_cluster_id": "307158f660064ac78c21c0fcbe5b85c2@合成子公司甲",
+      "obligation_id": "bf0ba380f7d24c5e96b2e3b54f5f5906@合成子公司甲",
+      "source_obligation_id": "bf0ba380f7d24c5e96b2e3b54f5f5906",
+      "obligation_cluster_id": "bf0ba380f7d24c5e96b2e3b54f5f5906@合成子公司甲",
       "item_id": "2-1",
       "text": "请提供集团及下属公司2024年度审计报告",
       "interpretation": {
@@ -390,9 +705,9 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "307158f660064ac78c21c0fcbe5b85c2@合成母公司",
-      "source_obligation_id": "307158f660064ac78c21c0fcbe5b85c2",
-      "obligation_cluster_id": "307158f660064ac78c21c0fcbe5b85c2@合成母公司",
+      "obligation_id": "bf0ba380f7d24c5e96b2e3b54f5f5906@合成母公司",
+      "source_obligation_id": "bf0ba380f7d24c5e96b2e3b54f5f5906",
+      "obligation_cluster_id": "bf0ba380f7d24c5e96b2e3b54f5f5906@合成母公司",
       "item_id": "2-1",
       "text": "请提供集团及下属公司2024年度审计报告",
       "interpretation": {
@@ -481,9 +796,9 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "5f56821e19494c67a471cdbf41f94494",
-      "source_obligation_id": "5f56821e19494c67a471cdbf41f94494",
-      "obligation_cluster_id": "5f56821e19494c67a471cdbf41f94494",
+      "obligation_id": "c2f6e9849e524ee4a2c01546f6d42c86",
+      "source_obligation_id": "c2f6e9849e524ee4a2c01546f6d42c86",
+      "obligation_cluster_id": "c2f6e9849e524ee4a2c01546f6d42c86",
       "item_id": "2-5",
       "text": "请提供合成母公司2024年度营业执照",
       "interpretation": {
@@ -577,415 +892,9 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "605d36bcaae24126aa011dd2f678668d",
-      "source_obligation_id": "605d36bcaae24126aa011dd2f678668d",
-      "obligation_cluster_id": "605d36bcaae24126aa011dd2f678668d",
-      "item_id": "2-6",
-      "text": "请提供合成母公司近三年经营情况说明",
-      "interpretation": {
-        "doc_type": "",
-        "doc_type_label": "",
-        "doc_type_source": "UNRESOLVED",
-        "doc_type_unresolved": true,
-        "entity": "合成母公司",
-        "entity_basis": "AUTHORITY",
-        "period": "2022-2024",
-        "required_parts": [],
-        "text": "请提供合成母公司近三年经营情况说明",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": false
-      },
-      "candidates": [
-        {
-          "file_id": "29ba53b6e613697220ebf8c13d7b0271",
-          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
-          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
-          "entity": "合成母公司",
-          "period": "2024",
-          "doc_type": "",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        },
-        {
-          "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
-          "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
-          "relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
-          "entity": "合成母公司",
-          "period": "2023",
-          "doc_type": "",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 2,
-      "selected": [
-        {
-          "file_id": "29ba53b6e613697220ebf8c13d7b0271",
-          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
-          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
-          "locator": "L1-L3",
-          "match_reason": "MATCH",
-          "entity": "合成母公司",
-          "period": "2024"
-        },
-        {
-          "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
-          "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
-          "relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
-          "locator": "L1-L3",
-          "match_reason": "MATCH",
-          "entity": "合成母公司",
-          "period": "2023"
-        }
-      ],
-      "selected_count": 2,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 2,
-        "checked": 2,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "830b9023a1ab4fb0890a121f56f71846",
-      "source_obligation_id": "830b9023a1ab4fb0890a121f56f71846",
-      "obligation_cluster_id": "830b9023a1ab4fb0890a121f56f71846",
-      "item_id": "2-4",
-      "text": "请提供合成子公司乙2022年度审计报告",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "合成子公司乙",
-        "entity_basis": "AUTHORITY",
-        "period": "2022",
-        "required_parts": [],
-        "text": "请提供合成子公司乙2022年度审计报告",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [
-        {
-          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
-          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
-          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
-          "entity": "合成子公司乙",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        },
-        {
-          "file_id": "c5d22032df3f59aa210ea984155a0d6a",
-          "sha256": "1848f05fa12d7de1d9f037b479f18e3b83bb6a9b42f4e758d96b18a6657b71ab",
-          "relative_path": "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
-          "entity": "合成子公司乙",
-          "period": "2023",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 2,
-      "selected": [],
-      "selected_count": 0,
-      "selection_source": "",
-      "verdict": "",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 2,
-        "checked": 2,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "PERIOD_OR_VERSION_MISMATCH"
-    },
-    {
-      "obligation_id": "9ac2ac162bc04284adac26862d2dad33",
-      "source_obligation_id": "9ac2ac162bc04284adac26862d2dad33",
-      "obligation_cluster_id": "9ac2ac162bc04284adac26862d2dad33",
-      "item_id": "2-7",
-      "text": "请提供合成母公司2024年度审计报告",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "合成母公司",
-        "entity_basis": "AUTHORITY",
-        "period": "2024",
-        "required_parts": [],
-        "text": "请提供合成母公司2024年度审计报告",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [
-        {
-          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
-          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
-          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
-          "entity": "合成母公司",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        },
-        {
-          "file_id": "91f1a03f0774c04d8612bfdac7a83fed",
-          "sha256": "39a1a0ceac91a65d629b10cf59e51985003d7a99b7f9fca75adbdde06abcc0af",
-          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
-          "entity": "合成母公司",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "DRAFT",
-          "locator": "L1-L3",
-          "period_status": ""
-        },
-        {
-          "file_id": "cfca05e0da9f638f746170d7a13e83fb",
-          "sha256": "8c6b9a0a9d233f37b4adb80f852d5e90a3dde1fb7f81dfa07d9bd50fcf601d7b",
-          "relative_path": "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
-          "entity": "合成母公司",
-          "period": "2023",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 3,
-      "selected": [
-        {
-          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
-          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
-          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
-          "locator": "L1-L3",
-          "match_reason": "MATCH",
-          "entity": "合成母公司",
-          "period": "2024"
-        }
-      ],
-      "selected_count": 1,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 3,
-        "checked": 3,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "bb0bd0aebf3446a99c28587aabbae80b",
-      "source_obligation_id": "bb0bd0aebf3446a99c28587aabbae80b",
-      "obligation_cluster_id": "bb0bd0aebf3446a99c28587aabbae80b",
-      "item_id": "2-3",
-      "text": "请提供合成子公司乙2024年度审计报告",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "合成子公司乙",
-        "entity_basis": "AUTHORITY",
-        "period": "2024",
-        "required_parts": [],
-        "text": "请提供合成子公司乙2024年度审计报告",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [
-        {
-          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
-          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
-          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
-          "entity": "合成子公司乙",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        },
-        {
-          "file_id": "c5d22032df3f59aa210ea984155a0d6a",
-          "sha256": "1848f05fa12d7de1d9f037b479f18e3b83bb6a9b42f4e758d96b18a6657b71ab",
-          "relative_path": "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
-          "entity": "合成子公司乙",
-          "period": "2023",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 2,
-      "selected": [
-        {
-          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
-          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
-          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
-          "locator": "L1-L3",
-          "match_reason": "MATCH",
-          "entity": "合成子公司乙",
-          "period": "2024"
-        }
-      ],
-      "selected_count": 1,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 2,
-        "checked": 2,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "bddb910a7f604883adb2b9f10400b721",
-      "source_obligation_id": "bddb910a7f604883adb2b9f10400b721",
-      "obligation_cluster_id": "bddb910a7f604883adb2b9f10400b721",
-      "item_id": "2-2",
-      "text": "请提供合成子公司甲2023年度审计报告",
-      "interpretation": {
-        "doc_type": "audit_report",
-        "doc_type_label": "",
-        "doc_type_source": "RULE",
-        "doc_type_unresolved": false,
-        "entity": "合成子公司甲",
-        "entity_basis": "AUTHORITY",
-        "period": "2023",
-        "required_parts": [],
-        "text": "请提供合成子公司甲2023年度审计报告",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": true
-      },
-      "candidates": [
-        {
-          "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
-          "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
-          "relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
-          "entity": "合成子公司甲",
-          "period": "2023",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        },
-        {
-          "file_id": "131dc51c758d767b6fab7d7594baa437",
-          "sha256": "aad89e1a1073cd414edb09eb286b99ea5b5049ba0b1e3b58d985377d52b80026",
-          "relative_path": "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
-          "entity": "合成子公司甲",
-          "period": "2024",
-          "doc_type": "audit_report",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L3",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 2,
-      "selected": [
-        {
-          "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
-          "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
-          "relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
-          "locator": "L1-L3",
-          "match_reason": "MATCH",
-          "entity": "合成子公司甲",
-          "period": "2023"
-        }
-      ],
-      "selected_count": 1,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 2,
-        "checked": 2,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "dbf47909791646bca628db65e6a4d377",
-      "source_obligation_id": "dbf47909791646bca628db65e6a4d377",
-      "obligation_cluster_id": "dbf47909791646bca628db65e6a4d377",
+      "obligation_id": "ee47763d6ce044aba85bcfc958830a7e",
+      "source_obligation_id": "ee47763d6ce044aba85bcfc958830a7e",
+      "obligation_cluster_id": "ee47763d6ce044aba85bcfc958830a7e",
       "item_id": "2-9",
       "text": "请提供合成母公司2024年度纳税证明",
       "interpretation": {
@@ -1071,6 +980,97 @@
         "cap": 6,
         "found": 2,
         "checked": 2,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "f851b1856af64fa0a9cd48723c6c2664",
+      "source_obligation_id": "f851b1856af64fa0a9cd48723c6c2664",
+      "obligation_cluster_id": "f851b1856af64fa0a9cd48723c6c2664",
+      "item_id": "2-8",
+      "text": "请提供合成母公司2024年度审计报告",
+      "interpretation": {
+        "doc_type": "audit_report",
+        "doc_type_label": "",
+        "doc_type_source": "RULE",
+        "doc_type_unresolved": false,
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "请提供合成母公司2024年度审计报告",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": true
+      },
+      "candidates": [
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        },
+        {
+          "file_id": "91f1a03f0774c04d8612bfdac7a83fed",
+          "sha256": "39a1a0ceac91a65d629b10cf59e51985003d7a99b7f9fca75adbdde06abcc0af",
+          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "DRAFT",
+          "locator": "L1-L3",
+          "period_status": ""
+        },
+        {
+          "file_id": "cfca05e0da9f638f746170d7a13e83fb",
+          "sha256": "8c6b9a0a9d233f37b4adb80f852d5e90a3dde1fb7f81dfa07d9bd50fcf601d7b",
+          "relative_path": "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2023",
+          "doc_type": "audit_report",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L3",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 3,
+      "selected": [
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "locator": "L1-L3",
+          "match_reason": "MATCH",
+          "entity": "合成母公司",
+          "period": "2024"
+        }
+      ],
+      "selected_count": 1,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 3,
+        "checked": 3,
         "unchecked": 0,
         "truncated": false,
         "stop_reason": ""

@@ -1,8 +1,8 @@
 {
   "schema_version": "dd_v1_gate_report.v1",
-  "evaluated_at": "2026-10-30T18:44:32+08:00",
-  "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f",
-  "git_dirty": true,
+  "evaluated_at": "2026-10-30T18:55:41+08:00",
+  "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018",
+  "git_dirty": false,
   "gate_spec_id": "DDV1-DELIVERY-GATE-V1",
   "gate_spec_frozen_at": "2026-10-30T18:18:38+08:00",
   "gate_spec_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backend/config/dd_v1_delivery_gate.v1.json",
@@ -58,8 +58,8 @@
       "gate": "G2",
       "title": "模拟端到端 PASS（考试A：完整链路可评分 + 安全闸 PASS）",
       "exam": "A",
-      "run_id": "20261030T103938Z",
-      "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f"
+      "run_id": "20261030T105530Z",
+      "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018"
     },
     "G3": {
       "status": "FAIL",
@@ -76,8 +76,8 @@
       "gate": "G4",
       "title": "合成 Gold 评分达标（考试C：完整42题）",
       "exam": "C",
-      "run_id": "20261030T103939Z",
-      "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f"
+      "run_id": "20261030T105531Z",
+      "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018"
     },
     "G5": {
       "status": "PASS",
@@ -85,8 +85,8 @@
       "gate": "G5",
       "title": "安全测试 PASS（考试B：复杂业务 + 披露闸）",
       "exam": "B",
-      "run_id": "20261030T103939Z",
-      "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f"
+      "run_id": "20261030T105531Z",
+      "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018"
     },
     "G6": {
       "status": "FAIL",
@@ -109,7 +109,7 @@
   },
   "observations": {
     "A": {
-      "run_id": "20261030T103938Z",
+      "run_id": "20261030T105530Z",
       "status": "LOW_CONFIDENCE",
       "total_score": 96.67,
       "question_understanding_coverage": 0.666667,
@@ -123,7 +123,7 @@
       "questions_total": 3,
       "verifiable_coverage": 1.0,
       "delivered_files": 2,
-      "delivered_files_attributed": null,
+      "delivered_files_attributed": 2,
       "safety_status": "PASS",
       "safety_violations": 0,
       "model_participated": false,
@@ -131,7 +131,7 @@
       "examinee_mode": "RULE_ONLY"
     },
     "B": {
-      "run_id": "20261030T103939Z",
+      "run_id": "20261030T105531Z",
       "status": "SCORED_PARTIAL",
       "total_score": 95.67,
       "question_understanding_coverage": 0.9,
@@ -145,7 +145,7 @@
       "questions_total": 9,
       "verifiable_coverage": 1.0,
       "delivered_files": 2,
-      "delivered_files_attributed": null,
+      "delivered_files_attributed": 3,
       "safety_status": "PASS",
       "safety_violations": 0,
       "model_participated": false,
@@ -153,7 +153,7 @@
       "examinee_mode": "RULE_ONLY"
     },
     "C": {
-      "run_id": "20261030T103939Z",
+      "run_id": "20261030T105531Z",
       "status": "SCORED",
       "total_score": 100.0,
       "question_understanding_coverage": 1.0,
@@ -167,7 +167,7 @@
       "questions_total": 42,
       "verifiable_coverage": 1.0,
       "delivered_files": 31,
-      "delivered_files_attributed": null,
+      "delivered_files_attributed": 175,
       "safety_status": "PASS",
       "safety_violations": 0,
       "model_participated": false,
