@@ -1117,6 +1117,128 @@ def list_obligations(
     return [dict(r) for r in rows]
 
 
+# ── 统一数据契约（WP2 · #108 实测 P0-2）─────────────────────────────────────
+#
+# ★ **P0-2 形态**：同一张 42 题考卷，**库侧**拆出 91 条义务（覆盖 42 题），
+#   **运行器侧**只拆出 15 条（覆盖 12 题）⇒ 「题目拆解覆盖率」被低报成 28.6%。
+# ★ **根因（代码级）**：**两套拆解**并存 ——
+#   ① 库侧 `build_obligations`（按并列连接词切，**永不丢题**）；
+#   ② 运行器侧 `dd_v1_semantic_retrieval_service.split_items`
+#      （按材料类型切，**无类型关键词的整题丢弃** ⇒ 30 题被丢）。
+#   ⇒ 且 **Gold 的 obligation_id 引的是库侧那条** ⇒ 运行器用另一套 ⇒ 答卷与标准答案**根本对不上**。
+# ★ **处置（不是第三套拆解）**：**库侧那套是唯一权威** ⇒ 本模块把它**导出**成统一契约，
+#   运行器**消费**它 ⇒ 两侧必然一致。
+
+def canonical_question_id(item_no: str) -> str:
+    """题号**归一**（跨来源可 join 的唯一键）。
+
+    ★ **形态**（#108 实测）：清单里同一题在不同来源写法不同 ——
+      分部目录 ``1-1_基本资料``（带分部名后缀）vs 运行器条目 ``1-1-1``。
+      ⇒ 若按原样 join ⇒ **一题都对不上** ⇒ 覆盖率低报。
+    ★ 口径：**取 ``_`` 之前的编号部分** ＋ 空白/全角归一；★ **原样编号另存**（``item_no``），
+      ⇒ **归一只用于 join，不改写机构原编号**。
+    """
+    raw = str(item_no or "").strip()
+    if not raw:
+        return ""
+    head = re.split(r"[_＿]", raw, 1)[0].strip()
+    head = head.replace("　", " ").replace("－", "-").replace("—", "-")
+    head = re.sub(r"\s+", "", head)
+    return head
+
+
+def export_obligation_contract(library_id: str, *, db_path: Path | None = None,
+                               institution: str = "") -> dict:
+    """库侧原子义务 ⇒ **统一数据契约**（唯一权威拆解的对外形状）。
+
+    ★ 每条义务至少可追溯：**原始题号 / 原始题目文本 / 义务唯一 ID / 主体要求 /
+      期间要求 / 文件类型 / 对应证据（键）/ 处理状态**（施工令 WP2）。
+    ★ **永不丢题**：一条清单项 ⇒ **至少**一条义务；★ 规则层判不出材料类型时
+      **标 ``NEEDS_HUMAN_SPLIT``**（**不丢**，只标）⇒ 覆盖率口径不失真。
+    ★ 期间四态（``period_spec``）**复用** ``dd_v1_period_service.spec_from_obligation``
+      （与语义层同一入口 ⇒ 两端口径不分叉）。
+    """
+    conn = mf._connect(db_path)
+    _ensure_schema(conn)
+    items = {r["item_uid"]: dict(r) for r in conn.execute(
+        "SELECT * FROM dd_v1_checklist_items WHERE library_id=?", (library_id,))}
+    obl_rows = list_obligations(library_id, db_path=db_path)
+    from cangjie_fos.services import dd_v1_period_service as ps
+    out: list[dict[str, Any]] = []
+    for r in obl_rows:
+        item = items.get(r.get("item_uid")) or {}
+        raw_text = str(item.get("raw_text") or "")
+        item_no = str(item.get("item_no") or "")
+        ob_payload: dict[str, Any] = {}
+        try:
+            ob_payload = json.loads(r.get("fields_json") or "{}")
+        except (TypeError, ValueError):
+            ob_payload = {}
+        period_spec = ps.spec_from_obligation(ob_payload)
+        doc_type = str(r.get("doc_type") or "")
+        required_parts = []
+        try:
+            required_parts = list(json.loads(r.get("required_parts") or "[]"))
+        except (TypeError, ValueError):
+            required_parts = []
+        out.append({
+            # ── 身份与追溯 ──
+            "obligation_id": str(r.get("obligation_id") or ""),
+            "obligation_key": str(r.get("obligation_key") or ""),
+            "item_uid": str(r.get("item_uid") or ""),
+            "item_id": item_no,
+            "item_no": item_no,
+            "question_id": canonical_question_id(item_no),
+            "original_text": raw_text,
+            # ── 义务正文 ──
+            "text": str(r.get("obligation") or ""),
+            # ── 主体要求 ──
+            "entity": str(ob_payload.get("entity_scope") or r.get("entity_scope") or ""),
+            "entity_scope": str(r.get("entity_scope") or ""),
+            "entity_basis": str(r.get("entity_basis") or ""),
+            # ── 期间要求 ──
+            "period": str(r.get("period_from") or ""),
+            "period_from": int(r.get("period_from") or 0),
+            "period_to": int(r.get("period_to") or 0),
+            "period_basis": str(r.get("period_basis") or ""),
+            "period_spec": period_spec,
+            # ── 文件类型 ──
+            "doc_type": doc_type,
+            "doc_type_basis": str(r.get("doc_type_basis") or ""),
+            "doc_type_label": doc_type,
+            "doc_type_terms": doc_type_search_terms(doc_type) if doc_type else [],
+            "required_parts": required_parts,
+            "expected_count": r.get("expected_count"),
+            "seal_required": str(r.get("seal_required") or ""),
+            "caliber": str(r.get("caliber") or ""),
+            "needs_attachments": int(r.get("needs_attachments") or 0),
+            # ── 处理状态（★ **不丢题**：判不出类型只标，不删）──
+            "split_status": "SPLIT" if doc_type else "NEEDS_HUMAN_SPLIT",
+            "needs_human_split": not bool(doc_type),
+            "split_method": "REQUIREMENT_SERVICE_PARALLEL",
+            "notes": str(r.get("notes") or ""),
+        })
+    questions = sorted({o["question_id"] for o in out if o["question_id"]})
+    return {
+        "schema_version": "dd_v1_obligation_contract.v1",
+        "library_id": library_id,
+        "institution": institution,
+        "obligations": out,
+        "counts": {
+            "obligations": len(out),
+            "questions": len(questions),
+            "items": len(items),
+            "needs_human_split": sum(1 for o in out if o["needs_human_split"]),
+        },
+        "questions": questions,
+        "question_coverage": {
+            "items_ingested": len(items),
+            "questions_with_obligations": len(questions),
+            "coverage_ratio": (round(len(questions) / len(items), 6) if items else 0.0),
+        },
+    }
+
+
 # ── 权威主体登记（多主体覆盖的前提）─────────────────────────────────────────
 def register_entity(
     library_id: str,

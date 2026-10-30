@@ -974,6 +974,39 @@ def cmd_preflight(a) -> int:
     return EXIT_OK
 
 
+def cmd_gold_report(a) -> int:
+    """**Gold 映射逐件检查**（WP3/#108 波总裁定）：题号 ＋ 原始路径 ＋ 指纹 ＋ 分类 ＋ 修复动作。
+
+    ★ 与 ``preflight`` 同输入（考场契约 ＋ 库）⇒ 同一把尺子。
+    ★ **只读**：不删 Gold、不改 Gold、不补料、不猜。
+    """
+    from cangjie_fos.services import dd_v1_gold_service as gold_svc
+    from cangjie_fos.services import dd_v1_exam_preflight_service as pf
+
+    contract = _load_contract(a)
+    library_id = getattr(a, "library", "") or (contract.get("checklist") or {}).get("library_id", "")
+    lib, meta, _obligations, _entities = _library_context(library_id)
+    g = contract.get("gold") or {}
+    mp = str(g.get("manifest_path") or "").strip()
+    if not mp or not Path(mp).is_file():
+        print(json.dumps({"error": "GOLD_MANIFEST_NOT_AVAILABLE", "manifest_path": mp},
+                         ensure_ascii=False))
+        return EXIT_FAIL
+    manifest = gold_svc.load_gold_manifest(mp)
+    idx = gold_svc.index_from_snapshot((lib or {}).get("snapshot") or {}, meta)
+    report = gold_svc.gold_gap_report(manifest, idx)
+    out = _exam_out_dir(a)
+    stem = f"Gold缺口-{contract.get('exam_id')}-{_exam_ts()}"
+    (out / f"{stem}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
+    print(json.dumps({"counts": report["counts"],
+                      "gaps": [{"item_no": x.get("item_no"), "class": x.get("gap_class"),
+                                "path": x.get("gold_relative_path"),
+                                "sha256": (x.get("gold_sha256") or "")[:16],
+                                "remedy": x.get("remedy")} for x in report["gaps"]],
+                      "out": str(out / (stem + ".json"))}, ensure_ascii=False, indent=1))
+    return EXIT_OK if not report["counts"]["gaps"] else EXIT_FAIL
+
+
 def _answer_sheet_from_run_dir(run_dir: Path):
     """从 ``dd_v1_local_run`` 的 run 目录读 **全部** run_record + packet。
 
@@ -1223,13 +1256,40 @@ def cmd_grade(a) -> int:
                                library_obligation_ids=_lib_obl_ids or None,
                                gold_obligation_ids=_gold_obl_ids or None)
     spec = ex.load_scoring_spec(getattr(a, "scoring_spec", "") or None)
+    # ★★ WP4：**全卷分母**必须来自**权威题单**（库侧义务契约）⇒
+    #   没有它 ⇒ 第一组的分母只来自答卷＋Gold ⇒ 报告会**显式写明**，**不得**当作全卷读。
+    _questions = None
+    try:
+        from cangjie_fos.services import dd_v1_requirement_service as rq
+        _contract_rq = rq.export_obligation_contract(library_id)
+        _seen: set[str] = set()
+        _questions = []
+        for _o in _contract_rq["obligations"]:
+            _qid = str(_o.get("question_id") or _o.get("item_no") or "")
+            if not _qid or _qid in _seen:
+                continue
+            _seen.add(_qid)
+            _questions.append({"question_id": _qid, "item_no": str(_o.get("item_no") or _qid),
+                               "original_text": str(_o.get("original_text") or "")})
+    except Exception:  # noqa: BLE001 —— 拿不到权威题单 ⇒ 如实降级（报告里会写明分母来源）
+        _questions = None
+    # ★ 阅卷侧也要核「考卷/图书馆 ↔ Gold」的对应关系（闸门放过 ≠ 阅卷就信）
+    _lib_fp = ""
+    try:
+        from cangjie_fos.services import dd_v1_exam_preflight_service as pf
+        _lib_fp = pf.library_fingerprint(meta)
+    except Exception:  # noqa: BLE001
+        _lib_fp = ""
+    _chk_sha = str((contract.get("checklist") or {}).get("sha256") or "")
     card = ex.grade_answer_sheet(
         sheet, manifest, library_index=idx, scoring_spec=spec,
+        library_fingerprint=_lib_fp, checklist_sha256=_chk_sha,
         gold_provided=manifest is not None,
         gold_state="NOT_PROVIDED" if manifest is None else "",
         gold_state_reason="未提供标准答案包" if manifest is None else "",
         exam_id=str(contract.get("exam_id") or ""),
-        leak_report=leak)
+        leak_report=leak,
+        exam_questions=_questions)
     out = _exam_out_dir(a)
     stem = f"成绩单-{_exam_ts()}"
     (out / f"{stem}.json").write_text(json.dumps(card, ensure_ascii=False, indent=2), "utf-8")
@@ -1237,6 +1297,23 @@ def cmd_grade(a) -> int:
         print(f"[不可评分] {'；'.join(card.get('blocked_by') or [])}")
         print(f"[落盘] {out / (stem + '.json')}")
         return EXIT_FAIL
+    # ★ WP4：三组摘要（**全卷覆盖** ＋ **Gold 可评分** ＋ **证据差异条数**）
+    _cov = card.get("exam_coverage") or {}
+    _gs = card.get("gold_scorable") or {}
+    print("\n[第一组 · 全卷成绩] "
+          f"题数 {_cov.get('questions_total')}（分母来源 {_cov.get('denominator_source')}）"
+          f"｜已处理 {_cov.get('questions_processed')}"
+          f"｜正确 {_cov.get('questions_correct')}"
+          f"｜未匹配 {_cov.get('questions_unmatched')}"
+          f"｜歧义 {_cov.get('questions_ambiguous')}"
+          f"｜未完成 {_cov.get('questions_incomplete')}"
+          f"｜全卷可验证覆盖率 {_cov.get('verifiable_coverage')}")
+    print("[第二组 · Gold 可评分成绩] "
+          f"可评分义务 {_gs.get('scorable_obligations')}（分母）"
+          f"｜正确 {_gs.get('correct')}｜错误 {_gs.get('wrong')}"
+          f"｜得分率 {_gs.get('score_ratio')}"
+          f"｜未纳入原因 {_gs.get('not_included_reasons')}")
+    print(f"[第三组 · 证据差异] {len(card.get('evidence_diff') or [])} 条（逐项见 JSON）")
     sc = card.get("scores") or {}
     cn = card.get("counts") or {}
     print("=" * 66)
@@ -1350,6 +1427,13 @@ def build_parser() -> argparse.ArgumentParser:
     pf.add_argument("--forbid", default="",
                     help="额外禁止目录（分号分隔），用于把材料/运行目录列为 Gold 禁区")
     pf.set_defaults(func=cmd_preflight)
+
+    grp = sp.add_parser("gold-report",
+                        help="Gold 映射逐件检查（题号/原始路径/指纹/分类/修复动作；★ 只读）")
+    grp.add_argument("--contract", required=True, help="考场契约 JSON 路径")
+    grp.add_argument("--library", default="", help="材料库标识（不给则取契约里的）")
+    grp.add_argument("--out", default="", help="输出目录（不给则落数据面 <data>/考场）")
+    grp.set_defaults(func=cmd_gold_report)
 
     an = sp.add_parser("answer", help="产出机器答卷（逐题：理解/候选/选中/交付/弃答原因）")
     an.add_argument("--run-dir", default="", help="dd_v1_local_run 的 run 目录（含 run_record.json）")

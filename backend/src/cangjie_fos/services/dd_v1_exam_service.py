@@ -737,6 +737,9 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
                        exam_id: str = "",
                        leak_report: dict[str, Any] | None = None,
                        min_obligations: int = 30,
+                       exam_questions: list[dict[str, Any]] | None = None,
+                       library_fingerprint: str = "",
+                       checklist_sha256: str = "",
                        ) -> dict[str, Any]:
     """**隔离阅卷**：机器答卷 × 人工标准答案 ⇒ 逐题明细 + 7 项指标 + 0—100 总成绩。
 
@@ -749,25 +752,30 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
     spec = scoring_spec or load_scoring_spec()
     sheet = answer_sheet or {}
     if leak_report and leak_report.get("leaked"):
+        _blocked = ["GOLD_LEAK_DETECTED:考生侧产物出现标准答案内容或库外文件"]
         return {
             "schema_version": SCORECARD_SCHEMA,
             "exam_id": exam_id,
             "status": "NOT_SCORABLE",
-            "blocked_by": ["GOLD_LEAK_DETECTED:考生侧产物出现标准答案内容或库外文件"],
+            "blocked_by": _blocked,
             "scores": None,
+            "diagnostic": _diagnostic_block(sheet, [], None, exam_questions, _blocked),
             "leak_report": leak_report,
             "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
             "note": "安全失败：标准答案泄漏 ⇒ 不进入正式评分",
         }
 
     if not gold_provided or gold_manifest is None:
+        _blocked = [f"GOLD_{gold_state or 'NOT_PROVIDED'}:" + (gold_state_reason or "标准答案不可得")]
         return {
             "schema_version": SCORECARD_SCHEMA,
             "exam_id": exam_id,
             "status": "NOT_SCORABLE",
-            "blocked_by": [f"GOLD_{gold_state or 'NOT_PROVIDED'}:" + (gold_state_reason or "标准答案不可得")],
+            "blocked_by": _blocked,
             "scores": None,
             "rows": [],
+            # ★ WP4：不可评分**也要有量化诊断**（不得「完全没有结果」）
+            "diagnostic": _diagnostic_block(sheet, [], None, exam_questions, _blocked),
             "safety_gate": {"status": "NOT_EVALUATED", "violations": 0, "findings": [],
                             "by_kind": {}},
             "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
@@ -776,16 +784,31 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
 
     idx = library_index or {"by_id": {}, "by_sha": {}}
     gold_resolved = gold_svc.resolve_gold_files(gold_manifest, idx)
-    corr = gold_svc.check_correspondence(gold_manifest, gold_resolved)
+    # ★ 阅卷侧**自己**也核一次「考卷/图书馆 ↔ Gold」的对应关系
+    #   （不依赖预检已经核过 ⇒ 纵深防御：闸门放过 ≠ 阅卷就信）。
+    corr = gold_svc.check_correspondence(gold_manifest, gold_resolved,
+                                         library_fingerprint=library_fingerprint,
+                                         checklist_sha256=checklist_sha256)
     state, reason = gold_svc.gold_state(gold_manifest, corr, provided=True)
-    if state in ("NOT_CONFIRMED", "BROKEN"):
+    # ★★ 分层评分（#108 波总裁定 · 2026-10-30）：★ **部分缺口 ≠ 全盘不可评分**。
+    #   · HARD 阻塞（考卷/图书馆指纹冲突、根本没有可比基准）⇒ NOT_SCORABLE；
+    #   · GAPS 阻塞（个别标准答案文件缺料/歧义）⇒ ★ **继续出分层成绩单**：
+    #     ★ **保留全卷分母**，把**可评分**的那部分算出来，缺口逐件列出。
+    #   ⇒ ★ 否则「11 份缺料」会把「42 题全部不可评」⇒ **违反波总的分层裁定**。
+    _block_kind = gold_svc.blocking_kind(corr) if state == "BROKEN" else ""
+    _hard_blocked = (state in ("NOT_CONFIRMED",)
+                     or (state == "BROKEN" and _block_kind in ("", "HARD")))
+    if _hard_blocked:
+        _blocked = [f"GOLD_{state}:{reason}"]
         return {
             "schema_version": SCORECARD_SCHEMA,
             "exam_id": exam_id,
             "status": "NOT_SCORABLE",
-            "blocked_by": [f"GOLD_{state}:{reason}"],
+            "blocked_by": _blocked,
             "scores": None,
             "rows": [],
+            # ★ WP4：不可评分**也要有量化诊断**（含 Gold 缺口的量化读数）
+            "diagnostic": _diagnostic_block(sheet, [], gold_resolved, exam_questions, _blocked),
             "gold_resolution": gold_resolved,
             "scoring_spec_fingerprint": scoring_spec_fingerprint(spec),
             "note": "客观不可评分（标准答案未确认 / 对应关系冲突）⇒ NOT_SCORABLE；**这不等于 0 分**",
@@ -877,6 +900,9 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
     safety_status = safety["status"]
 
     status = "LOW_CONFIDENCE" if n < int(min_obligations) else "SCORED"
+    if _block_kind == "GAPS":
+        # ★ 分层成绩单：**全卷分母保留**；★ 可评分部分照常算分；★ 缺口逐件列出。
+        status = "SCORED_PARTIAL"
     scores = {
         "question_understanding_coverage": understanding,
         "question_answer_coverage": answer_coverage,
@@ -908,6 +934,13 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
             "wrong": wrong_ob,
         },
         "rows": rows,
+        # ★★ WP4（#108 波总裁定）：**三组并列**（全卷成绩／Gold 可评分成绩／证据差异）
+        "exam_coverage": _exam_coverage(rows, sheet, exam_questions),
+        # ★ 分层评分：把缺口逐件带上（题号/原始路径/指纹/分类/修复动作）
+        "gold_gaps": gold_svc.gold_gap_report(gold_manifest, idx, resolved=gold_resolved)
+        if gold_manifest else {"gaps": [], "counts": {}},
+        "gold_scorable": _gold_scorable_group(rows, gold_resolved),
+        "evidence_diff": _evidence_diff(rows, sheet, gold_resolved, idx),
         "safety_gate": safety,
         "gold_resolution": gold_resolved,
         # ★ 成绩单带**来源模式**：一份 RULE_ONLY 的分与模型跑的分**必须可区分**
@@ -925,6 +958,253 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
                  ("命中标准答案材料 0 件 ⇒ 总分强制 0（不得被理解率洗成部分成功）"
                   if zero_hit_forced else "按冻结口径计算")),
     }
+
+
+def _diagnostic_block(sheet: dict[str, Any],
+                      rows: list[dict[str, Any]],
+                      gold_resolved: dict[str, Any] | None,
+                      exam_questions: list[dict[str, Any]] | None,
+                      blocked_by: list[str]) -> dict[str, Any]:
+    """**不可评分时的诊断成绩**（施工令 WP4：★ 正式评分受阻**不得**完全没有量化结果）。
+
+    ★ 只报**已经发生过的事实**（答卷里有多少义务、选中几件、交付几件、覆盖到几题）；
+      ★ **不得**据此给出「0 分」（0 分是**评分结论**，不可评分时**没有**评分结论）。
+    """
+    srows = sheet.get("obligations") or []
+    delivered = sheet.get("delivered") or []
+    dfids = {str(d.get("file_id") or "") for d in delivered if isinstance(d, dict)}
+    for r in srows:
+        for d in (r.get("delivered") or []):
+            if str(d.get("file_id") or ""):
+                dfids.add(str(d.get("file_id") or ""))
+    cov = _exam_coverage(rows or [], sheet, exam_questions)
+    gaps = {}
+    if gold_resolved:
+        s = gold_resolved.get("summary") or {}
+        gaps = {
+            "expected_files": s.get("expected_files"),
+            "resolved": s.get("resolved"),
+            "missing_in_library": s.get("missing_in_library"),
+            "ambiguous_content": s.get("ambiguous_content"),
+            "no_fingerprint": s.get("no_fingerprint"),
+            "obligations": s.get("obligations"),
+        }
+    return {
+        "status": "DIAGNOSTIC_ONLY",
+        "blocked_by": list(blocked_by or []),
+        "counts": {
+            "obligations": len(srows),
+            "questions_seen": cov.get("questions_total"),
+            "questions_processed": cov.get("questions_processed"),
+            "understood": sum(1 for r in srows if (r.get("interpretation") or {}).get("resolved")),
+            "answered": sum(1 for r in srows if str(r.get("verdict") or "") in DETERMINATE_VERDICTS),
+            "selected_files": sum(int(r.get("selected_count") or 0) for r in srows),
+            "delivered_files": len(dfids),
+        },
+        "exam_coverage": cov,
+        "gold_resolution": gaps,
+        "note": ("★ 这是**诊断**读数，**不是评分**：正式评分被阻塞 ⇒ **没有分数**"
+                 "（既不是 0 分，也不是 PASS）"),
+    }
+
+
+# ── WP4（#108 波总裁定）：三组成绩单 ─────────────────────────────────────────
+# ★ 波总要求：「成绩单同时列：**全卷 42 题覆盖情况**、**可评分题/义务的分子分母及得分**、
+#   **缺失/歧义/未评分项**；★ 所有题必须有状态，不能把 NOT_SCORABLE 说成 0 分。」
+# ★ ⇒ 三组**并列输出**，且**分母来源必须写明**（拿不到全卷时**不得假装覆盖了 42 题**）。
+
+def _exam_coverage(rows: list[dict[str, Any]],
+                   answer_sheet: dict[str, Any],
+                   exam_questions: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """**第一组：全卷成绩**（逐题状态 ＋ 全卷可验证覆盖率）。
+
+    ★ ``exam_questions``：**权威题单**（库侧义务契约导出的 42 题）⇒
+      ★ 没有它 ⇒ **只报「答卷里出现的题」**，并**显式写明分母来源**，
+      ★ **绝不**把「答卷里有几题」当成「全卷有几题」（那正是 P0-2 的低报形态）。
+    """
+    sheet_rows = answer_sheet.get("obligations") or []
+    by_item: dict[str, list[dict[str, Any]]] = {}
+    for r in sheet_rows:
+        by_item.setdefault(str(r.get("item_id") or ""), []).append(r)
+    # ★★★ 题号 → 该题在阅卷结果里的行。
+    #   ★ **主键是「答卷里的义务 → 题号」**（``obligation_id → item_id``），
+    #     ★ **不是 Gold 的 item_no** —— ★ Gold 清单的题号**可能为空或写法不同**
+    #     （实测：Gold 侧的题号缺失 ⇒ 题级统计全落空 ⇒ 「已处理 42 / 正确 0」这种自相矛盾读数）。
+    #   ⇒ 优先级：① 答卷的 obligation_id → item_id；② Gold 的 item_no（兜底）。
+    oid_to_item: dict[str, str] = {}
+    for r in sheet_rows:
+        oid = str(r.get("obligation_id") or "")
+        iid = str(r.get("item_id") or "")
+        if oid and iid:
+            oid_to_item.setdefault(oid, iid)
+    graded_by_item: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        oid = str(r.get("obligation_id") or "")
+        key = oid_to_item.get(oid) or str(r.get("item_no") or "")
+        if key:
+            graded_by_item.setdefault(key, []).append(r)
+
+    if exam_questions:
+        questions = list(exam_questions)
+        denom_source = "LIBRARY_OBLIGATION_CONTRACT"
+    else:
+        qids = sorted({str(i) for i in list(by_item) + list(graded_by_item) if i})
+        questions = [{"question_id": q, "item_no": q} for q in qids]
+        denom_source = "ANSWER_SHEET_AND_GOLD_ONLY"
+
+    per_q: list[dict[str, Any]] = []
+    n_processed = n_matched = n_unmatched = n_ambiguous = n_incomplete = n_unanswered = 0
+    for q in questions:
+        qid = str(q.get("question_id") or q.get("item_no") or "")
+        item_no = str(q.get("item_no") or qid)
+        srows = by_item.get(item_no) or by_item.get(qid) or []
+        grows = (graded_by_item.get(item_no) or graded_by_item.get(qid)
+                 or graded_by_item.get(str(q.get("question_id") or "")) or [])
+        statuses = [str(r.get("outcome") or "") for r in grows]
+        if "AMBIGUOUS_CONTENT" in statuses:
+            state = "AMBIGUOUS"
+        elif not srows and not grows:
+            state = "UNPROCESSED"
+        elif not grows:
+            state = "NOT_IN_GOLD"
+        elif "CORRECT" in statuses:
+            state = "CORRECT"
+        elif all(s == "EXPECTED_NONE" for s in statuses):
+            state = "NO_EXPECTED_FILES"
+        elif any(s in ("MISSED", "INCOMPLETE") for s in statuses):
+            state = "INCOMPLETE"
+        elif any(s == "NO_ANSWER" for s in statuses):
+            state = "UNANSWERED"
+        else:
+            state = "PARTIAL"
+        n_processed += 1 if state != "UNPROCESSED" else 0
+        n_matched += 1 if state == "CORRECT" else 0
+        n_unmatched += 1 if state in ("UNPROCESSED", "NOT_IN_GOLD") else 0
+        n_ambiguous += 1 if state == "AMBIGUOUS" else 0
+        n_incomplete += 1 if state in ("INCOMPLETE", "PARTIAL") else 0
+        n_unanswered += 1 if state == "UNANSWERED" else 0
+        per_q.append({
+            "question_id": qid,
+            "item_no": item_no,
+            "state": state,
+            "obligations": len(srows),
+            "graded_obligations": len(grows),
+            "original_text_head": str(q.get("original_text") or "")[:80],
+        })
+    n = len(per_q)
+    return {
+        "questions_total": n,
+        "denominator_source": denom_source,
+        "questions_processed": n_processed,
+        "questions_correct": n_matched,
+        "questions_unmatched": n_unmatched,
+        "questions_ambiguous": n_ambiguous,
+        "questions_incomplete": n_incomplete,
+        "questions_unanswered": n_unanswered,
+        "verifiable_coverage": (round(n_processed / n, 6) if n else 0.0),
+        "questions": per_q,
+        "note": ("分母来自**库侧权威题单**" if denom_source == "LIBRARY_OBLIGATION_CONTRACT"
+                 else "★ **分母只来自答卷＋Gold**（未拿到权威题单）⇒ **不得**当作全卷覆盖率读"),
+    }
+
+
+def _gold_scorable_group(rows: list[dict[str, Any]],
+                          gold_resolved: dict[str, Any]) -> dict[str, Any]:
+    """**第二组：Gold 可评分成绩**（分子／分母／得分 ＋ 未纳入正式评分的原因）。"""
+    reasons: dict[str, int] = {}
+    scorable = [r for r in rows if r.get("resolution_state") == "RESOLVED"]
+    for r in rows:
+        st = str(r.get("resolution_state") or "UNKNOWN")
+        if st != "RESOLVED":
+            reasons[st] = reasons.get(st, 0) + 1
+    n_s = len(scorable)
+    n_correct = sum(1 for r in scorable if r.get("outcome") == "CORRECT")
+    n_wrong = n_s - n_correct
+    return {
+        "scorable_obligations": n_s,
+        "correct": n_correct,
+        "wrong": n_wrong,
+        "denominator": n_s,
+        "score_ratio": (round(n_correct / n_s, 6) if n_s else 0.0),
+        "not_included_reasons": reasons,
+        "not_included_total": sum(reasons.values()),
+        "note": ("★ 分母只含**Gold 已解析到具体材料**的义务；★ 其余原因逐条列出，"
+                 "★ **不得**把它们算成 0 分"),
+    }
+
+
+def _evidence_diff(rows: list[dict[str, Any]],
+                   answer_sheet: dict[str, Any],
+                   gold_resolved: dict[str, Any],
+                   library_index: dict[str, dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """**第三组：证据差异**（逐项：Gold 预期文件／机器实际选择／主体／期间／是否正确／哈希／原因）。"""
+    idx = library_index or {"by_id": {}, "by_sha": {}}
+    ans_by_oid = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
+    gold_by_oid = {str(g.get("obligation_id")): g for g in (gold_resolved.get("items") or [])}
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        oid = str(r.get("obligation_id") or "")
+        g = gold_by_oid.get(oid) or {}
+        a = ans_by_oid.get(oid) or {}
+        exp_files = []
+        for f in (g.get("expected_files") or []):
+            exp_files.append({
+                "file_id": str(f.get("file_id") or ""),
+                "sha256": str(f.get("sha256") or ""),
+                "gold_relative_path": str(f.get("gold_relative_path") or ""),
+                "entity": str(f.get("gold_entity") or ""),
+                "period": str(f.get("gold_period") or ""),
+                "resolution": str(f.get("resolution") or ""),
+            })
+        sel_files = []
+        for s in (a.get("selected") or []):
+            sid = str(s.get("file_id") or "")
+            sel_files.append({
+                "file_id": sid,
+                "sha256": str(s.get("sha256") or ""),
+                "relative_path": str(s.get("relative_path") or ""),
+                "entity": str(s.get("entity") or ""),
+                "period": str(s.get("period") or ""),
+                "match_reason": str(s.get("match_reason") or ""),
+            })
+        out.append({
+            "obligation_id": oid,
+            "item_no": r.get("item_no"),
+            "outcome": r.get("outcome"),
+            "correct": r.get("outcome") == "CORRECT",
+            "expected_files": exp_files,
+            "selected_files": sel_files,
+            "hit": list(r.get("hit") or []),
+            "extra": list(r.get("extra") or []),
+            "missed": list(r.get("missed") or []),
+            "delivered_files": list(r.get("delivered_files") or []),
+            "agent_verdict": r.get("agent_verdict"),
+            "expected_verdict": r.get("expected_verdict"),
+            "abstain_reason": r.get("abstain_reason"),
+            "resolution_state": r.get("resolution_state"),
+            "reason": _diff_reason(r),
+        })
+    return out
+
+
+def _diff_reason(row: dict[str, Any]) -> str:
+    """给一行差异**一个能直接读的归因**（不做主观发挥，只按已有事实分类）。"""
+    o = str(row.get("outcome") or "")
+    if o == "CORRECT":
+        return "选中集合与 Gold 期望完全一致"
+    if o == "EXPECTED_NONE":
+        return "Gold 该义务没有期望文件 ⇒ 无可比基准（不算答错）"
+    if o == "NO_ANSWER":
+        return "机器答卷里没有这条义务 ⇒ 未作答"
+    if o == "OVER_DELIVERED":
+        return "命中了期望材料，但**多选了**不属于 Gold 的材料"
+    if o == "INCOMPLETE":
+        return "只命中了部分期望材料 ⇒ 漏交"
+    if o == "WRONG_ONLY":
+        return "选中的材料**都不是**期望材料 ⇒ 错选"
+    if o == "MISSED":
+        return "期望材料**一个都没选**⇒ 漏交"
+    return "未归类"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

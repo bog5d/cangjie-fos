@@ -110,11 +110,21 @@ def _check_checklist(contract: dict[str, Any], library: dict[str, Any] | None,
     obs = obligations or []
     if declared_sha and actual_sha256 and declared_sha != str(actual_sha256).lower():
         problems.append("CHECKLIST_FINGERPRINT_MISMATCH:契约记的考卷指纹与库内当前清单摘要不一致")
+    item_count = int(c.get("item_count") or 0)
+    # ★★ P0-1（#108 实测 · 2026-10-30）：**「清单在」≠「清单可考」**。
+    #   实测：空库 + 0 义务 + 0 映射时，本检查返回 `FOUND` ⇒ 预检拼出
+    #   `READY_FOR_FORMAL_SCORING` ⇒ **空考场被宣布具备正式评分条件**（错误放行）。
+    #   ⇒ 这里把「**空**」本身当成**阻塞事实**，而不是「找到了就算好」。
+    if not obs:
+        problems.append("CHECKLIST_NO_OBLIGATIONS:库内清单一条原子义务都拆不出"
+                        "⇒ 考卷没有被处理 ⇒ 不具备正式评分条件")
+    if item_count <= 0:
+        problems.append("CHECKLIST_ITEM_COUNT_ZERO:契约声明的题目数为 0 ⇒ 没有可考的题")
     return {
         "state": "FOUND",
         "detail": f"库内清单已登记，拆出 {len(obs)} 条原子义务",
         "problems": problems,
-        "item_count": int(c.get("item_count") or 0),
+        "item_count": item_count,
         "obligation_count": len(obs),
         "declared_sha256": declared_sha,
         "actual_sha256": actual_sha256,
@@ -139,12 +149,20 @@ def _check_library(contract: dict[str, Any], library: dict[str, Any] | None,
     actual = library_fingerprint(meta)
     if declared and declared != actual:
         problems.append("LIBRARY_FINGERPRINT_MISMATCH:契约记的图书馆指纹与当前快照不一致")
+    # ★★ P0-1（#108 实测 · 2026-10-30）：**「库在」≠「库有料」**。
+    #   实测：只登记了库根、没摄取 ⇒ 快照 0 份材料 ⇒ 本检查返回 `FOUND`
+    #   ⇒ 预检拼出 `READY_FOR_FORMAL_SCORING` ⇒ **空考场被放行**。
+    #   ⇒ 「0 份材料」是**阻塞事实**，必须顶到台面上（否则「登记了库」就等于「可开考」）。
+    n_materials = len(meta or [])
+    if n_materials <= 0:
+        problems.append("LIBRARY_EMPTY:图书馆快照 0 份材料 ⇒ 没有可检索的证据 ⇒ 不具备正式评分条件"
+                        "（登记了库 ≠ 装了料）")
     return {
         "state": "FOUND",
-        "detail": f"图书馆已登记，快照 {len(meta or [])} 份材料",
+        "detail": f"图书馆已登记，快照 {n_materials} 份材料",
         "problems": problems,
         "library_id": str(library.get("library_id") or c.get("library_id") or ""),
-        "material_count": len(meta or []),
+        "material_count": n_materials,
         "declared_fingerprint": declared,
         "actual_fingerprint": actual,
         "material_root": root_str,
@@ -202,6 +220,10 @@ def _check_gold(contract: dict[str, Any], library_index: dict[str, dict[str, Any
     corr = gold_svc.check_correspondence(manifest, resolved,
                                          library_fingerprint=library_fingerprint,
                                          checklist_sha256=checklist_sha256)
+    # ★★ WP3（#108 波总裁定）：缺口必须**逐件**可见（题号 ＋ 原始路径 ＋ 哈希 ＋ 分类 ＋ 候选 ＋ 修复动作）
+    #   ⇒ **光有计数不够**（「11 份缺失」没法直接交差）⇒ ⇒ 预检报告里带**清单**。
+    gap_report = gold_svc.gold_gap_report(manifest, library_index or {"by_id": {}, "by_sha": {}},
+                                          resolved=resolved)
     state, reason = gold_svc.gold_state(manifest, corr, provided=True)
     out.update({
         "state": state,
@@ -212,6 +234,7 @@ def _check_gold(contract: dict[str, Any], library_index: dict[str, dict[str, Any
         "confirmed_at": str(manifest.get("confirmed_at") or ""),
         "resolution": resolved.get("summary"),
         "correspondence": corr,
+        "gap_report": gap_report,
         "gold_fingerprint": gold_svc.gold_fingerprint(manifest),
     })
     return out
@@ -307,6 +330,19 @@ def run_preflight(contract: dict[str, Any], *,
     if lib["state"] != "FOUND":
         blockers.append({"code": "LIBRARY_NOT_FOUND", "detail": lib["detail"],
                          "owner": "开发席", "remedy": "登记材料库并完成摄取"})
+    # ★★ P0-1（#108 实测 · 2026-10-30）：**「空」也是阻塞事实**，必须进 `blockers`。
+    #   否则「空库 / 0 义务 / 0 期望文件」只躺在各分项的 `problems` 里 ⇒
+    #   `blocked_by` 为空 ⇒ 报告读起来像「什么都在」⇒ **错误放行**。
+    _OWNER = {"checklist": ("业务方 / 开发席", "登记并摄取该机构的真实尽调清单"),
+              "library": ("开发席", "登记材料库并完成摄取（build）"),
+              "gold": ("开发席 + 业务方", "核对考卷/图书馆指纹与标准答案包")}
+    for _sec_name, _sec in (("checklist", checklist), ("library", lib), ("gold", gold)):
+        for _p in _sec.get("problems") or []:
+            _code = str(_p).split(":")[0]
+            if _code and _code not in {b["code"] for b in blockers}:
+                _owner, _remedy = _OWNER[_sec_name]
+                blockers.append({"code": _code, "detail": str(_p),
+                                 "owner": _owner, "remedy": _remedy})
     if gold["state"] == "NOT_PROVIDED":
         blockers.append({"code": "TEST_BLOCKED_GOLD_NOT_PROVIDED",
                          "detail": gold["detail"], "owner": "业务方（#74 交办）",
@@ -329,11 +365,50 @@ def run_preflight(contract: dict[str, Any], *,
     # ★ 四态**一一对应**：`TEST_BLOCKED_GOLD_<STATE>`（`#85` 要求「四种状态分开报」）。
     #   旧写法把 `NOT_PROVIDED`（业务方**从未交付**）与 `NOT_MAPPED`（交付了但没对上）
     #   合并成 `TEST_BLOCKED_GOLD_NOT_MAPPED` ⇒ **把「没提供」说成「没映射」**（同类反向问题）。
-    status = ("READY_FOR_FORMAL_SCORING" if ready
-              else (f"TEST_BLOCKED_GOLD_{gold['state']}"
-                    if str(gold.get("state") or "") in
-                    ("NOT_PROVIDED", "NOT_MAPPED", "NOT_CONFIRMED", "BROKEN")
-                    else "TEST_BLOCKED"))
+    # ★★ P0-1（#108 实测 · 2026-10-30）：★ 状态**不能只由 Gold 决定** ——
+    #   实测：空库 + 0 义务 + 0 映射时，Gold 侧当时判 `FOUND` ⇒ 状态拼成
+    #   `READY_FOR_FORMAL_SCORING` ⇒ **空考场被放行**。
+    #   ⇒ 现在状态由**全部阻塞事实**按**固定优先级**推导：
+    #   「考场输入缺失/为空」优先于「Gold 状态」⇒ 报告不会把库/考卷的问题
+    #   **误报**成 Gold 的问题（⇒ 责任人不指错地方）。
+    _PRIORITY = ("LIBRARY_NOT_FOUND", "CHECKLIST_NOT_FOUND",
+                 "LIBRARY_EMPTY", "CHECKLIST_NO_OBLIGATIONS", "CHECKLIST_ITEM_COUNT_ZERO")
+    _codes = [b["code"] for b in blockers]
+    _primary = next((c for c in _PRIORITY if c in _codes), "")
+    if ready:
+        status = "READY_FOR_FORMAL_SCORING"
+    elif _primary:
+        status = ("TEST_BLOCKED_EXAM_INPUT_EMPTY"
+                  if _primary in ("LIBRARY_EMPTY", "CHECKLIST_NO_OBLIGATIONS",
+                                  "CHECKLIST_ITEM_COUNT_ZERO")
+                  else "TEST_BLOCKED_EXAM_INPUT")
+    elif str(gold.get("state") or "") in ("NOT_PROVIDED", "NOT_MAPPED",
+                                          "NOT_CONFIRMED", "BROKEN"):
+        status = f"TEST_BLOCKED_GOLD_{gold['state']}"
+    else:
+        status = "TEST_BLOCKED"
+
+    # ★★ 三档能力（施工令 WP1）：**能继续工程测试 / 能做部分业务诊断 / 能正式评分**。
+    #   ★ 三档**互不冒充**：工程测试（合成数据）永远可做；业务诊断要**有料 + 有义务**；
+    #   正式评分要**全部就绪**。⇒ 预检不再只有「是/否」一个布尔。
+    _empty_library = int(lib.get("material_count") or 0) <= 0
+    _empty_checklist = int(checklist.get("obligation_count") or 0) <= 0
+    _can_diagnose = (not _empty_library) and (not _empty_checklist)
+    if ready:
+        _tier = "FORMAL_SCORING"
+    elif _can_diagnose:
+        _tier = "DIAGNOSTIC"
+    else:
+        _tier = "ENGINEERING"
+    capability = {
+        "tier": _tier,
+        # 工程测试用**合成/自造**数据 ⇒ 不依赖真实材料 ⇒ 永远可做。
+        "can_run_engineering_tests": True,
+        # 部分业务诊断：**有材料可检索 + 有义务可处理** ⇒ 可跑，但结果必须标「非正式评分」。
+        "can_run_business_diagnostic": _can_diagnose,
+        "can_score_formally": ready,
+        "reasons": [f"{b['code']}:{b['detail']}" for b in blockers],
+    }
     return {
         "schema_version": "dd_v1_exam_preflight.v1",
         "exam_id": str(contract.get("exam_id") or ""),
@@ -341,6 +416,7 @@ def run_preflight(contract: dict[str, Any], *,
         "institution": str(contract.get("institution") or ""),
         "status": status,
         "scoring_ready": ready,
+        "capability": capability,
         "checklist": checklist,
         "library": lib,
         "gold": gold,
@@ -372,6 +448,16 @@ def preflight_markdown(rep: dict[str, Any]) -> str:
         f"- 机构：{rep.get('institution') or '（未声明）'}",
         f"- 状态：**{rep.get('status')}**",
         f"- 是否具备正式评分条件：**{'是' if rep.get('scoring_ready') else '否'}**",
+    ]
+    # ★★ 三档能力（施工令 WP1）：**能继续工程测试 / 能做部分业务诊断 / 能正式评分**。
+    cap = rep.get("capability") or {}
+    if cap:
+        lines.append(
+            f"- 当前档位：**{cap.get('tier')}**"
+            f"（工程测试：{'可' if cap.get('can_run_engineering_tests') else '不可'}"
+            f"｜业务诊断：{'可' if cap.get('can_run_business_diagnostic') else '不可'}"
+            f"｜正式评分：{'可' if cap.get('can_score_formally') else '不可'}）")
+    lines += [
         "",
         "| 项 | 状态 | 说明 |",
         "|---|---|---|",
@@ -389,6 +475,26 @@ def preflight_markdown(rep: dict[str, Any]) -> str:
         f"未指名主体义务 {(rep.get('entity_scope') or {}).get('unnamed_obligations', 0)} 条 |",
         "",
     ]
+    gap = ((rep.get("gold") or {}).get("gap_report") or {})
+    if gap.get("gaps"):
+        gc = gap.get("counts", {}).get("by_class") or {}
+        lines += [
+            "",
+            "## 标准答案缺口（逐件；★ 不删 Gold、不改 Gold）",
+            "",
+            f"- 期望文件 {gap['counts']['expected_files']} 份｜已定位 {gap['counts']['resolved']} 份｜"
+            f"**待处置 {gap['counts']['gaps']} 件**",
+            f"- 分类：{gc}",
+            "",
+            "| 题号 | 原始路径 | 指纹 | 分类 | 修复动作 |",
+            "|---|---|---|---|---|",
+        ]
+        for g in (gap.get("gaps") or [])[:50]:
+            lines.append(f"| {g.get('item_no') or g.get('obligation_id') or ''} | "
+                         f"{g.get('gold_relative_path') or '—'} | "
+                         f"{(g.get('gold_sha256') or '—')[:16]} | "
+                         f"{g.get('gap_class')} | {g.get('remedy') or ''} |")
+        lines.append("")
     if rep.get("blockers"):
         lines += ["## 阻塞原因", ""]
         for b in rep["blockers"]:

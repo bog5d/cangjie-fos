@@ -111,11 +111,22 @@ def build_library_index(meta: list[dict[str, Any]] | None) -> dict[str, dict[str
     """
     by_id: dict[str, dict[str, Any]] = {}
     by_sha: dict[str, list[str]] = {}
+    # ★★ WP3（#108 波总裁定 · 2026-10-30）：**诊断用反查表**（路径／文件名）
+    #   ⇒ 「11 份缺失 / 4 份歧义」必须能区分：**真缺料** vs **路径解析错** vs
+    #   **文件名错** vs **哈希识别错** vs **主体/期间范围错** ⇒ ⇒ 只按内容寻址
+    #   只会答「不在库里」，**答不出该怎么修**。
+    #   ★ 这两张表**只用于诊断**，**不参与**内容寻址判定（判定仍只认 sha256）。
+    by_path: dict[str, list[str]] = {}
+    by_name: dict[str, list[str]] = {}
     for m in meta or []:
         fid = str(m.get("file_id") or "").strip()
         if not fid:
             continue
         sha = str(m.get("sha256") or "").strip().lower()
+        rel = str(m.get("relative_path") or "").strip().replace("\\", "/")
+        if rel:
+            by_path.setdefault(rel.lower(), []).append(fid)
+            by_name.setdefault(rel.rsplit("/", 1)[-1].lower(), []).append(fid)
         by_id[fid] = {
             "file_id": fid,
             "sha256": sha,
@@ -129,7 +140,7 @@ def build_library_index(meta: list[dict[str, Any]] | None) -> dict[str, dict[str
         }
         if sha:
             by_sha.setdefault(sha, []).append(fid)
-    return {"by_id": by_id, "by_sha": by_sha}
+    return {"by_id": by_id, "by_sha": by_sha, "by_path": by_path, "by_name": by_name}
 
 
 def index_from_snapshot(snapshot: dict[str, Any] | list[dict[str, Any]] | None,
@@ -174,6 +185,13 @@ def index_from_snapshot(snapshot: dict[str, Any] | list[dict[str, Any]] | None,
         idx["by_sha"].setdefault(sha, [])
         if fid not in idx["by_sha"][sha]:
             idx["by_sha"][sha].append(fid)
+    # ★ 诊断反查表补齐（快照形态可能不带 relative_path ⇒ 保持已有值，不覆盖）
+    for fid, rec in list(idx["by_id"].items()):
+        rel = str(rec.get("relative_path") or "").strip().replace("\\", "/")
+        if not rel:
+            continue
+        idx.setdefault("by_path", {}).setdefault(rel.lower(), []).append(fid)
+        idx.setdefault("by_name", {}).setdefault(rel.rsplit("/", 1)[-1].lower(), []).append(fid)
     return idx
 
 
@@ -308,6 +326,17 @@ def check_correspondence(manifest: dict[str, Any],
         problems.append(f"GOLD_FILES_AMBIGUOUS_CONTENT:{s['ambiguous_content']}")
     if s.get("no_fingerprint"):
         problems.append(f"GOLD_FILES_WITHOUT_FINGERPRINT:{s['no_fingerprint']}")
+    # ★★ P0-1（#108 实测 · 2026-10-30）：**「Gold 在」≠「Gold 有基准」**。
+    #   实测：标准答案清单里的 `expected_files` 全为空 ⇒ 解析统计 `expected_files=0`
+    #   ⇒ 上面三条一条都不触发 ⇒ 对应关系判 `CONFIRMED` ⇒ 预检拼出
+    #   `READY_FOR_FORMAL_SCORING` ⇒ **没有一题可对答案，却宣布可正式评分**。
+    #   ⇒ 「一条期望文件都没有」是**阻塞事实**：既没有基准可比，也就没有分母。
+    #   ⇒ 口径：**不删 Gold、不改 Gold**；只如实说「这份 Gold 没有可比的基准」。
+    if not s.get("expected_files"):
+        problems.append("GOLD_NO_EXPECTED_FILES:标准答案清单没有任何期望文件"
+                        "⇒ 没有可比的基准 ⇒ 不具备正式评分条件（分母为 0）")
+    if not s.get("obligations"):
+        problems.append("GOLD_NO_OBLIGATIONS:标准答案清单没有任何义务条目 ⇒ 无可评分对象")
 
     return {
         "state": "BROKEN" if problems else "CONFIRMED",
@@ -353,14 +382,177 @@ def gold_state(manifest: dict[str, Any] | None,
                 "这不等于「历史上没有标准答案」")
     corr = correspondence or {}
     if corr.get("state") == "BROKEN":
+        kind = blocking_kind(corr)
+        _tail = ("（★ **部分缺口** ⇒ 可**分层评分**：保留全卷分母，只把可评分的部分算出来）"
+                 if kind == "GAPS" else
+                 ("（★ **硬冲突** ⇒ 不可评分）" if kind == "HARD" else ""))
         return ("BROKEN", "标准答案已提供但与本次考卷/图书馆对不上：" +
-                "；".join(corr.get("problems") or ["对应关系未确认"]))
+                "；".join(corr.get("problems") or ["对应关系未确认"]) + _tail)
     missing = missing_confirmations(manifest)
     if missing:
         return ("NOT_CONFIRMED",
                 f"标准答案已接入，但有 {len(missing)} 条缺人工确认（confirmed_by / confirmed_at）"
                 "⇒ 不得当已确认（ID：" + ",".join(sorted(missing)[:5]) + "…）")
     return ("FOUND", "标准答案已找到、映射完成、人工已确认 ⇒ 具备正式评分条件")
+
+
+# ── WP3：Gold 缺口的**逐件**诊断（#108 波总裁定 · 2026-10-30）──────────────
+#
+# ★ 波总要求：「先列出 11 份缺失、4 份歧义的**逐件清单、原始路径/哈希及对应题号**，
+#   排查是否是**路径、文件名、哈希或材料库范围错误**；能在本机安全纠正映射的**直接纠正**，
+#   确实缺料的**单列补料清单**。」
+# ★ ⇒ 光答「不在库里」**不够** ⇒ 必须给出**分类 ＋ 候选 ＋ 修复动作**。
+#
+# ★ 分类口径（A–F，与施工令一致）：
+#   A  确实缺料        —— 库里既无同内容、也无同路径/同名件
+#   B  路径解析错误    —— 库里有**同内容**但路径不同（内容寻址已能命中 ⇒ 实际不该出现）
+#   C  文件名匹配错误  —— 库里有**同名**件但内容指纹不同
+#   D  哈希/内容识别错 —— 库里同路径件的指纹与 Gold 记的不一致（内容被替换/重新导出）
+#   E  主体/期间/范围错 —— 同内容命中，但该材料的**主体/期间**与 Gold 记的不一致
+#   F  Gold 清单需人工确认 —— 该条目没有期望文件、或题号挂不上本考卷的义务
+# ★ ★ **不删 Gold、不改 Gold**：本函数**只读**，产出的是**待处置清单**。
+
+GAP_CLASSES = ("A_MISSING", "B_PATH_MISMATCH", "C_NAME_MISMATCH",
+               "D_FINGERPRINT_MISMATCH", "E_SCOPE_MISMATCH", "F_NEEDS_HUMAN_CONFIRM")
+
+#: ★ **两类阻塞必须分开**（#108 波总裁定 · 2026-10-30「保留全卷分母的分层评分」）：
+#: · HARD ＝ **真不可评分**（考卷/图书馆指纹冲突、或根本没有可比基准）⇒ NOT_SCORABLE；
+#: · GAPS ＝ **部分缺口**（个别标准答案文件缺料/歧义）⇒ ★ **可分层评分**：
+#:   ★ 保留全卷分母，把**可评分**的那部分算出分子分母与得分，缺口逐件列出。
+#: ★ ★ 开考**闸门**对两类都拦（不开考）；★ 但**阅卷**对 GAPS **不得**全盘 NOT_SCORABLE
+#:   （那会把「11 份缺料」变成「42 题全部不可评」⇒ 违反波总的分层裁定）。
+HARD_BLOCK_CODES = ("CHECKLIST_FINGERPRINT_MISMATCH", "LIBRARY_FINGERPRINT_MISMATCH",
+                     "GOLD_NO_EXPECTED_FILES", "GOLD_NO_OBLIGATIONS")
+GAP_BLOCK_CODES = ("GOLD_FILES_MISSING_IN_LIBRARY", "GOLD_FILES_AMBIGUOUS_CONTENT",
+                   "GOLD_FILES_WITHOUT_FINGERPRINT")
+
+
+def blocking_kind(correspondence: dict[str, Any] | None) -> str:
+    """把对应关系的阻塞分档：**HARD**（真不可评分）／**GAPS**（可分层）／``""``（无阻塞）。"""
+    codes = {str(p).split(":")[0] for p in ((correspondence or {}).get("problems") or [])}
+    if codes & set(HARD_BLOCK_CODES):
+        return "HARD"
+    if codes & set(GAP_BLOCK_CODES):
+        return "GAPS"
+    return ""
+
+
+def _classify_one(resolved: dict[str, Any],
+                   index: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """给一条「没解析出来」的 Gold 期望文件定类 ＋ 给候选 ＋ 给修复动作。
+
+    ★ 入参是 **``_resolve_one_file`` 的输出**（键名是 ``gold_relative_path``／``sha256``／
+      ``gold_entity``／``gold_period``）⇒ ★ **不要**按清单原始键名读（那是另一套形状）。
+    """
+    gold_path = str(resolved.get("gold_relative_path") or "").strip().replace("\\", "/")
+    gold_name = gold_path.rsplit("/", 1)[-1].lower() if gold_path else ""
+    gold_sha = str(resolved.get("sha256") or "").strip().lower()
+    out: dict[str, Any] = {
+        "resolution": str(resolved.get("resolution") or ""),
+        "resolution_note": str(resolved.get("resolution_note") or ""),
+        "gold_relative_path": gold_path,
+        "gold_sha256": gold_sha,
+        "gold_entity": str(resolved.get("gold_entity") or ""),
+        "gold_period": str(resolved.get("gold_period") or ""),
+        "gap_class": "",
+        "candidates": [],
+        "remedy": "",
+    }
+    if not gold_sha:
+        out["gap_class"] = "F_NEEDS_HUMAN_CONFIRM"
+        out["remedy"] = "补 Gold 的内容指纹（sha256）⇒ 不得按文件名认定"
+        return out
+    by_path = index.get("by_path") or {}
+    by_name = index.get("by_name") or {}
+    by_id = index.get("by_id") or {}
+    # D：同路径、不同内容 ⇒ 内容被替换/重新导出
+    same_path = [fid for fid in by_path.get(gold_path.lower(), [])]
+    if same_path:
+        out["gap_class"] = "D_FINGERPRINT_MISMATCH"
+        out["candidates"] = [{
+            "file_id": fid, "relative_path": str((by_id.get(fid) or {}).get("relative_path") or ""),
+            "sha256": str((by_id.get(fid) or {}).get("sha256") or ""),
+            "entity": str((by_id.get(fid) or {}).get("entity") or ""),
+            "period": str((by_id.get(fid) or {}).get("period") or ""),
+        } for fid in same_path]
+        out["remedy"] = "人工核对：库里同路径件的内容指纹与 Gold 记的不一致 ⇒ 是内容被替换，还是 Gold 记错"
+        return out
+    # C：同名、不同内容
+    same_name = [fid for fid in by_name.get(gold_name, [])] if gold_name else []
+    if same_name:
+        out["gap_class"] = "C_NAME_MISMATCH"
+        out["candidates"] = [{
+            "file_id": fid, "relative_path": str((by_id.get(fid) or {}).get("relative_path") or ""),
+            "sha256": str((by_id.get(fid) or {}).get("sha256") or ""),
+            "entity": str((by_id.get(fid) or {}).get("entity") or ""),
+            "period": str((by_id.get(fid) or {}).get("period") or ""),
+        } for fid in same_name]
+        out["remedy"] = "人工核对同名件：内容不同 ⇒ 若确为同一份材料，请由业务方**补正确指纹**（不得由程序猜）"
+        return out
+    # A：库里既无同内容、也无同路径/同名件
+    out["gap_class"] = "A_MISSING"
+    out["remedy"] = "**补料**：该份标准答案材料在当前图书馆快照里不存在 ⇒ 单列进补料清单（不得删 Gold）"
+    return out
+
+
+def gold_gap_report(manifest: dict[str, Any],
+                    index: dict[str, dict[str, Any]],
+                    resolved: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Gold 缺口的**逐件**清单（题号 ＋ 原始路径 ＋ 哈希 ＋ 分类 ＋ 候选 ＋ 修复动作）。
+
+    ★ 输入：Gold 清单 ＋ 图书馆索引（``by_id``／``by_sha``／``by_path``／``by_name``）。
+    ★ 输出：**每条没解析出来的期望文件**一行；★ **已解析的不列**（不制造噪声）。
+    ★ ★ **只读**：不写 Gold、不改 Gold、不补料、不猜。
+    """
+    resolved = resolved if resolved is not None else resolve_gold_files(manifest, index)
+    gaps: list[dict[str, Any]] = []
+    by_class: dict[str, int] = {}
+    for it in resolved.get("items") or []:
+        oid = str(it.get("obligation_id") or "")
+        item_no = str(it.get("item_no") or "")
+        for exp in it.get("expected_files") or []:
+            r = str(exp.get("resolution") or "")
+            if r == "RESOLVED":
+                continue
+            g = _classify_one(exp, index)
+            g["obligation_id"] = oid
+            g["item_no"] = item_no
+            # ★ 题号挂不上本考卷的义务 ⇒ F（Gold 清单侧的问题，不是缺料）
+            if not item_no:
+                g["gap_class"] = "F_NEEDS_HUMAN_CONFIRM"
+                g["remedy"] = "Gold 条目**缺题号** ⇒ 无法挂到本考卷的义务 ⇒ 人工补题号"
+            gaps.append(g)
+            by_class[g["gap_class"]] = by_class.get(g["gap_class"], 0) + 1
+    # ★ 条目级：一条期望文件都没有 ⇒ 也是 F（不是「答对了」）
+    for it in resolved.get("items") or []:
+        if not (it.get("expected_files") or []):
+            gaps.append({
+                "obligation_id": str(it.get("obligation_id") or ""),
+                "item_no": str(it.get("item_no") or ""),
+                "resolution": "NO_EXPECTED_FILES",
+                "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+                "gold_relative_path": "", "gold_sha256": "",
+                "gold_entity": "", "gold_period": "",
+                "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+                "candidates": [],
+                "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务",
+            })
+            by_class["F_NEEDS_HUMAN_CONFIRM"] = by_class.get("F_NEEDS_HUMAN_CONFIRM", 0) + 1
+    return {
+        "schema_version": "dd_v1_gold_gap_report.v1",
+        "gold_pack_id": str(manifest.get("gold_pack_id") or ""),
+        "exam_id": str(manifest.get("exam_id") or ""),
+        "counts": {
+            "obligations": len(resolved.get("items") or []),
+            "expected_files": int((resolved.get("summary") or {}).get("expected_files") or 0),
+            "resolved": int((resolved.get("summary") or {}).get("resolved") or 0),
+            "gaps": len(gaps),
+            "by_class": by_class,
+        },
+        "gaps": gaps,
+        "note": ("逐件待处置清单：★ **不删 Gold、不改 Gold**；"
+                 "A/B/C/D/E 由人工核对后**在本地纠正映射**，A（确实缺料）单列进补料清单"),
+    }
 
 
 # ── 隔离闸 ───────────────────────────────────────────────────────────────────
