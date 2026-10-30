@@ -1,26 +1,43 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T110543Z",
+  "run_id": "20261030T135403Z",
   "exam": "C",
   "exam_id": "DDV1-SYN-C",
   "title": "考试C · 完整42题",
-  "started_at": "2026-10-30T19:05:45+08:00",
-  "finished_at": "2026-10-30T19:05:45+08:00",
-  "elapsed_s": 1.78,
-  "git_sha": "bf709abefed038e08702664e303a0235ec928d12",
+  "started_at": "2026-10-30T21:54:05+08:00",
+  "finished_at": "2026-10-30T21:54:05+08:00",
+  "elapsed_s": 2.14,
+  "git_sha": "0f34ff41724373d3a8c256884cf92a3613161cb0",
   "git_dirty": false,
   "environment": {
     "platform": "darwin",
     "python": "3.13.12",
     "data_plane": "/Users/mac/.cangjie-ddv1-exams/C/data",
-    "out_dir": ".audit/exam-plane/C",
+    "out_dir": ".audit/gate-runs/C",
     "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库"
   },
   "model": {
     "agent_spec": "none",
     "agent_result_file": "",
     "examinee_mode": "RULE_ONLY",
-    "participated": false
+    "participated": false,
+    "requested_mode": "RULE_ONLY",
+    "execution_path": "RULE_ONLY",
+    "actual_model": "UNKNOWN",
+    "model_identity_verified": false,
+    "model_identity": {},
+    "examinee_framework": "",
+    "examinee_provider": "",
+    "score_split": {
+      "score_name": "RULE_BASELINE_SCORE",
+      "rule_baseline_score": 100.0,
+      "ai_system_score": null,
+      "ai_system_score_status": "NOT_SCORED",
+      "model_identity_acceptable": false,
+      "delta": null,
+      "delta_is_causal": false,
+      "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+    }
   },
   "test_data_version": {
     "fixture": "backend/tests/fixtures/dd-v1-exam-suite/exams/C",
@@ -32,13 +49,14 @@
   "gold_version": {
     "path": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json",
     "items": 42,
-    "fingerprint": "88657fbac8aaac7fc95d0de07ff11c421738bd4310a0ae7a89477bcce1ef0453"
+    "fingerprint": "d64a654292e984b55302a01e9453fc00f321c52d0d7d87fcb01662bde92fefb4"
   },
   "results": {
     "rc_run": 0,
     "rc_answer": 0,
     "rc_grade": 0,
     "status": "SCORED",
+    "scorecard_status": "SCORED",
     "scores": {
       "question_understanding_coverage": 1.0,
       "question_answer_coverage": 0.904762,
@@ -48,6 +66,67 @@
       "miss_rate": 0.0,
       "wrong_rate": 0.0,
       "total_score": 100.0
+    },
+    "score_split": {
+      "score_name": "RULE_BASELINE_SCORE",
+      "rule_baseline_score": 100.0,
+      "ai_system_score": null,
+      "ai_system_score_status": "NOT_SCORED",
+      "model_identity_acceptable": false,
+      "delta": null,
+      "delta_is_causal": false,
+      "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+    },
+    "run_provenance": {
+      "requested_mode": "RULE_ONLY",
+      "execution_path": "RULE_ONLY",
+      "examinee_agent": "",
+      "examinee_framework": "",
+      "examinee_provider": "",
+      "actual_model": "UNKNOWN",
+      "model_identity": {},
+      "model_identity_verified": false,
+      "model_participated": false,
+      "participated_scope": "NONE",
+      "gold_version": "d64a654292e984b55302a01e9453fc00f321c52d0d7d87fcb01662bde92fefb4",
+      "gold_source": "LOCAL_GOLD_PACK",
+      "gold_pack_id": "GOLD-SYN-C",
+      "answer_sheet_source": "dd_v1_answer_sheet.v1",
+      "source_snapshot_id": "",
+      "total_score": 100.0,
+      "scores": {
+        "question_understanding_coverage": 1.0,
+        "question_answer_coverage": 0.904762,
+        "material_recall": 1.0,
+        "selection_precision": 1.0,
+        "complete_delivery_ratio": 1.0,
+        "miss_rate": 0.0,
+        "wrong_rate": 0.0,
+        "total_score": 100.0
+      },
+      "score_split": {
+        "score_name": "RULE_BASELINE_SCORE",
+        "rule_baseline_score": 100.0,
+        "ai_system_score": null,
+        "ai_system_score_status": "NOT_SCORED",
+        "model_identity_acceptable": false,
+        "delta": null,
+        "delta_is_causal": false,
+        "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+      },
+      "disclosure_safety": {
+        "status": "PASS",
+        "violations": 0,
+        "findings_count": 0
+      },
+      "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
+      "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
+      "code_version": "0f34ff41724373d3a8c256884cf92a3613161cb0",
+      "evidence_paths": {
+        "answer_sheet": ".audit/gate-runs/C/answer/机器答卷-20261030-215405.json",
+        "gold": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json",
+        "library": "LIB-DDVE-C"
+      }
     },
     "safety_gate": {
       "violations": 0,
@@ -461,7 +540,7 @@
       },
       "gaps": [
         {
-          "obligation_id": "10ba442131ff44388093e957b6c689b5",
+          "obligation_id": "6b37e236438f467a81378830ab4ea79a",
           "item_no": "3-9",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -474,7 +553,7 @@
           "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
         },
         {
-          "obligation_id": "f5f9ee654c144f99a1de1b4f9c33ce0b",
+          "obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
           "item_no": "3-18",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -487,7 +566,7 @@
           "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
         },
         {
-          "obligation_id": "1f30cd0d93504b9cb107d42d4c4dd5a3",
+          "obligation_id": "17db0384dc6449f7a53970d95a97a012",
           "item_no": "3-27",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -500,7 +579,7 @@
           "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
         },
         {
-          "obligation_id": "6eb890fbaa804bdc81643839b6dd7008",
+          "obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
           "item_no": "3-36",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -521,7 +600,7 @@
   "disclosure": {
     "delivered_rows": 38,
     "delivered_files": 31,
-    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/C/data/deliveries/a04c2901ed444228b9b971f614f54de8/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/C/data/deliveries/959aa22b8e4c4a58bc3103d0e8425465/组包manifest.tsv",
     "blocked_materials": 168,
     "violations": 0,
     "violation_detail": [],
@@ -535,9 +614,9 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": ".audit/exam-plane/C/answer/机器答卷-20261030-190545.json",
-    "scorecard_dir": ".audit/exam-plane/C/grade",
-    "run_report_dir": ".audit/exam-plane/C/run",
+    "answer_sheet": ".audit/gate-runs/C/answer/机器答卷-20261030-215405.json",
+    "scorecard_dir": ".audit/gate-runs/C/grade",
+    "run_report_dir": ".audit/gate-runs/C/run",
     "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json"
   }
 }

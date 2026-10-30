@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "",
   "status": "SCORED",
-  "graded_at": "2026-10-30T19:05:45+08:00",
+  "graded_at": "2026-10-30T21:54:05+08:00",
   "scores": {
     "question_understanding_coverage": 1.0,
     "question_answer_coverage": 0.904762,
@@ -30,9 +30,9 @@
   },
   "rows": [
     {
-      "obligation_id": "8605e91cc1e7477d821f2cd19d654148",
+      "obligation_id": "14543bf103a0481dae4aa6c59771d048",
       "cluster_ids": [
-        "8605e91cc1e7477d821f2cd19d654148"
+        "14543bf103a0481dae4aa6c59771d048"
       ],
       "cluster_count": 1,
       "item_no": "3-1",
@@ -62,9 +62,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "6b930f7200214e1c9625b92e1b917f29",
+      "obligation_id": "8829ba3c4d404c02a5f8a31cf2e3d76b",
       "cluster_ids": [
-        "6b930f7200214e1c9625b92e1b917f29"
+        "8829ba3c4d404c02a5f8a31cf2e3d76b"
       ],
       "cluster_count": 1,
       "item_no": "3-2",
@@ -95,9 +95,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "27e9976dfe034a6f89e3650c796d8354",
+      "obligation_id": "f0366150a9144d0fadc00beb8748da8a",
       "cluster_ids": [
-        "27e9976dfe034a6f89e3650c796d8354"
+        "f0366150a9144d0fadc00beb8748da8a"
       ],
       "cluster_count": 1,
       "item_no": "3-3",
@@ -128,9 +128,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "040bcb13c55b4da2b68fb44ab5daf966",
+      "obligation_id": "90e64a0121f643f9a06e739021014a06",
       "cluster_ids": [
-        "040bcb13c55b4da2b68fb44ab5daf966"
+        "90e64a0121f643f9a06e739021014a06"
       ],
       "cluster_count": 1,
       "item_no": "3-4",
@@ -161,9 +161,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "2bd0d83b9a30478b9728c915593f57f9",
+      "obligation_id": "6dffa4ba740548c791423af2d2ae3d3d",
       "cluster_ids": [
-        "2bd0d83b9a30478b9728c915593f57f9"
+        "6dffa4ba740548c791423af2d2ae3d3d"
       ],
       "cluster_count": 1,
       "item_no": "3-5",
@@ -194,9 +194,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "91ca29793cde49e698f2dcacff6f130f",
+      "obligation_id": "0ebc46a0ddac4c3e908a03b0c7b0afa8",
       "cluster_ids": [
-        "91ca29793cde49e698f2dcacff6f130f"
+        "0ebc46a0ddac4c3e908a03b0c7b0afa8"
       ],
       "cluster_count": 1,
       "item_no": "3-6",
@@ -227,11 +227,11 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "50571b58e5154c1e977bcf7342b2347d",
+      "obligation_id": "dbf0fd11c4a942258bfefa97c0253be0",
       "cluster_ids": [
-        "50571b58e5154c1e977bcf7342b2347d@合成子公司乙",
-        "50571b58e5154c1e977bcf7342b2347d@合成子公司甲",
-        "50571b58e5154c1e977bcf7342b2347d@合成母公司"
+        "dbf0fd11c4a942258bfefa97c0253be0@合成子公司乙",
+        "dbf0fd11c4a942258bfefa97c0253be0@合成子公司甲",
+        "dbf0fd11c4a942258bfefa97c0253be0@合成母公司"
       ],
       "cluster_count": 3,
       "item_no": "3-7",
@@ -275,9 +275,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "3880daf0946549968744fc7ad516d855",
+      "obligation_id": "a80d01992bea4443a0fe4d3a440ac6ab",
       "cluster_ids": [
-        "3880daf0946549968744fc7ad516d855"
+        "a80d01992bea4443a0fe4d3a440ac6ab"
       ],
       "cluster_count": 1,
       "item_no": "3-8",
@@ -307,9 +307,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "10ba442131ff44388093e957b6c689b5",
+      "obligation_id": "6b37e236438f467a81378830ab4ea79a",
       "cluster_ids": [
-        "10ba442131ff44388093e957b6c689b5"
+        "6b37e236438f467a81378830ab4ea79a"
       ],
       "cluster_count": 1,
       "item_no": "3-9",
@@ -331,9 +331,9 @@
       "resolution_state": "NO_EXPECTED_FILES"
     },
     {
-      "obligation_id": "77e6f48f5f9543a59d3d1536c6835e2c",
+      "obligation_id": "c72f358ea1ff463694f06344c111413d",
       "cluster_ids": [
-        "77e6f48f5f9543a59d3d1536c6835e2c"
+        "c72f358ea1ff463694f06344c111413d"
       ],
       "cluster_count": 1,
       "item_no": "3-10",
@@ -359,9 +359,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "0b5c045509df4f42be1f5cc3dbe89c45",
+      "obligation_id": "8cb040a193164f8abdc2f8b65fa7d75e",
       "cluster_ids": [
-        "0b5c045509df4f42be1f5cc3dbe89c45"
+        "8cb040a193164f8abdc2f8b65fa7d75e"
       ],
       "cluster_count": 1,
       "item_no": "3-11",
@@ -392,9 +392,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "81b1a776c50a4a9c90d2870550c29dc9",
+      "obligation_id": "3b3c8bc65e22404a9b9e20a26ffa017d",
       "cluster_ids": [
-        "81b1a776c50a4a9c90d2870550c29dc9"
+        "3b3c8bc65e22404a9b9e20a26ffa017d"
       ],
       "cluster_count": 1,
       "item_no": "3-12",
@@ -425,9 +425,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "da1925c662a24ec9a35a64bf46d317d8",
+      "obligation_id": "60fb3a3e98054cc3b25af0191d7eca7a",
       "cluster_ids": [
-        "da1925c662a24ec9a35a64bf46d317d8"
+        "60fb3a3e98054cc3b25af0191d7eca7a"
       ],
       "cluster_count": 1,
       "item_no": "3-13",
@@ -458,11 +458,11 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "1409ada6f43b4d0f8e7ecb9c5e804ebd",
+      "obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe",
       "cluster_ids": [
-        "1409ada6f43b4d0f8e7ecb9c5e804ebd@合成子公司乙",
-        "1409ada6f43b4d0f8e7ecb9c5e804ebd@合成子公司甲",
-        "1409ada6f43b4d0f8e7ecb9c5e804ebd@合成母公司"
+        "22a4e02aeb884d268fb1d2f0447ee7fe@合成子公司乙",
+        "22a4e02aeb884d268fb1d2f0447ee7fe@合成子公司甲",
+        "22a4e02aeb884d268fb1d2f0447ee7fe@合成母公司"
       ],
       "cluster_count": 3,
       "item_no": "3-14",
@@ -507,9 +507,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "acd12c8d448d42528b8d6d78f62a45ff",
+      "obligation_id": "db47ceed4fed43108366410093995c99",
       "cluster_ids": [
-        "acd12c8d448d42528b8d6d78f62a45ff"
+        "db47ceed4fed43108366410093995c99"
       ],
       "cluster_count": 1,
       "item_no": "3-15",
@@ -540,9 +540,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "5a0e572864fe432f9d6a6b82553b3dc8",
+      "obligation_id": "e58e82d344b94cbaadbb33aa4287d7e7",
       "cluster_ids": [
-        "5a0e572864fe432f9d6a6b82553b3dc8"
+        "e58e82d344b94cbaadbb33aa4287d7e7"
       ],
       "cluster_count": 1,
       "item_no": "3-16",
@@ -573,9 +573,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "67f1548c59a146a4bd91dc186bc6ee2e",
+      "obligation_id": "a1679786b26943f4bfd3e2b8a5f3f321",
       "cluster_ids": [
-        "67f1548c59a146a4bd91dc186bc6ee2e"
+        "a1679786b26943f4bfd3e2b8a5f3f321"
       ],
       "cluster_count": 1,
       "item_no": "3-17",
@@ -605,9 +605,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "f5f9ee654c144f99a1de1b4f9c33ce0b",
+      "obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
       "cluster_ids": [
-        "f5f9ee654c144f99a1de1b4f9c33ce0b"
+        "c8a8bef2d5314c9c86d9677a4223c9d2"
       ],
       "cluster_count": 1,
       "item_no": "3-18",
@@ -629,9 +629,9 @@
       "resolution_state": "NO_EXPECTED_FILES"
     },
     {
-      "obligation_id": "1b58e620946540659363841583ea3d65",
+      "obligation_id": "68e5330fe0b240408e10e7c8735cb875",
       "cluster_ids": [
-        "1b58e620946540659363841583ea3d65"
+        "68e5330fe0b240408e10e7c8735cb875"
       ],
       "cluster_count": 1,
       "item_no": "3-19",
@@ -661,9 +661,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "d918266d732a4eed9d14205cd3924a6e",
+      "obligation_id": "47affc7cf309498aa6024c3a64d794d8",
       "cluster_ids": [
-        "d918266d732a4eed9d14205cd3924a6e"
+        "47affc7cf309498aa6024c3a64d794d8"
       ],
       "cluster_count": 1,
       "item_no": "3-20",
@@ -689,11 +689,11 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "9f0eca563f0745acb935d4652ec154fe",
+      "obligation_id": "5574e490deb84506b560d42ba46d1f24",
       "cluster_ids": [
-        "9f0eca563f0745acb935d4652ec154fe@合成子公司乙",
-        "9f0eca563f0745acb935d4652ec154fe@合成子公司甲",
-        "9f0eca563f0745acb935d4652ec154fe@合成母公司"
+        "5574e490deb84506b560d42ba46d1f24@合成子公司乙",
+        "5574e490deb84506b560d42ba46d1f24@合成子公司甲",
+        "5574e490deb84506b560d42ba46d1f24@合成母公司"
       ],
       "cluster_count": 3,
       "item_no": "3-21",
@@ -738,9 +738,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "c2d943a397264e1bb885419905be9c8c",
+      "obligation_id": "437d6b008d494a0dab097aa38f901b4a",
       "cluster_ids": [
-        "c2d943a397264e1bb885419905be9c8c"
+        "437d6b008d494a0dab097aa38f901b4a"
       ],
       "cluster_count": 1,
       "item_no": "3-22",
@@ -771,9 +771,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "63cf5a06353d41378da9ed84ed1b8766",
+      "obligation_id": "b3b1ad0fcf0e49c4b7b715a58e5f0dde",
       "cluster_ids": [
-        "63cf5a06353d41378da9ed84ed1b8766"
+        "b3b1ad0fcf0e49c4b7b715a58e5f0dde"
       ],
       "cluster_count": 1,
       "item_no": "3-23",
@@ -804,9 +804,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "87981e82ab40406e93c5ae51313dec3f",
+      "obligation_id": "eb21655fb64c4f98a7a25071f77b28d2",
       "cluster_ids": [
-        "87981e82ab40406e93c5ae51313dec3f"
+        "eb21655fb64c4f98a7a25071f77b28d2"
       ],
       "cluster_count": 1,
       "item_no": "3-24",
@@ -837,9 +837,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "eff1d59a6e6347b1816bd5fed8fc20c3",
+      "obligation_id": "64e29b34c7fc497bade384fcb603683c",
       "cluster_ids": [
-        "eff1d59a6e6347b1816bd5fed8fc20c3"
+        "64e29b34c7fc497bade384fcb603683c"
       ],
       "cluster_count": 1,
       "item_no": "3-25",
@@ -870,9 +870,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "b3e3e0f500d541c58b576623866a1457",
+      "obligation_id": "59fabdbd9e4f407d92da7d5cecfe7812",
       "cluster_ids": [
-        "b3e3e0f500d541c58b576623866a1457"
+        "59fabdbd9e4f407d92da7d5cecfe7812"
       ],
       "cluster_count": 1,
       "item_no": "3-26",
@@ -902,9 +902,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "1f30cd0d93504b9cb107d42d4c4dd5a3",
+      "obligation_id": "17db0384dc6449f7a53970d95a97a012",
       "cluster_ids": [
-        "1f30cd0d93504b9cb107d42d4c4dd5a3"
+        "17db0384dc6449f7a53970d95a97a012"
       ],
       "cluster_count": 1,
       "item_no": "3-27",
@@ -926,11 +926,11 @@
       "resolution_state": "NO_EXPECTED_FILES"
     },
     {
-      "obligation_id": "19028cd7948243bea10499b656a8b471",
+      "obligation_id": "d9536148df884baa9f1a6da8099027fe",
       "cluster_ids": [
-        "19028cd7948243bea10499b656a8b471@合成子公司乙",
-        "19028cd7948243bea10499b656a8b471@合成子公司甲",
-        "19028cd7948243bea10499b656a8b471@合成母公司"
+        "d9536148df884baa9f1a6da8099027fe@合成子公司乙",
+        "d9536148df884baa9f1a6da8099027fe@合成子公司甲",
+        "d9536148df884baa9f1a6da8099027fe@合成母公司"
       ],
       "cluster_count": 3,
       "item_no": "3-28",
@@ -971,9 +971,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "7345da7689f8418c99528f3cde3b3f5d",
+      "obligation_id": "3ace20f1230941328e24b8be188cb7a2",
       "cluster_ids": [
-        "7345da7689f8418c99528f3cde3b3f5d"
+        "3ace20f1230941328e24b8be188cb7a2"
       ],
       "cluster_count": 1,
       "item_no": "3-29",
@@ -1004,9 +1004,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "c1758cdfadf0462595275fc623e4993b",
+      "obligation_id": "0727b9ca42b1475c8921a9e7231bb39d",
       "cluster_ids": [
-        "c1758cdfadf0462595275fc623e4993b"
+        "0727b9ca42b1475c8921a9e7231bb39d"
       ],
       "cluster_count": 1,
       "item_no": "3-30",
@@ -1032,9 +1032,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "b40f1785e5574d4181c4e3dfdbada2ce",
+      "obligation_id": "e5381e7c57cb43dc91b9b0091b352080",
       "cluster_ids": [
-        "b40f1785e5574d4181c4e3dfdbada2ce"
+        "e5381e7c57cb43dc91b9b0091b352080"
       ],
       "cluster_count": 1,
       "item_no": "3-31",
@@ -1065,9 +1065,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "64238ca0f73f4a8dbd5c95c499c24477",
+      "obligation_id": "611a9bde66b3444cb0fb1e96a60f8be9",
       "cluster_ids": [
-        "64238ca0f73f4a8dbd5c95c499c24477"
+        "611a9bde66b3444cb0fb1e96a60f8be9"
       ],
       "cluster_count": 1,
       "item_no": "3-32",
@@ -1098,9 +1098,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "69658df607f849f1891f727230dd30e3",
+      "obligation_id": "0dc0a309841d4e1b90ac6a62cd318590",
       "cluster_ids": [
-        "69658df607f849f1891f727230dd30e3"
+        "0dc0a309841d4e1b90ac6a62cd318590"
       ],
       "cluster_count": 1,
       "item_no": "3-33",
@@ -1131,9 +1131,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "b7ad8c919de64e6d8c6d8ed168e806de",
+      "obligation_id": "3d434c1ec33749edb38b59abe9126a24",
       "cluster_ids": [
-        "b7ad8c919de64e6d8c6d8ed168e806de"
+        "3d434c1ec33749edb38b59abe9126a24"
       ],
       "cluster_count": 1,
       "item_no": "3-34",
@@ -1164,11 +1164,11 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "9b2c335f822948d983e60fcade294f91",
+      "obligation_id": "c99b103ca9c741129ddd70263264d124",
       "cluster_ids": [
-        "9b2c335f822948d983e60fcade294f91@合成子公司乙",
-        "9b2c335f822948d983e60fcade294f91@合成子公司甲",
-        "9b2c335f822948d983e60fcade294f91@合成母公司"
+        "c99b103ca9c741129ddd70263264d124@合成子公司乙",
+        "c99b103ca9c741129ddd70263264d124@合成子公司甲",
+        "c99b103ca9c741129ddd70263264d124@合成母公司"
       ],
       "cluster_count": 3,
       "item_no": "3-35",
@@ -1212,9 +1212,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "6eb890fbaa804bdc81643839b6dd7008",
+      "obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
       "cluster_ids": [
-        "6eb890fbaa804bdc81643839b6dd7008"
+        "9ff47395da4a418cb40ee4ec00b6f383"
       ],
       "cluster_count": 1,
       "item_no": "3-36",
@@ -1236,9 +1236,9 @@
       "resolution_state": "NO_EXPECTED_FILES"
     },
     {
-      "obligation_id": "967f9105741a4a7ca1e3439671d8b01a",
+      "obligation_id": "6b96d50279124deca937ce386edaa595",
       "cluster_ids": [
-        "967f9105741a4a7ca1e3439671d8b01a"
+        "6b96d50279124deca937ce386edaa595"
       ],
       "cluster_count": 1,
       "item_no": "3-37",
@@ -1268,9 +1268,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "2e0e77ba02d747648c49724609837589",
+      "obligation_id": "8df6282394384418a831ca52b0be72f9",
       "cluster_ids": [
-        "2e0e77ba02d747648c49724609837589"
+        "8df6282394384418a831ca52b0be72f9"
       ],
       "cluster_count": 1,
       "item_no": "3-38",
@@ -1301,9 +1301,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "b5dd94dd9694492cba8270cb54773c28",
+      "obligation_id": "23f087b1635f48ec8d8205a635effd76",
       "cluster_ids": [
-        "b5dd94dd9694492cba8270cb54773c28"
+        "23f087b1635f48ec8d8205a635effd76"
       ],
       "cluster_count": 1,
       "item_no": "3-39",
@@ -1334,9 +1334,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "7c489241bbd44c168ab0d59e24aca355",
+      "obligation_id": "341f3f520e7a4b9397db8ef328f1c56c",
       "cluster_ids": [
-        "7c489241bbd44c168ab0d59e24aca355"
+        "341f3f520e7a4b9397db8ef328f1c56c"
       ],
       "cluster_count": 1,
       "item_no": "3-40",
@@ -1362,9 +1362,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "97eb2a15473d419689d3798618c23dc8",
+      "obligation_id": "b412b9cbd13f4f1abde5a9a76b9346e7",
       "cluster_ids": [
-        "97eb2a15473d419689d3798618c23dc8"
+        "b412b9cbd13f4f1abde5a9a76b9346e7"
       ],
       "cluster_count": 1,
       "item_no": "3-41",
@@ -1395,11 +1395,11 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "ec71da7471104215aadd15e247128984",
+      "obligation_id": "41ccf0a085c74f3a8def3b446b187fa5",
       "cluster_ids": [
-        "ec71da7471104215aadd15e247128984@合成子公司乙",
-        "ec71da7471104215aadd15e247128984@合成子公司甲",
-        "ec71da7471104215aadd15e247128984@合成母公司"
+        "41ccf0a085c74f3a8def3b446b187fa5@合成子公司乙",
+        "41ccf0a085c74f3a8def3b446b187fa5@合成子公司甲",
+        "41ccf0a085c74f3a8def3b446b187fa5@合成母公司"
       ],
       "cluster_count": 3,
       "item_no": "3-42",
@@ -1808,7 +1808,7 @@
     },
     "gaps": [
       {
-        "obligation_id": "10ba442131ff44388093e957b6c689b5",
+        "obligation_id": "6b37e236438f467a81378830ab4ea79a",
         "item_no": "3-9",
         "resolution": "NO_EXPECTED_FILES",
         "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -1821,7 +1821,7 @@
         "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
       },
       {
-        "obligation_id": "f5f9ee654c144f99a1de1b4f9c33ce0b",
+        "obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
         "item_no": "3-18",
         "resolution": "NO_EXPECTED_FILES",
         "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -1834,7 +1834,7 @@
         "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
       },
       {
-        "obligation_id": "1f30cd0d93504b9cb107d42d4c4dd5a3",
+        "obligation_id": "17db0384dc6449f7a53970d95a97a012",
         "item_no": "3-27",
         "resolution": "NO_EXPECTED_FILES",
         "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -1847,7 +1847,7 @@
         "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
       },
       {
-        "obligation_id": "6eb890fbaa804bdc81643839b6dd7008",
+        "obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
         "item_no": "3-36",
         "resolution": "NO_EXPECTED_FILES",
         "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -1876,7 +1876,7 @@
   },
   "evidence_diff": [
     {
-      "obligation_id": "8605e91cc1e7477d821f2cd19d654148",
+      "obligation_id": "14543bf103a0481dae4aa6c59771d048",
       "item_no": "3-1",
       "outcome": "CORRECT",
       "correct": true,
@@ -1917,7 +1917,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "6b930f7200214e1c9625b92e1b917f29",
+      "obligation_id": "8829ba3c4d404c02a5f8a31cf2e3d76b",
       "item_no": "3-2",
       "outcome": "CORRECT",
       "correct": true,
@@ -1959,7 +1959,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "27e9976dfe034a6f89e3650c796d8354",
+      "obligation_id": "f0366150a9144d0fadc00beb8748da8a",
       "item_no": "3-3",
       "outcome": "CORRECT",
       "correct": true,
@@ -2001,7 +2001,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "040bcb13c55b4da2b68fb44ab5daf966",
+      "obligation_id": "90e64a0121f643f9a06e739021014a06",
       "item_no": "3-4",
       "outcome": "CORRECT",
       "correct": true,
@@ -2043,7 +2043,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "2bd0d83b9a30478b9728c915593f57f9",
+      "obligation_id": "6dffa4ba740548c791423af2d2ae3d3d",
       "item_no": "3-5",
       "outcome": "CORRECT",
       "correct": true,
@@ -2085,7 +2085,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "91ca29793cde49e698f2dcacff6f130f",
+      "obligation_id": "0ebc46a0ddac4c3e908a03b0c7b0afa8",
       "item_no": "3-6",
       "outcome": "CORRECT",
       "correct": true,
@@ -2127,7 +2127,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "50571b58e5154c1e977bcf7342b2347d",
+      "obligation_id": "dbf0fd11c4a942258bfefa97c0253be0",
       "item_no": "3-7",
       "outcome": "CORRECT",
       "correct": true,
@@ -2210,7 +2210,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "3880daf0946549968744fc7ad516d855",
+      "obligation_id": "a80d01992bea4443a0fe4d3a440ac6ab",
       "item_no": "3-8",
       "outcome": "CORRECT",
       "correct": true,
@@ -2251,7 +2251,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "10ba442131ff44388093e957b6c689b5",
+      "obligation_id": "6b37e236438f467a81378830ab4ea79a",
       "item_no": "3-9",
       "outcome": "EXPECTED_NONE",
       "correct": false,
@@ -2270,7 +2270,7 @@
       "reason": "Gold 该义务没有期望文件 ⇒ 无可比基准（不算答错）"
     },
     {
-      "obligation_id": "77e6f48f5f9543a59d3d1536c6835e2c",
+      "obligation_id": "c72f358ea1ff463694f06344c111413d",
       "item_no": "3-10",
       "outcome": "CORRECT",
       "correct": true,
@@ -2307,7 +2307,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "0b5c045509df4f42be1f5cc3dbe89c45",
+      "obligation_id": "8cb040a193164f8abdc2f8b65fa7d75e",
       "item_no": "3-11",
       "outcome": "CORRECT",
       "correct": true,
@@ -2349,7 +2349,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "81b1a776c50a4a9c90d2870550c29dc9",
+      "obligation_id": "3b3c8bc65e22404a9b9e20a26ffa017d",
       "item_no": "3-12",
       "outcome": "CORRECT",
       "correct": true,
@@ -2391,7 +2391,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "da1925c662a24ec9a35a64bf46d317d8",
+      "obligation_id": "60fb3a3e98054cc3b25af0191d7eca7a",
       "item_no": "3-13",
       "outcome": "CORRECT",
       "correct": true,
@@ -2433,7 +2433,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "1409ada6f43b4d0f8e7ecb9c5e804ebd",
+      "obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe",
       "item_no": "3-14",
       "outcome": "CORRECT",
       "correct": true,
@@ -2517,7 +2517,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "acd12c8d448d42528b8d6d78f62a45ff",
+      "obligation_id": "db47ceed4fed43108366410093995c99",
       "item_no": "3-15",
       "outcome": "CORRECT",
       "correct": true,
@@ -2559,7 +2559,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "5a0e572864fe432f9d6a6b82553b3dc8",
+      "obligation_id": "e58e82d344b94cbaadbb33aa4287d7e7",
       "item_no": "3-16",
       "outcome": "CORRECT",
       "correct": true,
@@ -2601,7 +2601,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "67f1548c59a146a4bd91dc186bc6ee2e",
+      "obligation_id": "a1679786b26943f4bfd3e2b8a5f3f321",
       "item_no": "3-17",
       "outcome": "CORRECT",
       "correct": true,
@@ -2642,7 +2642,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "f5f9ee654c144f99a1de1b4f9c33ce0b",
+      "obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
       "item_no": "3-18",
       "outcome": "EXPECTED_NONE",
       "correct": false,
@@ -2661,7 +2661,7 @@
       "reason": "Gold 该义务没有期望文件 ⇒ 无可比基准（不算答错）"
     },
     {
-      "obligation_id": "1b58e620946540659363841583ea3d65",
+      "obligation_id": "68e5330fe0b240408e10e7c8735cb875",
       "item_no": "3-19",
       "outcome": "CORRECT",
       "correct": true,
@@ -2702,7 +2702,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "d918266d732a4eed9d14205cd3924a6e",
+      "obligation_id": "47affc7cf309498aa6024c3a64d794d8",
       "item_no": "3-20",
       "outcome": "CORRECT",
       "correct": true,
@@ -2739,7 +2739,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "9f0eca563f0745acb935d4652ec154fe",
+      "obligation_id": "5574e490deb84506b560d42ba46d1f24",
       "item_no": "3-21",
       "outcome": "CORRECT",
       "correct": true,
@@ -2823,7 +2823,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "c2d943a397264e1bb885419905be9c8c",
+      "obligation_id": "437d6b008d494a0dab097aa38f901b4a",
       "item_no": "3-22",
       "outcome": "CORRECT",
       "correct": true,
@@ -2865,7 +2865,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "63cf5a06353d41378da9ed84ed1b8766",
+      "obligation_id": "b3b1ad0fcf0e49c4b7b715a58e5f0dde",
       "item_no": "3-23",
       "outcome": "CORRECT",
       "correct": true,
@@ -2907,7 +2907,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "87981e82ab40406e93c5ae51313dec3f",
+      "obligation_id": "eb21655fb64c4f98a7a25071f77b28d2",
       "item_no": "3-24",
       "outcome": "CORRECT",
       "correct": true,
@@ -2949,7 +2949,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "eff1d59a6e6347b1816bd5fed8fc20c3",
+      "obligation_id": "64e29b34c7fc497bade384fcb603683c",
       "item_no": "3-25",
       "outcome": "CORRECT",
       "correct": true,
@@ -2991,7 +2991,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "b3e3e0f500d541c58b576623866a1457",
+      "obligation_id": "59fabdbd9e4f407d92da7d5cecfe7812",
       "item_no": "3-26",
       "outcome": "CORRECT",
       "correct": true,
@@ -3032,7 +3032,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "1f30cd0d93504b9cb107d42d4c4dd5a3",
+      "obligation_id": "17db0384dc6449f7a53970d95a97a012",
       "item_no": "3-27",
       "outcome": "EXPECTED_NONE",
       "correct": false,
@@ -3051,7 +3051,7 @@
       "reason": "Gold 该义务没有期望文件 ⇒ 无可比基准（不算答错）"
     },
     {
-      "obligation_id": "19028cd7948243bea10499b656a8b471",
+      "obligation_id": "d9536148df884baa9f1a6da8099027fe",
       "item_no": "3-28",
       "outcome": "CORRECT",
       "correct": true,
@@ -3131,7 +3131,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "7345da7689f8418c99528f3cde3b3f5d",
+      "obligation_id": "3ace20f1230941328e24b8be188cb7a2",
       "item_no": "3-29",
       "outcome": "CORRECT",
       "correct": true,
@@ -3173,7 +3173,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "c1758cdfadf0462595275fc623e4993b",
+      "obligation_id": "0727b9ca42b1475c8921a9e7231bb39d",
       "item_no": "3-30",
       "outcome": "CORRECT",
       "correct": true,
@@ -3210,7 +3210,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "b40f1785e5574d4181c4e3dfdbada2ce",
+      "obligation_id": "e5381e7c57cb43dc91b9b0091b352080",
       "item_no": "3-31",
       "outcome": "CORRECT",
       "correct": true,
@@ -3252,7 +3252,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "64238ca0f73f4a8dbd5c95c499c24477",
+      "obligation_id": "611a9bde66b3444cb0fb1e96a60f8be9",
       "item_no": "3-32",
       "outcome": "CORRECT",
       "correct": true,
@@ -3294,7 +3294,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "69658df607f849f1891f727230dd30e3",
+      "obligation_id": "0dc0a309841d4e1b90ac6a62cd318590",
       "item_no": "3-33",
       "outcome": "CORRECT",
       "correct": true,
@@ -3336,7 +3336,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "b7ad8c919de64e6d8c6d8ed168e806de",
+      "obligation_id": "3d434c1ec33749edb38b59abe9126a24",
       "item_no": "3-34",
       "outcome": "CORRECT",
       "correct": true,
@@ -3378,7 +3378,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "9b2c335f822948d983e60fcade294f91",
+      "obligation_id": "c99b103ca9c741129ddd70263264d124",
       "item_no": "3-35",
       "outcome": "CORRECT",
       "correct": true,
@@ -3461,7 +3461,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "6eb890fbaa804bdc81643839b6dd7008",
+      "obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
       "item_no": "3-36",
       "outcome": "EXPECTED_NONE",
       "correct": false,
@@ -3480,7 +3480,7 @@
       "reason": "Gold 该义务没有期望文件 ⇒ 无可比基准（不算答错）"
     },
     {
-      "obligation_id": "967f9105741a4a7ca1e3439671d8b01a",
+      "obligation_id": "6b96d50279124deca937ce386edaa595",
       "item_no": "3-37",
       "outcome": "CORRECT",
       "correct": true,
@@ -3521,7 +3521,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "2e0e77ba02d747648c49724609837589",
+      "obligation_id": "8df6282394384418a831ca52b0be72f9",
       "item_no": "3-38",
       "outcome": "CORRECT",
       "correct": true,
@@ -3563,7 +3563,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "b5dd94dd9694492cba8270cb54773c28",
+      "obligation_id": "23f087b1635f48ec8d8205a635effd76",
       "item_no": "3-39",
       "outcome": "CORRECT",
       "correct": true,
@@ -3605,7 +3605,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "7c489241bbd44c168ab0d59e24aca355",
+      "obligation_id": "341f3f520e7a4b9397db8ef328f1c56c",
       "item_no": "3-40",
       "outcome": "CORRECT",
       "correct": true,
@@ -3642,7 +3642,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "97eb2a15473d419689d3798618c23dc8",
+      "obligation_id": "b412b9cbd13f4f1abde5a9a76b9346e7",
       "item_no": "3-41",
       "outcome": "CORRECT",
       "correct": true,
@@ -3684,7 +3684,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "ec71da7471104215aadd15e247128984",
+      "obligation_id": "41ccf0a085c74f3a8def3b446b187fa5",
       "item_no": "3-42",
       "outcome": "CORRECT",
       "correct": true,
@@ -3783,7 +3783,7 @@
     "exam_id": "DDV1-SYN-C",
     "items": [
       {
-        "obligation_id": "8605e91cc1e7477d821f2cd19d654148",
+        "obligation_id": "14543bf103a0481dae4aa6c59771d048",
         "item_no": "3-1",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3806,7 +3806,7 @@
         "note": ""
       },
       {
-        "obligation_id": "6b930f7200214e1c9625b92e1b917f29",
+        "obligation_id": "8829ba3c4d404c02a5f8a31cf2e3d76b",
         "item_no": "3-2",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3829,7 +3829,7 @@
         "note": ""
       },
       {
-        "obligation_id": "27e9976dfe034a6f89e3650c796d8354",
+        "obligation_id": "f0366150a9144d0fadc00beb8748da8a",
         "item_no": "3-3",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3852,7 +3852,7 @@
         "note": ""
       },
       {
-        "obligation_id": "040bcb13c55b4da2b68fb44ab5daf966",
+        "obligation_id": "90e64a0121f643f9a06e739021014a06",
         "item_no": "3-4",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3875,7 +3875,7 @@
         "note": ""
       },
       {
-        "obligation_id": "2bd0d83b9a30478b9728c915593f57f9",
+        "obligation_id": "6dffa4ba740548c791423af2d2ae3d3d",
         "item_no": "3-5",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3898,7 +3898,7 @@
         "note": ""
       },
       {
-        "obligation_id": "91ca29793cde49e698f2dcacff6f130f",
+        "obligation_id": "0ebc46a0ddac4c3e908a03b0c7b0afa8",
         "item_no": "3-6",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3921,7 +3921,7 @@
         "note": ""
       },
       {
-        "obligation_id": "50571b58e5154c1e977bcf7342b2347d",
+        "obligation_id": "dbf0fd11c4a942258bfefa97c0253be0",
         "item_no": "3-7",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3968,7 +3968,7 @@
         "note": ""
       },
       {
-        "obligation_id": "3880daf0946549968744fc7ad516d855",
+        "obligation_id": "a80d01992bea4443a0fe4d3a440ac6ab",
         "item_no": "3-8",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -3991,7 +3991,7 @@
         "note": ""
       },
       {
-        "obligation_id": "10ba442131ff44388093e957b6c689b5",
+        "obligation_id": "6b37e236438f467a81378830ab4ea79a",
         "item_no": "3-9",
         "expected_verdict": "MISSING",
         "expected_files": [],
@@ -4000,7 +4000,7 @@
         "note": ""
       },
       {
-        "obligation_id": "77e6f48f5f9543a59d3d1536c6835e2c",
+        "obligation_id": "c72f358ea1ff463694f06344c111413d",
         "item_no": "3-10",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4023,7 +4023,7 @@
         "note": ""
       },
       {
-        "obligation_id": "0b5c045509df4f42be1f5cc3dbe89c45",
+        "obligation_id": "8cb040a193164f8abdc2f8b65fa7d75e",
         "item_no": "3-11",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4046,7 +4046,7 @@
         "note": ""
       },
       {
-        "obligation_id": "81b1a776c50a4a9c90d2870550c29dc9",
+        "obligation_id": "3b3c8bc65e22404a9b9e20a26ffa017d",
         "item_no": "3-12",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4069,7 +4069,7 @@
         "note": ""
       },
       {
-        "obligation_id": "da1925c662a24ec9a35a64bf46d317d8",
+        "obligation_id": "60fb3a3e98054cc3b25af0191d7eca7a",
         "item_no": "3-13",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4092,7 +4092,7 @@
         "note": ""
       },
       {
-        "obligation_id": "1409ada6f43b4d0f8e7ecb9c5e804ebd",
+        "obligation_id": "22a4e02aeb884d268fb1d2f0447ee7fe",
         "item_no": "3-14",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4139,7 +4139,7 @@
         "note": ""
       },
       {
-        "obligation_id": "acd12c8d448d42528b8d6d78f62a45ff",
+        "obligation_id": "db47ceed4fed43108366410093995c99",
         "item_no": "3-15",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4162,7 +4162,7 @@
         "note": ""
       },
       {
-        "obligation_id": "5a0e572864fe432f9d6a6b82553b3dc8",
+        "obligation_id": "e58e82d344b94cbaadbb33aa4287d7e7",
         "item_no": "3-16",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4185,7 +4185,7 @@
         "note": ""
       },
       {
-        "obligation_id": "67f1548c59a146a4bd91dc186bc6ee2e",
+        "obligation_id": "a1679786b26943f4bfd3e2b8a5f3f321",
         "item_no": "3-17",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4208,7 +4208,7 @@
         "note": ""
       },
       {
-        "obligation_id": "f5f9ee654c144f99a1de1b4f9c33ce0b",
+        "obligation_id": "c8a8bef2d5314c9c86d9677a4223c9d2",
         "item_no": "3-18",
         "expected_verdict": "MISSING",
         "expected_files": [],
@@ -4217,7 +4217,7 @@
         "note": ""
       },
       {
-        "obligation_id": "1b58e620946540659363841583ea3d65",
+        "obligation_id": "68e5330fe0b240408e10e7c8735cb875",
         "item_no": "3-19",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4240,7 +4240,7 @@
         "note": ""
       },
       {
-        "obligation_id": "d918266d732a4eed9d14205cd3924a6e",
+        "obligation_id": "47affc7cf309498aa6024c3a64d794d8",
         "item_no": "3-20",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4263,7 +4263,7 @@
         "note": ""
       },
       {
-        "obligation_id": "9f0eca563f0745acb935d4652ec154fe",
+        "obligation_id": "5574e490deb84506b560d42ba46d1f24",
         "item_no": "3-21",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4310,7 +4310,7 @@
         "note": ""
       },
       {
-        "obligation_id": "c2d943a397264e1bb885419905be9c8c",
+        "obligation_id": "437d6b008d494a0dab097aa38f901b4a",
         "item_no": "3-22",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4333,7 +4333,7 @@
         "note": ""
       },
       {
-        "obligation_id": "63cf5a06353d41378da9ed84ed1b8766",
+        "obligation_id": "b3b1ad0fcf0e49c4b7b715a58e5f0dde",
         "item_no": "3-23",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4356,7 +4356,7 @@
         "note": ""
       },
       {
-        "obligation_id": "87981e82ab40406e93c5ae51313dec3f",
+        "obligation_id": "eb21655fb64c4f98a7a25071f77b28d2",
         "item_no": "3-24",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4379,7 +4379,7 @@
         "note": ""
       },
       {
-        "obligation_id": "eff1d59a6e6347b1816bd5fed8fc20c3",
+        "obligation_id": "64e29b34c7fc497bade384fcb603683c",
         "item_no": "3-25",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4402,7 +4402,7 @@
         "note": ""
       },
       {
-        "obligation_id": "b3e3e0f500d541c58b576623866a1457",
+        "obligation_id": "59fabdbd9e4f407d92da7d5cecfe7812",
         "item_no": "3-26",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4425,7 +4425,7 @@
         "note": ""
       },
       {
-        "obligation_id": "1f30cd0d93504b9cb107d42d4c4dd5a3",
+        "obligation_id": "17db0384dc6449f7a53970d95a97a012",
         "item_no": "3-27",
         "expected_verdict": "MISSING",
         "expected_files": [],
@@ -4434,7 +4434,7 @@
         "note": ""
       },
       {
-        "obligation_id": "19028cd7948243bea10499b656a8b471",
+        "obligation_id": "d9536148df884baa9f1a6da8099027fe",
         "item_no": "3-28",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4481,7 +4481,7 @@
         "note": ""
       },
       {
-        "obligation_id": "7345da7689f8418c99528f3cde3b3f5d",
+        "obligation_id": "3ace20f1230941328e24b8be188cb7a2",
         "item_no": "3-29",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4504,7 +4504,7 @@
         "note": ""
       },
       {
-        "obligation_id": "c1758cdfadf0462595275fc623e4993b",
+        "obligation_id": "0727b9ca42b1475c8921a9e7231bb39d",
         "item_no": "3-30",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4527,7 +4527,7 @@
         "note": ""
       },
       {
-        "obligation_id": "b40f1785e5574d4181c4e3dfdbada2ce",
+        "obligation_id": "e5381e7c57cb43dc91b9b0091b352080",
         "item_no": "3-31",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4550,7 +4550,7 @@
         "note": ""
       },
       {
-        "obligation_id": "64238ca0f73f4a8dbd5c95c499c24477",
+        "obligation_id": "611a9bde66b3444cb0fb1e96a60f8be9",
         "item_no": "3-32",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4573,7 +4573,7 @@
         "note": ""
       },
       {
-        "obligation_id": "69658df607f849f1891f727230dd30e3",
+        "obligation_id": "0dc0a309841d4e1b90ac6a62cd318590",
         "item_no": "3-33",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4596,7 +4596,7 @@
         "note": ""
       },
       {
-        "obligation_id": "b7ad8c919de64e6d8c6d8ed168e806de",
+        "obligation_id": "3d434c1ec33749edb38b59abe9126a24",
         "item_no": "3-34",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4619,7 +4619,7 @@
         "note": ""
       },
       {
-        "obligation_id": "9b2c335f822948d983e60fcade294f91",
+        "obligation_id": "c99b103ca9c741129ddd70263264d124",
         "item_no": "3-35",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4666,7 +4666,7 @@
         "note": ""
       },
       {
-        "obligation_id": "6eb890fbaa804bdc81643839b6dd7008",
+        "obligation_id": "9ff47395da4a418cb40ee4ec00b6f383",
         "item_no": "3-36",
         "expected_verdict": "MISSING",
         "expected_files": [],
@@ -4675,7 +4675,7 @@
         "note": ""
       },
       {
-        "obligation_id": "967f9105741a4a7ca1e3439671d8b01a",
+        "obligation_id": "6b96d50279124deca937ce386edaa595",
         "item_no": "3-37",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4698,7 +4698,7 @@
         "note": ""
       },
       {
-        "obligation_id": "2e0e77ba02d747648c49724609837589",
+        "obligation_id": "8df6282394384418a831ca52b0be72f9",
         "item_no": "3-38",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4721,7 +4721,7 @@
         "note": ""
       },
       {
-        "obligation_id": "b5dd94dd9694492cba8270cb54773c28",
+        "obligation_id": "23f087b1635f48ec8d8205a635effd76",
         "item_no": "3-39",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4744,7 +4744,7 @@
         "note": ""
       },
       {
-        "obligation_id": "7c489241bbd44c168ab0d59e24aca355",
+        "obligation_id": "341f3f520e7a4b9397db8ef328f1c56c",
         "item_no": "3-40",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4767,7 +4767,7 @@
         "note": ""
       },
       {
-        "obligation_id": "97eb2a15473d419689d3798618c23dc8",
+        "obligation_id": "b412b9cbd13f4f1abde5a9a76b9346e7",
         "item_no": "3-41",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4790,7 +4790,7 @@
         "note": ""
       },
       {
-        "obligation_id": "ec71da7471104215aadd15e247128984",
+        "obligation_id": "41ccf0a085c74f3a8def3b446b187fa5",
         "item_no": "3-42",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -4865,6 +4865,67 @@
     "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
   },
   "examinee_mode": "RULE_ONLY",
+  "score_split": {
+    "score_name": "RULE_BASELINE_SCORE",
+    "rule_baseline_score": 100.0,
+    "ai_system_score": null,
+    "ai_system_score_status": "NOT_SCORED",
+    "model_identity_acceptable": false,
+    "delta": null,
+    "delta_is_causal": false,
+    "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+  },
+  "run_provenance": {
+    "requested_mode": "RULE_ONLY",
+    "execution_path": "RULE_ONLY",
+    "examinee_agent": "",
+    "examinee_framework": "",
+    "examinee_provider": "",
+    "actual_model": "UNKNOWN",
+    "model_identity": {},
+    "model_identity_verified": false,
+    "model_participated": false,
+    "participated_scope": "NONE",
+    "gold_version": "d64a654292e984b55302a01e9453fc00f321c52d0d7d87fcb01662bde92fefb4",
+    "gold_source": "LOCAL_GOLD_PACK",
+    "gold_pack_id": "GOLD-SYN-C",
+    "answer_sheet_source": "dd_v1_answer_sheet.v1",
+    "source_snapshot_id": "",
+    "total_score": 100.0,
+    "scores": {
+      "question_understanding_coverage": 1.0,
+      "question_answer_coverage": 0.904762,
+      "material_recall": 1.0,
+      "selection_precision": 1.0,
+      "complete_delivery_ratio": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.0,
+      "total_score": 100.0
+    },
+    "score_split": {
+      "score_name": "RULE_BASELINE_SCORE",
+      "rule_baseline_score": 100.0,
+      "ai_system_score": null,
+      "ai_system_score_status": "NOT_SCORED",
+      "model_identity_acceptable": false,
+      "delta": null,
+      "delta_is_causal": false,
+      "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+    },
+    "disclosure_safety": {
+      "status": "PASS",
+      "violations": 0,
+      "findings_count": 0
+    },
+    "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
+    "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
+    "code_version": "0f34ff41724373d3a8c256884cf92a3613161cb0",
+    "evidence_paths": {
+      "answer_sheet": ".audit/gate-runs/C/answer/机器答卷-20261030-215405.json",
+      "gold": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json",
+      "library": "LIB-DDVE-C"
+    }
+  },
   "leak_report": {
     "leaked": false,
     "leak_count": 0,

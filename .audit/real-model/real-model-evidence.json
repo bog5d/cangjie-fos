@@ -1,14 +1,27 @@
 {
   "adapter_id": "deepseek-harness",
-  "status": "CALL_FAILED",
-  "exit_code": 1,
-  "elapsed_s": 5.78,
+  "status": "OK",
+  "exit_code": 0,
+  "elapsed_s": 8.76,
   "argv_summary": [
     "/Users/mac/.npm-global/bin/dsh",
     "--profile",
     "headless",
     "-"
   ],
-  "provenance": {},
+  "provenance": {
+    "model_identity": {
+      "model_id": "deepseek-flash",
+      "provider": "deepseek-official",
+      "source": "DSH_PROFILE_CONFIG",
+      "verified": true,
+      "binding": {
+        "profile": "headless",
+        "config_key": "agent-default-model",
+        "config_cwd": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/real-model"
+      },
+      "note": "★ 来源：dsh 自己的配置树（--dump-config）"
+    }
+  },
   "workdir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/real-model"
 }

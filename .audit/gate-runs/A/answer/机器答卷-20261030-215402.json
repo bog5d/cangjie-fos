@@ -1,7 +1,7 @@
 {
   "schema_version": "dd_v1_answer_sheet.v1",
   "exam_id": "DDV1-SYN-A",
-  "generated_at": "2026-10-30T19:05:42+08:00",
+  "generated_at": "2026-10-30T21:54:02+08:00",
   "delivered": [
     {
       "file_id": "27681a252859095216dc33622627ae2e",
@@ -35,7 +35,13 @@
     "declared_provenance": "RULE_ONLY",
     "adapter_id": "",
     "vendor": "",
+    "framework": "",
     "model_id_or_unknown": "UNKNOWN",
+    "model_identity": {},
+    "model_identity_verified": false,
+    "model_identity_source": "UNKNOWN",
+    "requested_mode": "RULE_ONLY",
+    "execution_path": "RULE_ONLY",
     "prompt_version": "",
     "source_snapshot_id": "",
     "degrade_reason": "",
@@ -45,9 +51,76 @@
   },
   "obligations": [
     {
-      "obligation_id": "557f465a73f54f4c87d63ce567ce9540",
-      "source_obligation_id": "557f465a73f54f4c87d63ce567ce9540",
-      "obligation_cluster_id": "557f465a73f54f4c87d63ce567ce9540",
+      "obligation_id": "372c803d905c4f43af6eac21ba8d167f",
+      "source_obligation_id": "372c803d905c4f43af6eac21ba8d167f",
+      "obligation_cluster_id": "372c803d905c4f43af6eac21ba8d167f",
+      "item_id": "1-3",
+      "text": "请提供合成母公司2024年度经营情况说明",
+      "interpretation": {
+        "doc_type": "",
+        "doc_type_label": "",
+        "doc_type_source": "UNRESOLVED",
+        "doc_type_unresolved": true,
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "period": "2024",
+        "required_parts": [],
+        "text": "请提供合成母公司2024年度经营情况说明",
+        "split_method": "REQUIREMENT_SERVICE",
+        "resolved": false
+      },
+      "candidates": [
+        {
+          "file_id": "0f032638fb8ade3e8426a6997b51d078",
+          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "doc_type": "",
+          "part": "正文",
+          "version_status": "EFFECTIVE",
+          "locator": "L1-L1",
+          "period_status": ""
+        }
+      ],
+      "candidate_count": 1,
+      "selected": [
+        {
+          "file_id": "0f032638fb8ade3e8426a6997b51d078",
+          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+          "locator": "L1-L1",
+          "match_reason": "MATCH",
+          "entity": "合成母公司",
+          "period": "2024"
+        }
+      ],
+      "selected_count": 1,
+      "selection_source": "RULE_HINT",
+      "verdict": "MATCH",
+      "confidence": null,
+      "abstained": false,
+      "abstain_reason": "",
+      "warnings": [],
+      "rejected": false,
+      "rejected_reason": "",
+      "delivered": [],
+      "delivered_count": 0,
+      "candidate_window": {
+        "cap": 6,
+        "found": 1,
+        "checked": 1,
+        "unchecked": 0,
+        "truncated": false,
+        "stop_reason": ""
+      },
+      "no_candidate_reason": null,
+      "candidate_status": "OK"
+    },
+    {
+      "obligation_id": "6b2d34d219014b488d40968bc4e51851",
+      "source_obligation_id": "6b2d34d219014b488d40968bc4e51851",
+      "obligation_cluster_id": "6b2d34d219014b488d40968bc4e51851",
       "item_id": "1-1",
       "text": "请提供合成母公司2024年度审计报告",
       "interpretation": {
@@ -132,9 +205,9 @@
       "candidate_status": "OK"
     },
     {
-      "obligation_id": "96ac6d11e2504f968c490d0655e21b34",
-      "source_obligation_id": "96ac6d11e2504f968c490d0655e21b34",
-      "obligation_cluster_id": "96ac6d11e2504f968c490d0655e21b34",
+      "obligation_id": "786b95a3701a414db1ad9aec408de5e8",
+      "source_obligation_id": "786b95a3701a414db1ad9aec408de5e8",
+      "obligation_cluster_id": "786b95a3701a414db1ad9aec408de5e8",
       "item_id": "1-2",
       "text": "请提供合成母公司2024年度营业执照",
       "interpretation": {
@@ -220,73 +293,6 @@
         "cap": 6,
         "found": 2,
         "checked": 2,
-        "unchecked": 0,
-        "truncated": false,
-        "stop_reason": ""
-      },
-      "no_candidate_reason": null,
-      "candidate_status": "OK"
-    },
-    {
-      "obligation_id": "eba40f3b39204713a5157e05446159c6",
-      "source_obligation_id": "eba40f3b39204713a5157e05446159c6",
-      "obligation_cluster_id": "eba40f3b39204713a5157e05446159c6",
-      "item_id": "1-3",
-      "text": "请提供合成母公司2024年度经营情况说明",
-      "interpretation": {
-        "doc_type": "",
-        "doc_type_label": "",
-        "doc_type_source": "UNRESOLVED",
-        "doc_type_unresolved": true,
-        "entity": "合成母公司",
-        "entity_basis": "AUTHORITY",
-        "period": "2024",
-        "required_parts": [],
-        "text": "请提供合成母公司2024年度经营情况说明",
-        "split_method": "REQUIREMENT_SERVICE",
-        "resolved": false
-      },
-      "candidates": [
-        {
-          "file_id": "0f032638fb8ade3e8426a6997b51d078",
-          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
-          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
-          "entity": "合成母公司",
-          "period": "2024",
-          "doc_type": "",
-          "part": "正文",
-          "version_status": "EFFECTIVE",
-          "locator": "L1-L1",
-          "period_status": ""
-        }
-      ],
-      "candidate_count": 1,
-      "selected": [
-        {
-          "file_id": "0f032638fb8ade3e8426a6997b51d078",
-          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
-          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
-          "locator": "L1-L1",
-          "match_reason": "MATCH",
-          "entity": "合成母公司",
-          "period": "2024"
-        }
-      ],
-      "selected_count": 1,
-      "selection_source": "RULE_HINT",
-      "verdict": "MATCH",
-      "confidence": null,
-      "abstained": false,
-      "abstain_reason": "",
-      "warnings": [],
-      "rejected": false,
-      "rejected_reason": "",
-      "delivered": [],
-      "delivered_count": 0,
-      "candidate_window": {
-        "cap": 6,
-        "found": 1,
-        "checked": 1,
         "unchecked": 0,
         "truncated": false,
         "stop_reason": ""

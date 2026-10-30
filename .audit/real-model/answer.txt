@@ -1,1 +1,1 @@
-
+{"results":[{"item_id":"1-1","obligation_id":"o1","agent_id":"deepseek-harness","provider":"deepseek-harness","model_id_or_unknown":"UNKNOWN","prompt_version":"UNKNOWN","source_snapshot_id":"UNKNOWN","candidate_files":[],"proposed_verdict":"UNCERTAIN","confidence_or_uncertain":"uncertain","abstain_reason":"packet 只给出义务文本，未提供任何文档快照或候选文件，因此无法核验合成母公司 2024 年度审计报告是否存在或其内容是否匹配。","warnings":["packet 未包含 prompt_version 字段，已以 UNKNOWN 占位","packet 未包含 source_snapshot_id 字段，已以 UNKNOWN 占位","本次会话按指令未调用任何工具、未读取任何文件，因此结论没有文档依据"],"elapsed":"UNKNOWN","token_usage_or_UNKNOWN":"UNKNOWN"}]}

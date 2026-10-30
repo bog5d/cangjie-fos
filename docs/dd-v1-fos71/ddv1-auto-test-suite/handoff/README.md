@@ -10,16 +10,18 @@
 
 | 项 | 内容 |
 |---|---|
-| **本轮做了什么** | 建「自动考试台」（隔离考场 ＋ 三层自动考试 ＋ 自动标准答案评分 ＋ 冻结阈值交付门禁），并修掉 **4 个活缺陷** 与 **3 处「假绿」** |
+| **本轮做了什么** | 建「自动考试台」（隔离考场 ＋ 三层自动考试 ＋ 自动标准答案评分 ＋ 冻结阈值交付门禁），修掉 **4 个活缺陷** ＋ **3 处假绿**；**二轮**再补：**三种运行模式**、**G8 真实模型参与门禁**、**模型身份核实**、**分 Agent 超时预算**、**14 条假绿反例回归** |
 | **分支** | `feat/dd-v1-auto-test-harness-20261030`（**未合并 master**） |
 | **基线** | `bf68cf94c2744624445b6ea992e41fc3f0b1b78e`（＝ PR#86 的 head，PR#86 本身也**未合并**） |
-| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`bf709ab…`（见 §3 三个锚点） |
-| **测试规模** | pytest 全量 **2107 项 / 0 失败 / 6 skipped**（CI 口径：清代理变量 ＋ 排除 doctor） |
+| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`0f34ff41…`（见 §3 三个锚点） |
+| **测试规模** | pytest 全量 **2156 项 / 0 失败 / 6 skipped**（CI 口径：代理改写 ＋ 排除 doctor） |
 | **自动化覆盖率** | **98.04%**（50/51，**机算**）｜**通过率 100%**（50/50，**机算**）—— 两个数**分列** |
-| **三场合成考试** | A 基础 3 题 96.67 分｜B 复杂 9 题 95.67 分｜C 完整 42 题 **100.0 分**，安全闸全 PASS |
-| **交付门禁** | G1/G2/G4/G5/G6/G7 **PASS**；**G3 FAIL**（真实模型凭证失效）⇒ 整体 `status=FAIL` |
-| **独立复核** | 第 1 轮 **CONDITIONAL**（4 MAJOR＋4 MINOR＋2 NIT，**逐条已修并回归**）→ 第 2 轮 **PASS** |
-| **★ 尚不可正式验收** | G3 未绿 ⇒ 按施工令第六节，**现在不得向刘江发正式验收请求** |
+| **三场合成考试（规则基线）** | A 基础 3 题 96.67 分｜B 复杂 9 题 95.67 分｜C 完整 42 题 **100.0 分**，安全闸全 PASS |
+| **★ 三名真实 Agent 考生** | **dsh**（deepseek-flash）｜**pi**（MiniMax-M3.1-Flash-Preview）｜**codex**（gpt-5.6-sol）—— **全部真实调用成功、模型身份核实通过** |
+| **交付门禁** | **G1—G5、G7、G8 PASS**；G6＝独立 Reviewer（**第 3 轮复核中**，见 §3） |
+| **★ 三种运行模式** | `RULE_ONLY`（成绩名 `RULE_BASELINE_SCORE`）｜`AGENT_REQUIRED`（模型缺席 ⇒ 考试 FAIL ＋ AI 成绩 `NOT_SCORED`）｜`AUTO`（降级如实标注） |
+| **独立复核** | 第 1 轮 **CONDITIONAL**（4 MAJOR＋4 MINOR＋2 NIT，**逐条已修并回归**）→ 第 2 轮 **PASS** → **第 3 轮（二轮施工）进行中** |
+| **★ 尚不可正式验收** | **G6 第 3 轮复核未出** ＋ **真实 42 题的 Gold / 披露分级 / 合格线未冻结** ＋ **Windows 真机未验** ⇒ 按施工令第六节，**现在不得向刘江发正式验收请求** |
 
 ---
 
@@ -29,13 +31,15 @@
 |---|---|
 | `README.md` | 本文件（交接包索引） |
 | `复跑命令.md` | **一条一条能复制粘贴**的复跑命令（含判定标准） |
-| `BLOCKED-清单.md` | **6 条阻塞**：卡在哪、需要谁做什么、解锁后怎么复跑 |
-| `兼容性清单.md` | Windows 逐项兼容清单（**逐项标注验过没有**，不冒充已验证） |
-| `版本锚点.md` | 版本怎么读（tag ＋ 目录自解引用 ＋ SHA256SUMS 自核） |
-| `SHA256SUMS` | 本目录文件哈希（**不含自身**） |
+| **BLOCKED-清单.md** | **8 条阻塞**（其中 **1 条已解除**、**2 条二轮新增**）：卡在哪、需要谁做什么、解锁后怎么复跑 |
+| **兼容性清单.md** | Windows 逐项兼容清单（**逐项标注验过没有**，不冒充已验证） |
+| **版本锚点.md** | 版本怎么读（tag ＋ 目录自解引用 ＋ SHA256SUMS 自核） |
+| **SHA256SUMS** | 本目录文件哈希（**不含自身**） |
 
 > ★ **仓内配套文档**（不在本包内，在 `docs/dd-v1-fos71/ddv1-auto-test-suite/`）：
 > `WP0-AUDIT.md`（缺陷审计）、`COVERAGE.md`（覆盖率报告）、`SKILLS-CANDIDATES.md`（Skills 候选）、
+> `真实Agent考试报告-V3.md`（**二轮**执行报告：真实 Agent 参与证据 ＋ 三模式 ＋ G8 ＋ 对照结论）、
+> `真实42题业务草案-V3.md`（Gold / 披露分级 / 合格线**草案**，**未冻结**）、
 > `施工令交付物对照表.md`（施工令 12 项交付物逐项对照 ＋ 门禁逐条现状）。
 
 ---
@@ -44,11 +48,14 @@
 
 | 读数 | 文件（仓内 `.audit/gate-runs/`） |
 |---|---|
-| **G1—G7 门禁判定 ＋ 实际读数** | `门禁报告.json` |
-| **pytest 机读报告 ＋ JUnit XML** | `g1_pytest.json` / `g1_pytest.xml`（2107 个 testcase） |
+| **G1—G8 门禁判定 ＋ 实际读数 ＋ 全部运行清单** | `门禁报告.json`（★ 新增 `all_runs`：每一次运行的模式/执行路径/模型身份/分数） |
+| **pytest 机读报告 ＋ JUnit XML** | `g1_pytest.json` / `g1_pytest.xml`（**2156** 个 testcase） |
 | **机算覆盖率与通过率** | `覆盖率报告.json` → `自动化覆盖率统计` |
-| 三场考试的运行清单 / 答卷 / 成绩单 | `{A,B,C}/运行清单.json`、`{A,B,C}/机器答卷-*.json`、`{A,B,C}/grade/成绩单-*.json` |
-| 真实模型失败证据 | `.audit/real-model/stderr.log`、`real-model-evidence.json` |
+| 三场考试的运行清单 / 答卷 / 成绩单 | `{A,B,C}/运行清单.json`、`{A,B,C}/answer/机器答卷-*.json`、`{A,B,C}/grade/成绩单-*.json` |
+| ★ **三名真实 Agent 考生**的运行清单 / 答卷 / 成绩单 | `{A-dsh,A-pi,A-codex}/运行清单.json` 等（**同一份冻结题 A ＋ 同一份 Gold**） |
+| 真实模型调用证据 | `.audit/real-model/real-model-evidence.json`（dsh：status=OK、exit=0、8.76s、deepseek-flash、**身份核实 verified**）、`stderr.log`、`answer.txt` |
+| 独立 Reviewer 报告 | `g6_reviewer.json`（**第 3 轮**）＋ `g6_reviewer_round2.json` / `g6_reviewer_round1.json`（历史，保留原文） |
+| 四组对照（规则基线 vs 三名考生） | `.audit/exam-plane/P3-对照-终版.json`（`compare-runs` 命令产出） |
 
 ### ★ 这批证据对应哪个 commit？（**先说清楚，免得你核错**）
 
@@ -69,20 +76,37 @@
 
 | 门禁 | 状态 | 依据 |
 |---|---|---|
-| G1 基础测试 PASS | ✅ PASS | pytest passed=2101 failed=0 skipped=6 total=2107 |
+| G1 基础测试 PASS | ✅ PASS | pytest passed=**2150** failed=0 skipped=6 total=**2156**（`counting_ok=true`） |
 | G2 模拟端到端 PASS | ✅ PASS | 考试A rc=0、status=LOW_CONFIDENCE(total=96.67)、安全闸 PASS |
-| G3 真实模型调用 PASS | ❌ **FAIL** | `NO_REAL_MODEL_RUN_WITH_PARTICIPATION`（凭证失效，BLOCKED-1） |
+| **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T135406Z']`（dsh 真实调用、参与、身份核实过） |
 | G4 合成 Gold 评分达标 | ✅ PASS | 考试C total=100.0 ≥ 70、理解=1.0、覆盖=1.0、42/42 题、安全 PASS |
 | G5 安全测试 PASS | ✅ PASS | 考试B status=SCORED_PARTIAL、安全 PASS、无 blocked、覆盖=1.0 |
-| G6 独立 Reviewer PASS | ✅ **PASS** | `reviewer verdict=PASS`（第 2 轮；报告 `.audit/gate-runs/g6_reviewer.json`） |
+| **G6 独立 Reviewer PASS** | ⏳ **第 3 轮复核中** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS（`g6_reviewer_round2.json`）；**本轮二轮施工的复核尚未出结论** ⇒ **现在不算 PASS** |
 | G7 交接包生成 | ✅ PASS | 本目录存在且非空 |
+| **G8 真实模型参与门禁** | ✅ **PASS** | `real_model=3; rule_only=3; degraded=0; mock=0; identity_unknown=0` —— ★ **本轮新增**；读**真实考试产物**，不认人工说明字段 |
 
-> ★ **整体 `status=FAIL`，只因 G3**（`failed_key_gates=["G3"]`）——
-> 这是**如实**的：真实模型没真跑通，就不能算交付完成。**不要**因为 G1/G2/G4/G5/G6/G7 全绿就当整体通过。
+> ★ **关键门槛（`key_gates`）＝ G1/G2/G3/G4/G5/G8 ⇒ 全部 PASS** ⇒ `status=PASS`、`failed_key_gates=[]`。
+> ★ **但整体 PASS ≠ 可以验收**：**G6（第 3 轮复核）未出** ＋ **真实 42 题的 Gold/披露/合格线未冻结**（BLOCKED-2/3）
+> ＋ **Windows 真机未验**（BLOCKED-4）⇒ **仍不得向刘江发正式验收请求**（见 §6）。
 
-> ★ **门禁 PASS ≠ 指标完美**。门禁报告的 `observations` 区把**实际读数原样摊开**。
+> ★ **门禁 PASS ≠ 指标完美**。门禁报告的 `observations` 区把**实际读数原样摊开**，
+> `all_runs` 把**每一次运行**（含三名真实考生）都列出来。
 > 例：考试A 理解率 0.667 —— 源于材料类型词表**覆盖缺口**（`经营情况说明` 不在 10 类词表内），
 > 属**已知能力边界**，未掩盖、已留证。
+
+### ★ 二轮新增：三模式与「谁跑的」
+
+| 运行 | 请求模式 | 实际执行路径 | 考生 | 模型 | 身份核实 | 总分 | 成绩名 |
+|---|---|---|---|---|---|---|---|
+| `A/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 96.67 | `RULE_BASELINE_SCORE` |
+| `A-dsh/` | AGENT_REQUIRED | **`REAL_MODEL`** | dsh | deepseek-flash | ✅ | 96.67 | `AI_SYSTEM_SCORE` |
+| `A-pi/` | AGENT_REQUIRED | **`REAL_MODEL`** | pi | MiniMax-M3.1-Flash-Preview | ✅ | 96.67 | `AI_SYSTEM_SCORE` |
+| `A-codex/` | AGENT_REQUIRED | **`REAL_MODEL`** | codex | gpt-5.6-sol | ✅ | 96.67 | `AI_SYSTEM_SCORE` |
+| `B/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 95.67 | `RULE_BASELINE_SCORE` |
+| `C/` | RULE_ONLY | `RULE_ONLY` | —— | —— | —— | 100.0 | `RULE_BASELINE_SCORE` |
+
+★ **规则基线分与 AI 系统分分列**；模型缺席时 AI 列 = `NOT_SCORED`（**不是 0 分**）。
+★ ★ **如实结论**：**AI 并没有优于规则基线**（本轮打平）⇒ 这不是缺陷，是**事实**（详见 §4.1）。
 
 ---
 
@@ -156,10 +180,24 @@
 | 第 2 轮 | **PASS** | 10 条全部 closed（**逐条实测复验**）；新提 1 MINOR ＋ 2 NIT | 已修并回归 |
 
 > ★ 两轮复核报告**都入库**、**都保留原文**：
-> `.audit/gate-runs/g6_reviewer_round1.json`（第 1 轮，CONDITIONAL）＋ `.audit/gate-runs/g6_reviewer.json`（第 2 轮，PASS）。
+> `.audit/gate-runs/g6_reviewer_round1.json`（第 1 轮，CONDITIONAL）＋ `g6_reviewer_round2.json`（第 2 轮，PASS）＋ `g6_reviewer.json`（**第 3 轮**：二轮施工的复核）。
 > **不删改历史报告**——这比「只有一份 PASS」更可信。
 > ★ 第 1 轮最值钱的一条：**它发现证据链是断的**（分数偏低 ⇒ 不是虚高，但证据对不上代码）。
 > 用「**只回退一个文件**」的对照实验定位到根因（D4 修复前后），重跑后逐位复现 ⇒ 已修正。
+
+### ★ 二轮（施工令 V3.0）又修了什么（**给刘江看「机器自己发现并修好了什么」**）
+
+| 编号 | 活缺陷 / 风险 | 真实后果 | 修复 |
+|---|---|---|---|
+| **E1** | **门禁没有一道检查「模型是否真的参与」** | 三场考试**全是 RULE_ONLY**，规则链跑出的 96.67 / 95.67 / 100.0 被当成「考试分数」 | **新增 G8 真实模型参与门禁**（按运行模式判定、读真实考试产物）；实测把旧证据喂进去 ⇒ 判 `NO_REAL_MODEL_RUN_AT_ALL` ⇒ FAIL |
+| **E2** | 模型身份「**UNKNOWN 就算参与**」 | codex 的真实模型身份无从核实 ⇒ 却照样算「模型参与」 | 身份**各走各的官方来源**（codex 执行记录 / pi 事件 / dsh 配置树）＋ **绑定到本次调用**；拿不到就 `UNKNOWN` ⇒ **过不了门禁** |
+| **E3** | 成绩单只给一个总分 | 分不清「规则跑的」还是「模型跑的」 | `run_provenance` **17 项全量账** ＋ `score_split`（**规则基线分 / AI 系统分分列**，`delta_is_causal=false`） |
+| **E4** | 同一考试多次运行时，门禁**绑定哪一次是任意的**（按路径排序） | 换个目录名就可能换掉被判定的那一次 ⇒ **判定不可复现** | **amendment A4**：exam 级门槛**恒绑定到规则基线那次**；报告新增 `all_runs` 如实列出每一次运行（G3/G8 仍看全部 ⇒ **无门槛被放松**） |
+| **E5** | `pytest-report` 的「清空代理变量」口径**在本机不成立** | httpx 回落到 macOS 系统 SOCKS 代理 ⇒ **6 条 DD 精判用例假红** | 改为**把 SOCKS 改写成同端口 http 代理**，并把**实际口径**写进报告 |
+| **E6** | codex `--output-schema` 与 DD-V1 输出契约不兼容 | codex **必然 400** ⇒ 真实模型这条路根本跑不通 | 新增 `strict_output_schema()` 严格变体（可选字段改「必填可为 null」）⇒ codex 现能跑通并核实身份 |
+
+★ 外加 **14 条假绿反例**（`backend/tests/test_dd_v1_false_green_regressions.py`，**25 项断言全绿**）
+＋ **P5 性能账 12 项**（`test_dd_v1_perf_budget.py`）＋ **门禁绑定确定性 11 项**（`test_dd_v1_gate_binding_determinism.py`）。
 
 ### ★ 命令行退出码口径（**别看错**）
 
@@ -178,34 +216,44 @@
 | 条件 | 现状 |
 |---|---|
 | 自动考试完成 | ✅ |
-| 核心链路 PASS | ✅（G1/G2/G4/G5/G6/G7） |
-| Gold 评分有效 | ✅（合成卷；**真实卷的合格线业务方还没冻结**） |
-| 独立 Reviewer PASS | ✅ **PASS**（第 2 轮，报告在 `.audit/gate-runs/g6_reviewer.json`） |
-| 新版本冻结 SHA | ✅ tag `ddv1-auto-exam-v1` |
+| 核心链路 PASS | ✅（G1/G2/G3/G4/G5/G7/G8 全部 PASS；G8 为本轮新增） |
+| Gold 评分有效 | ⚠️ **合成卷有效**；**真实 42 题的 Gold / 披露分级 / 合格线业务方还没冻结**（BLOCKED-2/3） |
+| 独立 Reviewer PASS | ⏳ **第 2 轮 PASS；第 3 轮（二轮施工）复核未出** ⇒ 现在**不能算 PASS** |
+| 新版本冻结 SHA | ✅ tag `ddv1-auto-exam-v1`（读法见 `版本锚点.md`） |
 | Windows 交接包完整 | ✅ 本包 |
-| **真实模型参与证明 PASS（G3）** | ❌ **凭证失效（BLOCKED-1）** |
+| **真实模型参与证明 PASS（G3）** | ✅ **PASS**（dsh 真实调用：exit=0、8.76s、deepseek-flash、身份核实 verified） |
 
-⇒ **等 G3 绿，再发正式验收请求**（G6 已绿，是六项里最后一个未绿的关键门槛）。
-在此之前，刘江侧可按 `复跑命令.md` 做**自检**（不是正式验收）。
+⇒ **等这三件事**：① **G6 第 3 轮复核出结论**；② **业务方冻结真实 42 题的 Gold / 披露分级 / 合格线**；
+③ **Windows 真机复跑通过**（BLOCKED-4）。
+在此之前，刘江侧可按 `复跑命令.md` 做**自检**（**不是**正式验收）。
 
-> ★ **G3 不是「等有空再跑」，是「等凭证」**：`~/.dsh/.credentials.yaml` 里的 key 被服务端判 invalid，
-> 而 dsh 走**直连**（stderr 首行可证）⇒ **网络通、纯凭证问题** ⇒ 机器侧无解，责任在账号持有人。
-> 凭证修好后一条命令复跑即可：`DDV1_ALLOW_REAL_MODEL=1 pytest -k real_deepseek`。
+> ★ **BLOCKED-1 已解除**（2026-10-30 二轮复核）：旧报告的「凭证被服务端判 invalid」**不成立** ——
+> 凭证**早已轮换**（本机 `****cfe1`，可用），本轮 dsh 真实调用成功且身份核实通过。
+> ⇒ **剩下的是 BLOCKED-7：凭证什么时候会再坏、坏了谁先知道**（通道已备好，缺主动探测）。
 
 ---
 
-## 7. ★ 交接时必须一起说清的 6 条 BLOCKED
+## 7. ★ 交接时必须一起说清的 8 条 BLOCKED（**1 条已解除、2 条二轮新增**）
 
 | 编号 | 阻塞 | 责任方 |
 |---|---|---|
-| BLOCKED-1 | 真实 DeepSeek 凭证被服务端判 invalid ⇒ **G3 FAIL** | 账号持有人 |
+| ~~BLOCKED-1~~ | ~~真实 DeepSeek 凭证被服务端判 invalid ⇒ G3 FAIL~~ | ✅ **已解除**（凭证早已轮换可用；旧读数被现场复核推翻） |
 | BLOCKED-2 | 真实 42 题的**披露口径**未冻结 | 波总 |
 | BLOCKED-3 | 真实 42 题的**业务合格线**未冻结 ⇒ **不得自称及格** | 波总 |
 | BLOCKED-4 | Windows 真机未验（**Mac 上验不了**） | 刘江 |
 | BLOCKED-5 | D4 修复合并后**真实考卷义务条数会变** ⇒ 旧读数不可直接比较 | 刘江 + 波总 |
 | BLOCKED-6 | 「实际交付件数」在 HR-1 判 0 分时以哪个口径为准（待冻结） | 波总 |
+| **BLOCKED-7** | **凭证腐烂没有主动告警**（旧 key 失效一个月才被撞上） | 账号持有人 + 工程 |
+| **BLOCKED-8** | **AI 成绩不可复现**（同卷同模型两次差 **19.17** 分）⇒ 单次分数不足以作验收依据 | 工程 + 业务方 |
 
 详见 `BLOCKED-清单.md`。
+
+> ★ ★ **二轮最重要的一条结论（原样写出来，不粉饰）**：
+> **AI 并没有比规则引擎更强。** 同一份冻结题 A、同一份 Gold：规则基线 **96.67**（0.2 秒，每次都一样）；
+> dsh / pi / codex 本轮**都是 96.67**（打平），而历史上 dsh/codex 出现过 **77.5**（同模型同卷，差 19.17）。
+> ⇒ **规则基线可复现，AI 成绩不可复现**；且**模型诚实弃答扣分、规则链猜测得分** ⇒ 对比口径本身偏向规则基线。
+> ⇒ 这**不是**「AI 没用的结论」，而是「**在当前口径与当前卷上，AI 没有带来可验证增益**」——
+> 要证明增益，须先固定温度/提示词版本、多次取分布、并做消融测试。
 
 ---
 
