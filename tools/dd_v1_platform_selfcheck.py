@@ -324,6 +324,8 @@ def one_shot(out_dir: Path, *, steps: str = "full", keep_going: bool = False) ->
             try:
                 m = json.loads(mf.read_text(encoding="utf-8"))
                 env_blk = m.get("environment") or {}
+                res_blk = m.get("results") or {}
+                scores_blk = res_blk.get("scores") or {}
                 record["exam_artifacts"].append({
                     "exam": exam,
                     "manifest": str(mf.relative_to(out_dir)),
@@ -334,8 +336,15 @@ def one_shot(out_dir: Path, *, steps: str = "full", keep_going: bool = False) ->
                     "os_name": env_blk.get("os_name"),
                     "machine": env_blk.get("machine"),
                     "python": env_blk.get("python"),
-                    "total_score": (m.get("results") or {}).get("total_score"),
-                    "status": (m.get("results") or {}).get("status"),
+                    # ★ 总分在 ``results.scores.total_score``（不是 ``results.total_score``）
+                    "total_score": scores_blk.get("total_score"),
+                    "score_name": ((res_blk.get("score_split") or {}).get("score_name")),
+                    "status": res_blk.get("status"),
+                    "examined_mode": ((res_blk.get("run_provenance") or {}).get("examinee_mode")
+                                      or (m.get("model") or {}).get("examinee_mode")),
+                    "execution_path": ((res_blk.get("run_provenance") or {}).get("execution_path")
+                                       or (m.get("model") or {}).get("execution_path")),
+                    "participated": (m.get("model") or {}).get("participated"),
                 })
             except (OSError, ValueError) as exc:
                 record["exam_artifacts"].append({"exam": exam, "error": str(exc)})
@@ -419,7 +428,8 @@ def render_summary(record: dict[str, Any]) -> str:
         for a in art:
             lines.append(
                 f"  {a.get('exam')}: run_id={a.get('run_id')} 平台={a.get('platform')}"
-                f"（{a.get('platform_release')}） 总分={a.get('total_score')} 状态={a.get('status')}"
+                f"（{a.get('platform_release')}） 总分={a.get('total_score')}"
+                f" 模式={a.get('examined_mode')} 状态={a.get('status')}"
             )
     gate = record.get("gate") or {}
     if gate:

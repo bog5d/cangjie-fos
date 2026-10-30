@@ -287,36 +287,43 @@ def guarded_push(
         return pf
 
     head = pf["local_head"]
-    rc, out, err = _git(repo, "push", remote, f"HEAD:refs/heads/{branch}")
-    result = {
-        **pf,
-        "pushed": rc == 0,
-        "push_rc": rc,
-        "push_stdout": out[-2000:],
-        "push_stderr": err[-2000:],
-    }
-    if rc != 0:
-        # ★ 传输层失败（TLS 抖动等）**不等于**「没推上去」—— 可能已落地。
-        #   先读远端 tip 判事实，再决定要不要**重推同一 commit**（幂等）。
+    # ★ 推送**带重试**：沙箱里 git over HTTPS 是**间歇性**通道（TLS 握手会被腰斩）。
+    #   ★ **传输层失败 ≠ 没推上去** —— 每次失败后先**重读远端 tip**：
+    #     ① 远端已等于我的 commit ⇒ 实际已落地（幂等，重推也无害）；
+    #     ② 远端还没动 ⇒ **重推同一个 commit 对象**（幂等，**不是**新提交）。
+    #   ★ 绝不因为传输层抖动就改用 force。
+    attempts = 3
+    rc = out = err = None
+    tip_now = None
+    for attempt in range(attempts):
+        rc, out, err = _git(repo, "push", remote, f"HEAD:refs/heads/{branch}")
+        if rc == 0:
+            break
         tip_now = remote_tip(repo, branch)
         if tip_now == head:
-            result.update(
-                {
-                    "ok": True,
-                    "pushed": True,
-                    "action": "PUSHED",
-                    "detail": "push 返回非零，但远端 tip 已等于我的 commit ⇒ 实际已落地（传输层报错）",
-                }
-            )
-            _append_audit(audit_path, result)
-            return result
+            break  # 传输层报错，但**实际已落地**
+        if attempt + 1 < attempts:
+            time.sleep(1.5 * (attempt + 1))
+
+    result = {
+        **pf,
+        "pushed": rc == 0 or tip_now == head,
+        "push_rc": rc,
+        "push_attempts": attempts,
+        "push_stdout": (out or "")[-2000:],
+        "push_stderr": (err or "")[-2000:],
+    }
+    if rc != 0 and tip_now != head:
         result.update(
             {
                 "ok": False,
                 "reason_code": RC_PUSH_REJECTED,
                 "action": "REFUSED_NO_WRITE",
                 "remote_tip_now": tip_now,
-                "detail": "推送失败且远端 tip 不等于我的 commit ⇒ 未落地（需人工核对）",
+                "detail": (
+                    f"推送失败（rc={rc}，已重试 {attempts} 次）且远端 tip 不等于我的 commit "
+                    "⇒ 未落地（需人工核对；★ 绝不 force）"
+                ),
             }
         )
         _append_audit(audit_path, result)
