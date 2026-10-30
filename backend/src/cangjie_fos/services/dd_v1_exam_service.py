@@ -1160,6 +1160,12 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
             "hit_files": hit_total,
             "extra_files": extra_total,
             "delivered_files": delivered_files,
+            # ★ D3：把**第二个口径**也带进成绩单（独立 Reviewer 实测：门禁 observations
+            #   读 counts.delivered_files_attributed 恒为 null ⇒ D3 的两口径在**机读证据层**
+            #   不可见 ⇒ 无法对账）。这里补上，**不改**任何一个口径的取值。
+            #   · delivered_files            = 阅卷采用的**并集**口径（顶层 ∪ 逐行，去重）
+            #   · delivered_files_attributed = **可归属到义务**的件数之和（答卷 summary 同名口径）
+            "delivered_files_attributed": sum(len(r.get("delivered") or []) for r in rows),
             "understood": understood,
             "answered": answered,
             "complete": complete,

@@ -1,19 +1,19 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T094940Z",
+  "run_id": "20261030T103939Z",
   "exam": "C",
   "exam_id": "DDV1-SYN-C",
   "title": "考试C · 完整42题",
-  "started_at": "2026-10-30T17:49:42+08:00",
-  "finished_at": "2026-10-30T17:49:42+08:00",
-  "elapsed_s": 2.0,
-  "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e",
-  "git_dirty": true,
+  "started_at": "2026-10-30T18:39:41+08:00",
+  "finished_at": "2026-10-30T18:39:41+08:00",
+  "elapsed_s": 1.79,
+  "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f",
+  "git_dirty": false,
   "environment": {
     "platform": "darwin",
     "python": "3.13.12",
-    "data_plane": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/data",
-    "out_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z",
+    "data_plane": "/Users/mac/.cangjie-ddv1-exams/C/data",
+    "out_dir": ".audit/exam-plane/C",
     "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库"
   },
   "model": {
@@ -30,9 +30,9 @@
     "contract_questions": 42
   },
   "gold_version": {
-    "path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/gold/gold-C.json",
+    "path": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json",
     "items": 42,
-    "fingerprint": "1d7b1b5ff50310b7339b443f671a641ad6a4b06b94e871dafadd518cc9017078"
+    "fingerprint": "cdecaf81b49bf130a1386bc37b2cc4d5a51420c7ef785821238ffcf572e99b36"
   },
   "results": {
     "rc_run": 0,
@@ -433,13 +433,94 @@
       "unbound_detail": [],
       "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
     },
+    "gold_scorable": {
+      "scorable_obligations": 38,
+      "correct": 38,
+      "wrong": 0,
+      "denominator": 38,
+      "score_ratio": 1.0,
+      "not_included_reasons": {
+        "NO_EXPECTED_FILES": 4
+      },
+      "not_included_total": 4,
+      "note": "★ 分母只含**Gold 已解析到具体材料**的义务；★ 其余原因逐条列出，★ **不得**把它们算成 0 分"
+    },
+    "gold_gaps": {
+      "schema_version": "dd_v1_gold_gap_report.v1",
+      "gold_pack_id": "GOLD-SYN-C",
+      "exam_id": "DDV1-SYN-C",
+      "counts": {
+        "obligations": 42,
+        "expected_files": 50,
+        "resolved": 50,
+        "gaps": 4,
+        "by_class": {
+          "F_NEEDS_HUMAN_CONFIRM": 4
+        }
+      },
+      "gaps": [
+        {
+          "obligation_id": "d20a91b107fb4a90b796a5a8bc9d29a0",
+          "item_no": "3-9",
+          "resolution": "NO_EXPECTED_FILES",
+          "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+          "gold_relative_path": "",
+          "gold_sha256": "",
+          "gold_entity": "",
+          "gold_period": "",
+          "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+          "candidates": [],
+          "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+        },
+        {
+          "obligation_id": "2e4fb825d4ae464f86496664c1e51fa9",
+          "item_no": "3-18",
+          "resolution": "NO_EXPECTED_FILES",
+          "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+          "gold_relative_path": "",
+          "gold_sha256": "",
+          "gold_entity": "",
+          "gold_period": "",
+          "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+          "candidates": [],
+          "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+        },
+        {
+          "obligation_id": "c2847730433646e4aabe39e610e23c7e",
+          "item_no": "3-27",
+          "resolution": "NO_EXPECTED_FILES",
+          "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+          "gold_relative_path": "",
+          "gold_sha256": "",
+          "gold_entity": "",
+          "gold_period": "",
+          "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+          "candidates": [],
+          "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+        },
+        {
+          "obligation_id": "8b9423985ea84dc3bbcf76ec01fb4305",
+          "item_no": "3-36",
+          "resolution": "NO_EXPECTED_FILES",
+          "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+          "gold_relative_path": "",
+          "gold_sha256": "",
+          "gold_entity": "",
+          "gold_period": "",
+          "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+          "candidates": [],
+          "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+        }
+      ],
+      "note": "逐件待处置清单：★ **不删 Gold、不改 Gold**；A/B/C/D/E 由人工核对后**在本地纠正映射**，A（确实缺料）单列进补料清单"
+    },
     "blocked_by": []
   },
   "failures": [],
   "disclosure": {
     "delivered_rows": 38,
     "delivered_files": 31,
-    "manifest_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/data/deliveries/cef0d414cc0e414bb43a1271098ea310/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/C/data/deliveries/a58a0bf21f8c422f8701485820dd6081/组包manifest.tsv",
     "blocked_materials": 168,
     "violations": 0,
     "violation_detail": [],
@@ -453,9 +534,9 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z/answer/机器答卷-20261030-174942.json",
-    "scorecard_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z/grade",
-    "run_report_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/runs/20261030T094940Z/run",
-    "gold_manifest": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/C/gold/gold-C.json"
+    "answer_sheet": ".audit/exam-plane/C/answer/机器答卷-20261030-183941.json",
+    "scorecard_dir": ".audit/exam-plane/C/grade",
+    "run_report_dir": ".audit/exam-plane/C/run",
+    "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json"
   }
 }

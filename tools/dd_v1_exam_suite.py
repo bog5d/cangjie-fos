@@ -67,10 +67,26 @@ def _git_sha() -> str:
 
 
 def _git_dirty() -> bool:
+    """工作区是否有**未提交变更**（只看**被测代码**，不看证据目录）。
+
+    ★ **语义**（独立 Reviewer 指出）：本字段要回答的是
+      「**测的代码**是否等于 HEAD 的代码」。
+      ⇒ 证据目录（``.audit/``）里的产物在跑门禁时**本来就在变**
+      （报告本身就是产物）⇒ 若把它算进去，dirty 永远是 true，
+      反而**淹没了真正的信号**（代码改了没提交）。
+    ⇒ 这里**排除证据目录**，只对代码/测试/配置的未提交变更报警。
+    """
     try:
         out = subprocess.run(["git", "status", "--porcelain"], cwd=REPO,
                              capture_output=True, text=True, timeout=30)
-        return bool(out.stdout.strip())
+        for line in (out.stdout or "").splitlines():
+            path = line[3:].strip().strip('"')
+            if not path:
+                continue
+            if path.startswith(".audit/") or path.startswith("docs/dd-v1-fos71/ddv1-auto-test-suite/"):
+                continue   # ★ 证据/文档产物，不影响「被测代码 == HEAD」
+            return True
+        return False
     except Exception:  # noqa: BLE001
         return False
 
@@ -627,8 +643,12 @@ def _gate_check(g: dict[str, Any], m: dict[str, Any] | None, *,
         passed = int(rep.get("passed") or 0)
         total = int(rep.get("total") or 0)
         # ★★ **fail-closed ①**：报告自己说「计数没拿到」⇒ FAIL（不许静默 0 通过）
-        if rep.get("counting_ok") is False:
-            return "FAIL", (f"COUNTING_NOT_OK:{rep.get('counting_parse_error') or 'see report'}")
+        #   ★ **键缺失也判 FAIL**（独立 Reviewer 实测：旧实现用 `is False`，
+        #     `counting_ok` 键**缺失**时 get 返回 None ≠ False ⇒ 绕过这道闸 ⇒ 判 PASS）。
+        #     ⇒ 改成 `is not True`：**只有显式 true 才放行**，缺失/None/false 一律 FAIL。
+        if rep.get("counting_ok") is not True:
+            return "FAIL", (f"COUNTING_NOT_OK:{rep.get('counting_parse_error') or 'see report'}"
+                            f" (counting_ok={rep.get('counting_ok')!r})")
         # ★★ **fail-closed ②**：一条测试都没跑到 ⇒ FAIL（防止「空跑＝全绿」）
         if total <= 0:
             return "FAIL", f"pytest total=0 (未收集到任何测试，exit={rep.get('exit_code')})"

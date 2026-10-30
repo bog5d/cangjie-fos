@@ -113,7 +113,7 @@
 | # | 验收项 | 可自动化 | 状态 | 证据 |
 |---|---|---|---|---|
 | I1 | CI 与本机口径一致（代理变量污染、doctor 依赖） | ✅ | ✅ | 门禁报告 `env_hygiene`（两条口径**写在报告里**） |
-| I2 | macOS 本机全量回归 | ✅ | ✅ | `g1_pytest.json`（本轮：2104 项，0 失败〔CI 口径〕） |
+| I2 | macOS 本机全量回归 | ✅ | ✅ | `g1_pytest.json`（本轮：2107 项，0 失败〔CI 口径〕） |
 | I3 | **Windows 真机兼容**（路径/编码/cmd.exe/PowerShell 通配） | ❌ | 🧑 | **Mac 上无法验证** ⇒ 必须 Windows 真机（BLOCKED-4） |
 
 ### J. 业务判断（2 项 · 人工不可替代）
@@ -193,7 +193,7 @@
 | 读数 | 文件 |
 |---|---|
 | 验收项清单（54 项 · 冻结） | `backend/config/dd_v1_acceptance_items.v1.json` |
-| pytest 机读报告（2104 项 / 0 失败〔CI 口径〕） | `.audit/gate-runs/g1_pytest.json` ＋ 同名 `.xml`（JUnit） |
+| pytest 机读报告（2107 项 / 0 失败〔CI 口径〕） | `.audit/gate-runs/g1_pytest.json` ＋ 同名 `.xml`（JUnit） |
 | G1—G7 门禁报告 | `.audit/gate-runs/门禁报告.json` |
 | 覆盖率报告（**机算**） | `.audit/gate-runs/覆盖率报告.json` → `自动化覆盖率统计` |
 | 三场考试的运行清单与成绩单 | `.audit/exam-plane/{A,B,C}/runs/*/运行清单.json`、`grade/成绩单-*.json` |

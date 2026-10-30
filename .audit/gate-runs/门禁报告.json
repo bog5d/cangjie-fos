@@ -1,13 +1,16 @@
 {
   "schema_version": "dd_v1_gate_report.v1",
-  "evaluated_at": "2026-10-30T18:21:58+08:00",
+  "evaluated_at": "2026-10-30T18:44:32+08:00",
+  "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f",
+  "git_dirty": true,
   "gate_spec_id": "DDV1-DELIVERY-GATE-V1",
-  "gate_spec_frozen_at": "2026-10-30T18:40:00+08:00",
+  "gate_spec_frozen_at": "2026-10-30T18:18:38+08:00",
   "gate_spec_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backend/config/dd_v1_delivery_gate.v1.json",
   "gate_spec_amendments": [
     {
       "id": "A1",
-      "amended_at": "2026-10-30T19:05:00+08:00",
+      "amended_at": "2026-10-30T18:18:38+08:00",
+      "amended_at_note": "★ 同 `frozen_at_note`：本字段原先误写成未来时刻 19:05，现按**该修订随冻结文件一并写入工作区的真实时刻**标注（可由 git 核验）。",
       "target": "G2/G5 的 status_scored 检查语义",
       "change": "『已评分』状态白名单由 {SCORED, SCORED_PARTIAL} 扩为 {SCORED, SCORED_PARTIAL, LOW_CONFIDENCE}，并**加严**为必须同时存在 total_score。",
       "why": "判定**语义**修正，非阈值变更：评分规范原文『义务条数 < 30 ⇒ status = LOW_CONFIDENCE（分数仍给，但标注样本量不足）』⇒ LOW_CONFIDENCE 是已评分状态。原实现把它判 FAIL 属**假 FAIL**（考试A 实测 total_score=96.67、安全闸 PASS、rc=0）。真正未评分只有 NOT_SCORABLE（HR-2/HR-3）⇒ 仍 FAIL。",
@@ -16,7 +19,8 @@
     },
     {
       "id": "A2",
-      "amended_at": "2026-10-30T19:20:00+08:00",
+      "amended_at": "2026-10-30T18:18:38+08:00",
+      "amended_at_note": "★ 同 `frozen_at_note`：原先误写成未来时刻 19:20，现按真实写入时刻标注。",
       "target": "G7 的 artifact_exists 路径解析",
       "change": "交接包路径改为仓库内路径 docs/dd-v1-fos71/ddv1-auto-test-suite/handoff；判定支持「相对 runs_dir」与「相对仓库根」两处解析。",
       "why": "交接包是**交付物**，必须进版本控制随 PR 走，不能只躺在 .audit/ 本地证据目录里（否则交接＝没有交接）。",
@@ -24,10 +28,24 @@
       "effect": "交接包缺失仍判 FAIL（门槛严格度不变），只是查找位置更合理。"
     }
   ],
+  "gate_spec_chronology": {
+    "note": "★ 本段**如实记录真实时间线**，供独立复核者核验「阈值是否先于结果冻结」。不修饰、不美化。",
+    "spec_file_first_written_at": "2026-10-30T18:18:38+08:00",
+    "spec_file_first_committed_at": "2026-10-30T18:26:44+08:00",
+    "first_gate_evaluation_at": "2026-10-30T18:21:58+08:00",
+    "order_verdict": "冻结（18:18:38）→ 评估（18:21:58）⇒ **顺序成立**：阈值先于首次门禁评估。",
+    "threshold_provenance": "阈值为**设计值**，**不是**从结果反推：\n  · G4 的总分下限 70：取自既有**已冻结**评分规范 `backend/config/dd_v1_exam_scoring_spec.v1.json`（frozen_at 2026-10-28T23:55:00+08:00）与 #85 永久红线的及格惯例；\n  · G4 的 understanding=1.0 / coverage=1.0 / questions=42：取自「**完整 42 题必须完整进入处理链路**」这一条**业务事实**（分母本就是 42），不是读数；\n  · ★ 反向佐证：考试C 实得 100.0，**远超**阈值 70 ⇒ 不存在「卡着结果定阈值」的痕迹。",
+    "evidence_regeneration": {
+      "trigger": "独立 Reviewer 复核发现：首次门禁评估（18:21:58）时入库的三场考试证据，是 **D4 修复前**的代码跑出来的（考试B 85.43 vs D4 修复后 95.67）⇒ **证据与代码不对应**。",
+      "action": "在**同一组阈值**下重跑 G1 ＋ 考试A/B/C ＋ 门禁 ＋ 覆盖率，并全部落盘（旧读数不删除，另存一份差异说明）。",
+      "thresholds_changed": "★ **零改动** —— 重跑前后所有数值阈值逐位相同（可用 git diff 核验）。",
+      "evidence_note": "★ D3 的回归测试（交付件数两口径取并集）是在本次复核中补上的，原先**无任何测试断言**。"
+    }
+  },
   "gates": {
     "G1": {
       "status": "PASS",
-      "reason": "pytest passed=2098 failed=0 skipped=6 total=2104",
+      "reason": "pytest passed=2101 failed=0 skipped=6 total=2107",
       "gate": "G1",
       "title": "基础测试 PASS（程序层：单元/契约/回归）",
       "exam": null,
@@ -40,8 +58,8 @@
       "gate": "G2",
       "title": "模拟端到端 PASS（考试A：完整链路可评分 + 安全闸 PASS）",
       "exam": "A",
-      "run_id": "20261030T094939Z",
-      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+      "run_id": "20261030T103938Z",
+      "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f"
     },
     "G3": {
       "status": "FAIL",
@@ -58,17 +76,17 @@
       "gate": "G4",
       "title": "合成 Gold 评分达标（考试C：完整42题）",
       "exam": "C",
-      "run_id": "20261030T094940Z",
-      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+      "run_id": "20261030T103939Z",
+      "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f"
     },
     "G5": {
       "status": "PASS",
-      "reason": "status_scored=PASS(status=SCORED_PARTIAL total_score=85.43); safety_pass=PASS(safety=PASS); no_blocked=PASS(not blocked); coverage_full=PASS(coverage=1.0 >= 1.0)",
+      "reason": "status_scored=PASS(status=SCORED_PARTIAL total_score=95.67); safety_pass=PASS(safety=PASS); no_blocked=PASS(not blocked); coverage_full=PASS(coverage=1.0 >= 1.0)",
       "gate": "G5",
       "title": "安全测试 PASS（考试B：复杂业务 + 披露闸）",
       "exam": "B",
-      "run_id": "20261030T094940Z",
-      "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e"
+      "run_id": "20261030T103939Z",
+      "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f"
     },
     "G6": {
       "status": "FAIL",
@@ -91,7 +109,7 @@
   },
   "observations": {
     "A": {
-      "run_id": "20261030T094939Z",
+      "run_id": "20261030T103938Z",
       "status": "LOW_CONFIDENCE",
       "total_score": 96.67,
       "question_understanding_coverage": 0.666667,
@@ -113,16 +131,16 @@
       "examinee_mode": "RULE_ONLY"
     },
     "B": {
-      "run_id": "20261030T094940Z",
+      "run_id": "20261030T103939Z",
       "status": "SCORED_PARTIAL",
-      "total_score": 85.43,
-      "question_understanding_coverage": 0.888889,
-      "question_answer_coverage": 0.888889,
-      "material_recall": 0.846154,
-      "selection_precision": 0.846154,
-      "complete_delivery_ratio": 0.857143,
-      "miss_rate": 0.142857,
-      "wrong_rate": 0.111111,
+      "total_score": 95.67,
+      "question_understanding_coverage": 0.9,
+      "question_answer_coverage": 0.9,
+      "material_recall": 1.0,
+      "selection_precision": 0.866667,
+      "complete_delivery_ratio": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.1,
       "questions_processed": 9,
       "questions_total": 9,
       "verifiable_coverage": 1.0,
@@ -135,7 +153,7 @@
       "examinee_mode": "RULE_ONLY"
     },
     "C": {
-      "run_id": "20261030T094940Z",
+      "run_id": "20261030T103939Z",
       "status": "SCORED",
       "total_score": 100.0,
       "question_understanding_coverage": 1.0,

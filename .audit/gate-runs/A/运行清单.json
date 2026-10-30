@@ -1,19 +1,19 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T094939Z",
+  "run_id": "20261030T103938Z",
   "exam": "A",
   "exam_id": "DDV1-SYN-A",
   "title": "考试A · 基础功能",
-  "started_at": "2026-10-30T17:49:39+08:00",
-  "finished_at": "2026-10-30T17:49:39+08:00",
-  "elapsed_s": 0.21,
-  "git_sha": "bf68cf94c2744624445b6ea992e41fc3f0b1b78e",
-  "git_dirty": true,
+  "started_at": "2026-10-30T18:39:38+08:00",
+  "finished_at": "2026-10-30T18:39:38+08:00",
+  "elapsed_s": 0.18,
+  "git_sha": "b97ce206f78807d4f2eccd11ca86cb0b930d487f",
+  "git_dirty": false,
   "environment": {
     "platform": "darwin",
     "python": "3.13.12",
-    "data_plane": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/data",
-    "out_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/runs/20261030T094939Z",
+    "data_plane": "/Users/mac/.cangjie-ddv1-exams/A/data",
+    "out_dir": ".audit/exam-plane/A",
     "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库"
   },
   "model": {
@@ -30,9 +30,9 @@
     "contract_questions": 3
   },
   "gold_version": {
-    "path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/gold/gold-A.json",
+    "path": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json",
     "items": 3,
-    "fingerprint": "89b7e7dee8b2ce049a6002165b0f00977251ac2a576e5039a20d52d77de1e8e5"
+    "fingerprint": "2ec2da55299e4088dc509bedd8ded740df3c088ad1abc56434f1e4581b2df619"
   },
   "results": {
     "rc_run": 0,
@@ -121,13 +121,37 @@
       "unbound_detail": [],
       "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
     },
+    "gold_scorable": {
+      "scorable_obligations": 3,
+      "correct": 3,
+      "wrong": 0,
+      "denominator": 3,
+      "score_ratio": 1.0,
+      "not_included_reasons": {},
+      "not_included_total": 0,
+      "note": "★ 分母只含**Gold 已解析到具体材料**的义务；★ 其余原因逐条列出，★ **不得**把它们算成 0 分"
+    },
+    "gold_gaps": {
+      "schema_version": "dd_v1_gold_gap_report.v1",
+      "gold_pack_id": "GOLD-SYN-A",
+      "exam_id": "DDV1-SYN-A",
+      "counts": {
+        "obligations": 3,
+        "expected_files": 4,
+        "resolved": 4,
+        "gaps": 0,
+        "by_class": {}
+      },
+      "gaps": [],
+      "note": "逐件待处置清单：★ **不删 Gold、不改 Gold**；A/B/C/D/E 由人工核对后**在本地纠正映射**，A（确实缺料）单列进补料清单"
+    },
     "blocked_by": []
   },
   "failures": [],
   "disclosure": {
     "delivered_rows": 2,
     "delivered_files": 2,
-    "manifest_path": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/data/deliveries/fbc4cb6ebbae490f8dac09f0e10919c3/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/A/data/deliveries/35cf5a1f293a4e139e063d6a55f791f4/组包manifest.tsv",
     "blocked_materials": 4,
     "violations": 0,
     "violation_detail": [],
@@ -141,9 +165,9 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/runs/20261030T094939Z/answer/机器答卷-20261030-174939.json",
-    "scorecard_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/runs/20261030T094939Z/grade",
-    "run_report_dir": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/runs/20261030T094939Z/run",
-    "gold_manifest": "/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/.audit/exam-plane/A/gold/gold-A.json"
+    "answer_sheet": ".audit/exam-plane/A/answer/机器答卷-20261030-183938.json",
+    "scorecard_dir": ".audit/exam-plane/A/grade",
+    "run_report_dir": ".audit/exam-plane/A/run",
+    "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json"
   }
 }
