@@ -1,8 +1,11 @@
 # DD-V1｜Windows 复测操作指南（2026-10-30 P0 修复版）
 
-★ **本轮冻结版本（唯一）**：`e57cf4854ec63c37c66860a3d8f3e2627efa2af0`
+★ **本轮冻结版本（唯一）＝ tag `ddv1-p0-20261030`**（★ **tag 不可变** ⇒ ★ **不会**随分支前进而失效；
+　　★ **用 tag，不要用会移动的 sha**——★ sha 写进文档后，写它的那一笔自己会把分支推前一位 ⇒ ★ 那条 sha 从写下那刻起就是旧的）。
+★ 本轮 P0 **代码**引入于 `ac67f1bbc775d75700d46f7bf0a6090992723e51`
+　（★ **只表示「P0 代码在哪一笔引入」**，★ **不表示当前 head** ⇒ ★ **不要按它导航**；★ 当前 head 一律现读）。
 ★ 分支：`feat/71-ddv1-exam-v1-20261028`（PR #86 的 head）｜★ 同名 ref：`feat/71-ddv1-p0-fix-20261030`（**同一 commit**）
-★ ★ **必须逐位核对**（下面第 ① 步）——★ **版本不符就停测并报告**，★ 不要用 master、不要用旧 ZIP。
+★ ★ **必须核到 tag 上**（下面第 ① 步）——★ **版本不符就停测并报告**，★ 不要用 master、不要用旧 ZIP。
 
 ★ 本轮修了刘江 2026-10-30 报的两个 P0：
 · **P0-1 空库假 READY**：`preflight` 以前在「0 份材料 ＋ 0 条义务 ＋ 0 份 Gold 映射」时返回 `READY_FOR_FORMAL_SCORING`
@@ -15,10 +18,16 @@
 ## ① 版本核验（先做）
 
 ```powershell
-git fetch --depth 1 origin e57cf4854ec63c37c66860a3d8f3e2627efa2af0
-git rev-parse FETCH_HEAD
-# 期望输出：e57cf4854ec63c37c66860a3d8f3e2627efa2af0   （40 位，逐位一致）
-git status --porcelain     # 期望：0 行
+git fetch --depth 1 origin refs/tags/ddv1-p0-20261030:refs/tags/ddv1-p0-20261030
+git rev-parse "ddv1-p0-20261030^{commit}"    # ★ 记下这个 40 位 sha（= tag 指向的提交，★ 不是「当前 head」）
+git status --porcelain                        # 期望：0 行
+
+# ★★ 版本核对**用内容标记**，不要拿 sha 逐位比（★ sha 会移动，内容标记不会）：
+git show "ddv1-p0-20261030:backend/src/cangjie_fos/services/dd_v1_exam_preflight_service.py" | Select-String "LIBRARY_EMPTY"
+git show "ddv1-p0-20261030:backend/src/cangjie_fos/services/dd_v1_requirement_service.py"      | Select-String "export_obligation_contract"
+git show "ddv1-p0-20261030:tools/dd_v1_local_run.py"                                             | Select-String "add_argument\(\"--library\""
+# ★ 期望：三条**各至少 1 行命中** ⇒ ★ 这才是「本轮修复真的在位」的判据
+#   （★ 命中 0 行 ⇒ 版本不对 ⇒ 停测并报告，别硬跑）
 ```
 
 ## ② 环境检查（doctor 要在**后端启动之前**跑）
@@ -105,7 +114,7 @@ Get-ChildItem "<数据面目录>\考场\*.json" | Select-Object Name, Length
 
 | 现象 | 原因 | 恢复 |
 |---|---|---|
-| `READY_FOR_FORMAL_SCORING` 但你知道库是空的 | **旧版本**（本轮已修）⇒ 核对 `git rev-parse HEAD` | 换到本轮冻结 SHA |
+| `READY_FOR_FORMAL_SCORING` 但你知道库是空的 | **旧版本**（本轮已修）⇒ 核对 `git rev-parse HEAD` | 换到本轮 tag `ddv1-p0-20261030` |
 | 42 题只处理了一半 | **没加 `--library`** ⇒ 走了旧规则拆解 | 加 `--library LIB-<ID>` 重跑 |
 | `obligations` 数远小于 42 | 清单里多数题「无材料类型关键词」 | 正常（库侧**不丢题**）；★ 用 `--library` 路径 |
 | 42 题全 UNCERTAIN | ★ 主体没先 `register --library` 就 `entity`（登记不生效） | 按第 ③ 步重做，主体先于摄取 |
