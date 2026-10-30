@@ -25,7 +25,7 @@
     "★ 独立复核者必须能**复跑**关键测试（门禁只认机读证据，不认人写的结论）。",
     "★ 真实 42 题**业务**准确率的分母与合格线尚未由业务方冻结 ⇒ 本门禁**不**对真实业务成绩设线（只对合成卷设线）。"
   ],
-  "key_gates": ["G1", "G2", "G3", "G4", "G5", "G8"],
+  "key_gates": ["G1", "G2", "G3", "G4", "G5", "G6", "G8"],
   "amendments": [
     {
       "id": "A1",
@@ -82,6 +82,24 @@
       "why": "★ 独立 Reviewer 第 3 轮要求对这两条给出**书面处置**，否则「已知缺陷」与「被藏起来的缺陷」无法区分。\n  ★ 施工纪律：**已知缺陷要写下来**（可核验），比「修到看不出来」更安全。",
       "thresholds_unchanged": "★ **G1—G8 的任何判定标准与数值阈值一个字未改**（可用 git diff 核验）。\n  ★ 本条**不含任何判定逻辑**，只是把已知限制写进机读规格里。",
       "effect": "已知限制（MINOR-5 / NIT-2）在**机读规格**里可核验 ⇒ 独立复核者不必翻文档即可确认施工者未隐瞒。"
+    },
+    {
+      "id": "A7",
+      "amended_at": "2026-10-31T01:40:00+08:00",
+      "target": "**G6 只认 PASS**（独立 Reviewer 第 4 轮 MINOR-1）＋ 门禁报告新增机器可读的 `reviewer_verdict`",
+      "change": "★ **G6**：复核报告的 `verdict` **只有等于 `PASS` 才判 G6 PASS**；\n  `CONDITIONAL` ⇒ **FAIL**（reason 串如实带出 `reviewer verdict=CONDITIONAL`，**不隐瞒**）。\n  ★ 门禁报告新增顶层字段 **`reviewer_verdict`**（`verdict` / `present` / `round` / `reviewed_commit`）\n  ⇒ 人和机器都**不必**从 reason 串里猜复核结论。",
+      "why": "★ **独立 Reviewer 第 4 轮 MINOR-1**：冻结门禁规格里 G6 的 title 明写「独立 Reviewer **PASS**」，\n  而实现原先把 `PASS` 与 `CONDITIONAL` **都**判 PASS\n  ⇒ **同一套交付包里两份产物互相打架**：机器门禁报告说「G6 PASS」、人读交接包说「G6 不算 PASS」。\n  ⇒ 该 Reviewer 把它定为 MINOR（而非 MAJOR）的客观理由：G6 **不在 `key_gates`**\n  ⇒ 即使改判 FAIL，**整体门禁 status 不变** ⇒ 属「逐门读数/表述」层，不是「放行」层。\n  ★ 本条**只让实现与自己的规格一致**（= 收紧），**不改任何数值阈值**。",
+      "thresholds_unchanged": "★ **G1—G8 的任何数值阈值一个字未改**（可用 git diff 核验：gates 段逐字未动）。\n  ★ `key_gates` **未变**（仍是 G1/G2/G3/G4/G5/G8）⇒ 整体放行口径**未变**；\n  ★ 本条只把 **G6 这一道门**的判定收紧到与它的 title 一致。",
+      "effect": "G6 与「独立 Reviewer PASS」这一口径**逐字一致**（CONDITIONAL 不再被当成 PASS）；\n  门禁报告**机器可读**地暴露复核结论 ⇒ 交付包内部不再自相矛盾。"
+    },
+    {
+      "id": "A8",
+      "amended_at": "2026-10-31T01:55:00+08:00",
+      "target": "**G6 进入 `key_gates`**（独立 Reviewer 第 4 轮 NIT-2 的「明确 G6 在 key_gates 里的角色」）",
+      "change": "★ `key_gates` 由 `[G1,G2,G3,G4,G5,G8]` 变为 `[G1,G2,G3,G4,G5,**G6**,G8]`\n  ⇒ **G6 失败 ⇒ 整体门禁 `status=FAIL` 且 `failed_key_gates` 里出现 `G6`**。\n  ★ **只加严、不放松**：A7 让 G6 只认 `PASS`；本条让「G6 不算 PASS」这件事**真正拦住「宣布完成」**。\n  ★ 门禁报告同时新增 **`handoff_sha256_selfcheck`**（交接包关键文件 sha256 快照）⇒ 解决 NIT-1\n  （交接包目录被 `_git_dirty()` 有意豁免 ⇒ 它的完整性此前落在证据自证之外）。",
+      "why": "★ **施工令 WP5** 明写：G6「独立 Reviewer PASS」是门禁之一，且「**任何关键门槛失败 ⇒ 不得宣布开发完成、不得向人工发出正式验收请求**」。\n  ★ 而 A7 之前，G6 即使判 FAIL 也**不在 key_gates** ⇒ 整体 `status` 仍是 `PASS`\n  ⇒ **机器会认为「可以宣布完成」** ⇒ 与施工令、与交接包人读口径（「G6 不算 PASS」）**都矛盾**\n  ⇒ 独立 Reviewer 第 4 轮 NIT-2 点名了这处不一致。\n  ★ 先例：A3 加 G8 时同样是「只加门 + 进 key_gates」。",
+      "thresholds_unchanged": "★ **G1—G8 的任何数值阈值一个字未改**（可用 git diff 核验）。\n  ★ `key_gates` **只增** G6（原列表一个都没删）⇒ **只收紧**。\n  ★ ⚠️ **直接后果（如实写出）**：在独立复核给出 `PASS` 之前，整体门禁 `status` 会是 `FAIL`\n  （唯一原因＝G6）⇒ 这与交接包人读口径（「现在不算 PASS」「不能发正式验收请求」）**一致**。\n  ★ 若业务方认为 G6 不应进关键门槛，**改回即可**（只需删掉 key_gates 里的 G6，本条作废）⇒ **决策权在业务方**。",
+      "effect": "机器门禁与交接包人读口径**完全一致**：G6 不是 PASS ⇒ 整体就不是 PASS ⇒ 「不得宣布开发完成」由机器强制执行。"
     }
   ],
   "gates": {

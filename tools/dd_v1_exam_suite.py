@@ -732,12 +732,53 @@ def evaluate_gate(runs_dir: str, gate_spec: dict[str, Any] | None = None) -> dic
         ],
         "status": "PASS" if not key_fail else "FAIL",
         "failed_key_gates": [g["gate"] for g in key_fail],
+        # ★★ **机器可读的复核结论**（独立 Reviewer 第 4 轮 MINOR-1 的另一半建议）：
+        #   门禁报告里直接给出**复核 verdict 原文**，不让人从 reason 串里猜。
+        "reviewer_verdict": _reviewer_verdict(runs_dir),
+        # ★★ **交接包自证快照**（独立 Reviewer 第 4 轮 NIT-1）：
+        #   `_git_dirty()` 有意豁免 `.audit/` 与交接包目录（它们是**产物**，跑门禁时本来就在变）
+        #   ⇒ 但交接包正是验收方拿到的那一份 ⇒ 它落在证据自证之外。
+        #   ⇒ 这里记下交接包关键文件的 **sha256 快照** ⇒ 验收方可直接比对，
+        #   且「工作区版与提交版不一致」这件事**可核验、不再隐形**。
+        "handoff_sha256_selfcheck": _handoff_sha256_snapshot(),
         "note": ("★ 阈值来自**考试前冻结**的门禁文件；"
                  "结果不得反过来改阈值（改阈值必须换版本并留差异说明）。"
                  "★ observations 里的**实际读数**才是真相：门禁 PASS ≠ 指标完美"
                  "（例：考试A 理解率 0.667 源于材料类型词表覆盖缺口，"
                  "属**已知能力边界**，未掩盖、已留证）。"),
     }
+
+
+def _handoff_sha256_snapshot() -> dict[str, Any]:
+    """交接包关键文件的 sha256 快照（**只读**，不改任何文件）。"""
+    handoff = REPO / "docs" / "dd-v1-fos71" / "ddv1-auto-test-suite" / "handoff"
+    out: dict[str, Any] = {"path": str(handoff), "files": {}}
+    if not handoff.is_dir():
+        out["error"] = "HANDOFF_DIR_NOT_FOUND"
+        return out
+    for p in sorted(handoff.glob("*")):
+        if not p.is_file():
+            continue
+        try:
+            out["files"][p.name] = _sha256_file(p)
+        except Exception as exc:  # noqa: BLE001
+            out["files"][p.name] = f"ERROR:{exc}"
+    return out
+
+
+def _reviewer_verdict(runs_dir: Path | None) -> dict[str, Any]:
+    """读复核报告的 ``verdict``（**机器可读**）——不给就如实说没有。"""
+    p = (runs_dir or Path(".")) / "g6_reviewer.json"
+    if not p.is_file():
+        return {"verdict": "", "present": False, "round": None}
+    try:
+        rep = json.loads(p.read_text("utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        return {"verdict": "", "present": True, "round": None, "error": str(exc)}
+    return {"verdict": str(rep.get("verdict") or "").upper(),
+            "present": True,
+            "round": rep.get("round"),
+            "reviewed_commit": rep.get("reviewed_commit")}
 
 
 def _gate_check(g: dict[str, Any], m: dict[str, Any] | None, *,
@@ -791,9 +832,17 @@ def _gate_check(g: dict[str, Any], m: dict[str, Any] | None, *,
         except Exception as exc:  # noqa: BLE001
             return "FAIL", f"REVIEWER_REPORT_UNREADABLE:{exc}"
         st = str(rep.get("verdict") or "").upper()
-        if st not in ("PASS", "CONDITIONAL"):
-            return "FAIL", f"reviewer verdict={st or 'MISSING'}"
-        return "PASS", f"reviewer verdict={st}"
+        # ★★ **收紧（独立 Reviewer 第 4 轮 MINOR-1）**：原先 `PASS` 与 `CONDITIONAL` **都**判 PASS
+        #   ⇒ 与冻结门禁规格自己的 title「独立 Reviewer **PASS**」矛盾，
+        #   ⇒ 机器门禁报告说「G6 PASS」、人读交接包说「G6 不算 PASS」⇒ **两份产物互相打架**。
+        #   ⇒ 现在**只有 verdict == PASS 才算 G6 PASS**（**加严**，方向同 A3/A4/A5）。
+        #   ⇒ reason 串如实带出 verdict，**不隐瞒**。
+        if st == "PASS":
+            return "PASS", f"reviewer verdict={st}"
+        if st == "CONDITIONAL":
+            return "FAIL", ("reviewer verdict=CONDITIONAL（独立复核**未给 PASS** ⇒ G6 不算 PASS；"
+                            "spec title=「独立 Reviewer PASS」⇒ 本门只认 PASS）")
+        return "FAIL", f"reviewer verdict={st or 'MISSING'}"
     if kind == "artifact_exists":
         raw = str(g.get("path") or "handoff")
         # ★ **两处解析**：① 相对 runs_dir（本地证据目录里的临时产物）

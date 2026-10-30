@@ -1,59 +1,67 @@
 {
   "schema_version": "dd_v1_reviewer_report.v1",
-  "round": 3,
-  "reviewed_commit": "2c4170c",
-  "reviewed_range": "417d906 → 2c4170c",
+  "round": 4,
+  "reviewed_commit": "934ec95",
+  "reviewed_range": "cb03b51 → 934ec95",
   "reviewed_branch": "feat/dd-v1-auto-test-harness-20261030",
   "reviewed_pr": "bog5d/cangjie-fos#87（未合并）",
-  "reviewer_role": "独立 Reviewer（Verifier Agent，第 3 轮复核会话；只读，未修改仓库任何文件，实验产物全在 /tmp/ddv1-review/）",
-  "full_report_path": "docs/dd-v1-fos71/ddv1-auto-test-suite/handoff/REVIEWER-REPORT-V3.md",
-  "env_policy": "ALL_PROXY=http://127.0.0.1:7897 all_proxy=http://127.0.0.1:7897；Python=backend/.venv/bin/python；数据面用 /tmp/ddv1-review/plane* 隔离（不碰 ~/.cangjie-ddv1-exams）",
+  "reviewer_role": "独立 Reviewer（Verifier Agent，第 4 轮复核会话；只读，未修改仓库任何文件，实验产物全在 /tmp/ddv1-review4/）",
+  "full_report_path": "docs/dd-v1-fos71/ddv1-auto-test-suite/handoff/REVIEWER-REPORT-V4.md",
+  "env_policy": "ALL_PROXY=http://127.0.0.1:7897 all_proxy=http://127.0.0.1:7897；Python=backend/.venv/bin/python；数据面 /tmp/ddv1-review4/plane* 隔离（未碰施工者的 ~/.cangjie-ddv1-exams）",
   "verdict": "CONDITIONAL",
-  "verdict_reason": "三条硬理由（均有产物级证据）：① MAJOR-1 安全闸比冻结评分规范弱一档——规范 safety.counted_kinds 明列 WRONG_PERIOD 且写「命中任一 ⇒ FAIL + 封顶 59」，但实现把错年度排除在闸外 ⇒ 独立探针实测错年度交付 safety=PASS、violations=0、总分 100.0；② MAJOR-2 覆盖率报告自己记着 git_dirty=true ⇒ 按项目自己的规则该份证据不可作为交付证据，且 417d906 提交说明与交接包 README 第 73 行「本轮这批证据均为 git_dirty=false」被产物本身证伪；③ 施工者结论 #3 的后半句「AI 成绩不可复现（同卷两次差 19.17 分）」被证伪——19.17 这个读数真实存在，但三次 77.5 全部 git_dirty=true，全部 14 次干净运行（含 Reviewer 独立复跑）分数恒为 96.67、零方差 ⇒ BLOCKED-8 措辞不成立须改写。",
-  "why_not_fail": "门禁阈值逐位未动（G1—G8 数值阈值 0 差异）；Reviewer 独立造的 3 个假绿反例全部被拦；覆盖率/门禁读数 Reviewer 独立重算逐位一致；真实 dsh/pi/codex 三家均实跑通过并核实各自官方身份来源；RULE_ONLY / AGENT_REQUIRED / AUTO 三种模式语义逐条实测正确。",
+  "verdict_reason": "两条硬理由（均有产物级证据）：① MINOR-1（本轮新提）G6 的实现把 verdict ∈ {PASS, CONDITIONAL} 都判 PASS，与冻结门禁规格自己的 title「独立 Reviewer PASS」矛盾 ⇒ 同一套交付包里机器门禁报告说「G6 PASS」、人读交接包说「G6 不算 PASS」，两份产物互相打架（降为 MINOR 的客观理由：G6 不在 key_gates ⇒ 不影响整体放行；且 reason 串如实披露 verdict，未隐瞒）；② MINOR-2（本轮新提）「AI 成绩存在方差」这个最终表述方向站得住，但它的证据没闭合——77.5 那次干净树运行的完整运行清单从未归档（仓内 19 份 + /tmp 全盘 112 份均无 sha=0b1ec84），唯一佐证是仓外 stdout 日志，形态与第 3 轮被抓掉的三次「脏树 77.5」同类。",
+  "why_not_fail": "第 3 轮的两条 MAJOR 真闭环（复跑第 3 轮原探针 + 自造反例 + 独立重跑三场考试全部复现）；门禁阈值逐位未动（独立 flatten 比对 7 个版本，数值差异 = 0）；A5/A6 没有越权；MINOR-1..5 / NIT-1/2 九条全部可复验地闭环；独立复跑真实 dsh/pi/codex 三家全部通过并各自用官方来源核实身份；RULE_ONLY / AGENT_REQUIRED / AUTO 三模式语义逐条实测正确；假绿反例（含第 3 轮漏掉的 fg5）全部被拦；覆盖率自己从 JUnit XML 重建索引重算逐位一致；Skills 升级 5 个 + 候选 1 个，内容属实、候选仍是候选、本轮未混入客户材料/密钥。",
   "required_checks": {
-    "R1_dsh_real_call": {"verdict": "PASS", "reading": "exit=0；elapsed=33.27s；execution_path=REAL_MODEL、participated=True（participated_scope=RECEIPT）；actual_model=deepseek-flash、provider=deepseek-official、source=DSH_PROFILE_CONFIG、verified=true；model_selection_obligations=3、rule_selection_obligations=0（3 条义务 selection_source=MODEL）⇒ 确为真模型参与，非 RULE_ONLY 冒充"},
-    "R2_codex_pi_real_call": {"verdict": "PASS", "reading": "pi：exit=0、20.93s、MiniMax-M3.1-Flash-Preview、source=AGENT_EVENT、model_selection_obligations=3/3；codex：exit=0、23.74s、gpt-5.6-sol、source=CODEX_EXECUTION_RECORD、thread_id=01a18d21-e5b8-7011-8a05-e333c17cbfc2、model_selection_obligations=3/3"},
-    "R3_model_identity_trustworthy": {"verdict": "PASS", "reading": "三个身份各走各的官方来源：dsh=--dump-config(DSH_PROFILE_CONFIG)、pi=message_end(AGENT_EVENT)、codex=rollout(CODEX_EXECUTION_RECORD)；codex 绑定是硬的（rollout_cwd≠expected_cwd ⇒ fail-closed 记 UNKNOWN）；dsh 绑定是软的（见 MINOR-3）；pi 只绑事件类型；UNKNOWN 未被当成已核实（伪造 execution_path=MODEL_ID_UNKNOWN 喂门禁 ⇒ G8 FAIL）"},
-    "R4_rule_only_scored_separately": {"verdict": "PASS", "reading": "score_name=RULE_BASELINE_SCORE、ai_system_score=null、ai_system_score_status=NOT_SCORED、rule_baseline_score=96.67、model_identity_acceptable=false；elapsed=0.22s；不可路由代理对照实验读数逐项相同 ⇒ 零外部网络依赖、零费用"},
-    "R5_agent_required_strict": {"verdict": "PASS", "reading": "① 不给 --agent ⇒ exit=1、stderr 明确拒绝「不允许在 AGENT_REQUIRED 下静默跑成规则考试」、输出目录未创建；② 模型缺席（PATH 摘掉 dsh）⇒ exit=1、status=FAIL、execution_path=FAILED、score_name=NOT_SCORED、ai_system_score=null（不是 0）、rule_baseline_score=null（不是规则分顶替）"},
+    "R1_dsh_real_call": {"verdict": "PASS", "reading": "5/5 exit=0；total_score=96.67（5/5 恒定）；execution_path=REAL_MODEL；actual_model=deepseek-flash；provider=deepseek-official；source=DSH_PROFILE_CONFIG；verified=true；git_sha=934ec95c、git_dirty=false；score_split.score_name=AI_SYSTEM_SCORE"},
+    "R2_codex_pi_real_call": {"verdict": "PASS", "reading": "pi：exit=0、96.67、MiniMax-M3.1-Flash-Preview、source=AGENT_EVENT、binding={event: message_end}；codex：exit=0、96.67、gpt-5.6-sol、source=CODEX_EXECUTION_RECORD、thread_id=01a18d59-0ec2-7f32-8915-9125c8f1bfd9、binding.rollout_cwd 与自读 rollout 的 cwd 逐字相同"},
+    "R3_model_identity_trustworthy": {"verdict": "PASS", "reading": "三个身份各走各的官方通道：dsh=--dump-config(DSH_PROFILE_CONFIG)、pi=message_end(AGENT_EVENT)、codex=rollout(CODEX_EXECUTION_RECORD)；codex 的 cwd 绑定是硬的（不符即 fail-closed 记 UNKNOWN）"},
+    "R4_rule_only_scored_separately": {"verdict": "PASS", "reading": "3/3 exit=0、96.67；score_name=RULE_BASELINE_SCORE、ai_system_score=null、ai_system_score_status=NOT_SCORED、rule_baseline_score=96.67、model_identity_acceptable=false ⇒ 规则分与 AI 分严格分列"},
+    "R5_agent_required_strict": {"verdict": "PASS", "reading": "① 不给 --agent ⇒ exit=1、stderr「不允许在 AGENT_REQUIRED 下静默跑成规则考试」、输出目录未创建；② 模型缺席 ⇒ exit=1、status=FAIL、execution_path=FAILED、score_name/ai_system_score/rule_baseline_score 全为 null（不是 0）"},
     "R6_auto_degrade_labelled": {"verdict": "PASS", "reading": "requested_mode=AUTO 与 execution_path=DEGRADED 分列；score_name=RULE_BASELINE_SCORE、ai_system_score=null、ai_system_score_status=NOT_SCORED ⇒ 降级结果未被记为 AI 成绩"},
-    "R7_false_green_blocked": {"verdict": "PASS", "reading": "test_dd_v1_false_green_regressions.py collected 25 / 25 passed；Reviewer 自造 3 个反例目录喂 gate：全 RULE_ONLY 的 A/B/C ⇒ exit=1、failed_key_gates=[G3,G8]；AGENT_REQUIRED+FAILED ⇒ G8=AGENT_REQUIRED_WITHOUT_REAL_MODEL；AGENT_REQUIRED+MODEL_ID_UNKNOWN ⇒ G8 FAIL 且 identity_unknown=1"},
-    "R8_gold_scoring_trustworthy": {"verdict": "PASS", "reading": "分母写死（遍历 Gold 的 items，考生不交也进分母）；有效 Gold+0 件交付 ⇒ total=0.0 且 SCORED_PARTIAL（0 分不是 NOT_SCORABLE）；未提供 Gold ⇒ NOT_SCORABLE、total_score=None（不是 0）；保留原始分母（考试C questions_total=42、denominator_source=LIBRARY_OBLIGATION_CONTRACT）；Gold 与考生面物理分离（7 份答卷里 6 个 GOLD_ONLY_KEYS 命中数=0）；Gold 泄漏会拦（detect_gold_leak.leaked=true ⇒ NOT_SCORABLE）"},
-    "R9_disclosure_safety_held": {"verdict": "PASS_WITH_MAJOR", "reading": "fail-closed（策略文件不存在/JSON 损坏 ⇒ 全部不可外发；default_level=PUBLIC ⇒ 拒绝加载）；找不到交付清单 ⇒ FAIL（不报 PASS）；受限材料不进包（考试A 拦 4 件，violations=0，拦截原因含「敏感等级为空=不可判定，按安全默认处理」）；错主体 ⇒ FAIL+59.0；哈希不一致 ⇒ FAIL+59.0；★ 错年度 ⇒ PASS+100.0（← MAJOR-1，与冻结规范矛盾）；生产策略 diff 为空（git diff master...HEAD -- backend/config/dd_v1_disclosure_policy.json ⇒ 空）"},
-    "R10_windows_real_machine": {"verdict": "NOT_VERIFIED", "reading": "本机 macOS（darwin 25.6.0 arm64）；仓内无任何 Windows 机器产出的证据；本体系大量 Windows 专属分支（taskkill /T /F、.cmd 经 cmd.exe 注入、8191 长度限制、creationflags=CREATE_NEW_PROCESS_GROUP、dsh 的 http 代理差异）在 macOS 上根本不会走到 ⇒ 按任务书要求不替刘江判定，须由刘江在 Windows 真机复跑"}
+    "R7_false_green_blocked": {"verdict": "PASS", "reading": "相关 4 个测试文件 54 项全绿；自造 fg5（1×REAL_MODEL + 1×MODEL_ID_UNKNOWN）⇒ G8 FAIL，reason=MODEL_ID_UNKNOWN_NOT_ACCEPTED=['B:…'] ⇒ 第 3 轮 NIT-1 真的被堵住"},
+    "R8_gold_scoring_trustworthy": {"verdict": "PASS", "reading": "复跑第 3 轮原探针：探针 A（有效 Gold + 0 交付）⇒ total=0.0、SCORED_PARTIAL（0 分不是 NOT_SCORABLE）；探针 B（无 Gold）⇒ NOT_SCORABLE、total=None；探针 C（考生面沾 Gold）⇒ leaked=true ⇒ NOT_SCORABLE；探针 D：分母固定（questions_total=3 不随考生输出变）"},
+    "R9_disclosure_safety_held": {"verdict": "PASS", "reading": "fail-closed（策略缺失/损坏/default_level=PUBLIC 三种坏情形全部 load_error + default_level=RESTRICTED）；考试 A：disclosure={blocked_materials:4, violations:0, status:PASS}；错主体 ⇒ FAIL+59、哈希不一致 ⇒ FAIL+59、错年度 ⇒ FAIL+59（自造）；生产策略 git diff master...HEAD = 0 行"},
+    "R10_windows_real_machine": {"verdict": "NOT_VERIFIED", "reading": "本机 macOS（darwin 25.6.0 arm64）；仓内无任何 Windows 机器产出的证据；按任务书要求不替刘江判定 PASS"}
   },
   "extra_checks": {
-    "X1_full_pytest_green": {"verdict": "PASS", "reading": "Reviewer 自跑 exit=0；自建 JUnit XML：testcases=2156 / failed=error=0 / skipped=6 / passed=2150；与入库 g1_pytest.json 逐项相同；另跑 tests/test_dd_v1_model_participation_l3.py 带 DDV1_ALLOW_REAL_MODEL=1 ⇒ 6 passed（11.10s）"},
-    "X2_gate_readings_recomputed": {"verdict": "PASS", "reading": "Reviewer 自己写重算脚本（从 JUnit XML 重建 node-id 索引）：验收项 54 / 可自动化 51 / 已自动化 50 / 执行 50 / 通过 50 / 覆盖率 0.9804 / 通过率 1.0 ⇒ 与覆盖率报告逐位一致，逐项状态不一致条目数=0；用当前代码对入库证据重跑 gate ⇒ G1—G8 判定逐条一致"},
-    "X3_thresholds_frozen_before_exam": {"verdict": "PASS_WITH_MINOR", "reading": "6a702ad → b97ce20 → 0f34ff4 → HEAD：数值阈值差异=0（G4 total≥70 / understanding=1.0 / coverage=1.0 / questions=42；G1 require_failed_zero 逐字未改）；唯一变化为新增 G8（只加门）＋ key_gates 加 G8（只收紧）；A4 只改「同一考试绑定哪一次」，G3/G8 仍看 all_manifests ⇒ 无门槛被放松。★ 但 frozen_at 在首评估（18:21:58）之后被回改（18:40→18:18:38），「18:18:38」是断言、git 不可核验（见 MINOR-5）"},
-    "X4_evidence_matches_code": {"verdict": "PARTIAL", "reading": "6 份运行清单 git_sha=0f34ff4…/git_dirty=false ✔；门禁报告 ✔；g1_pytest.json ✔；★ 覆盖率报告.json git_sha=0f34ff4… 但 git_dirty=true ✘（生成于 acceptance_items 配置已改未提交的工作区；数值影响=0，54 个验收项 (kind,test_refs,automatable,exam_refs) 0 差异，但按项目自己的规则该份证据不可作为交付证据）"}
+    "C1_major1_closed": {"verdict": "PASS", "reading": "复跑第 3 轮原探针（未改一字）：探针 C（错年度）由第 3 轮的 PASS/100.0 变为 FAIL/total=59.0；探针 A ⇒ FAIL/59.0；探针 B ⇒ FAIL/59.0。护栏有效：CURRENT/当前/未知 ⇒ safety=PASS、viol=0；「选中但未交付」的错年度 ⇒ 只单列、不封顶；真多交件错年度 ⇒ 仍 FAIL+59。独立重跑考试 A/B/C = 96.67/95.67/100.0、safety=PASS、violations=0"},
+    "C2_major2_closed": {"verdict": "PASS", "reading": "6 份运行清单 + g1_pytest.json + 门禁报告.json + 覆盖率报告.json 全部 git_sha=a1fb96b…、git_dirty=false；README 原句「本轮这批证据均为 git_dirty=false」已被改写为「必须逐份读」；独立重算 = 54/51/50/50/50、覆盖率 0.9804、通过率 1.0、JUnit 索引 2174、逐项不一致 = 0"},
+    "C3_thresholds_zero_diff": {"verdict": "PASS", "reading": "独立 flatten 比对 6a702ad→b97ce20→0f34ff4→cb03b51→0b1ec84→a1fb96b→HEAD：数值阈值差异 = 0；gates 段相对首版 REMOVED=0 / CHANGED=0 / ADDED 仅 G8；key_gates 由 [G1..G5] 变 [G1..G5,G8]（只加严）"},
+    "C4_amendments_no_overreach": {"verdict": "PASS", "reading": "A5 = 只加严（安全闸纳入 WRONG_PERIOD；G8 对 MODEL_ID_UNKNOWN 改 FAIL）；A6 = 纯说明（gates 段逐字未动，仅新增 amendments[5] 文本）；封顶值 59 仍取自冻结规范，未新增或修改任何数值"},
+    "C5_falsification_faithful": {"verdict": "PARTIAL", "reading": "文档措辞一致；Reviewer 自跑 5 次 dsh + 3 次 RULE_ONLY 全部 96.67，施工者 7 次也全 96.67 ⇒ 已归档干净读数 12×96.67；77.5 那次在 /tmp/regen_evidence.log 里逐字可查（run_id=20261030T143443Z、git_sha=0b1ec84、git_dirty=false）⇒ 现象是真的，但该次运行清单从未归档 ⇒ 「存在方差」站得住（保守方向）；「分数会在 96.67 与 77.5 之间跳」作为分布描述站不住（n=1 vs n=12）；且该条尚未满足项目自己的「可作交付证据」标准"},
+    "C6_minor_nit_closed": {"verdict": "PASS", "reading": "MINOR-1 ✓ / MINOR-2 ✓ / MINOR-3 ✓ / MINOR-4 ✓ / MINOR-5 ✓ / NIT-1 ✓ / NIT-2 ✓（九条逐条可复验）"},
+    "C7_g6_conditional_as_pass": {"verdict": "NEW_FINDING_MINOR", "reading": "是「实现比口径松」的口子，且不是故意设计：规格 title 写「独立 Reviewer PASS」，人读文档写「现在不算 PASS」；实现自 6a702ad 起从未改过、也没有任何测试守护。降级理由：G6 不在 key_gates ⇒ 不影响整体放行；reason 串如实披露 verdict"},
+    "C8_skills_upgrades_warranted": {"verdict": "PASS", "reading": "① 内容属实：v1.3.0 §5.2 的「131 条假违规」「按归属判定」「最正常的那一档（42 题完整卷）」逐条独立复现；§5.4 的「当天干净树又打出 77.5」在 /tmp/regen_evidence.log 逐字查到 ⇒ 无夸大无编造；② 候选仍是候选（version: 0.2.0-candidate + 文件头免责声明）；③ 红线：本分支两 commit 零命中客户材料/密钥/原始敏感数据（全库 2 处真形态 key 来自 2026-09-07 的历史重建，本分支 0 处改动）；④ 检索口径可复现：总数 587 − 归档 108 = 在用 479，与任务书逐位一致；d04632a 只动 2 个文件 ⇒ ff62b42 内容未被破坏"}
   },
-  "findings": [
-    {"id": "MAJOR-1", "severity": "MAJOR", "title": "安全闸比冻结评分规范弱一档——「错年度」不封顶，可拿满分且 safety_gate=PASS", "evidence": "backend/config/dd_v1_exam_scoring_spec.v1.json 的 safety.counted_kinds 含 WRONG_PERIOD，note 明文「命中任一 ⇒ safety_gate=FAIL 且 total_score 封顶到 59」；而 backend/src/cangjie_fos/services/dd_v1_exam_service.py 把 WRONG_PERIOD 放进 selection_mismatches（不进 violations、不封顶），且交付件的期间根本不比。Reviewer 探针 C 实测：交付件 period=2023（期望 2024）⇒ safety_gate.status=PASS、violations=0、total_score=100.0。★ counted_kinds 在 backend/**/*.py 里 grep 命中数=0 ⇒ 冻结规范的这份清单是死配置。引入时点 0142161（2026-10-29 02:57），该提交只改了 exam_service.py，没动也没修订冻结评分规范。", "impact": "当前已入库 6 场考试 violations=0 ⇒ 不影响已交付的任何读数；这是面向未来的假绿口子。", "fix_required": "把 WRONG_PERIOD 放回 findings（封顶 59）并让交付件也比期间；或修订冻结规范并加 amendment + 把 counted_kinds 真正读进代码。"},
-    {"id": "MAJOR-2", "severity": "MAJOR", "title": "覆盖率报告 git_dirty=true ⇒ 按项目自己的规则不可作为交付证据；且提交说明/README 的「均为 git_dirty=false」被产物证伪", "evidence": ".audit/gate-runs/覆盖率报告.json → git_sha=0f34ff41…、git_dirty=true、generated_at=2026-10-30T21:56:54+08:00；backend/config/dd_v1_acceptance_items.v1.json mtime=21:56:50，该文件直到 417d906 的 21:58:33 才提交 ⇒ 生成时它是「已改未提交」（唯一非豁免脏路径）。417d906 提交说明与交接包 README 第 73 行「本轮这批证据均为 git_dirty=false」被产物直接推翻。", "impact": "数值影响=0（54 项逐项比对 0 差异；Reviewer 独立重算仍是 50/51=0.9804、50/50=1.0），但该份证据按项目规则不可采信。", "fix_required": "先提交 acceptance_items（或在干净树重跑覆盖率）⇒ 让覆盖率报告自身满足 git_dirty=false；并把 README 第 73 行改成逐份列举，不要用「均」。"},
-    {"id": "MINOR-1", "severity": "MINOR", "title": "运行清单的 model.degrade_reason 恒为空 ⇒ 降级原因只在答卷里，门禁读的那份看不到", "evidence": "Reviewer 的 AUTO 降级运行 /tmp/ddv1-review/runs/A-auto-degraded/运行清单.json → model.degrade_reason=\"\"；同一次运行的答卷 examinee.degrade_reason 有完整说明。成因：tools/dd_v1_exam_suite.py 构造 model_participation 时没带 degrade_reason。", "impact": "G8 判 execution_path 不受影响，但施工令 §6 的「降级原因」在运行清单层缺失 ⇒ 复核者只看运行清单看不出为什么降级。", "fix_required": "在 model_participation 里补 degrade_reason。"},
-    {"id": "MINOR-2", "severity": "MINOR", "title": "gold_fingerprint 每次运行都不同 ⇒ 无法用于「同一份 Gold」自证", "evidence": "Reviewer 4 次独立运行的 Gold 内容完全相同（obligation_key 集合相同、期望材料 sha256 集合相同 = 20de4683,4c96e667,4f5bb586,7a9a8f65），但 gold_fingerprint 分别是 5b3ba770…/7da6287c…/7bf7784e…/bb8fcd06…。成因：dd_v1_gold_service.py 的指纹把 obligation_id（uuid4，每次建库都变）一起 hash 了。仓内 19 份运行清单的 gold_fp 两两不同。", "impact": "假信号（看起来每次 Gold 都不同）。", "fix_required": "改用内容派生的稳定键 obligation_key 求指纹。"},
-    {"id": "MINOR-3", "severity": "MINOR", "title": "dsh 的身份「绑定」是装饰性的", "evidence": "dd_v1_agent_identity.py 的 resolve_dsh_identity 执行 dsh --dump-config 不传 cwd，而 binding[\"config_cwd\"]=expected_cwd 只是把 workdir 字符串写进去，没有任何一致性校验。", "impact": "dsh 身份证明的是「profile headless 的默认模型」，不能排除本次调用被 prompt 触发别的模型/回退；对比 codex 的 cwd 不符会 fail-closed 记 UNKNOWN。", "fix_required": "在 expected_cwd 内取配置并写明能证明/不能证明。"},
-    {"id": "MINOR-4", "severity": "MINOR", "title": "G3 的 reason 只列 dsh 一条，读者会以为只跑了一个模型", "evidence": "门禁报告 G3 reason=\"real_model_runs=['20261030T135406Z']\"（1 条），而 G8 real 有 3 条。", "impact": "机器判定没错（all_runs 已列全 6 次），但人读 G3 那一行会低估参与面。", "fix_required": "G3 的 reason 补一句「本批另有 pi/codex（见 all_runs / G8）」。"},
-    {"id": "MINOR-5", "severity": "MINOR", "title": "冻结时间线字段在首评估之后被回改（数值阈值本身没问题）", "evidence": "frozen_at 在 6a702ad（首提交 18:26:44）里是 18:40:00（未来时刻），在 b97ce20（18:39:15）被改成 18:18:38；首次门禁评估是 18:21:58 ⇒ 改完之后「冻结先于评估」才成立；「18:18:38」是断言（文件 mtime），git 不可核验。", "impact": "客观补偿事实：首提交 6a702ad 里的数值阈值与 HEAD 逐字段完全相同（0 差异）⇒ 实质风险为零，但时间线叙述应改为可核验的表述。", "fix_required": "书面处置并如实登记残余风险。"},
-    {"id": "NIT-1", "severity": "NIT", "title": "AUTO + MODEL_ID_UNKNOWN 不会单独判 G8 FAIL", "evidence": "Reviewer 的 fg5（1 次 REAL_MODEL + 1 次 AUTO/MODEL_ID_UNKNOWN）⇒ G8 PASS，identity_unknown=1；只有整批没有 REAL_MODEL 时才会因 NO_REAL_MODEL_RUN_AT_ALL 失败。", "impact": "不算漏判（identity_unknown 计数与 model_identity_acceptable=false 都记录了），但批次里只要有一次已核实真模型，AUTO 的未知身份就不会拦下整批。", "fix_required": "可要求 identity_unknown 也判 FAIL（加严）。"},
-    {"id": "NIT-2", "severity": "NIT", "title": "pytest -q 的末行汇总在 stdout 捕获里丢失", "evidence": "Reviewer 的 /tmp/ddv1-review/pytest_stdout.txt 末尾没有「2150 passed, 6 skipped in …」；施工者入库的 g1_pytest.json 的 tail 里同样没有 ⇒ 系统性的捕获方式问题。", "impact": "计数只能靠 JUnit XML（Reviewer 用的就是 XML：2156/0/6/2150）⇒ 结论不受影响。", "fix_required": "书面说明「XML 为权威」。"}
+  "round3_findings_closure": [
+    {"id": "MAJOR-1", "closed": true, "how_verified": "复跑第 3 轮原探针 probe_safety2.py（未改一字）＋ 自造 5 组探针 ＋ 独立重跑考试 A/B/C ⇒ 错年度由 PASS/100.0 变 FAIL/59.0；护栏不冤枉机器；真多交件仍封顶；A/B/C 读数与入库逐项一致"},
+    {"id": "MAJOR-2", "closed": true, "how_verified": "逐份读 8 份产物的 git_sha + git_dirty（全部 a1fb96b…/false）＋ README 旧句已被改写 ＋ 独立从 JUnit XML 重算覆盖率逐位一致"},
+    {"id": "MINOR-1", "closed": true, "how_verified": "运行清单 model.degrade_reason 已补（run_provenance 与答卷两处取）"},
+    {"id": "MINOR-2", "closed": true, "how_verified": "gold_fingerprint 改用 obligation_key 稳定键"},
+    {"id": "MINOR-3", "closed": true, "how_verified": "dsh 身份在 expected_cwd 内取配置 + binding_strength/config_cwd_source + 「能证明/不能证明」"},
+    {"id": "MINOR-4", "closed": true, "how_verified": "G3 reason 补列其它真实模型考生（实测 reason 含 pi/codex）"},
+    {"id": "MINOR-5", "closed": true, "how_verified": "amendment A6 书面处置（纯说明、阈值零差异）"},
+    {"id": "NIT-1", "closed": true, "how_verified": "自造 fg5 ⇒ G8 FAIL，reason=MODEL_ID_UNKNOWN_NOT_ACCEPTED"},
+    {"id": "NIT-2", "closed": true, "how_verified": "amendment A6 书面处置（XML 为权威）"}
   ],
-  "falsification": {
-    "claim_retracted": "「AI 成绩不可复现（同卷两次差 19.17 分）」——施工者已在第 3 轮复核后撤回并全文更正（BLOCKED-8 / 交接包 README / 考试报告）。",
-    "reviewer_evidence": "19.17 这个读数本身真实存在（.audit/exam-plane/A-dsh-r3 dsh 77.5、A-agent dsh 77.5、P5-codex codex 77.5），但三次全部 git_dirty=true、git_sha=275641f，且发生在 21:20—21:39（代码定稿提交 0f34ff4 是 21:48:17）⇒ 按项目规则不是可采信交付证据；全部干净运行（git_dirty=false）分数恒为 96.67、零方差：仓内 4 次 + Reviewer 自己 7 次 + 专门追加的 2 次干净 dsh 复跑（A-dsh2 74.07s、A-dsh3 26.92s）= 14 次干净运行方差=0。三次干净 dsh 的选中集完全一致，而 77.5 那几次只选了 1 个 ⇒ 差异确实落在模型选中集上，但只在脏工作区出现过。",
-    "correct_statement": "历史脏工作区运行分数不稳（77.5 vs 96.67）；在干净工作区上同卷同模型复跑分数完全一致（96.67）⇒ 目前证据不足以支持「AI 成绩不可复现」。"
-  },
+  "new_findings": [
+    {"id": "MINOR-1", "severity": "MINOR", "title": "G6 把 verdict=CONDITIONAL 判成 PASS —— 实现比口径松，且已发作在交付物里", "evidence": "tools/dd_v1_exam_suite.py 的 reviewer_report 分支；.audit/gate-runs/门禁报告.json → gates.G6={status:PASS, reason:'reviewer verdict=CONDITIONAL'}；handoff/README.md 写「现在不算 PASS」⇒ 机器与人读口径打架", "why_not_major": "G6 不在 key_gates ⇒ 改判 FAIL 不改变整体 status；reason 串如实披露 verdict；该行为自 6a702ad 起从未改动，不是本轮引入的回归", "fix": "把 G6 收紧为 verdict == PASS 才 PASS（加严），或改规格 title + 加机器可读 reviewer_verdict 字段 + 明确 G6 在 key_gates 里的角色"},
+    {"id": "MINOR-2", "severity": "MINOR", "title": "方差实验的「干净树 77.5」一次没有归档运行清单 ⇒ BLOCKED-8 的证据链未闭合", "evidence": "仓内 19 份 + /tmp 全盘 112 份运行清单均无 git_sha=0b1ec84；唯一佐证是仓外 /tmp/regen_evidence.log（run_id=20261030T143443Z）", "impact": "这条要交给业务方的结论目前不可复核，且与第 3 轮被抓掉的「脏树 77.5」形态同类", "fix": "归档该次运行的运行清单 + 成绩单 + 机器答卷，并把「n=1 vs n=12」的样本量写进 final_statement"},
+    {"id": "MINOR-3", "severity": "MINOR", "title": "交接包 复跑命令.md 的复核报告指针陈旧（错了一轮）", "evidence": "复跑命令.md 原写「g6_reviewer.json（第 2 轮 PASS）」，实际该文件是第 3 轮（CONDITIONAL），第 2 轮 PASS 在 g6_reviewer_round2.json 且文中未提", "impact": "验收方按它复跑会误读「当前复核报告是第 2 轮 PASS」", "fix": "改正指针并列出四轮全部文件"},
+    {"id": "NIT-1", "severity": "NIT", "title": "_git_dirty() 豁免整个交接包目录 ⇒ 交接包内容变了也不会翻红", "evidence": "tools/dd_v1_exam_suite.py 的 _git_dirty() continue 掉 .audit/ 与 docs/dd-v1-fos71/ddv1-auto-test-suite/", "fix": "在门禁报告里加交接包 sha256 快照字段"},
+    {"id": "NIT-2", "severity": "NIT", "title": "README 与机器门禁对「交付门禁整体状态」的表述不一致", "evidence": "README 写 G1—G5/G7/G8 PASS、G6 复核中；门禁报告 status=PASS 且 G1—G8 全部 PASS（含 G6）", "fix": "随 MINOR-1 一并解决"},
+    {"id": "NIT-3", "severity": "NIT", "title": "方差实验的分布措辞超出样本（n=1 vs n=12）", "evidence": ".audit/variance/dsh-variance-v3.json 的 final_statement 写「分数会在 96.67 与 77.5 之间跳」", "fix": "把分布性主张收敛为「分布尚未在受控条件下测出」，并写清样本量"}
+  ],
   "not_verifiable_here": [
     {"item": "R10 Windows 真机", "why": "本机 macOS；仓内无 Windows 机器产出的证据", "who": "刘江在 Windows 真机按 handoff/复跑命令.md 全量复跑并产出带 platform=Windows 的运行清单"},
-    {"item": "真实 42 题的业务 Gold / 披露分级 / 合格线", "why": "业务方尚未冻结；本体系按设计不判真实业务成绩", "who": "业务方（波总/刘江）冻结后另行验收"},
-    {"item": "dsh 凭证「轮换」的管理事实", "why": "只能证明现在能用，无法核验谁在何时换的 key", "who": "账号持有人提供轮换记录（BLOCKED-7 的主动探测缺口仍在）"},
-    {"item": "真实 42 题的端到端业务准确率", "why": "需要真实材料 + 真实披露授权", "who": "同上，属 BLOCKED-2/3/4"}
+    {"item": "真实 42 题的业务 Gold / 披露分级 / 合格线", "why": "业务方尚未冻结；本体系按设计不判真实业务成绩", "who": "业务方冻结后另行验收"},
+    {"item": "77.5 那次运行的完整产物", "why": "已被后续重生成覆盖，无法复原（仓内与 /tmp 全盘均无）", "who": "只能靠未来在受控条件下重复采样重新测量（并每次归档独立 --out）"}
   ],
-  "gate_impact": "★ G6 在本报告落盘前必然 FAIL（门禁读 <runs>/g6_reviewer.json 顶层 verdict，而仓内只有 round1/round2 命名）⇒ 施工者须把本报告落盘为 .audit/gate-runs/g6_reviewer.json 再重跑 gate。★ 注意门禁把 verdict ∈ {PASS, CONDITIONAL} 都判 PASS（tools/dd_v1_exam_suite.py 的 reviewer_report 分支）——本报告 verdict=CONDITIONAL ⇒ 门禁 G6 会显示 PASS 但 reason 里写明 CONDITIONAL；此口径是否过松留给下一轮复核判断。",
   "repair_commits": {
-    "cb03b51": "MAJOR-1 修复（错年度进安全闸 + 封顶 59 + _comparable_period 护栏 + 永久回归 8 项）＋ MINOR-1/2/3/4 ＋ NIT-1 加严 ＋ 证伪更正（撤回 ±19.17）",
-    "0b1ec84": "amendment A6（MINOR-5 / NIT-2 书面处置）＋ 交接包 README 逐条披露 findings 处置 ＋ 改写「均为 git_dirty=false」的失实声明"
+    "cb03b51": "MAJOR-1 修复（错年度进安全闸 + 封顶 59 + _comparable_period 护栏）＋ MINOR-1/2/3/4 ＋ NIT-1 加严 ＋ 证伪更正",
+    "0b1ec84": "amendment A6（MINOR-5 / NIT-2 书面处置）＋ 交接包逐条披露 findings 处置",
+    "a1fb96b": "错年度进闸的归属口径修正（消除 131 条假阳性）＋ 2 条永久回归",
+    "934ec95": "干净树证据重生成 ＋ 第 3 轮报告入库 ＋ 两次结论更正",
+    "pending_round4_fix": "第 4 轮 3 MINOR ＋ 3 NIT 的处置：amendment A7（G6 只认 PASS ＋ 机器可读 reviewer_verdict）、A8（G6 进 key_gates ＋ handoff_sha256_selfcheck）、归档 6 份方差运行清单 ＋ 77.5 的 stdout 摘要（带证据强度限制）、复跑命令.md 指针修正、方差措辞收敛"
   }
 }

@@ -232,3 +232,64 @@ def test_gate_spec_has_amendment_a5_alignment():
     a5 = next(a for a in GATE_SPEC["amendments"] if a["id"] == "A5")
     assert "WRONG_PERIOD" in a5["change"] or "错年度" in a5["change"]
     assert "thresholds_unchanged" in a5 and a5["thresholds_unchanged"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# G6 只认 PASS（独立 Reviewer 第 4 轮 MINOR-1）
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _write_reviewer_report(runs: Path, verdict: str, round_: int = 4) -> None:
+    (runs / "g6_reviewer.json").write_text(
+        json.dumps({"schema_version": "dd_v1_reviewer_report.v1", "round": round_,
+                    "reviewed_commit": "deadbeef" * 5, "verdict": verdict},
+                   ensure_ascii=False, indent=2), "utf-8")
+
+
+def _runs_with_real_model(tmp_path: Path) -> Path:
+    return _write(tmp_path, {
+        "A": _manifest("A", "20261030T010000Z", mode="RULE_ONLY", path="RULE_ONLY"),
+        "A-dsh": _manifest("A", "20261030T020000Z", mode="AGENT_REQUIRED", path="REAL_MODEL",
+                           participated=True, verified=True, agent="dsh"),
+    })
+
+
+def test_g6_fails_when_reviewer_verdict_is_conditional(tmp_path):
+    """★ **CONDITIONAL 的复核报告不得让 G6 判 PASS**（第 4 轮 MINOR-1）。
+
+    ★ 为什么要这条：冻结门禁规格里 G6 的 title 明写「独立 Reviewer **PASS**」，
+      而实现原先把 ``PASS`` 与 ``CONDITIONAL`` **都**判 PASS
+      ⇒ 机器门禁报告说「G6 PASS」、人读交接包说「G6 不算 PASS」⇒ 两份产物互相打架。
+    """
+    runs = _runs_with_real_model(tmp_path)
+    _write_reviewer_report(runs, "CONDITIONAL")
+    rep = _gate(runs)
+    g6 = rep["gates"]["G6"]
+    assert g6["status"] == "FAIL", g6
+    assert "CONDITIONAL" in g6["reason"], g6["reason"]
+
+
+def test_g6_passes_when_reviewer_verdict_is_pass(tmp_path):
+    """★ verdict=PASS ⇒ G6 PASS（收紧后仍然能通过，别把门禁焊死）。"""
+    runs = _runs_with_real_model(tmp_path)
+    _write_reviewer_report(runs, "PASS")
+    rep = _gate(runs)
+    assert rep["gates"]["G6"]["status"] == "PASS", rep["gates"]["G6"]
+
+
+def test_gate_report_exposes_machine_readable_reviewer_verdict(tmp_path):
+    """★ 门禁报告必须**机器可读**地给出复核 verdict（不让人从 reason 串里猜）。"""
+    runs = _runs_with_real_model(tmp_path)
+    _write_reviewer_report(runs, "CONDITIONAL")
+    rep = _gate(runs)
+    rv = rep.get("reviewer_verdict") or {}
+    assert rv.get("verdict") == "CONDITIONAL", rv
+    assert rv.get("present") is True, rv
+    assert rv.get("round") == 4, rv
+
+
+def test_gate_spec_has_amendment_a7_g6_tightening():
+    """★ A7：G6 只认 PASS 这件事必须在冻结文件里留 amendment（加严，不是改口径）。"""
+    a7 = next((a for a in GATE_SPEC["amendments"] if a["id"] == "A7"), None)
+    assert a7 is not None, [a["id"] for a in GATE_SPEC["amendments"]]
+    assert "G6" in a7["change"]
+    assert a7["thresholds_unchanged"]

@@ -13,15 +13,15 @@
 | **本轮做了什么** | 建「自动考试台」（隔离考场 ＋ 三层自动考试 ＋ 自动标准答案评分 ＋ 冻结阈值交付门禁），修掉 **4 个活缺陷** ＋ **3 处假绿**；**二轮**再补：**三种运行模式**、**G8 真实模型参与门禁**、**模型身份核实**、**分 Agent 超时预算**、**14 条假绿反例回归** |
 | **分支** | `feat/dd-v1-auto-test-harness-20261030`（**未合并 master**） |
 | **基线** | `bf68cf94c2744624445b6ea992e41fc3f0b1b78e`（＝ PR#86 的 head，PR#86 本身也**未合并**） |
-| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`0f34ff41…`（见 §3 三个锚点） |
+| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`a1fb96b…`（证据生成于该提交的干净树，见 §3 三个锚点） |
 | **测试规模** | pytest 全量 **2174 项 / 0 失败 / 6 skipped**（CI 口径：代理改写 ＋ 排除 doctor） |
 | **自动化覆盖率** | **98.04%**（50/51，**机算**）｜**通过率 100%**（50/50，**机算**）—— 两个数**分列** |
 | **三场合成考试（规则基线）** | A 基础 3 题 96.67 分｜B 复杂 9 题 95.67 分｜C 完整 42 题 **100.0 分**，安全闸全 PASS |
 | **★ 三名真实 Agent 考生** | **dsh**（deepseek-flash）｜**pi**（MiniMax-M3.1-Flash-Preview）｜**codex**（gpt-5.6-sol）—— **全部真实调用成功、模型身份核实通过** |
-| **交付门禁** | **G1—G5、G7、G8 PASS**；G6＝独立 Reviewer（**第 3 轮复核中**，见 §3） |
+| **交付门禁** | **G1—G5、G7、G8 PASS**；★ **G6＝FAIL**（独立复核第 4 轮 verdict＝**CONDITIONAL**，**不是** PASS）⇒ **整体 `status=FAIL`、`failed_key_gates=["G6"]`**（amendment A7/A8：G6 只认 PASS，且 G6 已进关键门槛） |
 | **★ 三种运行模式** | `RULE_ONLY`（成绩名 `RULE_BASELINE_SCORE`）｜`AGENT_REQUIRED`（模型缺席 ⇒ 考试 FAIL ＋ AI 成绩 `NOT_SCORED`）｜`AUTO`（降级如实标注） |
-| **独立复核** | 第 1 轮 **CONDITIONAL**（4 MAJOR＋4 MINOR＋2 NIT，**逐条已修并回归**）→ 第 2 轮 **PASS** → **第 3 轮（二轮施工）进行中** |
-| **★ 尚不可正式验收** | **G6 第 3 轮复核未出** ＋ **真实 42 题的 Gold / 披露分级 / 合格线未冻结** ＋ **Windows 真机未验** ⇒ 按施工令第六节，**现在不得向刘江发正式验收请求** |
+| **独立复核** | 第 1 轮 **CONDITIONAL**（4 MAJOR＋4 MINOR＋2 NIT，**逐条已修并回归**）→ 第 2 轮 **PASS** → **第 3 轮 CONDITIONAL**（2 MAJOR＋5 MINOR＋2 NIT，**已逐条修并回归**）→ **第 4 轮 CONDITIONAL**（两条 MAJOR 真闭环、9 条 MINOR/NIT 全闭环；**新提 3 MINOR ＋ 3 NIT**，已修 3 MINOR ＋ 2 NIT） |
+| **★ 尚不可正式验收** | **G6＝CONDITIONAL（第 4 轮），机器与人读口径一致 ⇒ 不算 PASS** ＋ **真实 42 题的 Gold / 披露分级 / 合格线未冻结** ＋ **Windows 真机未验** ⇒ 按施工令第六节，**现在不得向刘江发正式验收请求** |
 
 ---
 
@@ -54,7 +54,8 @@
 | 三场考试的运行清单 / 答卷 / 成绩单 | `{A,B,C}/运行清单.json`、`{A,B,C}/answer/机器答卷-*.json`、`{A,B,C}/grade/成绩单-*.json` |
 | ★ **三名真实 Agent 考生**的运行清单 / 答卷 / 成绩单 | `{A-dsh,A-pi,A-codex}/运行清单.json` 等（**同一份冻结题 A ＋ 同一份 Gold**） |
 | 真实模型调用证据 | `.audit/real-model/real-model-evidence.json`（dsh：status=OK、exit=0、**8.93s**、deepseek-flash、**身份核实 verified**）、`stderr.log`、`answer.txt` |
-| 独立 Reviewer 报告 | `g6_reviewer.json`（**第 3 轮**）＋ `g6_reviewer_round2.json` / `g6_reviewer_round1.json`（历史，保留原文） |
+| 独立 Reviewer 报告 | `g6_reviewer.json`（**当前轮＝第 4 轮**，verdict=CONDITIONAL）＋ `g6_reviewer_round3.json` / `g6_reviewer_round2.json` / `g6_reviewer_round1.json`（历史，**四轮全部保留原文**） |
+| 独立 Reviewer 报告全文 | `handoff/REVIEWER-REPORT-V3.md`（34KB）／`handoff/REVIEWER-REPORT-V4.md`（32KB，**逐字原文**） |
 | 四组对照（规则基线 vs 三名考生） | `.audit/exam-plane/P3-对照-终版.json`（`compare-runs` 命令产出） |
 | ★ **方差实测**（同 commit 干净树重复调用） | `.audit/variance/dsh-variance-v3.json`（7 次读数 ＋ 77.5 那次的定位） |
 
@@ -85,7 +86,7 @@
 | **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T144559Z']`（dsh 真实调用、参与、身份核实过）；reason 另列 pi/codex（MINOR-4 已修） |
 | G4 合成 Gold 评分达标 | ✅ PASS | 考试C total=100.0 ≥ 70、理解=1.0、覆盖=1.0、42/42 题、安全 PASS |
 | G5 安全测试 PASS | ✅ PASS | 考试B status=SCORED_PARTIAL、安全 PASS、无 blocked、覆盖=1.0 |
-| **G6 独立 Reviewer PASS** | ⏳ **第 3 轮＝CONDITIONAL** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS（`g6_reviewer_round2.json`）→ **第 3 轮 CONDITIONAL**（`g6_reviewer.json`：R1—R9／X1—X3 PASS、R10=NOT_VERIFIED、两条 MAJOR ＋ 5 MINOR ＋ 2 NIT）⇒ 两条 MAJOR 已修（`cb03b51`／`a1fb96b`）＋ MINOR/NIT 全部处置（`0b1ec84`），**第 4 轮复验中 ⇒ 现在不算 PASS** |
+| **G6 独立 Reviewer PASS** | ❌ **FAIL（verdict＝CONDITIONAL）** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS → **第 3 轮 CONDITIONAL** → **第 4 轮 CONDITIONAL**（`REVIEWER-REPORT-V4.md`：R1—R9／C1—C4／C6／C8 PASS、R10＝NOT_VERIFIED、C5＝PARTIAL；**两条 MAJOR 真闭环**、**9 条 MINOR/NIT 全闭环**；新提 3 MINOR ＋ 3 NIT ⇒ 已修 3 MINOR ＋ 2 NIT）。<br>★ **amendment A7**：G6 **只认 `PASS`**（`CONDITIONAL` ⇒ FAIL）＋ 门禁报告新增机器可读 `reviewer_verdict`；**A8**：G6 进入 `key_gates` ⇒ 整体 `status=FAIL`、`failed_key_gates=["G6"]`（**与本表人读口径一致**） |
 | G7 交接包生成 | ✅ PASS | 本目录存在且非空 |
 | **G8 真实模型参与门禁** | ✅ **PASS** | `real_model=3; rule_only=3; degraded=0; mock=0; identity_unknown=0` —— ★ **本轮新增**；读**真实考试产物**，不认人工说明字段 |
 
@@ -183,6 +184,7 @@
 | 第 1 轮 | **CONDITIONAL** | 4 MAJOR ＋ 4 MINOR ＋ 2 NIT：证据出自修复前代码、冻结时间线自相矛盾、D3 无测试断言、证据不记 `git_dirty`、`counting_ok` 键缺失被放行、两口径机读层不可见…… | **逐条修完并回归**（变异测试验「测试有牙」） |
 | 第 2 轮 | **PASS** | 10 条全部 closed（**逐条实测复验**）；新提 1 MINOR ＋ 2 NIT | 已修并回归 |
 | **第 3 轮** | **CONDITIONAL** | R1—R9／X1—X3 **PASS**、R10（Windows）**NOT_VERIFIED**；**2 MAJOR**（① 安全闸比冻结尺子松一档：错年度交付可拿 100 分且 `safety=PASS`；② 覆盖率报告自己记着 `git_dirty=true` ⇒ 按本项目自己的规则不可作交付证据，且 417d906 提交说明与本文第 73 行的「均为 false」**被产物证伪**）＋ 5 MINOR ＋ 2 NIT | **已修 MAJOR-1／MAJOR-2 ＋ 全部 MINOR/NIT**（见下节）；**第 4 轮复验中** ⇒ **G6 现在仍不算 PASS** |
+| **第 4 轮** | **CONDITIONAL** | **两条 MAJOR 真闭环**（MAJOR-1 探针由 PASS/100.0 变 FAIL/59 且**护栏不冤枉机器**；MAJOR-2 全部证据 `git_dirty=false`）；**9 条 MINOR/NIT 全闭环**；R10（Windows）**NOT_VERIFIED**。<br>**新提 3 MINOR ＋ 3 NIT**：① **G6 把 `CONDITIONAL` 判 PASS** ⇒ 机器报告与交接包人读口径**互相打架**；② 那次干净树 77.5 **运行清单未归档** ⇒ 方差结论的**证据链没闭合**；③ `复跑命令.md` 的复核报告**指针错了一轮**；NIT：交接包不在 `_git_dirty()` 自证内／门禁整体状态表述不一致／方差措辞超出样本 | ★ **3 MINOR 已修**（A7／A8＋归档＋指针修正）＋ **NIT-1／NIT-3 已处置**；**NIT-2 随 A8 消解** ⇒ **仍为 CONDITIONAL**（R10 Windows 未验） |
 
 > ★ ★ **关于「AI 成绩是否可复现」，这句话本轮改了两次——两次都是被干净树上的复跑推翻的。**
 > - 我们此前报告「**AI 成绩不可复现（同卷差 ±19.17 分）**」；
@@ -230,6 +232,15 @@
 
 > ★ **原则**：凡属「实现比冻结尺子松」的 ⇒ **修实现、收紧**；凡属「冻结尺子本身」的 ⇒ **不动尺子**。
 > ★ 本轮**没有**改动任何数值阈值（可用 `git diff` 核验：G1—G8 判定段逐字未动，新增的 A5/A6 均为「只加严或只加说明」）。
+>
+> ★★ **但「收紧」本身也会出事（本轮实证，必须写下来）**：
+> MAJOR-1 的修复（把「错年度」加进安全闸）在**干净树重跑时一次误出 131 条假违规**，
+> 考试 C 被从 100.0 **误封顶 59**、门禁从 PASS 变 FAIL。
+> ⇒ 根因不是尺子，是**判定对象选错**：答卷里每行的 `delivered` 是**主体级**子集（同一主体的件都挂这一行），
+> 拿它**逐义务**比期间 ⇒ 把**兄弟义务**的材料判成「交错年份」。
+> ⇒ 已按**归属口径**修正（commit `a1fb96b`）＋ 两条永久回归（「兄弟件不误判」＋「真多交件仍封顶」）
+> ⇒ **收紧前必须先确认「判定对象的粒度与归属」**，并**拿最正常的那一档真实用例回归**。
+> ⇒ 细节：amendment **A5** 的 `effect` 段已补记该归属口径。
 
 ### ★ 命令行退出码口径（**别看错**）
 
@@ -250,7 +261,7 @@
 | 自动考试完成 | ✅ |
 | 核心链路 PASS | ✅（G1/G2/G3/G4/G5/G7/G8 全部 PASS；G8 为本轮新增） |
 | Gold 评分有效 | ⚠️ **合成卷有效**；**真实 42 题的 Gold / 披露分级 / 合格线业务方还没冻结**（BLOCKED-2/3） |
-| 独立 Reviewer PASS | ⏳ **第 2 轮 PASS；第 3 轮（二轮施工）复核未出** ⇒ 现在**不能算 PASS** |
+| 独立 Reviewer PASS | ❌ **第 4 轮＝CONDITIONAL**（两条 MAJOR 与 9 条 MINOR/NIT 均已闭环；R10 Windows 未验）⇒ 现在**不能算 PASS** ⇒ 机器门禁 `status=FAIL`、`failed_key_gates=["G6"]`（A7/A8） |
 | 新版本冻结 SHA | ✅ tag `ddv1-auto-exam-v1`（读法见 `版本锚点.md`） |
 | Windows 交接包完整 | ✅ 本包 |
 | **真实模型参与证明 PASS（G3）** | ✅ **PASS**（dsh 真实调用：exit=0、**8.93s**、deepseek-flash、身份核实 verified） |
@@ -293,15 +304,18 @@
 > | ② 第 3 轮复核后（**已撤回**） | 「**不可复现**撤回 ⇒ 脏工作区才不稳；干净树 17 次恒 96.67、零方差」 | Reviewer 查到那 3 次 77.5 **全部** `git_dirty=true`；当时按「干净树零方差」下了结论 |
 > | ③ **今天（最终）** | ★ **「AI 成绩存在方差」** —— 干净树上**也**出现过 77.5 | 干净树重跑时（commit `0b1ec84`，`git_dirty=false`）dsh 实测 **77.5**（模型少选了一份材料）⇒ **②的「零方差」被推翻** ⇒ **我的撤回本身也要更正** |
 >
-> ⇒ **最终正确表述（三句话）**：
-> ① **现象是真的**：同卷同模型，分数确实会在 **96.67** 与 **77.5** 之间跳（今天实测：同一 commit 干净树 4 次全 96.67，
->    而紧邻的前一个 commit 干净树 1 次 77.5；历史另有 3 次脏树 77.5）。
-> ② **「脏工作区」不是原因**：脏树读数**不可作交付证据**（这是证据规则），
->    但**干净树也会出 77.5** ⇒ 分数波动**不能**归因于脏工作区。
-> ③ **分布尚未在受控条件下测出**（温度/提示词版本未钉死、N 次采样未做）⇒
->    **单次 AI 分数不足以作为业务验收依据**。
+> ⇒ **最终正确表述（三句话，★ 第 4 轮 Reviewer 的 C5 已把它收敛到样本支持的强度）**：
+> ① **出现过一次干净树低分**：同卷同模型，今天在**干净树**（commit `0b1ec84`，`git_dirty=false`）上
+>    实测过一次 **77.5**（模型少选一份材料 ⇒ `miss_rate=0.333`）⇒ **分数并非恒定**。
+> ② **但分布没测出来**：**已归档的干净读数共 12 次（施工者 7 ＋ Reviewer 独立 5）全部 96.67、零方差**；
+>    那一次 77.5 的**完整运行清单未归档**（被后续重生成覆盖）⇒ 只有工具 stdout 摘要留证
+>    （`.audit/variance/ddv1_77_5_stdout_excerpt.txt`）⇒ **n=1 不足以描述分布**。
+> ③ ⇒ **可以确定**「单次 AI 分数不足以作为业务验收依据」；**不能确定**「分布长什么样」
+>    ⇒ 表述统一为「**分布尚未在受控条件下测出**」（温度/提示词版本未钉死、N 次采样未做）。
 >
 > ⇒ ★ 这三轮更正本身也是证据：**我们自己的历史结论也会被推翻，而且推翻它的正是干净树上的复跑。**
+> ⇒ ★★ **第 4 轮又收了一刀**：它指出「分数会在 96.67 与 77.5 之间跳」这个措辞**超出样本支持**（n=1 vs n=12）
+> ⇒ 已按上面 ①②③ 收敛。**教训**：**分布性主张必须写清样本量**，否则「一次观察」会被读成「常态」。
 > ⇒ 要给验收方一个**可信**的 AI 成绩，必须先固定温度/提示词版本、N 次取中位数、并做错误分类与消融测试。
 
 ---
