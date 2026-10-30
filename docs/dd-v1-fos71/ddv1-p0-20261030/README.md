@@ -22,7 +22,7 @@
 | **另一处** | `dd_v1_gold_service.check_correspondence` 对「`expected_files` 全空」的 Gold **一条问题都不报** ⇒ 对应关系判 `CONFIRMED` ⇒ Gold 侧同样是「在就算好」 |
 | **修法** | ①「空」升级为**阻塞事实**：`LIBRARY_EMPTY`／`CHECKLIST_NO_OBLIGATIONS`／`CHECKLIST_ITEM_COUNT_ZERO`／`GOLD_NO_EXPECTED_FILES`／`GOLD_NO_OBLIGATIONS`；② 分项 `problems` **全部进入 `blockers`**（原先只躺在分项里 ⇒ `blocked_by` 为空 ⇒ 读起来像「什么都在」）；③ 状态由**全部阻塞事实按优先级**推导 ⇒ **库/考卷为空时不得把责任说成 Gold 的问题**（`TEST_BLOCKED_EXAM_INPUT_EMPTY`） |
 | **三档能力** | 新增 `capability`：`ENGINEERING`（只能工程测试）／`DIAGNOSTIC`（可业务诊断，**结果必须标「非正式评分」**）／`FORMAL_SCORING`（可正式评分） |
-| **负例回归** | `backend/tests/test_dd_v1_preflight_p0_empty.py`（**11 条**）：刘江实测那一档（空库＋0 义务＋0 映射）＋ 九类异常逐条 ＋ 三档能力 |
+| **负例回归** | `backend/tests/test_dd_v1_preflight_p0_empty.py`（**16 条**）：刘江实测那一档（空库＋0 义务＋0 映射）＋ 九类异常逐条 ＋ 三档能力 |
 | **变异验证** | 删 `LIBRARY_EMPTY` 闸 → **2 red**；删 `CHECKLIST_NO_OBLIGATIONS` 闸 → **2 red**；删 `GOLD_NO_EXPECTED_FILES` 闸 → **2 red** ⇒ ★ 三道闸**都有判别力**（不是摆设） |
 
 ### P0-2｜同一张 42 题考卷，两套拆解（91 vs 15）
@@ -78,7 +78,7 @@
 | 项 | 读数 |
 |---|---|
 | **全量回归**（`pytest tests/ --ignore=tests/test_ui_smoke_gk.py`） | **2069 tests ／ 2068 passed ／ 1 failed ／ 0 errors**（唯一红＝`test_doctor_script`（沙箱环境项，CI 显式 ignore））⇒ **零新增失败**（基线 2027／2026／1／0 ⇒ 本轮 **+42 条全绿**） |
-| **本轮新增用例** | `test_dd_v1_preflight_p0_empty.py`(11) ＋ `test_dd_v1_obligation_contract_wp2.py`(11) ＋ `test_dd_v1_gold_gap_and_scorecard_wp4.py`(15) ＝ **37 条**（另 5 条为既有文件补强） |
+| **本轮新增用例** | `test_dd_v1_preflight_p0_empty.py`(**16**) ＋ `test_dd_v1_obligation_contract_wp2.py`(**11**) ＋ `test_dd_v1_gold_gap_and_scorecard_wp4.py`(**15**) ＝ **42 条**（★ 以 `--junitxml` 实测为准；★ **零新增失败**） |
 | **合成 42 题端到端** | 建库 84 份材料 ＋ 42 题清单 ⇒ 库侧拆 **42 条义务／42 题**；运行器 `--library` 路径 **42 条／42 题（0 挂不上）**；★ **旧路径对照：21 条／21 题 ⇒ 丢一半题**（与刘江实测 15／12 同形态） |
 | **预检 e2e** | 合成 Gold（30 可解析 ＋ 8 缺料 ＋ 2 无期望文件）⇒ 状态 `TEST_BLOCKED_GOLD_BROKEN`、**档位 `DIAGNOSTIC`**、**逐件缺口 10 件**（A_MISSING 8 ＋ F 2） |
 | **阅卷 e2e** | 三组：① 题数 42（分母来源 `LIBRARY_OBLIGATION_CONTRACT`）｜已处理 42｜正确 30｜未匹配 0｜未完成 2｜覆盖率 1.0 ② 可评分 32（分母）｜正确 30｜错误 2｜未纳入 {MISSING_IN_LIBRARY: 8, NO_EXPECTED_FILES: 2} ③ 证据差异 42 条 |
@@ -87,8 +87,33 @@
 
 ## 五、尚未解决 / 如实标注
 
-- ★ **真实 42 题仍未跑**（需刘江在授权 Windows 环境用**新冻结 SHA** 重跑）⇒ **业务验收未完成**；
+- ★ **真实 42 题仍未跑**（需刘江在授权 Windows 环境用**新冻结锚点（tag `ddv1-p0-20261030`）** 重跑）⇒ **业务验收未完成**；
 - ★ **真实 11 份缺料 ＋ 4 份歧义**仍未逐件核对（工具已就位，需真实 Gold 与真实材料库）；
 - ★ **真实 `HARNESS_MODEL` 端到端未测**（沙箱无文本生成 LLM）；
 - ★ **UI 烟雾测试未测**（沙箱无 playwright；基线同样炸 ⇒ 环境项）；
-- ★ **WINDOWS-HANDOFF §0⑥′ 的措辞与实现不符**（「材料不出本机」 vs 本机 `dsh` 调云端模型）⇒ **文档缺陷**，本轮已列入待改（见 WP6 交接说明）。
+- ★ **WINDOWS-HANDOFF §0⑥′ 的措辞与实现不符**（「材料不出本机」 vs 本机 `dsh` 调云端模型）⇒ ★ **本轮已修**：改为「数据流以本机 Harness 的实际实现为准 ⇒ **不保证「材料不出本机」**」，并补授权口径（未授权 ⇒ 只用脱敏/合成数据，真实 42 题记 **BLOCKED**）。
+
+## 六、冻结锚点：为什么把「sha」换成「tag」（★ 本轮踩到的自指坑）
+
+★ 本指南初稿第 3 行写的是「本轮冻结版本＝`<sha>`」⇒ ★ 那个 sha 是**写它的上一笔**的 tip
+⇒ ★ **写下这一笔自身就把分支推前一位** ⇒ ★ **那行 sha 从写下那刻起就是移动靶**（永远对不上它自己）。
+
+⇒ **结构性改法**（不是补一次就完）：
+1. **冻结锚点＝ tag `ddv1-p0-20261030`**（★ tag 不随分支前进而漂移 ⇒ ★ 刘江拉 tag 永远拿到同一份字节）；
+2. **版本核对＝ 内容标记命中**（`LIBRARY_EMPTY` / `export_obligation_contract` / `add_argument("--library"` 三条，各 ≥1 行）
+   ⇒ ★ 内容标记不会移动 ⇒ ★ 判据从此稳定（★ 已在 tag 上实测：命中 **3 / 1 / 2** 行）；
+3. 「P0 代码引入于哪一笔」的 sha **保留但降级**为历史事实，并**显式否掉「导航」语义**（★ 「不表示当前 head、不要按它导航」）。
+
+## 七、最终 head 上的读数与如实记账
+
+| 项 | 读数（作用域／版本／时刻） |
+|---|---|
+| **最终 head** | tag `ddv1-p0-20261030`（★ 分支 `feat/71-ddv1-exam-v1-20261028` 与 `feat/71-ddv1-p0-fix-20261030` 同指该 tip） |
+| **全量回归** | **2069 tests ／ 2068 passed ／ 1 failed ／ 0 errors**（唯一红＝`test_doctor_script`，沙箱环境项）｜作用域＝`backend/tests/`（`--ignore=tests/test_ui_smoke_gk.py`）｜**版本＝代码提交 `f448d6e`**｜时刻＝2026-10-30T04:48Z |
+| **最终 head 的新增用例复跑** | **42 项全绿**（0 failed／0 errors）｜作用域＝本轮三个新测试文件｜**版本＝最终 head 的字节**｜命令：`cd backend && pytest tests/test_dd_v1_preflight_p0_empty.py tests/test_dd_v1_obligation_contract_wp2.py tests/test_dd_v1_gold_gap_and_scorecard_wp4.py --junitxml=…` |
+| **代码字节未变** | ★ 自 `f448d6e`（全量所跑的那一笔）到最终 head 的变更面＝**3 个 docs 文件**、**非 docs 路径 0 个** ⇒ ★ **全量读数对最终 head 的代码字节成立** |
+| **逐路径核对** | **161/161 一致**（本地 vs 远端 tip）｜★ master `3781311c4b1157c68a0f891506b7c33ab327f7c4` **未动** |
+
+★ ★ **孪生提交（如实记账，不 force 清理）**：★ 我的 REST 推送工具此前**每次重推整条链** ⇒ 远端历史里出现**同一 tree 的重复提交**
+⇒ ★ **最终 tree 正确**、**没有** force／amend／改写任何已落字节；★ **判据是最终 tree 与逐路径内容，不是 commit 条数**。
+⇒ ★ **工具已改**：★ 推送时只给「上次已推的本地提交..HEAD」这一段 ⇒ ★ 手抄/重推这一类动作在流程里就不存在了。
