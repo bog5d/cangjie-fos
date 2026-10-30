@@ -70,7 +70,10 @@
 > ★ 判定「证据是否可信」看 **证据里的 `git_sha` + `git_dirty`**：
 > **`git_dirty=false` ⇒ 测的就是那个 commit 的代码，一一对应**；
 > `git_dirty=true` ⇒ 测的是**工作区**代码，**不能**对应任何 commit ⇒ 不可作为交付证据。
-> ★ 本轮这批证据均为 `git_dirty=false`。
+> ★ ★ **必须逐份读，不能看总印象**——第 3 轮独立复核就查出一处 `git_dirty=true`
+>   （`.audit/gate-runs/覆盖率报告.json`：它在「改了验收项配置但还没提交」的工作区上算出）
+>   ⇒ 那一份**已作废**，并在**干净树**上重生成（详见 §「第 3 轮的处置」）。
+> ★ 教训：**证据必须逐份自证干净**，不能靠「这批都是干净树跑的」这种印象式断言。
 
 ### 门禁逐条
 
@@ -81,7 +84,7 @@
 | **G3 真实模型调用 PASS** | ✅ **PASS** | `real_model_runs=['20261030T135406Z']`（dsh 真实调用、参与、身份核实过） |
 | G4 合成 Gold 评分达标 | ✅ PASS | 考试C total=100.0 ≥ 70、理解=1.0、覆盖=1.0、42/42 题、安全 PASS |
 | G5 安全测试 PASS | ✅ PASS | 考试B status=SCORED_PARTIAL、安全 PASS、无 blocked、覆盖=1.0 |
-| **G6 独立 Reviewer PASS** | ⏳ **第 3 轮复核中** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS（`g6_reviewer_round2.json`）；**本轮二轮施工的复核尚未出结论** ⇒ **现在不算 PASS** |
+| **G6 独立 Reviewer PASS** | ⏳ **第 3 轮＝CONDITIONAL** | 第 1 轮 CONDITIONAL → 第 2 轮 PASS（`g6_reviewer_round2.json`）→ **第 3 轮 CONDITIONAL**（`g6_reviewer.json`：R1—R9／X1—X3 PASS、R10=NOT_VERIFIED、两条 MAJOR ＋ 5 MINOR ＋ 2 NIT）⇒ **第 4 轮复验中，现在不算 PASS** |
 | G7 交接包生成 | ✅ PASS | 本目录存在且非空 |
 | **G8 真实模型参与门禁** | ✅ **PASS** | `real_model=3; rule_only=3; degraded=0; mock=0; identity_unknown=0` —— ★ **本轮新增**；读**真实考试产物**，不认人工说明字段 |
 
@@ -154,8 +157,8 @@
 | C | 100.0 | 100.0 | 不受影响 |
 
 ★ **阈值未动一个**（total≥70 / understanding=1.0 / coverage=1.0 / 42 题）—— 重跑前后逐位相同。
-★ 本次三场考试的运行清单均记录 `git_sha=bf709ab…` 且 **`git_dirty=false`** ⇒ 证据**严格对应**该提交的代码。
-★ 门禁报告与覆盖率报告同样记录 `git_sha=bf709ab…`、`git_dirty=false` ⇒ **三场考试 ＋ 门禁 ＋ 覆盖率同源**。
+★ **该次（D4 重跑批次）**三场考试的运行清单均记录 `git_sha=bf709ab…` 且 **`git_dirty=false`** ⇒ 证据**严格对应**该提交的代码。
+★ 该批次门禁报告与覆盖率报告同样记录 `git_sha=bf709ab…`、`git_dirty=false` ⇒ **三场考试 ＋ 门禁 ＋ 覆盖率同源**。
 
 ---
 
@@ -178,6 +181,13 @@
 |---|---|---|---|
 | 第 1 轮 | **CONDITIONAL** | 4 MAJOR ＋ 4 MINOR ＋ 2 NIT：证据出自修复前代码、冻结时间线自相矛盾、D3 无测试断言、证据不记 `git_dirty`、`counting_ok` 键缺失被放行、两口径机读层不可见…… | **逐条修完并回归**（变异测试验「测试有牙」） |
 | 第 2 轮 | **PASS** | 10 条全部 closed（**逐条实测复验**）；新提 1 MINOR ＋ 2 NIT | 已修并回归 |
+| **第 3 轮** | **CONDITIONAL** | R1—R9／X1—X3 **PASS**、R10（Windows）**NOT_VERIFIED**；**2 MAJOR**（① 安全闸比冻结尺子松一档：错年度交付可拿 100 分且 `safety=PASS`；② 覆盖率报告自己记着 `git_dirty=true` ⇒ 按本项目自己的规则不可作交付证据，且 417d906 提交说明与本文第 73 行的「均为 false」**被产物证伪**）＋ 5 MINOR ＋ 2 NIT | **已修 MAJOR-1／MAJOR-2 ＋ 全部 MINOR/NIT**（见下节）；**第 4 轮复验中** ⇒ **G6 现在仍不算 PASS** |
+
+> ★ ★ **第 3 轮还做了一件比抓 bug 更重要的事：它证伪了我们自己的一条结论。**
+> 我们此前报告「**AI 成绩不可复现（同卷差 ±19.17 分）**」——
+> Reviewer 独立复跑发现：那 3 次 77.5 **全部**发生在 `git_dirty=true` 的工作区（其中两次之间代码还在变），
+> 而**干净树 17 次运行恒为 96.67、零方差** ⇒ **该结论已撤回**（全文更正见 §4.1 与 BLOCKED-8）。
+> ★ ⇒ **我们自己也会拿脏证据讲出一个漂亮的故事**；这条教训比任何单条 bug 都值钱。
 
 > ★ 两轮复核报告**都入库**、**都保留原文**：
 > `.audit/gate-runs/g6_reviewer_round1.json`（第 1 轮，CONDITIONAL）＋ `g6_reviewer_round2.json`（第 2 轮，PASS）＋ `g6_reviewer.json`（**第 3 轮**：二轮施工的复核）。
@@ -198,6 +208,23 @@
 
 ★ 外加 **14 条假绿反例**（`backend/tests/test_dd_v1_false_green_regressions.py`，**25 项断言全绿**）
 ＋ **P5 性能账 12 项**（`test_dd_v1_perf_budget.py`）＋ **门禁绑定确定性 11 项**（`test_dd_v1_gate_binding_determinism.py`）。
+
+### ★ 第 3 轮的 findings 逐条处置（**为什么这些是「修实现」而不是「改尺子」**）
+
+| 编号 | Reviewer 的结论 | 处置 | 证明方式 |
+|---|---|---|---|
+| **MAJOR-1** | 冻结评分规范明列 `WRONG_PERIOD` 是安全闸计数项（命中 ⇒ FAIL ＋ 封顶 59），但**实现把错年度排除在闸外** ⇒ 错年度交付可拿 **100 分**且 `safety_gate=PASS` | **修实现**（拉回冻结尺子）：交付件错年度 ⇒ 进闸 ⇒ FAIL ＋ ≤59；加 `_comparable_period()` 护栏（`CURRENT`/`当前`/`未知` 等**口径不可比**的期间**不判** ⇒ 不冤枉机器）；「选中未交付」仍只单列不封顶 | `amendment A5` ＋ 新增永久回归 `test_dd_v1_safety_gate_spec_alignment.py`（8 项） |
+| **MAJOR-2** | `.audit/gate-runs/覆盖率报告.json` **自己记着 `git_dirty=true`** ⇒ 按本项目自己的规则**不可作交付证据**；且 417d906 提交说明与本文原第 73 行「均为 false」**被产物证伪** | **作废该份证据，在干净树重生成**（G1 ＋ 三场考试 ＋ 门禁 ＋ 覆盖率 ＋ 对照）；**改正声明**（本文 §「这批证据对应哪个 commit」已改为「必须逐份读，不能看总印象」） | 逐份读 `git_sha` + `git_dirty`；干净树重跑 |
+| **MINOR-1** | 运行清单的 `model.degrade_reason` 恒为空 ⇒ 门禁读的那份看不到降级原因 | 补 `degrade_reason`（`run_provenance` 与答卷两处都取） | `test_dd_v1_gate_binding_determinism.py` |
+| **MINOR-2** | `gold_fingerprint` 每次运行都不同（用了 uuid4 的 `obligation_id`）⇒ 该字段**自证不了**「同一份 Gold」 | 改用**内容派生的稳定键** `obligation_key` | 同上 |
+| **MINOR-3** | dsh 的身份「绑定」是**装饰性**的（`config_cwd` 只是把 `expected_cwd` 原样抄进去） | 改为**在 `expected_cwd` 里真的取配置**（profile 配置按目录解析），并写明「**能证明／不能证明**」 | `dd_v1_agent_identity.py` |
+| **MINOR-4** | G3 的 reason 只列 dsh 一条 ⇒ 读者会以为只跑了一个模型 | 判定口径**一字未改**，reason 如实补列其它真实模型考生 | 同上 |
+| **MINOR-5** | `frozen_at` 在首评估之后被回改，git 不可核验 | **书面处置**（`amendment A6`）：接受为已知限制，**不改追溯**；客观补偿＝**阈值逐字段 0 差异**（四版 flatten 比对） | `amendment A6` |
+| **NIT-1** | AUTO ＋ `MODEL_ID_UNKNOWN` 不会单独判 G8 FAIL | **加严**为 FAIL（施工令 §6「不得通过模型身份验收门禁」） | `amendment A5` ＋ 门禁绑定测试 |
+| **NIT-2** | `pytest -q` 末行汇总在 stdout 捕获里丢失 | **书面处置**（`amendment A6`）：权威产物是 **JUnit XML**，门禁读的就是 XML 计数 ⇒ 不影响判定 | `amendment A6` |
+
+> ★ **原则**：凡属「实现比冻结尺子松」的 ⇒ **修实现、收紧**；凡属「冻结尺子本身」的 ⇒ **不动尺子**。
+> ★ 本轮**没有**改动任何数值阈值（可用 `git diff` 核验：G1—G8 判定段逐字未动，新增的 A5/A6 均为「只加严或只加说明」）。
 
 ### ★ 命令行退出码口径（**别看错**）
 
