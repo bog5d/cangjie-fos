@@ -62,7 +62,7 @@
 
 | 开关 | 加在哪个命令 | 作用 | 不加会怎样 |
 |---|---|---|---|
-| `--agent <codex\|pi\|dsh\|manual\|prebaked>` | `run` | 让**本机**的 Harness 参与语义判断（材料**不出本机**） | 全程 `RULE_ONLY`（默认，零调用、零费用） |
+| `--agent <codex\|pi\|dsh\|manual\|prebaked>` | `run` | 让**本机**的 Harness 参与语义判断（★ **数据流以本机 Harness 的实际实现为准** ⇒ **不保证「材料不出本机」**） | 全程 `RULE_ONLY`（默认，零调用、零费用） |
 | `--agent-result "<回执.json>"` | `run` | 把**别处跑出来的**回执贴进来（审阅用） | 同上 |
 | `--confirmed-entity-map "<映射.json>"` | `run` | **人工确认**「某份材料属于哪个主体」的映射表 | 多源认不出 ⇒ 保持「认不出」（**不猜、不放行**）｜★ **键形态**：三种键任选 —— `sha256`（内容身份）｜`file_id`（FOS 内部稳定 id）｜**归一后的文件名/相对路径**；★ **大小写不敏感**（表里写 `FILE-ABC` 与行内 `file-abc` 也能对上；查表键已归一）｜★ 人工确认是**最强的一档证据**（`HUMAN_CONFIRMED`）⇒ **候选扩展时也不会丢**（扩展路径已透传） |
 | `--no-expand-candidates` | `run` | 关掉「候选触顶后继续分批扩展」 | 默认**开**（会把触顶义务的候选查完并如实报「还剩多少没看」） |
@@ -260,7 +260,7 @@ python tools\dd_team_channel.py contract-template --out "<输出目录>"
 
 ★ **本节回答一件事**：怎么才能拿到一份**真的由模型参与**的答卷，以及**别把规则跑出来的东西说成模型**。
 
-### 8.1 本机跑出真实 MODEL 凭据（推荐路径：材料不出本机）
+### 8.1 本机跑出真实 MODEL 凭据
 
 ```powershell
 # ① 用你本机已有的 Harness（Codex / DeepSeek / pi）跑一次语义判断
@@ -327,8 +327,14 @@ python tools\dd_team_channel.py run `
   自填的那一档只记进 `examinee.declared_provenance`（留痕、可查、**不作数**）。
   ⇒ 你自测时可查：`机器答卷.json` 的 `examinee.provenance_source` 应当是 `ADAPTER_IMPLEMENTATION`。
 
-★ **材料不出本机**：适配器跑的是**你本机**的 CLI ⇒ 不向未授权外部模型发送保密资料
-（本版**没有**新增任何付费 API，**没有**改生产配置）。
+★ ★★ **数据流必须由你亲自确认（2026-10-30 更正）**：★ 适配器跑的是**你本机**的 CLI
+⇒ ★ **CLI 在本机 ≠ 数据留在本机**：★ **`dsh`（DeepSeek Harness）通过 `DEEPSEEK_API_KEY` 调用**
+★ **DeepSeek 云端模型** ⇒ ★ **真实材料一旦进入模型判断，摘录就会离开本机**。
+⇒ ★ **因此**：★ 跑真实材料前**必须**有书面授权（波总口径：「授权：真实材料可经本地 dsh 调用 DeepSeek 云端模型
+用于本次 DD-V1 考试并计分」）；★ 未获授权时 ⇒ ★ **只用脱敏/合成数据**验证 Harness，
+★ 真实 42 题记 **BLOCKED**，**不得**伪称 `HARNESS_MODEL` 真实运行。
+⇒ ★ 本版**没有**新增任何付费 API，**没有**改生产配置；★ **不向未授权外部模型发送保密资料**是**操作纪律**，
+★ **不是**「本机 CLI 自动保证」的技术事实。
 ★ 若你要**审阅**别处跑出来的结果 ⇒ `--agent-result "<回执.json>"` ⇒ 类别会是
 `PREBAKED_RESULT`（**不是** Harness 运行）⇒ **不会**被当成模型凭据。
 
