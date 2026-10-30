@@ -1,13 +1,13 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T105531Z",
+  "run_id": "20261030T110543Z",
   "exam": "C",
   "exam_id": "DDV1-SYN-C",
   "title": "考试C · 完整42题",
-  "started_at": "2026-10-30T18:55:33+08:00",
-  "finished_at": "2026-10-30T18:55:33+08:00",
+  "started_at": "2026-10-30T19:05:45+08:00",
+  "finished_at": "2026-10-30T19:05:45+08:00",
   "elapsed_s": 1.78,
-  "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018",
+  "git_sha": "bf709abefed038e08702664e303a0235ec928d12",
   "git_dirty": false,
   "environment": {
     "platform": "darwin",
@@ -32,7 +32,7 @@
   "gold_version": {
     "path": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json",
     "items": 42,
-    "fingerprint": "697531c26398217021eab238e584fc628affebfa1f87add005de6e016109959b"
+    "fingerprint": "88657fbac8aaac7fc95d0de07ff11c421738bd4310a0ae7a89477bcce1ef0453"
   },
   "results": {
     "rc_run": 0,
@@ -461,7 +461,7 @@
       },
       "gaps": [
         {
-          "obligation_id": "8dbcba3049234f45bd88915713fd8911",
+          "obligation_id": "10ba442131ff44388093e957b6c689b5",
           "item_no": "3-9",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -474,7 +474,7 @@
           "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
         },
         {
-          "obligation_id": "1e6f776cf3cf4cceb20949583efa2753",
+          "obligation_id": "f5f9ee654c144f99a1de1b4f9c33ce0b",
           "item_no": "3-18",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -487,7 +487,7 @@
           "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
         },
         {
-          "obligation_id": "266413dcb0904f0da0a224c5ac64eca5",
+          "obligation_id": "1f30cd0d93504b9cb107d42d4c4dd5a3",
           "item_no": "3-27",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -500,7 +500,7 @@
           "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
         },
         {
-          "obligation_id": "bade12416fde45289e11dfd6323141a6",
+          "obligation_id": "6eb890fbaa804bdc81643839b6dd7008",
           "item_no": "3-36",
           "resolution": "NO_EXPECTED_FILES",
           "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
@@ -521,7 +521,7 @@
   "disclosure": {
     "delivered_rows": 38,
     "delivered_files": 31,
-    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/C/data/deliveries/50c3f1ded62845c8a571858cd13c0b0a/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/C/data/deliveries/a04c2901ed444228b9b971f614f54de8/组包manifest.tsv",
     "blocked_materials": 168,
     "violations": 0,
     "violation_detail": [],
@@ -535,7 +535,7 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": ".audit/exam-plane/C/answer/机器答卷-20261030-185533.json",
+    "answer_sheet": ".audit/exam-plane/C/answer/机器答卷-20261030-190545.json",
     "scorecard_dir": ".audit/exam-plane/C/grade",
     "run_report_dir": ".audit/exam-plane/C/run",
     "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/C/gold/gold-C.json"

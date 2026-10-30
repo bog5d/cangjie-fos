@@ -1,13 +1,13 @@
 {
   "schema_version": "dd_v1_exam_run_manifest.v1",
-  "run_id": "20261030T105530Z",
+  "run_id": "20261030T110542Z",
   "exam": "A",
   "exam_id": "DDV1-SYN-A",
   "title": "考试A · 基础功能",
-  "started_at": "2026-10-30T18:55:30+08:00",
-  "finished_at": "2026-10-30T18:55:30+08:00",
-  "elapsed_s": 0.16,
-  "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018",
+  "started_at": "2026-10-30T19:05:42+08:00",
+  "finished_at": "2026-10-30T19:05:42+08:00",
+  "elapsed_s": 0.19,
+  "git_sha": "bf709abefed038e08702664e303a0235ec928d12",
   "git_dirty": false,
   "environment": {
     "platform": "darwin",
@@ -32,7 +32,7 @@
   "gold_version": {
     "path": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json",
     "items": 3,
-    "fingerprint": "5420681d7033afd09b180ebcd01ad2bd943ab2f2446ffdbdfd24b11a1b81c5e8"
+    "fingerprint": "ca48c5a06a0a03a90e0d2ec6ab57b8cb4cae658b6cae6c80e6bddffc86686c26"
   },
   "results": {
     "rc_run": 0,
@@ -152,7 +152,7 @@
   "disclosure": {
     "delivered_rows": 2,
     "delivered_files": 2,
-    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/A/data/deliveries/e4b4803f2c41419082f6af10b7606c4b/组包manifest.tsv",
+    "manifest_path": "/Users/mac/.cangjie-ddv1-exams/A/data/deliveries/93bacdf63eca45f787ac11a1fc8973f5/组包manifest.tsv",
     "blocked_materials": 4,
     "violations": 0,
     "violation_detail": [],
@@ -166,7 +166,7 @@
     "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
   },
   "artifacts": {
-    "answer_sheet": ".audit/exam-plane/A/answer/机器答卷-20261030-185530.json",
+    "answer_sheet": ".audit/exam-plane/A/answer/机器答卷-20261030-190542.json",
     "scorecard_dir": ".audit/exam-plane/A/grade",
     "run_report_dir": ".audit/exam-plane/A/run",
     "gold_manifest": "/Users/mac/.cangjie-ddv1-exams/A/gold/gold-A.json"

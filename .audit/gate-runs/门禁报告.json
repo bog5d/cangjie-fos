@@ -1,7 +1,7 @@
 {
   "schema_version": "dd_v1_gate_report.v1",
-  "evaluated_at": "2026-10-30T18:55:41+08:00",
-  "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018",
+  "evaluated_at": "2026-10-30T19:09:37+08:00",
+  "git_sha": "bf709abefed038e08702664e303a0235ec928d12",
   "git_dirty": false,
   "gate_spec_id": "DDV1-DELIVERY-GATE-V1",
   "gate_spec_frozen_at": "2026-10-30T18:18:38+08:00",
@@ -58,8 +58,8 @@
       "gate": "G2",
       "title": "模拟端到端 PASS（考试A：完整链路可评分 + 安全闸 PASS）",
       "exam": "A",
-      "run_id": "20261030T105530Z",
-      "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018"
+      "run_id": "20261030T110542Z",
+      "git_sha": "bf709abefed038e08702664e303a0235ec928d12"
     },
     "G3": {
       "status": "FAIL",
@@ -76,8 +76,8 @@
       "gate": "G4",
       "title": "合成 Gold 评分达标（考试C：完整42题）",
       "exam": "C",
-      "run_id": "20261030T105531Z",
-      "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018"
+      "run_id": "20261030T110543Z",
+      "git_sha": "bf709abefed038e08702664e303a0235ec928d12"
     },
     "G5": {
       "status": "PASS",
@@ -85,12 +85,12 @@
       "gate": "G5",
       "title": "安全测试 PASS（考试B：复杂业务 + 披露闸）",
       "exam": "B",
-      "run_id": "20261030T105531Z",
-      "git_sha": "f5aabaf39e3d101c443631b71581e9b461c9d018"
+      "run_id": "20261030T110542Z",
+      "git_sha": "bf709abefed038e08702664e303a0235ec928d12"
     },
     "G6": {
-      "status": "FAIL",
-      "reason": "NO_REVIEWER_REPORT:g6_reviewer.json",
+      "status": "PASS",
+      "reason": "reviewer verdict=PASS",
       "gate": "G6",
       "title": "独立 Reviewer PASS（可复跑关键测试的复核报告）",
       "exam": null,
@@ -109,7 +109,7 @@
   },
   "observations": {
     "A": {
-      "run_id": "20261030T105530Z",
+      "run_id": "20261030T110542Z",
       "status": "LOW_CONFIDENCE",
       "total_score": 96.67,
       "question_understanding_coverage": 0.666667,
@@ -131,7 +131,7 @@
       "examinee_mode": "RULE_ONLY"
     },
     "B": {
-      "run_id": "20261030T105531Z",
+      "run_id": "20261030T110542Z",
       "status": "SCORED_PARTIAL",
       "total_score": 95.67,
       "question_understanding_coverage": 0.9,
@@ -153,7 +153,7 @@
       "examinee_mode": "RULE_ONLY"
     },
     "C": {
-      "run_id": "20261030T105531Z",
+      "run_id": "20261030T110543Z",
       "status": "SCORED",
       "total_score": 100.0,
       "question_understanding_coverage": 1.0,

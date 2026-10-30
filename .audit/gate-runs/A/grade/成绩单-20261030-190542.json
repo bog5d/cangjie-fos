@@ -2,7 +2,7 @@
   "schema_version": "dd_v1_scorecard.v1",
   "exam_id": "",
   "status": "LOW_CONFIDENCE",
-  "graded_at": "2026-10-30T18:55:30+08:00",
+  "graded_at": "2026-10-30T19:05:42+08:00",
   "scores": {
     "question_understanding_coverage": 0.666667,
     "question_answer_coverage": 1.0,
@@ -30,9 +30,9 @@
   },
   "rows": [
     {
-      "obligation_id": "43e696367a2945d6bfaccf730a1bcfe3",
+      "obligation_id": "557f465a73f54f4c87d63ce567ce9540",
       "cluster_ids": [
-        "43e696367a2945d6bfaccf730a1bcfe3"
+        "557f465a73f54f4c87d63ce567ce9540"
       ],
       "cluster_count": 1,
       "item_no": "1-1",
@@ -60,9 +60,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "873d0ae82cd94f2faef05a1c9105fa81",
+      "obligation_id": "96ac6d11e2504f968c490d0655e21b34",
       "cluster_ids": [
-        "873d0ae82cd94f2faef05a1c9105fa81"
+        "96ac6d11e2504f968c490d0655e21b34"
       ],
       "cluster_count": 1,
       "item_no": "1-2",
@@ -93,9 +93,9 @@
       "resolution_state": "RESOLVED"
     },
     {
-      "obligation_id": "98511bf6d47440f689c30109a7487e0a",
+      "obligation_id": "eba40f3b39204713a5157e05446159c6",
       "cluster_ids": [
-        "98511bf6d47440f689c30109a7487e0a"
+        "eba40f3b39204713a5157e05446159c6"
       ],
       "cluster_count": 1,
       "item_no": "1-3",
@@ -185,7 +185,7 @@
   },
   "evidence_diff": [
     {
-      "obligation_id": "43e696367a2945d6bfaccf730a1bcfe3",
+      "obligation_id": "557f465a73f54f4c87d63ce567ce9540",
       "item_no": "1-1",
       "outcome": "CORRECT",
       "correct": true,
@@ -224,7 +224,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "873d0ae82cd94f2faef05a1c9105fa81",
+      "obligation_id": "96ac6d11e2504f968c490d0655e21b34",
       "item_no": "1-2",
       "outcome": "CORRECT",
       "correct": true,
@@ -280,7 +280,7 @@
       "reason": "选中集合与 Gold 期望完全一致"
     },
     {
-      "obligation_id": "98511bf6d47440f689c30109a7487e0a",
+      "obligation_id": "eba40f3b39204713a5157e05446159c6",
       "item_no": "1-3",
       "outcome": "CORRECT",
       "correct": true,
@@ -333,7 +333,7 @@
     "exam_id": "DDV1-SYN-A",
     "items": [
       {
-        "obligation_id": "43e696367a2945d6bfaccf730a1bcfe3",
+        "obligation_id": "557f465a73f54f4c87d63ce567ce9540",
         "item_no": "1-1",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -356,7 +356,7 @@
         "note": ""
       },
       {
-        "obligation_id": "873d0ae82cd94f2faef05a1c9105fa81",
+        "obligation_id": "96ac6d11e2504f968c490d0655e21b34",
         "item_no": "1-2",
         "expected_verdict": "MATCH",
         "expected_files": [
@@ -391,7 +391,7 @@
         "note": ""
       },
       {
-        "obligation_id": "98511bf6d47440f689c30109a7487e0a",
+        "obligation_id": "eba40f3b39204713a5157e05446159c6",
         "item_no": "1-3",
         "expected_verdict": "MATCH",
         "expected_files": [

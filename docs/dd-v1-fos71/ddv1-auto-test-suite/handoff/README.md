@@ -13,11 +13,12 @@
 | **本轮做了什么** | 建「自动考试台」（隔离考场 ＋ 三层自动考试 ＋ 自动标准答案评分 ＋ 冻结阈值交付门禁），并修掉 **4 个活缺陷** 与 **3 处「假绿」** |
 | **分支** | `feat/dd-v1-auto-test-harness-20261030`（**未合并 master**） |
 | **基线** | `bf68cf94c2744624445b6ea992e41fc3f0b1b78e`（＝ PR#86 的 head，PR#86 本身也**未合并**） |
-| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`） |
+| **冻结锚点** | git tag **`ddv1-auto-exam-v1`**（读法见 `版本锚点.md`）｜**被测代码** commit＝`bf709ab…`（见 §3 三个锚点） |
 | **测试规模** | pytest 全量 **2107 项 / 0 失败 / 6 skipped**（CI 口径：清代理变量 ＋ 排除 doctor） |
 | **自动化覆盖率** | **98.04%**（50/51，**机算**）｜**通过率 100%**（50/50，**机算**）—— 两个数**分列** |
 | **三场合成考试** | A 基础 3 题 96.67 分｜B 复杂 9 题 95.67 分｜C 完整 42 题 **100.0 分**，安全闸全 PASS |
-| **交付门禁** | G1/G2/G4/G5/G7 **PASS**；**G3 FAIL**（真实模型凭证失效）；**G6 待独立复核** |
+| **交付门禁** | G1/G2/G4/G5/G6/G7 **PASS**；**G3 FAIL**（真实模型凭证失效）⇒ 整体 `status=FAIL` |
+| **独立复核** | 第 1 轮 **CONDITIONAL**（4 MAJOR＋4 MINOR＋2 NIT，**逐条已修并回归**）→ 第 2 轮 **PASS** |
 | **★ 尚不可正式验收** | G3 未绿 ⇒ 按施工令第六节，**现在不得向刘江发正式验收请求** |
 
 ---
@@ -34,7 +35,8 @@
 | `SHA256SUMS` | 本目录文件哈希（**不含自身**） |
 
 > ★ **仓内配套文档**（不在本包内，在 `docs/dd-v1-fos71/ddv1-auto-test-suite/`）：
-> `WP0-AUDIT.md`（缺陷审计）、`COVERAGE.md`（覆盖率报告）、`SKILLS-CANDIDATES.md`（Skills 候选）。
+> `WP0-AUDIT.md`（缺陷审计）、`COVERAGE.md`（覆盖率报告）、`SKILLS-CANDIDATES.md`（Skills 候选）、
+> `施工令交付物对照表.md`（施工令 12 项交付物逐项对照 ＋ 门禁逐条现状）。
 
 ---
 
@@ -72,8 +74,11 @@
 | G3 真实模型调用 PASS | ❌ **FAIL** | `NO_REAL_MODEL_RUN_WITH_PARTICIPATION`（凭证失效，BLOCKED-1） |
 | G4 合成 Gold 评分达标 | ✅ PASS | 考试C total=100.0 ≥ 70、理解=1.0、覆盖=1.0、42/42 题、安全 PASS |
 | G5 安全测试 PASS | ✅ PASS | 考试B status=SCORED_PARTIAL、安全 PASS、无 blocked、覆盖=1.0 |
-| G6 独立 Reviewer PASS | ⏳ **待复核** | `NO_REVIEWER_REPORT` |
+| G6 独立 Reviewer PASS | ✅ **PASS** | `reviewer verdict=PASS`（第 2 轮；报告 `.audit/gate-runs/g6_reviewer.json`） |
 | G7 交接包生成 | ✅ PASS | 本目录存在且非空 |
+
+> ★ **整体 `status=FAIL`，只因 G3**（`failed_key_gates=["G3"]`）——
+> 这是**如实**的：真实模型没真跑通，就不能算交付完成。**不要**因为 G1/G2/G4/G5/G6/G7 全绿就当整体通过。
 
 > ★ **门禁 PASS ≠ 指标完美**。门禁报告的 `observations` 区把**实际读数原样摊开**。
 > 例：考试A 理解率 0.667 —— 源于材料类型词表**覆盖缺口**（`经营情况说明` 不在 10 类词表内），
@@ -125,7 +130,8 @@
 | C | 100.0 | 100.0 | 不受影响 |
 
 ★ **阈值未动一个**（total≥70 / understanding=1.0 / coverage=1.0 / 42 题）—— 重跑前后逐位相同。
-★ 本次三场考试的运行清单均记录 `git_sha=b97ce20…` 且 **`git_dirty=false`** ⇒ 证据**严格对应**该提交的代码。
+★ 本次三场考试的运行清单均记录 `git_sha=bf709ab…` 且 **`git_dirty=false`** ⇒ 证据**严格对应**该提交的代码。
+★ 门禁报告与覆盖率报告同样记录 `git_sha=bf709ab…`、`git_dirty=false` ⇒ **三场考试 ＋ 门禁 ＋ 覆盖率同源**。
 
 ---
 
@@ -142,6 +148,27 @@
 
 > ★ 四个缺陷**都补了永久回归测试** ⇒ 以后再犯会被 CI 直接抓住。
 
+### 独立复核又抓出来的（**这是给刘江看「机器自己发现并修好了什么」**）
+
+| 轮次 | verdict | 抓到什么 | 处置 |
+|---|---|---|---|
+| 第 1 轮 | **CONDITIONAL** | 4 MAJOR ＋ 4 MINOR ＋ 2 NIT：证据出自修复前代码、冻结时间线自相矛盾、D3 无测试断言、证据不记 `git_dirty`、`counting_ok` 键缺失被放行、两口径机读层不可见…… | **逐条修完并回归**（变异测试验「测试有牙」） |
+| 第 2 轮 | **PASS** | 10 条全部 closed（**逐条实测复验**）；新提 1 MINOR ＋ 2 NIT | 已修并回归 |
+
+> ★ 两轮复核报告**都入库**、**都保留原文**：
+> `.audit/gate-runs/g6_reviewer_round1.json`（第 1 轮，CONDITIONAL）＋ `.audit/gate-runs/g6_reviewer.json`（第 2 轮，PASS）。
+> **不删改历史报告**——这比「只有一份 PASS」更可信。
+> ★ 第 1 轮最值钱的一条：**它发现证据链是断的**（分数偏低 ⇒ 不是虚高，但证据对不上代码）。
+> 用「**只回退一个文件**」的对照实验定位到根因（D4 修复前后），重跑后逐位复现 ⇒ 已修正。
+
+### ★ 命令行退出码口径（**别看错**）
+
+`run --exam X` 的**退出码与门禁 `status_scored` 同语义**：
+`SCORED` / `SCORED_PARTIAL` / `LOW_CONFIDENCE` ⇒ **exit=0（成功）**；`NOT_SCORABLE` ⇒ **exit≠0（失败）**。
+
+> ★ 为什么 `LOW_CONFIDENCE` 算成功：它是**样本量不足的标注**（义务条数 < 30），**分数照给**。
+> 若把 96.67 分的考试返回 exit=1，交接方会**误判为失败** ⇒ 口径统一，别自己加门槛。
+
 ---
 
 ## 6. 现在能不能通知刘江验收？
@@ -151,15 +178,19 @@
 | 条件 | 现状 |
 |---|---|
 | 自动考试完成 | ✅ |
-| 核心链路 PASS | ✅（G1/G2/G4/G5/G7） |
+| 核心链路 PASS | ✅（G1/G2/G4/G5/G6/G7） |
 | Gold 评分有效 | ✅（合成卷；**真实卷的合格线业务方还没冻结**） |
-| 独立 Reviewer PASS | ⏳ 复核中 |
+| 独立 Reviewer PASS | ✅ **PASS**（第 2 轮，报告在 `.audit/gate-runs/g6_reviewer.json`） |
 | 新版本冻结 SHA | ✅ tag `ddv1-auto-exam-v1` |
 | Windows 交接包完整 | ✅ 本包 |
 | **真实模型参与证明 PASS（G3）** | ❌ **凭证失效（BLOCKED-1）** |
 
-⇒ **等 G3 绿 + G6 绿，再发正式验收请求。**
+⇒ **等 G3 绿，再发正式验收请求**（G6 已绿，是六项里最后一个未绿的关键门槛）。
 在此之前，刘江侧可按 `复跑命令.md` 做**自检**（不是正式验收）。
+
+> ★ **G3 不是「等有空再跑」，是「等凭证」**：`~/.dsh/.credentials.yaml` 里的 key 被服务端判 invalid，
+> 而 dsh 走**直连**（stderr 首行可证）⇒ **网络通、纯凭证问题** ⇒ 机器侧无解，责任在账号持有人。
+> 凭证修好后一条命令复跑即可：`DDV1_ALLOW_REAL_MODEL=1 pytest -k real_deepseek`。
 
 ---
 
