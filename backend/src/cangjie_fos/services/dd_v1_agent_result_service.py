@@ -121,6 +121,8 @@ def build_task_packet(
             "proposed_verdict 只能取 " + "/".join(ALLOWED_VERDICTS) + "；"
             "找不到就 MISSING 或 UNCERTAIN 并填 abstain_reason，绝不编造文件或路径。"
             "主体或期间不符的文件不能判 MATCH。你的输出只是建议，最终由人工审核。"
+            "★ 每条 result 的 item_id 与 obligation_id 都必须**原样照抄**"
+            "obligations 里对应那条义务的同名字段（item_id 是清单题号，不是义务主键）。"
         ),
         "obligations": obligations,
         "files": files,

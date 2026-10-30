@@ -85,7 +85,11 @@ class _StandInAdapter:
                 rej = [{"file_id": str(pool[0].get("file_id") or ""),
                         "reason": "替身：这份的期间与要求不一致"}]
             results.append({
-                "item_id": str(ob.get("source_obligation_id") or oid),
+                # ★ item_id ＝ **清单题号**（语义层全仓约定，见
+                #   ``dd_v1_agent_result_service._check_result`` 的 ITEM_ID_MISMATCH 判据）：
+                #   模型必须原样照抄 packet 里那条义务的 item_id。
+                #   （旧写法硬编码成义务主键 ⇒ 与 packet 对不上 ⇒ 结果被拒 ⇒ 退化成 RULE_ONLY。）
+                "item_id": str(ob.get("item_id") or ob.get("source_obligation_id") or oid),
                 "obligation_id": oid,
                 "agent_id": "standin", "provider": "test",
                 "model_id_or_unknown": "UNKNOWN", "prompt_version": "",

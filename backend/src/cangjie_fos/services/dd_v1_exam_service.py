@@ -52,6 +52,129 @@ def _now() -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# 0. 义务身份：**权威 ID（库侧）** vs **分簇 ID（答卷侧）**
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ★ **事故形态（#108 刘江 2026-10-30 Windows 真机复测实测）**：
+#   · 库侧一条义务被**多主体分簇**（``dd_v1_bridge_service.build_semantic_obligations``）
+#     ⇒ 答卷侧每个主体一个**分簇 ID**（``<库侧ID>@<主体>``）⇒ 91 条义务变 200 行；
+#   · 标准答案（Gold）引的是**库侧那条** ``obligation_id``（91 条）；
+#   ⇒ 答卷与 Gold **对不上** ⇒ 逐题比较全是 ``NO_ANSWER``，
+#     且泄漏检测第 3 条判据（义务 id 既不在考卷也不在 Gold）⇒ ``GOLD_LEAK_DETECTED``
+#     ⇒ ``scores=null``（#108 实测：分数出不来）。
+#
+# ★ **处置（不是改主体分簇口径）**：分簇是**业务需要**（跨法人不混桶），不能删。
+#   ⇒ 引入**权威 ID**概念：**库侧 obligation_id 才是义务身份**，
+#     分簇 ID 只是**该主体下的一个子视图**。
+#   ⇒ 阅卷一律按**权威 ID**聚合（一条库义务 ⇒ 若干分簇行 ⇒ 汇总成一行逐题明细）。
+
+def authoritative_obligation_id(obj: dict[str, Any] | None) -> str:
+    """取义务的**权威 ID（库侧 obligation_id）**。
+
+    优先级：① 显式 ``source_obligation_id``（桥接层已带）；
+    ② ``obligation_id`` 且**不含** ``@``（本身就是库侧 ID）；
+    ③ ``obligation_id`` 的 ``@`` 之前部分（分簇 ID 的降级还原）。
+
+    ★ **不用**「先取 obligation_id 再切 @」的单一路径：若上游把分簇 ID 写进了
+      ``obligation_id``、而 ``source_obligation_id`` 才是库侧 ID，取错会**静默对不上**。
+    """
+    o = obj or {}
+    src = str(o.get("source_obligation_id") or "").strip()
+    if src:
+        return src
+    oid = str(o.get("obligation_id") or "").strip()
+    if not oid:
+        return ""
+    return oid.split("@", 1)[0]
+
+
+def cluster_obligation_id(obj: dict[str, Any] | None) -> str:
+    """取义务的**分簇 ID**（答卷侧实际使用的那个 ID，可能带 ``@主体`` 后缀）。"""
+    o = obj or {}
+    oid = str(o.get("obligation_id") or "").strip()
+    if oid:
+        return oid
+    return str(o.get("source_obligation_id") or "").strip()
+
+
+def group_answer_rows_by_authoritative_id(
+        rows: list[dict[str, Any]] | None) -> dict[str, list[dict[str, Any]]]:
+    """把答卷行按**权威 ID**分组（一条库义务 ⇒ 若干分簇行）。"""
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in (rows or []):
+        aid = authoritative_obligation_id(r)
+        if not aid:
+            continue
+        out.setdefault(aid, []).append(r)
+    return out
+
+
+def merge_cluster_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """把**同一义务的多个分簇行**合并成一行（阅卷侧的义务级视图）。
+
+    ★ 合并口径：
+      · ``selected`` / ``delivered`` / ``candidates`` ⇒ **并集**（按 file_id 去重）；
+      · ``verdict`` ⇒ 取**确定性**判定（多簇里有一簇确定就算这条义务确定）；
+      · ``understood`` ⇒ 任一簇理解即算理解；
+      · ``abstained`` ⇒ **全部**簇都弃答才算弃答。
+    """
+    if not rows:
+        return {}
+    merged: dict[str, Any] = {
+        "obligation_id": authoritative_obligation_id(rows[0]),
+        "cluster_ids": [cluster_obligation_id(r) for r in rows],
+        "item_id": str(rows[0].get("item_id") or ""),
+        "text": str(rows[0].get("text") or ""),
+        "interpretation": rows[0].get("interpretation") or {},
+        "selected": [], "delivered": [], "candidates": [],
+        "verdict": "", "confidence": "", "abstained": True,
+        "abstain_reason": "", "selection_source": "",
+        "warnings": [], "rejected": False, "rejected_reason": "",
+        "candidate_window": {},
+    }
+    seen: dict[str, set[str]] = {"selected": set(), "delivered": set(), "candidates": set()}
+    verdicts: list[str] = []
+    for r in rows:
+        for key in ("selected", "delivered", "candidates"):
+            for x in (r.get(key) or []):
+                fid = str(x.get("file_id") or "")
+                marker = fid or json.dumps(x, ensure_ascii=False, sort_keys=True)
+                if marker in seen[key]:
+                    continue
+                seen[key].add(marker)
+                merged[key].append(x)
+        v = str(r.get("verdict") or "")
+        if v:
+            verdicts.append(v)
+        if v in DETERMINATE_VERDICTS and not merged["verdict"]:
+            merged["verdict"] = v
+        if not merged["verdict"] and v == "UNCERTAIN":
+            merged["verdict"] = "UNCERTAIN"
+        if r.get("understanding_resolved") or (r.get("interpretation") or {}).get("resolved"):
+            merged["interpretation"] = r.get("interpretation") or merged["interpretation"]
+        if not r.get("abstained"):
+            merged["abstained"] = False
+        if r.get("abstain_reason") and not merged["abstain_reason"]:
+            merged["abstain_reason"] = str(r.get("abstain_reason"))
+        if r.get("selection_source") and not merged["selection_source"]:
+            merged["selection_source"] = str(r.get("selection_source"))
+        for w in (r.get("warnings") or []):
+            if w not in merged["warnings"]:
+                merged["warnings"].append(w)
+        if r.get("rejected"):
+            merged["rejected"] = True
+            merged["rejected_reason"] = merged["rejected_reason"] or str(r.get("rejected_reason") or "")
+        cw = r.get("candidate_window") or {}
+        if cw:
+            merged["candidate_window"] = cw
+        if r.get("confidence") and not merged["confidence"]:
+            merged["confidence"] = r.get("confidence")
+    if not merged["verdict"] and verdicts:
+        merged["verdict"] = verdicts[0]
+    return merged
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 1. 机器答卷
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -238,6 +361,11 @@ def build_answer_sheet(run_record: dict[str, Any] | None,
         st = evidence_status.get(oid) or {}
         row = {
             "obligation_id": oid,
+            # ★★ **权威 ID（库侧）**（#108 实测事故：分簇 ID 与 Gold 对不上）：
+            #   多主体分簇时 ``obligation_id`` 带 ``@主体`` 后缀 ⇒ Gold 引的是库侧那条
+            #   ⇒ 必须**同时**带上库侧 ID，阅卷才有得对（不改主体分簇口径）。
+            "source_obligation_id": authoritative_obligation_id(ob),
+            "obligation_cluster_id": oid,
             "item_id": str(ob.get("item_id") or ""),
             "text": interp["text"],
             "interpretation": interp,
@@ -488,8 +616,13 @@ def detect_gold_leak(answer_sheet: dict[str, Any] | None,
             if fid and fid not in known:
                 leaks.append({"kind": "FILE_OUTSIDE_LIBRARY", "detail": f"{oid}:{fid}"})
         if library_obligation_ids is not None and gold_obligation_ids is not None:
-            if oid and oid not in library_obligation_ids and oid not in gold_obligation_ids:
-                leaks.append({"kind": "OBLIGATION_OUTSIDE_EXAM", "detail": oid})
+            # ★★ 用**权威 ID（库侧）**判，别用分簇 ID（#108 实测事故）：
+            #   分簇 ID 带 ``@主体`` 后缀 ⇒ 用它比 ⇒ 每条都判「来路不明」⇒
+            #   整场考试被误判成 ``GOLD_LEAK_DETECTED``（分数出不来）。
+            aid = authoritative_obligation_id(r)
+            if aid and aid not in library_obligation_ids and aid not in gold_obligation_ids:
+                leaks.append({"kind": "OBLIGATION_OUTSIDE_EXAM", "detail": oid,
+                              "authoritative_id": aid})
 
     return {
         "leaked": bool(leaks),
@@ -538,15 +671,92 @@ def scoring_spec_fingerprint(spec: dict[str, Any]) -> str:
 # 4. 隔离阅卷
 # ─────────────────────────────────────────────────────────────────────────────
 
+def bind_gold_to_library(gold_items: list[dict[str, Any]] | None,
+                         library_contract: dict[str, Any] | None,
+                         ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """把标准答案里的义务标识**绑定**到当前图书馆的义务主键。
+
+    ★ **为什么需要**（`#85` 统一考场定义）：
+      · 库内义务主键 ``obligation_id`` 是 ``uuid4``（**每次建库都不同**）；
+      · 内容派生的稳定键是 ``obligation_key``（``OBL-`` + sha256，**跨机一致**）。
+      ⇒ 标准答案若只存 ``obligation_id`` ⇒ **换一个快照/重建一次库就再也对不上**
+        （且**静默**对不上 ⇒ 逐题全落空 ⇒ 分数恒 0）。
+      ⇒ 标准答案**应当**存 ``obligation_key``；本函数负责在阅卷时把它绑回本库的
+        ``obligation_id``，并**如实记账**（绑上了 / 绑不上）。
+
+    ★ 返回：``(绑定后的 items, 绑定报告)``。
+      报告里 ``unbound`` 列出**绑不上**的条目 ⇒ 它们会落空（而不是被悄悄吞掉）。
+    """
+    items = [dict(i) for i in (gold_items or [])]
+    contract = library_contract or {}
+    obl_rows = contract.get("obligations") or []
+    by_key: dict[str, str] = {}
+    by_id: dict[str, str] = {}
+    for o in obl_rows:
+        k = str(o.get("obligation_key") or "")
+        i = str(o.get("obligation_id") or "")
+        if k and i:
+            by_key[k] = i
+        if i:
+            by_id[i] = k
+    rebound: list[dict[str, Any]] = []
+    unbound: list[dict[str, Any]] = []
+    exact = 0
+    for it in items:
+        oid = str(it.get("obligation_id") or "")
+        key = str(it.get("obligation_key") or "")
+        if oid and oid in by_id:
+            exact += 1
+            if key and by_id[oid] != key:
+                unbound.append({"obligation_id": oid, "obligation_key": key,
+                                "reason": "OBLIGATION_KEY_CONFLICT"})
+            continue
+        if key and key in by_key:
+            it["obligation_id"] = by_key[key]
+            it["obligation_id_original"] = oid
+            rebound.append({"from": oid, "to": by_key[key], "obligation_key": key})
+            continue
+        unbound.append({"obligation_id": oid, "obligation_key": key,
+                        "reason": "NOT_IN_LIBRARY_CONTRACT"})
+    report = {
+        "gold_items": len(items),
+        "bound_exact": exact,
+        "rebound_by_key": len(rebound),
+        "rebound": rebound[:50],
+        "unbound": len(unbound),
+        "unbound_detail": unbound[:50],
+        "note": ("★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；"
+                 "库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。"
+                 "unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"),
+    }
+    return items, report
+
+
 def _per_obligation_rows(answer_sheet: dict[str, Any],
                          gold_resolved: dict[str, Any]) -> list[dict[str, Any]]:
-    """逐题比较：机器答卷 × 人工标准答案。"""
+    """逐题比较：机器答卷 × 人工标准答案。
+
+    ★★ **义务级聚合**（#108 实测事故修复）：答卷侧一条库义务可能被**主体分簇**成
+       若干行（``<库侧ID>@<主体>``），而标准答案引的是**库侧那条** ID。
+       ⇒ 这里按**权威 ID（库侧）**把分簇行合并成一行逐题明细，
+         否则每条 Gold 都落空 ⇒ 全是 ``NO_ANSWER`` ⇒ 分数恒 0。
+    """
     answers = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
+    #: 权威 ID → 分簇行列表（一条库义务 ⇒ 多个主体分簇）
+    clustered = group_answer_rows_by_authoritative_id(
+        answer_sheet.get("obligations") or [])
+    merged_cache: dict[str, dict[str, Any]] = {}
     rows: list[dict[str, Any]] = []
     for g in gold_resolved.get("items") or []:
         oid = str(g.get("obligation_id"))
         exp = set(g.get("resolved_file_ids") or [])
-        a = answers.get(oid)
+        cl_rows = clustered.get(oid) or []
+        if cl_rows:
+            if oid not in merged_cache:
+                merged_cache[oid] = merge_cluster_rows(cl_rows)
+            a = merged_cache[oid]
+        else:
+            a = answers.get(oid) or {}
         sel = {str(x.get("file_id") or "") for x in ((a or {}).get("selected") or [])}
         deliv = {str(x.get("file_id") or "") for x in ((a or {}).get("delivered") or [])}
         verdict = str((a or {}).get("verdict") or "")
@@ -570,6 +780,9 @@ def _per_obligation_rows(answer_sheet: dict[str, Any],
             outcome = "MISSED"
         rows.append({
             "obligation_id": oid,
+            # ★ 追溯用：这条库义务在答卷侧对应哪几个**分簇**（主体）行
+            "cluster_ids": [cluster_obligation_id(r) for r in cl_rows],
+            "cluster_count": len(cl_rows),
             "item_no": g.get("item_no"),
             "outcome": outcome,
             "expected_files": sorted(exp),
@@ -606,6 +819,10 @@ def _safety_findings(rows: list[dict[str, Any]],
     """
     gold_by_oid = {str(g.get("obligation_id")): g for g in (gold_resolved.get("items") or [])}
     answers = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
+    #: ★★ 权威 ID → 分簇行（#108 实测事故修复）：安全闸也必须按**库侧义务**比，
+    #   否则多主体义务的分簇行永远匹配不到 Gold ⇒ 闸是空的（错主体查不出来）。
+    clustered = group_answer_rows_by_authoritative_id(
+        answer_sheet.get("obligations") or [])
     findings: list[dict[str, Any]] = []
     #: 「**选中但未交付**」层面的选材问题 ⇒ **单列、不封顶**（不是交付事故）
     selection_mismatches: list[dict[str, Any]] = []
@@ -638,6 +855,11 @@ def _safety_findings(rows: list[dict[str, Any]],
             """期望主体/年度：唯一值才可比（多个候选 ⇒ 口径不明 ⇒ 不判）。"""
             return next(iter(values)) if len(values) == 1 else ""
         a = answers.get(oid) or {}
+        # ★ 多主体分簇 ⇒ 把该库义务的**全部分簇行**合并后一起过闸
+        #   （否则分簇行匹配不到 Gold ⇒ 闸是空的）
+        cl_rows = clustered.get(oid) or []
+        if cl_rows:
+            a = merge_cluster_rows(cl_rows)
         # ★★ 「**选中**」与「**交付**」分开记（独立 Reviewer 增量复核的重要发现）：
         #   · **交付**（离开过系统的件）⇒ 错主体/错年度 ⇒ **进安全闸、封顶**；
         #   · **只是选中、没交付** ⇒ 属「选材质量」问题 ⇒ **单列、不封顶**
@@ -740,6 +962,7 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
                        exam_questions: list[dict[str, Any]] | None = None,
                        library_fingerprint: str = "",
                        checklist_sha256: str = "",
+                       library_contract: dict[str, Any] | None = None,
                        ) -> dict[str, Any]:
     """**隔离阅卷**：机器答卷 × 人工标准答案 ⇒ 逐题明细 + 7 项指标 + 0—100 总成绩。
 
@@ -784,6 +1007,16 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
 
     idx = library_index or {"by_id": {}, "by_sha": {}}
     gold_resolved = gold_svc.resolve_gold_files(gold_manifest, idx)
+    # ★★ 标准答案 ↔ 图书馆的**义务键绑定**（#85 统一考场：Gold 必须能绑到同一座图书馆）：
+    #   库内主键是 uuid4（换快照就变）⇒ 只存 uuid 的 Gold 会**静默**对不上 ⇒ 全场落空。
+    #   ⇒ 优先用内容派生的稳定键（obligation_key）绑回本库主键，并如实记账。
+    _binding_report: dict[str, Any] = {}
+    if library_contract:
+        _bound_items, _binding_report = bind_gold_to_library(
+            gold_resolved.get("items") or [], library_contract)
+        gold_resolved = dict(gold_resolved)
+        gold_resolved["items"] = _bound_items
+        gold_resolved["library_binding"] = _binding_report
     # ★ 阅卷侧**自己**也核一次「考卷/图书馆 ↔ Gold」的对应关系
     #   （不依赖预检已经核过 ⇒ 纵深防御：闸门放过 ≠ 阅卷就信）。
     corr = gold_svc.check_correspondence(gold_manifest, gold_resolved,
@@ -943,6 +1176,8 @@ def grade_answer_sheet(answer_sheet: dict[str, Any] | None,
         "evidence_diff": _evidence_diff(rows, sheet, gold_resolved, idx),
         "safety_gate": safety,
         "gold_resolution": gold_resolved,
+        # ★ 标准答案 ↔ 图书馆的**义务键绑定**账（Gold 绑不上 = 条目落空，必须看得见）
+        "gold_library_binding": _binding_report or (gold_resolved.get("library_binding") or {}),
         # ★ 成绩单带**来源模式**：一份 RULE_ONLY 的分与模型跑的分**必须可区分**
         #   （独立 Reviewer 探针 P11：旧口径成绩单里没有这两个字段）。
         "examinee_mode": str(_examinee.get("mode") or "UNKNOWN"),
@@ -1037,6 +1272,11 @@ def _exam_coverage(rows: list[dict[str, Any]],
         iid = str(r.get("item_id") or "")
         if oid and iid:
             oid_to_item.setdefault(oid, iid)
+        # ★ 多主体分簇：阅卷结果按**权威 ID（库侧）**出行 ⇒ 也要能反查题号
+        #   （否则分簇形态下题级统计全落空 ⇒ 覆盖读数自相矛盾）
+        aid = authoritative_obligation_id(r)
+        if aid and iid:
+            oid_to_item.setdefault(aid, iid)
     graded_by_item: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
         oid = str(r.get("obligation_id") or "")
@@ -1140,12 +1380,16 @@ def _evidence_diff(rows: list[dict[str, Any]],
     """**第三组：证据差异**（逐项：Gold 预期文件／机器实际选择／主体／期间／是否正确／哈希／原因）。"""
     idx = library_index or {"by_id": {}, "by_sha": {}}
     ans_by_oid = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
+    #: ★ 多主体分簇 ⇒ 同一库义务的**分簇行合并**后再逐项比对（#108 实测事故修复）
+    clustered = group_answer_rows_by_authoritative_id(
+        answer_sheet.get("obligations") or [])
     gold_by_oid = {str(g.get("obligation_id")): g for g in (gold_resolved.get("items") or [])}
     out: list[dict[str, Any]] = []
     for r in rows:
         oid = str(r.get("obligation_id") or "")
         g = gold_by_oid.get(oid) or {}
-        a = ans_by_oid.get(oid) or {}
+        cl_rows = clustered.get(oid) or []
+        a = merge_cluster_rows(cl_rows) if cl_rows else (ans_by_oid.get(oid) or {})
         exp_files = []
         for f in (g.get("expected_files") or []):
             exp_files.append({

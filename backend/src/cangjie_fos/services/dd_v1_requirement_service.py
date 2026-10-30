@@ -935,12 +935,67 @@ def build_obligations(
 
 _SPLIT_RE = re.compile(r"[、]|(?:以及)|(?:，\s*并且)")
 
+#: ★★ **受控**并列连接词（第二层）：``和`` / ``且`` / ``及`` / ``并且``。
+#:
+#: ★ **为什么加这一层**（`#108` 实测形态 · 本轮自动考试抓出）：
+#:   文档承诺「按并列连接词（**且**/以及/、/**及**）切分」，但实现只切
+#:   「、/以及/，并且」⇒ 「请提供 X **2024 年度审计报告和营业执照**」
+#:   只切出**一条**义务（doc_type 取第一个）⇒ **第二类材料的要求被静默吞掉**
+#:   ⇒ 机器只交了审计报告、营业执照没交，**且不报错**（业务上是漏交）。
+#:
+#: ★ **为什么必须「受控」**：裸切「和/及/且」会把正常句子切碎
+#:   （「涉及」「至少」「有且仅有」「以及」…）⇒ 宁可漏切，不可切错。
+#:   ⇒ **只有当连接词两侧都能解析出材料类型时才切**（两侧都是「要交什么」才叫并列）。
+#:   ⇒ 否定前缀表挡住「涉及/相关/累计/以及…」等词内出现的情形。
+_SPLIT_RE2 = re.compile(r"并且|(?<![涉相累以即并未最尚无该其与])[和且及]")
+#: 词内出现「和/及/且」的常见前缀（禁止在此处切）
+_SPLIT_BLOCK_PREFIX = "涉相累以即并未最尚无该其与"
+
 
 def _split_parallel(raw: str) -> list[str]:
-    """按并列连接词拆分。只在**明显并列**处切，避免把长句切碎丢信息。"""
+    """按并列连接词拆分。只在**明显并列**处切，避免把长句切碎丢信息。
+
+    ★ 两层拆分：
+      ① ``_SPLIT_RE``：无条件安全（「、」「以及」「，并且」）；
+      ② ``_SPLIT_RE2``：**受控**（「和」「且」「及」「并且」）
+         ⇒ 只有**两侧都能解析出材料类型**才切（见 ``_split_guarded``）。
+    """
     parts = [p.strip(" 　；;，,。.") for p in _SPLIT_RE.split(raw)]
     parts = [p for p in parts if p]
-    return parts or [raw]
+    if not parts:
+        return [raw]
+    out: list[str] = []
+    for p in parts:
+        out.extend(_split_guarded(p, depth=0))
+    return out or [raw]
+
+
+def _split_guarded(part: str, depth: int = 0) -> list[str]:
+    """受控并列拆分：**两侧都能解析出材料类型**才切（否则原样返回）。
+
+    ★ 判据（可解释、可复核）：
+      连接词左段能解析出材料类型 **且** 右段也能解析出材料类型
+      ⇒ 两段都是「要交什么」⇒ 确实并列 ⇒ 切成两条原子义务。
+      否则（任一侧解析不出类型）⇒ 不切（宁可漏切，不可切错）。
+
+    ★ 深度上限 3：防止异常文本导致无界递归。
+    """
+    if depth >= 3:
+        return [part]
+    for m in _SPLIT_RE2.finditer(part):
+        left, right = part[:m.start()], part[m.end():]
+        if not left.strip() or not right.strip():
+            continue
+        try:
+            l_type, _ = parse_doc_type(left)
+            r_type, _ = parse_doc_type(right)
+        except Exception:  # noqa: BLE001 —— 解析不了就不切
+            continue
+        if not l_type or not r_type:
+            continue
+        return (_split_guarded(left.strip(" 　；;，,。."), depth + 1)
+                + _split_guarded(right.strip(" 　；;，,。."), depth + 1))
+    return [part]
 
 
 # ── 落库 ────────────────────────────────────────────────────────────────────

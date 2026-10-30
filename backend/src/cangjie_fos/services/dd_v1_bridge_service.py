@@ -364,6 +364,22 @@ def build_semantic_obligations(
     out: list[dict] = []
     basis_tally = {"AUTHORITY": 0, "ALIAS_RESOLVED": 0, "CARD_INFERRED": 0, "UNKNOWN": 0}
     truncated = 0
+    # ★★ 义务 → **清单题号**（``item_uid`` → ``item_no``）映射。
+    #   ★ **为什么必须带上**（#108 实测事故 D2）：
+    #     语义层全仓约定 ``item_id`` ＝ **清单题号**（``split_items``/``build_semantic_packet``
+    #     都这么写），而这里曾把**义务主键**塞进 ``item_id``
+    #     ⇒ 答卷与**题号**失联 ⇒ 题级覆盖统计（「42 题处理了几题」）**全落空**
+    #     ⇒ 真实考试报告出现「已处理 0｜未匹配 42」这种自相矛盾读数。
+    #   ⇒ 这里按库侧权威口径补回题号（拿不到就留空，**不猜**）。
+    item_no_by_uid: dict[str, str] = {}
+    try:
+        _conn = mf._connect(db_path)
+        for _r in _conn.execute(
+                "SELECT item_uid, item_no FROM dd_v1_checklist_items WHERE library_id=?",
+                (library_id,)):
+            item_no_by_uid[str(_r["item_uid"])] = str(_r["item_no"] or "")
+    except Exception:  # noqa: BLE001 —— 拿不到题号就留空（不猜、不退化）
+        item_no_by_uid = {}
     for obl in obl_rows:
         dt = str(obl.get("doc_type") or "").strip()
         # ★ 类型待判定只做**标记**：分簇口径**一字不改**（既有六态契约不许动）。
@@ -389,10 +405,14 @@ def build_semantic_obligations(
         for ent, basis in clusters:
             basis_tally[basis] += 1
             oid = obl["obligation_id"]
+            # ★ **清单题号**（语义层约定 ``item_id`` 就是它；见上方 D2 说明）
+            item_no = item_no_by_uid.get(str(obl.get("item_uid") or ""), "")
             out.append({
                 "obligation_id": f"{oid}@{ent}" if multi else oid,
                 "source_obligation_id": oid,
-                "item_id": oid,
+                "item_id": item_no or oid,
+                "item_no": item_no,
+                "question_id": rq.canonical_question_id(item_no) if item_no else "",
                 "text": obl.get("obligation") or "",
                 "entity": ent,
                 "entity_basis": basis,
@@ -573,6 +593,11 @@ def bridge_library(
         obligations_out.append({
             "obligation_id": ob["obligation_id"],
             "source_obligation_id": ob["source_obligation_id"],
+            # ★★ **清单题号**（D2）：题级覆盖统计靠它把答卷行挂回题；
+            #   丢了 ⇒ 「42 题处理了几题」全落空（#108 实测形态）。
+            "item_no": str(ob.get("item_no") or ""),
+            "question_id": str(ob.get("question_id") or ""),
+            "item_id": str(ob.get("item_id") or ""),
             "entity": ob["entity"],
             "entity_basis": ob["entity_basis"],
             "subject_verified": subject_verified,

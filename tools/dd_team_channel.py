@@ -653,6 +653,12 @@ def _bridge_json(bridge, *, config_anchor: dict | None = None) -> dict:
             {
                 "obligation_id": o["obligation_id"],
                 "source_obligation_id": o["source_obligation_id"],
+                # ★★ **清单题号**（D2）：题级统计靠它把答卷挂回题；
+                #   丢了 ⇒ 「42 题处理了几题」全落空 ⇒ 报告出现「已处理 0｜未匹配 42」。
+                "item_no": str(o.get("item_no") or ""),
+                "question_id": str(o.get("question_id") or ""),
+                # ★ 义务原文也带出来（答卷逐题要显示「这题问的是什么」）
+                "text": str(o.get("text") or ""),
                 "entity": o["entity"],
                 "entity_basis": o["entity_basis"],
                 # ★ 模型选材（有才带）⇒ 答卷据此标 MODEL
@@ -1068,7 +1074,12 @@ def _answer_sheet_from_bridge(bridge: dict):
         oid = str(o.get("obligation_id") or "")
         obs.append({
             "obligation_id": oid,
-            "item_id": str(o.get("source_obligation_id") or oid),
+            # ★★ **题号优先**（D2）：语义层全仓约定 ``item_id`` ＝ 清单题号。
+            #   旧写法塞的是**义务主键** ⇒ 答卷与题号失联 ⇒ 题级覆盖统计全落空。
+            "item_id": str(o.get("item_no") or o.get("question_id")
+                           or o.get("source_obligation_id") or oid),
+            # ★ 权威 ID（库侧义务主键）单独带一份 ⇒ 阅卷按它与标准答案对齐
+            "source_obligation_id": str(o.get("source_obligation_id") or oid),
             "text": str(o.get("text") or ""),
             "entity": str(o.get("entity") or ""),
             "entity_basis": str(o.get("entity_basis") or ""),
@@ -1113,7 +1124,8 @@ def _answer_sheet_from_bridge(bridge: dict):
             })
         _accepted.append({
             "obligation_id": _oid,
-            "item_id": str(o.get("source_obligation_id") or _oid),
+            "item_id": str(o.get("item_no") or o.get("question_id")
+                           or o.get("source_obligation_id") or _oid),
             "agent_id": str(_ms.get("agent_id") or ""),
             "provider": str(_ms.get("provider") or ""),
             "model_id_or_unknown": str(_ms.get("model_id_or_unknown") or "UNKNOWN"),
@@ -1259,9 +1271,11 @@ def cmd_grade(a) -> int:
     # ★★ WP4：**全卷分母**必须来自**权威题单**（库侧义务契约）⇒
     #   没有它 ⇒ 第一组的分母只来自答卷＋Gold ⇒ 报告会**显式写明**，**不得**当作全卷读。
     _questions = None
+    _lib_contract: dict = {}
     try:
         from cangjie_fos.services import dd_v1_requirement_service as rq
         _contract_rq = rq.export_obligation_contract(library_id)
+        _lib_contract = _contract_rq
         _seen: set[str] = set()
         _questions = []
         for _o in _contract_rq["obligations"]:
@@ -1289,7 +1303,10 @@ def cmd_grade(a) -> int:
         gold_state_reason="未提供标准答案包" if manifest is None else "",
         exam_id=str(contract.get("exam_id") or ""),
         leak_report=leak,
-        exam_questions=_questions)
+        exam_questions=_questions,
+        # ★★ 标准答案 ↔ 图书馆的**义务键绑定**（库内主键是 uuid4，换快照即变；
+        #   标准答案只存 uuid ⇒ 静默对不上 ⇒ 全场落空 ⇒ 分数恒 0）。
+        library_contract=_lib_contract or None)
     out = _exam_out_dir(a)
     stem = f"成绩单-{_exam_ts()}"
     (out / f"{stem}.json").write_text(json.dumps(card, ensure_ascii=False, indent=2), "utf-8")
