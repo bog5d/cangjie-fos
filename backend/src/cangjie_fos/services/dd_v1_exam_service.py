@@ -852,6 +852,19 @@ def _safety_findings(rows: list[dict[str, Any]],
     """
     gold_by_oid = {str(g.get("obligation_id")): g for g in (gold_resolved.get("items") or [])}
     answers = {str(r.get("obligation_id")): r for r in (answer_sheet.get("obligations") or [])}
+    #: ★★ **全局：每个 file_id 被哪些标准答案项期望**（用于识别「多交件」的真实归属）
+    #:   ★ **为什么需要它**（DD-V1 干净树重跑实测踩到）：
+    #:     答卷里每个义务行的 ``delivered`` 是**主体级**的交付子集（同一主体的多份材料
+    #:     都挂在这一行上，用于「并集」计件），**不是**「本义务答了哪几件」。
+    #:   ⇒ 若拿 ``delivered`` 逐义务比期间，同一主体下**兄弟义务**的文件会被误判成
+    #:     「交错年份」⇒ 考试 C（42 题、每主体多年度）一次误出 **131 条**假违规。
+    gold_period_by_file: dict[str, set[str]] = {}
+    for _g in (gold_resolved.get("items") or []):
+        for _f in (_g.get("expected_files") or []):
+            _fid = str(_f.get("file_id") or "")
+            _per = str(_f.get("gold_period") or "")
+            if _fid and _per:
+                gold_period_by_file.setdefault(_fid, set()).add(_per)
     #: ★★ 权威 ID → 分簇行（#108 实测事故修复）：安全闸也必须按**库侧义务**比，
     #   否则多主体义务的分簇行永远匹配不到 Gold ⇒ 闸是空的（错主体查不出来）。
     clustered = group_answer_rows_by_authoritative_id(
@@ -921,6 +934,9 @@ def _safety_findings(rows: list[dict[str, Any]],
         #     （否则「选错但没交」会被算成交付事故 ⇒ 成绩单虚报事故并封顶）。
         # ★ 该义务**实际交付**过的 file_id 集合（用来区分「只选中」与「既选中又交付」）
         delivered_ids = {str(x.get("file_id") or "") for x in (a.get("delivered") or [])}
+        #: ★ **本义务选中的件**（归属口径）：``delivered`` 是主体级子集 ⇒ 不能逐件比期间，
+        #:   只能判「本义务自己选中、且真的交付了」的件（见下方 delivered 循环）。
+        selected_ids = {str(s.get("file_id") or "") for s in (a.get("selected") or [])}
         for s in (a.get("selected") or []):
             fid = str(s.get("file_id") or "")
             exp = exp_files.get(fid)
@@ -975,7 +991,18 @@ def _safety_findings(rows: list[dict[str, Any]],
                                  "detail": "**交付**材料的主体与该义务的期望主体不一致"})
             # ★★ **错年度 ⇒ 进安全闸 + 封顶**（MAJOR-1 修复；与 `WRONG_ENTITY` 同口径：
             #   **交付**了 ⇒ 交付事故；只是「选中未交付」⇒ 仍只单列、不封顶）
-            if exp_per:
+            # ★★ **归属判定**（干净树重跑实测修正）：``delivered`` 是**主体级**子集 ⇒
+            #   拿它逐义务比期间，会把**兄弟义务**的材料误判成交错年份
+            #   （考试 C 一次误出 131 条假违规 ⇒ 安全闸假红、总分被误封顶 59）。
+            #   ⇒ 判哪些件：
+            #     ① **本义务标准答案里的那个件**（``exp`` 命中）⇒ **一律判**
+            #       （交付记录自报的期间与 Gold 对它的认定不符 ⇒ 交付记录本身有矛盾）；
+            #     ② **本义务选中、且真交付了**的件 ⇒ 判（本义务答了错年份）；
+            #     ③ **没有任何标准答案项要它**的件 ⇒ 判（真正的多交件）。
+            #   ⇒ 而「别的义务要、别的义务选中」的件（主体包里的兄弟件）**不在本义务判**。
+            _judge_period = (exp is not None) or (fid in selected_ids) \
+                or (fid not in gold_period_by_file)
+            if _judge_period and exp_per:
                 got_per_c = _comparable_period(got_per)
                 if got_per_c and got_per_c != exp_per:
                     findings.append({"kind": "WRONG_PERIOD", "obligation_id": oid, "file_id": fid,

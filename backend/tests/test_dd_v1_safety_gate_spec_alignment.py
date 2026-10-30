@@ -157,3 +157,91 @@ def test_clean_run_still_passes():
     gate = _grade(sheet)["safety_gate"]
     assert gate["status"] == "PASS", gate
     assert gate["violations"] == 0, gate
+
+
+# ─────────────────────────────────────────────────── 归属口径（假阳性护栏）
+
+def _two_obligations_one_entity() -> tuple[dict, dict]:
+    """同一主体、两个年度义务（O1 要 2024、O2 要 2023）——**考试 C 的真实形态**。
+
+    ★ 答卷里每行的 ``delivered`` 是**主体级**子集（同一主体的件都挂在这一行上），
+      不是「本义务答了哪几件」⇒ 安全闸**不能**拿它逐义务比期间。
+    """
+    meta = [
+        {"file_id": "F1", "sha256": SHA_F1, "relative_path": "主体甲/2024审计报告.pdf",
+         "entity": "主体甲", "entity_basis": "AUTHORITY", "period": "2024",
+         "doc_type": "audit_report", "part": "正文", "version_status": "EFFECTIVE"},
+        {"file_id": "F5", "sha256": SHA_F5, "relative_path": "主体甲/2023审计报告.pdf",
+         "entity": "主体甲", "entity_basis": "AUTHORITY", "period": "2023",
+         "doc_type": "audit_report", "part": "正文", "version_status": "EFFECTIVE"},
+    ]
+    manifest = {
+        "schema_version": gold_svc.GOLD_MANIFEST_SCHEMA,
+        "gold_pack_id": "GOLD-SAFETY-02",
+        "exam_id": "EX-SAFETY-02",
+        "checklist": {"checklist_id": "CL-SAFETY", "sha256": "f" * 64, "item_count": 2},
+        "library": {"library_id": "LIB-SAFETY", "fingerprint": "0" * 64, "material_count": 2},
+        "confirmed_by": "测试员",
+        "confirmed_at": "2026-10-30T00:00:00+08:00",
+        "items": [
+            {"obligation_id": "O1", "item_no": "1-1", "expected_verdict": "MATCH",
+             "expected_files": [{"file_id": "F1", "sha256": SHA_F1, "entity": "主体甲",
+                                 "period": "2024", "doc_type": "audit_report"}]},
+            {"obligation_id": "O2", "item_no": "1-2", "expected_verdict": "MATCH",
+             "expected_files": [{"file_id": "F5", "sha256": SHA_F5, "entity": "主体甲",
+                                 "period": "2023", "doc_type": "audit_report"}]},
+        ],
+    }
+    # ★ 两行的 delivered 都是**主体级**子集（两件都在）——与真实答卷一致
+    sheet = {
+        "schema_version": "dd_v1_answer_sheet.v1",
+        "exam_id": "EX-SAFETY-02",
+        "obligations": [
+            {"obligation_id": "O1", "item_no": "1-1",
+             "interpretation": {"resolved": True, "doc_type": "audit_report"},
+             "selected": [{"file_id": "F1", "entity": "主体甲", "period": "2024"}],
+             "delivered": _delivered("F1") + _delivered("F5"),
+             "verdict": "MATCH", "confidence": 0.9, "abstain_reason": None},
+            {"obligation_id": "O2", "item_no": "1-2",
+             "interpretation": {"resolved": True, "doc_type": "audit_report"},
+             "selected": [{"file_id": "F5", "entity": "主体甲", "period": "2023"}],
+             "delivered": _delivered("F1") + _delivered("F5"),
+             "verdict": "MATCH", "confidence": 0.9, "abstain_reason": None},
+        ],
+        "summary": {"obligations": 2, "delivered_files": 2},
+    }
+    idx = gold_svc.index_from_snapshot(None, meta)
+    return sheet, {"manifest": manifest, "idx": idx}
+
+
+def test_sibling_obligation_files_are_not_judged_as_wrong_period():
+    """★ **兄弟义务的材料**（同主体、别的年度）不得被误判成「本义务交错了年份」。
+
+    ★ 这条护栏来自一次**真实踩坑**：干净树重跑时，考试 C（42 题、每主体多年度）
+      一次误出 **131 条** ``WRONG_PERIOD`` 假违规 ⇒ 安全闸假红 ＋ 总分被误封顶 59。
+      ⇒ 根因：``delivered`` 是**主体级**子集，被当成了「本义务答了哪几件」。
+    """
+    sheet, ctx = _two_obligations_one_entity()
+    card = ex.grade_answer_sheet(sheet, ctx["manifest"], library_index=ctx["idx"],
+                                 min_obligations=1)
+    gate = card["safety_gate"]
+    assert gate["by_kind"].get("WRONG_PERIOD", 0) == 0, gate["by_kind"]
+    assert gate["status"] == "PASS", gate
+    assert card["scores"]["total_score"] > CAP_ON_FAIL, card["scores"]
+
+
+def test_true_extra_wrong_period_delivery_still_caps():
+    """★ 但「**谁都要它**的多交件」若年度不对 ⇒ 仍必须进闸封顶（不能被归属口径放过）。"""
+    sheet, ctx = _two_obligations_one_entity()
+    # O1 只选了 F1（正确），交付里多出一件 **F9（2022 年度、无人要的件）**
+    sheet["obligations"][0]["delivered"] = _delivered("F1") + _delivered("F9")
+    ctx["idx"] = gold_svc.index_from_snapshot(None, META + [
+        {"file_id": "F9", "sha256": "c" * 64, "relative_path": "主体甲/2022审计报告.pdf",
+         "entity": "主体甲", "entity_basis": "AUTHORITY", "period": "2022",
+         "doc_type": "audit_report", "part": "正文", "version_status": "EFFECTIVE"}])
+    card = ex.grade_answer_sheet(sheet, ctx["manifest"], library_index=ctx["idx"],
+                                 min_obligations=1)
+    gate = card["safety_gate"]
+    assert gate["by_kind"].get("WRONG_PERIOD") == 1, gate["by_kind"]
+    assert gate["status"] == "FAIL", gate
+    assert card["scores"]["total_score"] <= CAP_ON_FAIL, card["scores"]
