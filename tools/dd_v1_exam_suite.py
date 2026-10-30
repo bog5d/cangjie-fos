@@ -344,7 +344,8 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
              run_mode: str = "RULE_ONLY",
              codex_persist_session: bool = False,
              agent_timeout: float | None = None,
-             agent_max_calls: int = 2) -> dict[str, Any]:
+             agent_max_calls: int = 2,
+             dsh_env_override: list[str] | None = None) -> dict[str, Any]:
     """跑一场完整考试 ⇒ 返回运行清单（含成绩与失败项）。
 
     ★ ``run_mode``：**请求的运行模式**（RULE_ONLY / AGENT_REQUIRED / AUTO）
@@ -445,6 +446,9 @@ def run_exam(exam: str, *, agent: str = "none", agent_result: str = "",
         run_args += ["--agent-max-calls", str(int(agent_max_calls or 2))]
         if agent_timeout is not None:
             run_args += ["--agent-timeout", str(float(agent_timeout))]
+    # ★ **运行时凭证注入**（CLI 通道）：只传**变量名**，值由 dd_team_channel 从本进程环境取
+    for _nm in (dsh_env_override or []):
+        run_args += ["--dsh-env-override", str(_nm)]
     if codex_persist_session:
         run_args += ["--codex-persist-session"]
     if agent_result:
@@ -1223,6 +1227,9 @@ def main(argv: list[str] | None = None) -> int:
     rp.add_argument("--allow-local-dsh", action="store_true", help="显式打开本机 dsh（真实模型）")
     rp.add_argument("--agent-timeout", type=float, default=None,
                     help="P5：单次 Agent 调用硬超时秒数（不给 ⇒ 按框架实测预算 dsh300/pi120/codex300）")
+    rp.add_argument("--dsh-env-override", action="append", default=[], metavar="ENV_NAME",
+                    help="把**本进程环境**里的这个变量作为 dsh 的运行时凭证注入（可重复）；"
+                         "★ 只传变量名，值不进 argv/不进日志/不落盘")
     rp.add_argument("--agent-max-calls", type=int, default=2,
                     help="P5：最多调用次数（含重试；默认 2）")
     rp.add_argument("--run-mode", default="RULE_ONLY",
@@ -1457,7 +1464,8 @@ def cmd_run(a) -> int:
                  out_dir=a.out, run_mode=str(getattr(a, "run_mode", "") or "RULE_ONLY"),
                  codex_persist_session=bool(getattr(a, "codex_persist_session", False)),
                  agent_timeout=getattr(a, "agent_timeout", None),
-                 agent_max_calls=int(getattr(a, "agent_max_calls", 2) or 2))
+                 agent_max_calls=int(getattr(a, "agent_max_calls", 2) or 2),
+                 dsh_env_override=list(getattr(a, "dsh_env_override", []) or []))
     # ★ 独立 Reviewer 第 2 轮建议：0 件交付要**显式醒目告警**。
     #   否则「跑挂了（0 交付）」与「跑通了但分低」在摘要里长得一样（都是 SCORED/LOW_CONFIDENCE），
     #   容易被当成正常读数。

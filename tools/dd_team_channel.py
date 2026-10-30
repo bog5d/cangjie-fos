@@ -303,6 +303,11 @@ def cmd_run(a) -> int:
                 _agent_spec or "prebaked",
                 result_path=_agent_result or None,
                 dsh_enabled=(_agent_spec.lower() in ("dsh", "deepseek", "deepseek-harness")),
+                # ★ **运行时凭证注入**（CLI 通道）：值只从**本进程环境**取
+                #   ⇒ 命令行里只有变量名（ps / history / 日志都看不到值）
+                #   ⇒ 名字不在环境里 ⇒ **直接拒绝**（不给 dsh 传空值）
+                dsh_env_overrides=_env_overrides_from_names(
+                    list(getattr(a, "dsh_env_override", []) or [])),
                 # ★ codex 落盘**执行记录**（rollout）⇒ 模型身份才可核实（否则恒 UNKNOWN）。
                 #   ★ 默认**关闭**：rollout 里含完整提示词 ⇒ 真实材料场景下会把材料写进
                 #     ~/.codex/sessions ⇒ 合成考场可开，真实考场需谨慎。
@@ -553,6 +558,26 @@ def _run_package(pack: dict, a) -> int:
         print(f"  ⚠️ {res.get('gate_blocked_truncation_note')}")
     print(f"  · 批准人：{approver}")
     return EXIT_OK
+
+
+def _env_overrides_from_names(names: list[str]) -> dict[str, str]:
+    """按**变量名**从本进程环境取值 ⇒ ``{变量名: 值}``。
+
+    ★ **值只从 ``os.environ`` 取，永远不从命令行参数取**
+      ⇒ ``ps`` / shell history / ``argv_summary`` / 日志里**看不到值**。
+    ★ 名字不在环境里 ⇒ **直接拒绝**（fail-closed）：
+      给 dsh 传空值 = 「看起来调用了、必然鉴权失败」的**假调用**，
+      还会在日志里留下一个误导性的失败口径。
+    """
+    out: dict[str, str] = {}
+    for raw in names or []:
+        name = str(raw).strip()
+        if not name:
+            continue
+        if name not in os.environ:
+            raise SystemExit(f"拒绝：环境变量 {name} 未设置（不给 dsh 传空值）")
+        out[name] = os.environ[name]
+    return out
 
 
 def _run_bridge(lib, root: Path, a, adapter=None, budget=None) -> dict:
@@ -1455,6 +1480,9 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--codex-persist-session", action="store_true",
                    help="让 codex 落盘执行记录（rollout）⇒ **模型身份可核实**；"
                         "默认关闭（rollout 含完整提示词）")
+    r.add_argument("--dsh-env-override", action="append", default=[], metavar="ENV_NAME",
+                   help="把**本进程环境**里的这个变量作为 dsh 的运行时凭证注入（可重复）；"
+                        "★ 只传**变量名**，值永远不进 argv/不进日志/不落盘")
     r.add_argument("--agent-result", default="",
                    help="Harness 回执 JSON 路径（模型在**本机**跑完后回传；"
                         "材料不出本机 ⇒ 不向未授权模型外发保密资料）")

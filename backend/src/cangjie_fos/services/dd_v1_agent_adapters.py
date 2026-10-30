@@ -610,6 +610,20 @@ def redact_secrets(text: str, env: dict[str, str] | None = None) -> str:
     return text
 
 
+def redact_injected(text: str, env_overrides: dict[str, str] | None = None) -> str:
+    """把**注入进去的**值无条件抹掉（**不看变量名**）。
+
+    ★ 为什么不能只靠 :func:`redact_secrets`：它只抹「名字里含
+      KEY/TOKEN/SECRET/PASSWORD」的变量 ⇒ 注入通道里的变量名若不含这些词，
+      值就会**原样**留在 stdout/stderr 里 ⇒ 落进 ``answer.txt``（**真实泄漏路径**）。
+    ★ 注入通道里的值是**操作员显式声明**要保密的 ⇒ **无条件**抹。
+    """
+    for k, v in (env_overrides or {}).items():
+        if v and len(str(v)) >= 8:
+            text = text.replace(str(v), f"<REDACTED:{k}>")
+    return text
+
+
 def load_dsh_config(path: Path | None) -> dict[str, Any]:
     """dsh 本地配置（JSON）：binary / profile / extra_args / mode。不允许在配置里写密钥。
 
@@ -672,6 +686,11 @@ class DeepSeekHarnessAdapter:
         #   值只进**子进程环境**：不进 argv、不落盘、不进日志、不进 run_record。
         #   ⇒ dsh 自己那份凭证又过期时，可用**已授权**的替代凭证通道跑通，**不必**改 dsh 的磁盘配置。
         self.env_overrides = dict(env_overrides or {})
+        # ★ fail-closed：空值 / 纯空白 / None 一律拒绝
+        #   （传空值 = 「看起来调用了、必然鉴权失败」的**假调用**）
+        for _k, _v in self.env_overrides.items():
+            if _v is None or not str(_v).strip():
+                raise ValueError(f"DSH_ENV_OVERRIDE_EMPTY:{_k}")
 
     @classmethod
     def from_config(cls, cfg: dict[str, Any], *, enabled: bool, role: str = "PRIMARY_LOCAL_DSH",
@@ -714,7 +733,12 @@ class DeepSeekHarnessAdapter:
         code, out, err, el, to = run_cli(argv, workdir, budget.timeout_s, **_cli_kwargs)
         res.elapsed_s = el
         # ★ 抹掉**注入进去的**密钥（连同父环境里的同名变量）⇒ 日志里不会出现明文
-        out, err = redact_secrets(out), redact_secrets(err, {**os.environ, **self.env_overrides})
+        # ★★ **stdout 也要按合并环境脱敏**：原实现只对 stderr 用合并环境
+        #   ⇒ dsh 把注入的凭证**回显到 stdout** 时，它会**原样落进 answer.txt**
+        #   ⇒ 那是**真实泄漏路径**（本 PR 的实测复现：answer.txt 里出现明文 key）。
+        _merge_env = {**os.environ, **self.env_overrides}
+        out = redact_secrets(redact_injected(out, self.env_overrides), _merge_env)
+        err = redact_secrets(redact_injected(err, self.env_overrides), _merge_env)
         (workdir / "answer.txt").write_text(out, "utf-8")
         (workdir / "stderr.log").write_text(err, "utf-8")
         if to or code != 0:
