@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import platform
@@ -118,11 +119,60 @@ def exam_plane(exam: str) -> Path:
     return PLANE / exam
 
 
+#: 进程级已持有的考场锁：``exam → 文件句柄``。
+#: ★ 同一个进程里重复跑同一场时**复用**同一把锁（否则自己把自己挡住）。
+_PLANE_LOCKS: dict[str, Any] = {}
+
+
+def _acquire_plane_lock(exam: str) -> None:
+    """排他锁住某考场的**数据面**（★ 进程退出自动释放，不留残锁）。
+
+    ★ **为什么必须有（本轮实测踩出来的坑）**：数据面是按考场**共享**的固定路径
+    （``PLANE/<exam>``）⇒ 两个进程同时跑同一场时，后一个会在 ``shutil.rmtree``
+    处撞上「Directory not empty」（另一个进程正在往里写）⇒ 报出来的是**看不懂的
+    rmtree 栈**，而不是「这一场正被别人占着」。
+
+    ⇒ 现在把这件事**显式化**：拿不到锁 ⇒ ``EXAM_PLANE_BUSY:<exam>``（人话）。
+    ★ 锁文件放在数据面**外面**（``PLANE/.locks/``）—— 放里面会被 rmtree 一起删掉。
+    ★ 锁**全程持有到进程退出** ⇒ 整场考试（不只 rmtree 那一下）都受保护。
+    """
+    if exam in _PLANE_LOCKS:
+        return
+    locks = PLANE / ".locks"
+    locks.mkdir(parents=True, exist_ok=True)
+    handle = (locks / f"{exam}.lock").open("a+", encoding="utf-8")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        raise SystemExit(
+            f"EXAM_PLANE_BUSY:{exam}（该考场数据面正被另一个进程占用；"
+            f"等它跑完，或改跑别的考场）"
+        )
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"pid={os.getpid()}\n")
+    handle.flush()
+    _PLANE_LOCKS[exam] = handle
+
+
 def _prepare_plane(exam: str, *, reset: bool) -> Path:
-    """建/复用考试数据面（★ 绝不落在仓库里）。"""
+    """建/复用考试数据面（★ 绝不落在仓库里）。★ 先拿排他锁（见 `_acquire_plane_lock`）。"""
+    _acquire_plane_lock(exam)
     d = exam_plane(exam)
     if reset and d.exists():
-        shutil.rmtree(d)
+        # ★ rmtree 在 NAS 上偶发「目录非空」（并发写入的尾迹）⇒ 重试几次再放弃。
+        last: Exception | None = None
+        for _ in range(3):
+            try:
+                shutil.rmtree(d)
+                last = None
+                break
+            except OSError as exc:
+                last = exc
+                time.sleep(0.5)
+        if last is not None:
+            raise SystemExit(f"EXAM_PLANE_RESET_FAILED:{exam}:{last}")
     (d / "data").mkdir(parents=True, exist_ok=True)
     (d / "runs").mkdir(parents=True, exist_ok=True)
     return d

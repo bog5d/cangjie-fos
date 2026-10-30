@@ -264,6 +264,14 @@ def one_shot(out_dir: Path, *, steps: str = "full", keep_going: bool = False) ->
         "tests/test_dd_v1_exam_suite_l2.py",
         "tests/test_dd_v1_model_participation_l3.py",
     ]
+    # ★ 凭证活性探针：**非阻塞**（没配凭证照样能跑规则基线）⇒
+    #   它只是把「旧 key 失效一个月才被撞上」变成**开考前就知道**。
+    #   探针输出写到独立文件，**不进**门禁判定（凭证状态不是门禁项）。
+    plan.append((
+        "凭证活性探针（★ 非阻塞：只告知，不拦停）",
+        [py, str(REPO / "tools" / "dd_v1_credential_probe.py"), "probe", "--json"],
+        REPO,
+    ))
     for exam in ("A", "B", "C"):
         plan.append((
             f"考试 {exam}（RULE_ONLY）",
@@ -300,12 +308,21 @@ def one_shot(out_dir: Path, *, steps: str = "full", keep_going: bool = False) ->
     ))
 
     for name, cmd, cwd in plan:
+        # ★ 「凭证活性探针」是**非阻塞**项：它失败（=有凭证坏了）**不拦停**复跑，
+        #   因为规则基线考试不需要模型凭证 ⇒ 拦停会把「可跑」误判成「不可跑」。
+        non_fatal = "非阻塞" in name
         res = run_step(name, cmd, cwd=cwd, env=env)
+        res["non_fatal"] = non_fatal
         res["stdout_file"] = f"steps/{len(record['steps']) + 1:02d}-{name}.stdout.txt"
         res["stderr_file"] = f"steps/{len(record['steps']) + 1:02d}-{name}.stderr.txt"
         (out_dir / res["stdout_file"]).write_text(res.pop("stdout_tail") or "", encoding="utf-8")
         (out_dir / res["stderr_file"]).write_text(res.pop("stderr_tail") or "", encoding="utf-8")
         record["steps"].append(res)
+        if not res["ok"] and non_fatal:
+            record.setdefault("advisories", []).append(
+                f"{name}：rc={res['rc']}（非阻塞项，已继续）"
+            )
+            continue
         if not res["ok"] and not keep_going:
             record["failed_step"] = name
             record["next_action"] = (
