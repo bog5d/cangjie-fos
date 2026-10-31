@@ -60,8 +60,14 @@ def check_deps(fix: bool) -> tuple[bool, str, list[str]]:
     if not shutil.which("uv"):
         return False, "uv 未找到，跳过依赖检查", []
     backend = _project_root() / "backend"
+    # ★ ★ `--frozen` 是**硬要求**，不是风格偏好：
+    #   `uv run` / `uv sync` **不带** `--frozen` 时会**重解析依赖并改写 `backend/uv.lock`**
+    #   （实测：一次 doctor 检查就把锁文件改了 1793 行，引入未声明的 accelerate/torch 等）。
+    #   ⇒ 诊断命令把工作区改脏 ⇒ 门禁证据里的 `git_dirty` 变 true
+    #   ⇒ **DD-V1 的证据自证（"测的代码 == HEAD 的代码"）直接失效**。
+    #   ⇒ 凡是**只读体检**的命令，一律 `--frozen`（不重新解析、不改锁文件）。
     r = subprocess.run(
-        ["uv", "run", "--extra", "dev", "python", "-c", "import cangjie_fos"],
+        ["uv", "run", "--frozen", "--extra", "dev", "python", "-c", "import cangjie_fos"],
         capture_output=True, text=True, cwd=str(backend),
     )
     if r.returncode == 0:
@@ -69,7 +75,7 @@ def check_deps(fix: bool) -> tuple[bool, str, list[str]]:
     if not fix:
         return False, "依赖未安装", ["运行：cd backend && uv sync --extra dev"]
     print("    → 运行: uv sync --extra dev")
-    r2 = subprocess.run(["uv", "sync", "--extra", "dev"], cwd=str(backend))
+    r2 = subprocess.run(["uv", "sync", "--frozen", "--extra", "dev"], cwd=str(backend))
     if r2.returncode == 0:
         return True, "依赖安装完成", []
     return False, "依赖安装失败", ["手动运行：cd backend && uv sync --extra dev"]
