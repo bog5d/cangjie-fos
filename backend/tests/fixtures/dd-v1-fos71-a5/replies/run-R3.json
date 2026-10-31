@@ -1,0 +1,30 @@
+{
+ "results": [
+  {
+   "item_id": "R3",
+   "obligation_id": "R3-O1",
+   "agent_id": "synthetic-replay",
+   "provider": "SYNTHETIC",
+   "model_id_or_unknown": "UNKNOWN",
+   "prompt_version": "fos71-wp04-p1",
+   "source_snapshot_id": "snap-da8f944ca5c9d242",
+   "candidate_files": [
+    {
+     "file_id": "F00004",
+     "relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2023_正文.txt",
+     "sha256": "1f8c032515aa14696f041ca85d94081a47e14547e255bfce42ac69caa017a8f1",
+     "locator": "L2-L6",
+     "entity": "主体甲",
+     "period": "2023",
+     "match_reason": "合成样本：证据正文的主体与期间同义务一致，且为现行有效版本"
+    }
+   ],
+   "proposed_verdict": "OUTDATED",
+   "confidence_or_uncertain": 0.9,
+   "abstain_reason": "",
+   "warnings": [],
+   "elapsed": 0,
+   "token_usage_or_UNKNOWN": "UNKNOWN"
+  }
+ ]
+}

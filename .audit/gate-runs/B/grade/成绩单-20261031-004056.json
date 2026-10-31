@@ -1,0 +1,1334 @@
+{
+  "schema_version": "dd_v1_scorecard.v1",
+  "exam_id": "",
+  "status": "SCORED_PARTIAL",
+  "graded_at": "2026-10-31T00:40:56+08:00",
+  "scores": {
+    "question_understanding_coverage": 0.9,
+    "question_answer_coverage": 0.9,
+    "material_recall": 1.0,
+    "selection_precision": 0.866667,
+    "complete_delivery_ratio": 1.0,
+    "miss_rate": 0.0,
+    "wrong_rate": 0.1,
+    "total_score": 95.67
+  },
+  "counts": {
+    "obligations": 10,
+    "obligations_with_expected_files": 8,
+    "expected_files": 13,
+    "selected_files": 15,
+    "hit_files": 13,
+    "extra_files": 2,
+    "delivered_files": 2,
+    "delivered_files_attributed": 3,
+    "understood": 9,
+    "answered": 9,
+    "complete": 8,
+    "missed": 0,
+    "wrong": 1
+  },
+  "rows": [
+    {
+      "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
+      "cluster_ids": [
+        "ce4ea2a2933d4bfea924eabb407e56b7@合成子公司乙",
+        "ce4ea2a2933d4bfea924eabb407e56b7@合成子公司甲",
+        "ce4ea2a2933d4bfea924eabb407e56b7@合成母公司"
+      ],
+      "cluster_count": 3,
+      "item_no": "2-1",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "131dc51c758d767b6fab7d7594baa437",
+        "5142b1b7b3111f1878511d6cac53eb71",
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "selected_files": [
+        "131dc51c758d767b6fab7d7594baa437",
+        "5142b1b7b3111f1878511d6cac53eb71",
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "131dc51c758d767b6fab7d7594baa437",
+        "5142b1b7b3111f1878511d6cac53eb71",
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "9f593f92b8914de19fa39fb9e1cb0c84",
+      "cluster_ids": [
+        "9f593f92b8914de19fa39fb9e1cb0c84"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-2",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "e55a35d140ed4d95c7522a0ab62ae91e"
+      ],
+      "selected_files": [
+        "e55a35d140ed4d95c7522a0ab62ae91e"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "e55a35d140ed4d95c7522a0ab62ae91e"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "bc2da82e7ba04c5a803e4270cd8e38b5",
+      "cluster_ids": [
+        "bc2da82e7ba04c5a803e4270cd8e38b5"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-3",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "5142b1b7b3111f1878511d6cac53eb71"
+      ],
+      "selected_files": [
+        "5142b1b7b3111f1878511d6cac53eb71"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "5142b1b7b3111f1878511d6cac53eb71"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+      "cluster_ids": [
+        "b6db6e633e9841078977f6681fc6c56c"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-4",
+      "outcome": "EXPECTED_NONE",
+      "expected_files": [],
+      "selected_files": [],
+      "delivered_files": [],
+      "hit": [],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MISSING",
+      "agent_verdict": "",
+      "answered": false,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "NO_EXPECTED_FILES"
+    },
+    {
+      "obligation_id": "bcd1e0e676574e7d90da7c91f3865a86",
+      "cluster_ids": [
+        "bcd1e0e676574e7d90da7c91f3865a86"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-5",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "selected_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "delivered_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812"
+      ],
+      "hit": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "d8537d53bb0f4ec29000044d6b26f999",
+      "cluster_ids": [
+        "d8537d53bb0f4ec29000044d6b26f999"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-6",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "29ba53b6e613697220ebf8c13d7b0271",
+        "e4ceacfba45c49b190d3cfe2d8f6dbf1"
+      ],
+      "selected_files": [
+        "29ba53b6e613697220ebf8c13d7b0271",
+        "e4ceacfba45c49b190d3cfe2d8f6dbf1"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "29ba53b6e613697220ebf8c13d7b0271",
+        "e4ceacfba45c49b190d3cfe2d8f6dbf1"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": false,
+      "doc_type_source": "UNRESOLVED",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "c769875422954331b2359c84f5d4042d",
+      "cluster_ids": [
+        "c769875422954331b2359c84f5d4042d"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-7",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "selected_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "delivered_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812"
+      ],
+      "hit": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "defdcfd90b1a41789bd09e80c2af6865",
+      "cluster_ids": [
+        "defdcfd90b1a41789bd09e80c2af6865"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-7",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "selected_files": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "b0d0fa8de23f400e9327bf06859ca204",
+      "cluster_ids": [
+        "b0d0fa8de23f400e9327bf06859ca204"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-8",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "selected_files": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+      "cluster_ids": [
+        "a776ebe96bf643fd87e82ac60ca4ca4b"
+      ],
+      "cluster_count": 1,
+      "item_no": "2-9",
+      "outcome": "EXPECTED_NONE",
+      "expected_files": [],
+      "selected_files": [
+        "1b76c71fadf19c2b35142579a395e861",
+        "475bf6e5d061be85de3de97561ed486d"
+      ],
+      "delivered_files": [
+        "1b76c71fadf19c2b35142579a395e861"
+      ],
+      "hit": [],
+      "extra": [
+        "1b76c71fadf19c2b35142579a395e861",
+        "475bf6e5d061be85de3de97561ed486d"
+      ],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "AMBIGUOUS_CONTENT"
+    }
+  ],
+  "exam_coverage": {
+    "questions_total": 9,
+    "denominator_source": "LIBRARY_OBLIGATION_CONTRACT",
+    "questions_processed": 9,
+    "questions_correct": 7,
+    "questions_unmatched": 0,
+    "questions_ambiguous": 0,
+    "questions_incomplete": 0,
+    "questions_unanswered": 0,
+    "verifiable_coverage": 1.0,
+    "questions": [
+      {
+        "question_id": "2-7",
+        "item_no": "2-7",
+        "state": "CORRECT",
+        "obligations": 2,
+        "graded_obligations": 2,
+        "original_text_head": "请提供合成母公司2024年度审计报告和营业执照"
+      },
+      {
+        "question_id": "2-4",
+        "item_no": "2-4",
+        "state": "NO_EXPECTED_FILES",
+        "obligations": 1,
+        "graded_obligations": 1,
+        "original_text_head": "请提供合成子公司乙2022年度审计报告"
+      },
+      {
+        "question_id": "2-6",
+        "item_no": "2-6",
+        "state": "CORRECT",
+        "obligations": 1,
+        "graded_obligations": 1,
+        "original_text_head": "请提供合成母公司近三年经营情况说明"
+      },
+      {
+        "question_id": "2-2",
+        "item_no": "2-2",
+        "state": "CORRECT",
+        "obligations": 1,
+        "graded_obligations": 1,
+        "original_text_head": "请提供合成子公司甲2023年度审计报告"
+      },
+      {
+        "question_id": "2-1",
+        "item_no": "2-1",
+        "state": "CORRECT",
+        "obligations": 3,
+        "graded_obligations": 1,
+        "original_text_head": "请提供集团及下属公司2024年度审计报告"
+      },
+      {
+        "question_id": "2-3",
+        "item_no": "2-3",
+        "state": "CORRECT",
+        "obligations": 1,
+        "graded_obligations": 1,
+        "original_text_head": "请提供合成子公司乙2024年度审计报告"
+      },
+      {
+        "question_id": "2-5",
+        "item_no": "2-5",
+        "state": "CORRECT",
+        "obligations": 1,
+        "graded_obligations": 1,
+        "original_text_head": "请提供合成母公司2024年度营业执照"
+      },
+      {
+        "question_id": "2-8",
+        "item_no": "2-8",
+        "state": "CORRECT",
+        "obligations": 1,
+        "graded_obligations": 1,
+        "original_text_head": "请提供合成母公司2024年度审计报告"
+      },
+      {
+        "question_id": "2-9",
+        "item_no": "2-9",
+        "state": "NO_EXPECTED_FILES",
+        "obligations": 1,
+        "graded_obligations": 1,
+        "original_text_head": "请提供合成母公司2024年度纳税证明"
+      }
+    ],
+    "note": "分母来自**库侧权威题单**"
+  },
+  "gold_gaps": {
+    "schema_version": "dd_v1_gold_gap_report.v1",
+    "gold_pack_id": "GOLD-SYN-B",
+    "exam_id": "DDV1-SYN-B",
+    "counts": {
+      "obligations": 10,
+      "expected_files": 14,
+      "resolved": 13,
+      "gaps": 2,
+      "by_class": {
+        "D_FINGERPRINT_MISMATCH": 1,
+        "F_NEEDS_HUMAN_CONFIRM": 1
+      }
+    },
+    "gaps": [
+      {
+        "resolution": "AMBIGUOUS_CONTENT",
+        "resolution_note": "同一内容指纹命中 2 份图书馆材料（1b76c71fadf19c2b35142579a395e861, 475bf6e5d061be85de3de97561ed486d）⇒ 内容寻址无法唯一定位 ⇒ 需人工指定",
+        "gold_relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "gold_sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+        "gold_entity": "合成母公司",
+        "gold_period": "2024",
+        "gap_class": "D_FINGERPRINT_MISMATCH",
+        "candidates": [
+          {
+            "file_id": "475bf6e5d061be85de3de97561ed486d",
+            "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+            "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+            "entity": "合成母公司",
+            "period": "2024"
+          },
+          {
+            "file_id": "475bf6e5d061be85de3de97561ed486d",
+            "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+            "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+            "entity": "合成母公司",
+            "period": "2024"
+          }
+        ],
+        "remedy": "人工核对：库里同路径件的内容指纹与 Gold 记的不一致 ⇒ 是内容被替换，还是 Gold 记错",
+        "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+        "item_no": "2-9"
+      },
+      {
+        "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+        "item_no": "2-4",
+        "resolution": "NO_EXPECTED_FILES",
+        "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+        "gold_relative_path": "",
+        "gold_sha256": "",
+        "gold_entity": "",
+        "gold_period": "",
+        "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+        "candidates": [],
+        "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+      }
+    ],
+    "note": "逐件待处置清单：★ **不删 Gold、不改 Gold**；A/B/C/D/E 由人工核对后**在本地纠正映射**，A（确实缺料）单列进补料清单"
+  },
+  "gold_scorable": {
+    "scorable_obligations": 8,
+    "correct": 8,
+    "wrong": 0,
+    "denominator": 8,
+    "score_ratio": 1.0,
+    "not_included_reasons": {
+      "NO_EXPECTED_FILES": 1,
+      "AMBIGUOUS_CONTENT": 1
+    },
+    "not_included_total": 2,
+    "note": "★ 分母只含**Gold 已解析到具体材料**的义务；★ 其余原因逐条列出，★ **不得**把它们算成 0 分"
+  },
+  "evidence_diff": [
+    {
+      "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
+      "item_no": "2-1",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "resolution": "RESOLVED"
+        },
+        {
+          "file_id": "131dc51c758d767b6fab7d7594baa437",
+          "sha256": "aad89e1a1073cd414edb09eb286b99ea5b5049ba0b1e3b58d985377d52b80026",
+          "gold_relative_path": "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司甲",
+          "period": "2024",
+          "resolution": "RESOLVED"
+        },
+        {
+          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+          "gold_relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2024",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2024",
+          "match_reason": "MATCH"
+        },
+        {
+          "file_id": "131dc51c758d767b6fab7d7594baa437",
+          "sha256": "aad89e1a1073cd414edb09eb286b99ea5b5049ba0b1e3b58d985377d52b80026",
+          "relative_path": "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司甲",
+          "period": "2024",
+          "match_reason": "MATCH"
+        },
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "131dc51c758d767b6fab7d7594baa437",
+        "5142b1b7b3111f1878511d6cac53eb71",
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "9f593f92b8914de19fa39fb9e1cb0c84",
+      "item_no": "2-2",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
+          "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
+          "gold_relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+          "entity": "合成子公司甲",
+          "period": "2023",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
+          "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
+          "relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+          "entity": "合成子公司甲",
+          "period": "2023",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "e55a35d140ed4d95c7522a0ab62ae91e"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "bc2da82e7ba04c5a803e4270cd8e38b5",
+      "item_no": "2-3",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+          "gold_relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2024",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+          "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+          "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+          "entity": "合成子公司乙",
+          "period": "2024",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "5142b1b7b3111f1878511d6cac53eb71"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+      "item_no": "2-4",
+      "outcome": "EXPECTED_NONE",
+      "correct": false,
+      "expected_files": [],
+      "selected_files": [],
+      "hit": [],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [],
+      "agent_verdict": "",
+      "expected_verdict": "MISSING",
+      "abstain_reason": "",
+      "resolution_state": "NO_EXPECTED_FILES",
+      "reason": "Gold 该义务没有期望文件 ⇒ 无可比基准（不算答错）"
+    },
+    {
+      "obligation_id": "bcd1e0e676574e7d90da7c91f3865a86",
+      "item_no": "2-5",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "resolution": "RESOLVED"
+        },
+        {
+          "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "match_reason": "MATCH"
+        },
+        {
+          "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812"
+      ],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "d8537d53bb0f4ec29000044d6b26f999",
+      "item_no": "2-6",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
+          "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
+          "gold_relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+          "entity": "合成母公司",
+          "period": "2023",
+          "resolution": "RESOLVED"
+        },
+        {
+          "file_id": "29ba53b6e613697220ebf8c13d7b0271",
+          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "29ba53b6e613697220ebf8c13d7b0271",
+          "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+          "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "match_reason": "MATCH"
+        },
+        {
+          "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
+          "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
+          "relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+          "entity": "合成母公司",
+          "period": "2023",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "29ba53b6e613697220ebf8c13d7b0271",
+        "e4ceacfba45c49b190d3cfe2d8f6dbf1"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "c769875422954331b2359c84f5d4042d",
+      "item_no": "2-7",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "resolution": "RESOLVED"
+        },
+        {
+          "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+          "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "match_reason": "MATCH"
+        },
+        {
+          "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+          "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+          "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+          "entity": "合成母公司",
+          "period": "CURRENT",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812",
+        "b99f3ac5a73b9dc335d4fd0131ba2079"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [
+        "2ae5ea69b3f5cd22009e7f76e36fe812"
+      ],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "defdcfd90b1a41789bd09e80c2af6865",
+      "item_no": "2-7",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "b0d0fa8de23f400e9327bf06859ca204",
+      "item_no": "2-8",
+      "outcome": "CORRECT",
+      "correct": true,
+      "expected_files": [
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "resolution": "RESOLVED"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+          "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+          "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [
+        "a25d83f078d213e8db395b786a8b7fb3"
+      ],
+      "extra": [],
+      "missed": [],
+      "delivered_files": [],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED",
+      "reason": "选中集合与 Gold 期望完全一致"
+    },
+    {
+      "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+      "item_no": "2-9",
+      "outcome": "EXPECTED_NONE",
+      "correct": false,
+      "expected_files": [
+        {
+          "file_id": "",
+          "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "resolution": "AMBIGUOUS_CONTENT"
+        }
+      ],
+      "selected_files": [
+        {
+          "file_id": "1b76c71fadf19c2b35142579a395e861",
+          "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+          "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "match_reason": "MATCH"
+        },
+        {
+          "file_id": "475bf6e5d061be85de3de97561ed486d",
+          "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+          "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+          "entity": "合成母公司",
+          "period": "2024",
+          "match_reason": "MATCH"
+        }
+      ],
+      "hit": [],
+      "extra": [
+        "1b76c71fadf19c2b35142579a395e861",
+        "475bf6e5d061be85de3de97561ed486d"
+      ],
+      "missed": [],
+      "delivered_files": [
+        "1b76c71fadf19c2b35142579a395e861"
+      ],
+      "agent_verdict": "MATCH",
+      "expected_verdict": "MATCH",
+      "abstain_reason": "",
+      "resolution_state": "AMBIGUOUS_CONTENT",
+      "reason": "Gold 该义务没有期望文件 ⇒ 无可比基准（不算答错）"
+    }
+  ],
+  "safety_gate": {
+    "violations": 0,
+    "findings": [],
+    "by_kind": {},
+    "selection_mismatches": 0,
+    "selection_mismatch_detail": [],
+    "selection_mismatch_by_kind": {},
+    "note_selection": "★ **只有实际交付的件才进安全闸封顶**；「选中但未交付」的错主体/错年份属**选材质量**问题 ⇒ 单列、**不封顶**。★ **错年度（WRONG_PERIOD）已按冻结评分规范进闸**（`safety.counted_kinds` 明列它 ⇒ 命中 ⇒ FAIL ＋ 封顶 59）；但**口径不可比**的期间（``CURRENT``/``当前``/``未知``）**不判**（派生元数据口径差异不算机器交错年份 ⇒ 不冤枉机器）。★ MAJOR-1（独立 Reviewer 第 3 轮）：此前实现把错年度完全排除在闸外 ⇒ 错年度交付可拿 100 分且 safety_gate=PASS ⇒ 与冻结规范矛盾 ⇒ 已修。",
+    "status": "PASS",
+    "note": "未发现安全闸违规"
+  },
+  "gold_resolution": {
+    "gold_pack_id": "GOLD-SYN-B",
+    "exam_id": "DDV1-SYN-B",
+    "items": [
+      {
+        "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
+        "item_no": "2-1",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+            "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          },
+          {
+            "gold_relative_path": "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+            "gold_entity": "合成子公司甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "aad89e1a1073cd414edb09eb286b99ea5b5049ba0b1e3b58d985377d52b80026",
+            "file_id": "131dc51c758d767b6fab7d7594baa437",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          },
+          {
+            "gold_relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+            "gold_entity": "合成子公司乙",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+            "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "a25d83f078d213e8db395b786a8b7fb3",
+          "131dc51c758d767b6fab7d7594baa437",
+          "5142b1b7b3111f1878511d6cac53eb71"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "9f593f92b8914de19fa39fb9e1cb0c84",
+        "item_no": "2-2",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+            "gold_entity": "合成子公司甲",
+            "gold_period": "2023",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
+            "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "e55a35d140ed4d95c7522a0ab62ae91e"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "bc2da82e7ba04c5a803e4270cd8e38b5",
+        "item_no": "2-3",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+            "gold_entity": "合成子公司乙",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+            "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "5142b1b7b3111f1878511d6cac53eb71"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+        "item_no": "2-4",
+        "expected_verdict": "MISSING",
+        "expected_files": [],
+        "resolved_file_ids": [],
+        "resolution_state": "NO_EXPECTED_FILES",
+        "note": ""
+      },
+      {
+        "obligation_id": "bcd1e0e676574e7d90da7c91f3865a86",
+        "item_no": "2-5",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "CURRENT",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+            "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          },
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "CURRENT",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+            "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "2ae5ea69b3f5cd22009e7f76e36fe812",
+          "b99f3ac5a73b9dc335d4fd0131ba2079"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "d8537d53bb0f4ec29000044d6b26f999",
+        "item_no": "2-6",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "2023",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
+            "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          },
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+            "file_id": "29ba53b6e613697220ebf8c13d7b0271",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "e4ceacfba45c49b190d3cfe2d8f6dbf1",
+          "29ba53b6e613697220ebf8c13d7b0271"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "c769875422954331b2359c84f5d4042d",
+        "item_no": "2-7",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "CURRENT",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+            "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          },
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "CURRENT",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+            "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "2ae5ea69b3f5cd22009e7f76e36fe812",
+          "b99f3ac5a73b9dc335d4fd0131ba2079"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "defdcfd90b1a41789bd09e80c2af6865",
+        "item_no": "2-7",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+            "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "a25d83f078d213e8db395b786a8b7fb3"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "b0d0fa8de23f400e9327bf06859ca204",
+        "item_no": "2-8",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+            "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "a25d83f078d213e8db395b786a8b7fb3"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+        "item_no": "2-9",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+            "gold_entity": "合成母公司",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+            "file_id": "",
+            "resolution": "AMBIGUOUS_CONTENT",
+            "resolution_note": "同一内容指纹命中 2 份图书馆材料（1b76c71fadf19c2b35142579a395e861, 475bf6e5d061be85de3de97561ed486d）⇒ 内容寻址无法唯一定位 ⇒ 需人工指定"
+          }
+        ],
+        "resolved_file_ids": [],
+        "resolution_state": "AMBIGUOUS_CONTENT",
+        "note": ""
+      }
+    ],
+    "summary": {
+      "obligations": 10,
+      "expected_files": 14,
+      "resolved": 13,
+      "missing_in_library": 0,
+      "ambiguous_content": 1,
+      "no_fingerprint": 0
+    },
+    "library_binding": {
+      "gold_items": 10,
+      "bound_exact": 10,
+      "rebound_by_key": 0,
+      "rebound": [],
+      "unbound": 0,
+      "unbound_detail": [],
+      "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
+    }
+  },
+  "gold_library_binding": {
+    "gold_items": 10,
+    "bound_exact": 10,
+    "rebound_by_key": 0,
+    "rebound": [],
+    "unbound": 0,
+    "unbound_detail": [],
+    "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
+  },
+  "examinee_mode": "RULE_ONLY",
+  "score_split": {
+    "score_name": "RULE_BASELINE_SCORE",
+    "rule_baseline_score": 95.67,
+    "ai_system_score": null,
+    "ai_system_score_status": "NOT_SCORED",
+    "model_identity_acceptable": false,
+    "delta": null,
+    "delta_is_causal": false,
+    "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+  },
+  "run_provenance": {
+    "requested_mode": "RULE_ONLY",
+    "execution_path": "RULE_ONLY",
+    "examinee_agent": "",
+    "examinee_framework": "",
+    "examinee_provider": "",
+    "actual_model": "UNKNOWN",
+    "model_identity": {},
+    "model_identity_verified": false,
+    "model_participated": false,
+    "participated_scope": "NONE",
+    "gold_version": "6ef9d45d010d0c7a00be9fcd26dde5d9a54ad58b26b58ea96706cb22da2437bf",
+    "gold_source": "LOCAL_GOLD_PACK",
+    "gold_pack_id": "GOLD-SYN-B",
+    "answer_sheet_source": "dd_v1_answer_sheet.v1",
+    "source_snapshot_id": "",
+    "total_score": 95.67,
+    "scores": {
+      "question_understanding_coverage": 0.9,
+      "question_answer_coverage": 0.9,
+      "material_recall": 1.0,
+      "selection_precision": 0.866667,
+      "complete_delivery_ratio": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.1,
+      "total_score": 95.67
+    },
+    "score_split": {
+      "score_name": "RULE_BASELINE_SCORE",
+      "rule_baseline_score": 95.67,
+      "ai_system_score": null,
+      "ai_system_score_status": "NOT_SCORED",
+      "model_identity_acceptable": false,
+      "delta": null,
+      "delta_is_causal": false,
+      "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+    },
+    "disclosure_safety": {
+      "status": "PASS",
+      "violations": 0,
+      "findings_count": 0
+    },
+    "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
+    "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
+    "code_version": "8e5bcd117187655555d2f203a95038046ed4fa7c",
+    "evidence_paths": {
+      "answer_sheet": "/workspace/fos/.audit/gate-runs/B/answer/机器答卷-20261031-004055.json",
+      "gold": "/workspace/plane-regen/B/gold/gold-B.json",
+      "library": "LIB-DDVE-B"
+    }
+  },
+  "leak_report": {
+    "leaked": false,
+    "leak_count": 0,
+    "leaks": [],
+    "note": "Gold 泄漏 ⇒ 安全失败，不得进入正式评分；本检测只覆盖结构面，不覆盖进程级隔离"
+  },
+  "selection_source": {
+    "RULE_HINT": 11,
+    "NONE": 1
+  },
+  "scoring_spec_fingerprint": "bd02ad8ba4ee71f19f13fdb8027ae52c08000e2e6b904bc5d77b378fe3d7bd9e",
+  "scoring_spec_id": "DDV1-EXAM-SCORING-V1",
+  "zero_delivery_forced_zero": false,
+  "zero_hit_forced_zero": false,
+  "note": "按冻结口径计算"
+}

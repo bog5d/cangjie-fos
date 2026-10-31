@@ -1,0 +1,116 @@
+{
+  "status": "LOW_CONFIDENCE",
+  "n_obligations": 8,
+  "agent": {
+    "correct": 0,
+    "no_answer": 8,
+    "wrong": 0,
+    "confident_mismatch": 0,
+    "accuracy": 0.0
+  },
+  "rule_only_baseline": {
+    "correct": 0,
+    "accuracy": 0.0
+  },
+  "rows": [
+    {
+      "obligation_id": "R1-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00001",
+        "F00002"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    },
+    {
+      "obligation_id": "R2-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00001"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    },
+    {
+      "obligation_id": "R3-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00001"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    },
+    {
+      "obligation_id": "R4-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00001"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    },
+    {
+      "obligation_id": "R5-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00005"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    },
+    {
+      "obligation_id": "R6-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00006"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    },
+    {
+      "obligation_id": "R7-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00008"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    },
+    {
+      "obligation_id": "R8-O1",
+      "expected_verdict": "MATCH",
+      "expected_files": [
+        "F00001",
+        "F00002"
+      ],
+      "agent_verdict": "NO_ANSWER",
+      "agent_files": [],
+      "agent_correct": false,
+      "confident_mismatch": false,
+      "error_category": "UNCLASSIFIED(人工归类: RULE_DEFECT/MODEL_REASONING_DEFECT/RECALL_DEFECT/MATERIAL_MISSING)"
+    }
+  ],
+  "note": "只含 obligation_id / verdict / file_id，不含路径与正文，可回传"
+}

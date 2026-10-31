@@ -47,7 +47,8 @@ UNKNOWN = "UNKNOWN"
 
 # 认知卡字段全集（Schema 固定，便于校验与后续映射）
 CARD_FIELDS = (
-    "doc_type",        # 文件类型
+    "doc_type",        # 文件类型（主类型，单值）
+    "doc_types",       # 材料命中的**全部**类型（G5 · 多值；空 = 认不出）
     "title",           # 材料标题
     "entity",          # 公司主体
     "group",           # 所属集团
@@ -64,6 +65,7 @@ CARD_FIELDS = (
     "source_trust",    # 可信来源
     "parse_complete",  # 解析完整性
     "evidence_loc",    # 证据位置
+    "part",            # 正文 / 附注 / 附录（WP3-c：正文之外的组成部分）
 )
 
 _DDL = """
@@ -291,6 +293,46 @@ def _card_conn(db_path: Path | None = None):
     return mf._connect(db_path)
 
 
+# ── part（正文之外的组成部分）· WP3-c ────────────────────────────────────────
+#: part 的**取值空间**只有三个（正文 / 附注 / 附录）——
+#:   与义务侧的 ``dd_v1_requirement_service.parse_required_parts`` **同一口径**
+#:   （义务侧只认「含/附/带/连同/及 ＋ 附注|附录|附件」）。
+_PART_ATTACH_RE = re.compile(r"附注|附录|附件|appendix|notes", re.I)
+PART_MAIN = "正文"
+
+
+def derive_part(rel_path: str, file_name: str = "") -> str:
+    """材料是**正文**还是**附注/附录**（WP3-c）。
+
+    ★ 判据只看**文件名 / 相对路径**（确定性，零模型）：路径里出现
+      「附注 / 附录 / 附件」⇒ 该件是**组成部分**，否则是正文。
+    ★ 与桥接层（``dd_v1_bridge_service``）的 part 口径**同源**：
+      桥接层改为复用本函数 ⇒ 全仓只有**一份** part 判定规则。
+    """
+    hay = f"{rel_path or ''} {file_name or ''}"
+    m = _PART_ATTACH_RE.search(hay)
+    return m.group(0) if m else PART_MAIN
+
+
+def card_part(file_id: str, db_path: Path | None = None) -> str:
+    """认知卡上的 **part**（正文 / 附注 / 附录）。
+
+    ★ 取卡片的 ``fields.part``（建卡时按路径判定）；取不到 ⇒ ``正文``
+      （**不猜**：没有 part 证据就当正文，宁可少认一个组成部分）。
+    """
+    card = get_card(file_id, db_path=db_path) or {}
+    fields = card.get("fields") or {}
+    node = fields.get("part") if isinstance(fields, dict) else None
+    val = ""
+    if isinstance(node, dict):
+        val = str(node.get("value") or "")
+    elif node:
+        val = str(node)
+    if not val:
+        val = str(card.get("part") or "")
+    return val or PART_MAIN
+
+
 def _ensure_schema(conn) -> None:
     conn.executescript(_DDL)
     conn.commit()
@@ -311,6 +353,27 @@ def _extract_labels(text: str) -> dict:
     if m:
         out["fiscal_period"] = (m.group(1), "正文中带「年度/财年」标签的取值")
     return out
+
+
+def _sensitivity_for_types(policy, types: list[str]) -> tuple[str, str]:
+    """按材料命中的**全部**类型取默认敏感等级（G5 · 取最严）。
+
+    - 单类型 ⇒ 与 :func:`dd_v1_policy_service.default_sensitivity` **逐位一致**；
+    - 多类型 ⇒ 取各类型默认等级里**最严**的一个
+      （一份材料只要含有一类受限内容，就不能按最松的那类定级）；
+    - 任一命中类型**没有**声明默认等级 ⇒ 等级**留空**
+      （不可判定 ⇒ 按最严处理 ⇒ 不可外发），**不得**按已知的那几类放行。
+    """
+    if not types:
+        return "", ""
+    levels: list[str] = []
+    for t in types:
+        level, _basis = dpol.default_sensitivity(policy, t)
+        if not level:
+            # 有类型没声明默认等级 ⇒ 整体不可判定（fail-closed）
+            return "", ""
+        levels.append(level)
+    return policy.strictest(*levels), "INFERRED"
 
 
 def _siblings_of(conn, manifest_row: dict) -> list[dict]:
@@ -371,9 +434,12 @@ def build_card(
                     "⇒ 不作为材料类型证据、不参与内容冲突判定、不可交付；"
                     "需人工确认",
         }]
+        doc_types_value: list[str] = []
     else:
-        doc_type_value, doc_type_basis, doc_type_evidence = dts.resolve_doc_type(
-            file_name=file_name, text=text, purpose=" ".join(purpose_hits))
+        # ★ G5：一次解析同时拿到**主类型**与**全部命中类型**（同一来源口径，不分叉）。
+        doc_types_value, doc_type_value, doc_type_basis, doc_type_evidence = (
+            dts.resolve_doc_types(
+                file_name=file_name, text=text, purpose=" ".join(purpose_hits)))
     b.set("doc_type", doc_type_value, doc_type_basis,
           list(doc_type_evidence) + [{
               "kind": "fs_ext_not_type",
@@ -381,6 +447,12 @@ def build_card(
               "rule": f"文件扩展名 {ext.lstrip('.') or '(无)'} 只是容器格式，"
                       f"不是材料类型，不得写入 doc_type",
           }])
+    # ★ G5：材料命中的**全部**类型都保留（多值字段）。
+    #   `doc_type` 仍是**主类型**（单值，向后兼容）；`doc_types` 是全部命中类型。
+    #   组包链的披露闸按**材料自己的**类型判定 ⇒ 段内可外发类材料不再被
+    #   「整段的类型归属」连坐（G5 的成因环与后果环一并断掉）。
+    b.multi("doc_types", list(doc_types_value), doc_type_basis,
+            list(doc_type_evidence))
 
     b.set("title", stem, INFERRED,
           [{"kind": "filename_stem", "loc": rel, "rule": "取文件名去扩展名；可能是草稿名，非正式标题"}])
@@ -435,7 +507,24 @@ def build_card(
     # 声明了 → 填入并标 INFERRED（机器默认定级，**不是**人工逐件定级，
     # 外发仍须逐件人工复核 + 最终人工批准）。
     _pol = dpol.load_policy()
-    _sens_level, _sens_basis = dpol.default_sensitivity(_pol, doc_type_value)
+    # ★ G5：材料可能命中**多类**（例：正文里既有审计报告又有营业执照）。
+    #   等级取**全部命中类型**的默认等级里**最严**的一个；
+    #   任一命中类型**没有**声明默认等级 ⇒ 等级留空（不可判定 ⇒ 不可外发）。
+    #   （单类型材料的读数与修复前**逐位一致**。）
+    #
+    # ★★ WP4：等级必须按**生效类型**算 —— 生效类型 = 机器命中的类型 ∪
+    #   **人工改写的类型**（人工的分类裁定是权威的，机器没认出来不算数）。
+    #   否则「人工改类型 → 重算等级」在**重建认知卡**后会被机器的旧类型覆盖回去
+    #   ⇒ 人工的裁定失效、等级又停回旧值（= Reviewer 抓到的「陈旧等级存活」）。
+    _prev_fields = _existing_card_fields(conn, manifest_row["file_id"])
+    _ov_types = _human_override(_prev_fields, "doc_type")
+    _eff_types = list(doc_types_value or ([doc_type_value] if doc_type_value else []))
+    if _ov_types:
+        _ov_list = [t.strip().lower() for t in
+                    str(_ov_types.get("value") or "").split(",") if t.strip()]
+        if _ov_list:
+            _eff_types = _ov_list
+    _sens_level, _sens_basis = _sensitivity_for_types(_pol, _eff_types)
     if _sens_level:
         b.set("sensitivity", _sens_level, _sens_basis, [{
             "kind": "policy_default",
@@ -492,13 +581,32 @@ def build_card(
     # ── 证据位置 ────────────────────────────────────────────────────────
     b.set("evidence_loc", rel, FACT, [{"kind": "fs_path", "loc": rel}])
 
+    # ── part（正文 / 附注 / 附录）· WP3-c ───────────────────────────────
+    #   「正文之外的组成部分」：判定只看**文件名 / 相对路径**（确定性，零模型）。
+    #   ★ 与义务侧 ``parse_required_parts`` 同一取值空间 ⇒ 两端口径不分叉。
+    _part = derive_part(rel, file_name)
+    b.set("part", _part, INFERRED if _part != PART_MAIN else FACT,
+          [{"kind": "filename_part",
+            "loc": rel,
+            "rule": ("路径/文件名含「附注/附录/附件」⇒ 该件是**组成部分**；"
+                     "否则是正文。判定只认路径，不猜内容")}])
+
     # ── 人工复核定级**优先**：重新建卡不得覆盖人工改写 ────────────────────
     # 只有 doc_type / sensitivity 是「机器推断、可以由人拍板」的字段。
-    _prev = _existing_card_fields(conn, manifest_row["file_id"])
+    # ★ WP4：机器推断出来的等级**不是**人工改写 ⇒ 重建时**按生效类型重算**
+    #   （生效类型含人工改写的类型）；**人工自己定过的等级**才原样保留。
     for _fname in ("doc_type", "sensitivity"):
-        _ov = _human_override(_prev, _fname)
+        _ov = _human_override(_prev_fields, _fname)
         if _ov:
             b.set(_fname, _ov["value"], FACT, _ov["evidence"])
+    # ★ WP4：人工改写 ``doc_type`` 时**同步**过 ``doc_types`` 多值字段
+    #   （类型闸读的就是那个多值字段）⇒ 重建时**必须一起恢复**，
+    #   否则「人工已确认这就是营业执照」在重建后又变回机器认错的那一类
+    #   ⇒ 人工的分类裁定**形同虚设**。
+    _ov_types_multi = _human_override(_prev_fields, "doc_types")
+    if _ov_types_multi:
+        b.multi("doc_types", list(_ov_types_multi["value"] or []), FACT,
+                _ov_types_multi["evidence"])
 
     card = b.as_dict()
     now = time.time()
@@ -769,6 +877,49 @@ def doc_type_key(card: dict | None) -> str:
     return ""
 
 
+def doc_types_key(card: dict | None) -> list[str]:
+    """卡片材料命中的**全部**规范类型 key（G5 · 多值）。
+
+    - 空列表 ＝ 认不出 / UNKNOWN；
+    - 只有一类时 ＝ ``[doc_type_key(card)]``（单值材料读数不变）；
+    - 多类时 ＝ 材料**自己**命中的全部类型（按命中顺序，去重）。
+
+    ## 为什么组包链必须用这个，而不是段的类型
+
+    PR #81 登记缺口 G5：组包链按**整段的类型归属**给材料定类型 ⇒ 段内
+    **可外发类**的材料被归到同段的**另一类** ⇒ 披露闸把它拦下 ⇒
+    授权组包取不到它。⇒ 披露闸的输入必须是**材料自己的类型**。
+    """
+    if not card:
+        return []
+    fields = card.get("fields")
+    if isinstance(fields, dict) and fields:
+        raw = (fields.get("doc_types") or {}).get("value")
+    else:
+        # 卡片**字段字典**形态（``build_card`` 的返回值）：字段值包在 {"value": ...} 里
+        node = card.get("doc_types")
+        raw = node.get("value") if isinstance(node, dict) else node
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            raw = [raw]
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, (list, tuple)):
+        raw = []
+    out: list[str] = []
+    for t in raw:
+        k = str(t or "").strip().lower()
+        if k and k not in out:
+            out.append(k)
+    if out:
+        return out
+    # 旧卡（没有 doc_types 多值字段）⇒ 退回单值主类型
+    single = doc_type_key(card)
+    return [single] if single else []
+
+
 def _existing_card_fields(conn, file_id: str) -> dict:
     """读出既有卡片的字段字典（用于保留人工改写）。读不到就当没有。"""
     try:
@@ -833,6 +984,57 @@ def set_human_override(file_id: str, field: str, value: str,
         fields = {}
     evidence = [{"kind": "human_override", "note": note}]
     fields[field] = {"value": val, "provenance": FACT, "evidence": evidence}
+    # ★ P0-3：人工改写 ``doc_type`` 时，**多值字段 ``doc_types`` 必须同步**。
+    #   否则类型闸（``doc_types_key`` 读的就是那个多值字段）**看不到**人工的裁定
+    #   ⇒ 「人工已确认这就是营业执照」却仍被类型闸拦下（= 人工定级形同虚设）。
+    #   允许多值：``"license,charter"`` ⇒ 两种类型都保留。
+    if field == "doc_type":
+        types = [t.strip().lower() for t in val.split(",") if t.strip()]
+        fields["doc_types"] = {
+            "value": types,
+            "provenance": FACT,
+            "evidence": evidence + [{
+                "kind": "human_override_multi",
+                "note": f"人工改写材料类型为 {types}（与 doc_type 主类型同步，"
+                        f"使披露闸的类型闸看到人工的裁定）",
+            }],
+        }
+        # ★ P0-3：人工纠正了**机器推断**的类型 ⇒ 机器推断的**等级**必须随之重算。
+        #   否则「分类错」这条正解走不通：类型改对了，等级还停在旧类型推出来的
+        #   RESTRICTED 上 ⇒ 材料**仍然**被拦 ⇒ 人工改类型形同虚设。
+        #   ★ 重算只认**策略文件**的默认映射（``sensitivity_defaults``）⇒
+        #     仍是「策略是数据不是代码」，且 PUBLIC 必须有业务授权
+        #     （``public_defaults_authorized``）才可能生效。
+        #
+        # ★★ WP4（独立 Reviewer 实测复现的真缺陷 · 本轮修掉）：
+        #   ① **机器重算出来的等级，provenance 必须是「推断」而不是「事实」。**
+        #      旧实现写 ``FACT`` ⇒ 第二次人工改类型时，重算**不再触发**
+        #      （因为 provenance 看起来像「人工自定」）⇒ **陈旧等级存活**
+        #      ⇒ 章程（按设计收紧的类型）会带着 PUBLIC 被外发，
+        #      而真正的 license 反而停在 RESTRICTED ⇒ **归因被带偏**
+        #      （下一个修的人会被引去改业务授权，而不是修重算）。
+        #   ② **重算触发条件＝「类型变了就重算」**，**不得**因为当前
+        #      provenance 看起来像「人工」就跳过。
+        #   ③ **人工自己定过的等级仍然不动** —— 判据是
+        #      ``_human_override``（provenance=FACT **且**证据带 ``human_override``），
+        #      **不是**「provenance == FACT」（那正是①的坑）。
+        _human_level = _human_override(fields, "sensitivity")
+        if not _human_level:
+            _pol = dpol.load_policy()
+            _level, _basis = _sensitivity_for_types(_pol, types)
+            fields["sensitivity"] = {
+                "value": _level,
+                # ★ 机器重算 ⇒ **INFERRED**（不是 FACT）：这是「策略默认映射」推出的值，
+                #   **不是**人工的决定 ⇒ 下一次类型变更**必须**能再次触发重算。
+                "provenance": INFERRED if _level else UNKNOWN,
+                "evidence": evidence + [{
+                    "kind": "policy_default_after_human_type",
+                    "note": (f"人工把材料类型改写为 {types} ⇒ 按披露策略 "
+                             f"{_pol.version} 的默认映射重算等级 = {_level or '（留空）'}"
+                             f"（机器推断等级，随人工的分类裁定失效；"
+                             f"人工自定等级不受此影响）"),
+                }],
+            }
     conn.execute(
         "UPDATE dd_v1_material_cards SET fields_json=?, updated_at=? WHERE file_id=?",
         (json.dumps(fields, ensure_ascii=False), time.time(), file_id))
@@ -841,8 +1043,91 @@ def set_human_override(file_id: str, field: str, value: str,
     conn.execute(
         f"UPDATE dd_v1_material_cards SET {col}=? WHERE file_id=?",
         (val, file_id))
+    # ★ P0-3：类型被人工纠正后，**重算出来的等级**也要同步到顶层列
+    #   （披露闸读的就是 ``card["sensitivity"]`` 顶层列）。
+    if field == "doc_type":
+        _new_level = str((fields.get("sensitivity") or {}).get("value") or "")
+        conn.execute(
+            "UPDATE dd_v1_material_cards SET sensitivity=? WHERE file_id=?",
+            (_new_level, file_id))
     conn.commit()
     return fields
+
+
+#: 认知卡上「**业务负责人逐份书面授权**」的字段名。
+#:
+#: ★ 依据：策略文件 ``dd_v1_disclosure_policy.json`` 登记的业务授权原文
+#:   「董事长 2026-10-21 授权『只放开营业执照/资质证照/工商公开登记信息三类，
+#:   其余八类不放开；**豁免需业务负责人逐份书面授权**』」
+#:   —— 这条**逐份书面授权**通道此前**只在纸面上登记、代码里没有实现**
+#:   ⇒ 合规的豁免路径走不通 ⇒ 只能「要么全放开、要么全不放」（P0-3 的病灶）。
+EXTERNAL_SEND_AUTH_FIELD = "external_send_authorization"
+
+
+def grant_external_send(file_id: str, granted_by: str, reason: str = "",
+                        *, db_path: Path | None = None) -> dict:
+    """业务负责人对**这一份**材料授予「可外发」的**逐份书面授权**（P0-3）。
+
+    ★ 授权**只**覆盖**这一份材料**（写在该材料的认知卡上），
+      **不是**全局规则、**不是**改策略文件 ⇒ 其余材料**不受影响**。
+    ★ 授权**不放宽**别的闸：敏感等级闸（等级必须在策略里 ``externally_sendable``）、
+      规则闸、``requires_review``、逐件人工复核与最终人工批准（HG1）**全部照旧**。
+    ★ 授权**必须**有授权人与理由（可追责）——「合规豁免」必须有据可查。
+    ★ 授权**可以撤销**：传 ``granted_by=""`` ⇒ 撤销该份授权。
+    """
+    granted = str(granted_by or "").strip()
+    why = str(reason or "").strip()
+    if granted and not why:
+        raise ValueError("reason 不能为空：逐份书面授权必须写明依据")
+    conn = _card_conn(db_path)
+    _ensure_schema(conn)
+    row = conn.execute(
+        "SELECT fields_json FROM dd_v1_material_cards WHERE file_id=?",
+        (file_id,)).fetchone()
+    if not row:
+        raise KeyError(f"卡片不存在：{file_id}")
+    try:
+        fields = json.loads(row[0] or "{}")
+    except Exception:  # noqa: BLE001
+        fields = {}
+    if not isinstance(fields, dict):
+        fields = {}
+    value = "GRANTED" if granted else "REVOKED"
+    fields[EXTERNAL_SEND_AUTH_FIELD] = {
+        "value": value,
+        "provenance": FACT,
+        "evidence": [{
+            "kind": "human_grant" if granted else "human_revoke",
+            "note": (f"业务负责人逐份书面授权：{granted}（依据：{why}）" if granted
+                     else f"撤销逐份书面授权（操作人：{granted or '未署名'}）"),
+        }],
+        "granted_by": granted,
+        "reason": why,
+        "granted_at": time.time(),
+    }
+    conn.execute(
+        "UPDATE dd_v1_material_cards SET fields_json=?, updated_at=? WHERE file_id=?",
+        (json.dumps(fields, ensure_ascii=False), time.time(), file_id))
+    conn.commit()
+    return fields[EXTERNAL_SEND_AUTH_FIELD]
+
+
+def external_send_authorization(card: dict | None) -> dict:
+    """读这份材料的**逐份书面授权**（没有 ⇒ 空 dict）。
+
+    返回 ``{"value": "GRANTED"/"REVOKED", "granted_by", "reason", "granted_at"}``。
+    """
+    if not card:
+        return {}
+    fields = card.get("fields")
+    node = None
+    if isinstance(fields, dict) and fields:
+        node = fields.get(EXTERNAL_SEND_AUTH_FIELD)
+    if node is None:
+        node = card.get(EXTERNAL_SEND_AUTH_FIELD)
+    if isinstance(node, dict):
+        return node
+    return {}
 
 
 def build_cards_for_library(

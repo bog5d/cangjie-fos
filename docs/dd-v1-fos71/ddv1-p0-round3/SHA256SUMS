@@ -1,0 +1,16 @@
+70f1eddb86266d068a47ed38a4ade11c7abd7953f9b52adcbf74758bb1c0ddd3  ./EVIDENCE.md
+ed9bc84c9fb3c2f8f789ef621a44582179fc1ec48e50fbafd2607d29d74e8ae9  ./WINDOWS-HANDOFF.md
+7795922f337aa152e4919b6942a22d275a1b51a1994a7d587830716e8ce7855f  ./交付包-合成样例/01-输入需求清单.tsv
+618038d58d12143764667e6e52c3b947c37328e60a45bbfd3d595e09c1e4867b  ./交付包-合成样例/02-检索材料清单.tsv
+ff6b2a33893dc40eeb3ab4b63fa03254ecb75838062be11b95726d9f3de1c33f  ./交付包-合成样例/03-匹配结果及理由.tsv
+619875fdff2f8cbc8a531216d02fb6cae2060980b05f10993e4f9fc773213619  ./交付包-合成样例/04-缺失冲突不确定清单.tsv
+b3fbbe07d5546321dcb842119c9007251862ce671658f0f097c696c777a54c6a  ./交付包-合成样例/05-人工审核记录.tsv
+7c0b3f394d393a36e515934c5190d95433347dd13d79209353efb5e98ebafb18  ./交付包-合成样例/06-实际交付文件目录.tsv
+b0be5dca2fa89110bdb31d50e12a8edb6304f4b5586e92fa3fb375786b2833ae  ./交付包-合成样例/07-文件完整性校验结果.tsv
+e67727d4c4c44b71cdb8caf11d612bbedbadf96c49a8529a89d585be9d3e1de2  ./交付包-合成样例/R6/Q-2024-07_案例甲机构_星海项目_营业执照_2024.txt
+8ffa76dc38ad983e78bfca5993cbcbad2bfbbd556fa397602fc97b49990b7065  ./交付包-合成样例/未过闸明细.json
+3569e682c75248970f9a9f5ae0eb8b0cdc7a7c0cd8352ad606f40c4b21965c91  ./交付包-合成样例/未过闸清单.tsv
+f1c27b3aee03484f17ace6df7bf0d3064546e3573b3451f1cdb3b8e2136d38d7  ./交付包-合成样例/未选用清单.tsv
+3add886a7d4cec7204e16aa2d57795924c4ceb720f09377c01cf7d12fa7df18b  ./交付包-合成样例/正式交付包-说明.md
+a28493e787abad8c81e88999fb277086d331dd158e062bc9c63839c17ee3a7e5  ./交付包-合成样例/组包manifest.tsv
+87568acb4c1ead505e722dbe3682fef2738539fd641e4e3eaa26eec43e306f80  ./交付包-合成样例/被拦截清单.json

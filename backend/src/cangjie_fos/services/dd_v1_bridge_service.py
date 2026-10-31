@@ -56,6 +56,7 @@ A0 实测（真 trace，两入口零重叠）：
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -77,13 +78,91 @@ DOC_TYPE_KEYS: tuple[str, ...] = tuple(k for k, _ in rq._DOC_TYPE_RULES)
 #: 每条义务的主体分簇上限（防止材料主体很多时义务数爆炸）。超出部分在输出里如实记账。
 MAX_ENTITY_CLUSTERS = 8
 
+#: ★ **已知的真 Harness 适配器 id 表**（**仅作 id 级旁证**，不是判定依据）。
+#:   ★ ★ **权威判定按「适配器实现类」**（见 :func:`adapter_participation_class`）：
+#:     自填 ``adapter_id="codex-cli"`` **拿不到** ``HARNESS_MODEL``。
+#:   ★ 未知 id ⇒ 一律 ``UNKNOWN_ADAPTER`` ⇒ **不得**计为模型参与。
+#: ★ **已知的真 Harness 适配器 id 表**（**仅作 id 级旁证**，不是判定依据）。
+#:   ★ ★ **权威判定按「适配器实现类」**（见 :func:`adapter_participation_class`）：
+#:     自填 ``adapter_id="codex-cli"`` **拿不到** ``HARNESS_MODEL``。
+#:   ★ 表本体在实现侧（`dd_v1_agent_adapters.KNOWN_ADAPTER_ID_CLASSES`）——
+#:     「这个 id 属于哪一类」是**适配器实现**的知识，不该由消费方抄一份。
+KNOWN_HARNESS_ADAPTERS = dict(ad.KNOWN_ADAPTER_ID_CLASSES)
+
+
+def adapter_provenance(adapter_id: str) -> str:
+    """适配器 **id** → id 级**声明**类别（**旁证，不是判定依据**）。
+
+    ★ ★ **这个函数只反映「这个 id 在白名单里」**，
+      **不能**用它来主张「这次参与是模型做的」——
+      因为 id 是**字符串**，任何人都能自填。
+    ★ 主张参与类别 ⇒ 必须用 :func:`adapter_participation_class`（按**实现类**判定）。
+    """
+    return ad.declared_class_of(adapter_id)
+
+
+def adapter_participation_class(adapter: Any) -> str:
+    """适配器**对象** → 参与类别（**权威判定**：按实现类，不看任何自填字符串）。
+
+    ★ 自造 ``class _SpoofAdapter: adapter_id = "codex-cli"`` ⇒ ``UNKNOWN_ADAPTER``。
+    ★ 认不出 ⇒ ``UNKNOWN_ADAPTER``（不猜、不放行）。
+    """
+    from cangjie_fos.services import dd_v1_agent_adapters as _ad
+    return _ad.participation_class_of(adapter)
+
+
+def _discrimination_readings(pool: list[dict[str, Any]],
+                             picked: list[str],
+                             rejected: list[dict[str, Any]]) -> dict[str, Any]:
+    """**排除式选择凭据**的读数：判断是不是「取第一个」。
+
+    ★ 这**只**证明「判断不是照抄第一个候选」；
+      它**不证明**判断出自模型（模型身份看适配器回执）。
+    ★ 池子里只有一种类型 ⇒ 「照抄自身类型」天然自洽 ⇒ 读数必然 WEAK（如实记账）。
+    """
+    _pool_types = sorted({str(e.get("doc_type") or "") for e in (pool or [])
+                           if str(e.get("doc_type") or "")})
+    _first = str((pool or [{}])[0].get("file_id") or "")
+    _picked = [str(x) for x in (picked or []) if str(x)]
+    _rej_with_reason = [r for r in (rejected or [])
+                         if isinstance(r, dict) and str(r.get("reason") or "").strip()]
+    _non_default = bool(_picked) and _first not in _picked[:1]
+    _ok = (len(_pool_types) >= 2 and _non_default and bool(_rej_with_reason))
+    return {
+        "pool_size": len(pool or []),
+        "pool_doc_types": _pool_types,
+        "pool_doc_type_count": len(_pool_types),
+        "picked_file_ids": _picked,
+        "non_default_pick": _non_default,
+        "rejected_count": len(rejected or []),
+        "rejected_with_reason": len(_rej_with_reason),
+        "discrimination": "PASS" if _ok else "WEAK",
+        "note": ("PASS = 池子里有多种类型、且模型**没有**取第一个、且记录了排除理由"
+                 " ⇒ 判断**不是**照抄第一个候选；"
+                 "★ 这**不证明**判断出自模型（模型身份看适配器回执）"),
+    }
+
 _YEAR_RE = re.compile(r"^\d{4}")
 _ATTACH_RE = re.compile(r"附注|附件|附录|appendix", re.I)
 #: 英文命名的附注文件（fixture 用 ``*_notes.txt``；``body``/``memo`` 不算附件）
 _ATTACH_RE_EN = re.compile(r"(^|[_\-])notes([_\-.]|$)", re.I)
+
+
+def _part_of(rel_path: str, file_name: str = "") -> str:
+    """part 判定：**唯一**口径在认知卡层（``dd_v1_card_service.derive_part``）。
+
+    ★ 桥接层**不再**自己写一份 part 规则 ⇒ 全仓只有一份 part 判定。
+      英文 ``*_notes.txt`` 形态仍单独识别（fixture 约定），与中文口径合并。
+    """
+    from cangjie_fos.services import dd_v1_card_service as cs  # noqa: PLC0415
+    part = cs.derive_part(rel_path, file_name)
+    if part == cs.PART_MAIN and _ATTACH_RE_EN.search(rel_path or ""):
+        return "附注"
+    return part
 _DRAFT_RE = re.compile(r"草稿|征求意见|draft", re.I)
-#: 与入口 B 的 ``scaffold`` 保持一致的「当前有效」类材料（执照/章程无年度）
-_CURRENT_DOC_TYPES = ("license", "charter")
+#: 与入口 B 的 ``scaffold`` 保持一致的「当前有效」类材料（执照/章程无年度）。
+#: ★ 取值空间来自 requirement service（``rq.CURRENT_DOC_TYPES``）—— **不另抄一份**。
+_CURRENT_DOC_TYPES = rq.CURRENT_DOC_TYPES
 
 
 # ─────────────────────────────────────────────────── 1. 材料侧：清单 + 认知卡 → meta
@@ -114,13 +193,24 @@ def resolve_material_doc_type(card: dict[str, Any] | None) -> str:
 
 
 def _material_period(card: dict[str, Any], doc_type: str) -> str:
-    """材料期间 → 语义层的期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。"""
+    """材料期间 → 语义层的期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。
+
+    ★ **唯一模型（司仓 C-1 裁定）**：语义层 period 空间对「无年度口径类型」
+      （``rq.CURRENT_DOC_TYPES``：执照 / 章程）**只有一个取值 CURRENT**
+      ⇒ 该类**优先于**年份取 ``CURRENT``。
+      年度信息**不丢**：仍留在 ``card.fiscal_period``（材料卡片）与 requirement 的
+      ``period_from`` / ``period_to``（义务卡）里，只是不进语义层 period。
+
+    ★ 为什么要改口径：材料侧「年份优先」+ 义务侧「恒 CURRENT」⇒ **反向假缺口**
+      （执照材料 period=2022、执照义务 period=CURRENT ⇒ 池里有材料、可用候选为空）。
+      两侧同源（都判 CURRENT）⇒ 口径一致，不再互相错位。
+    """
+    if doc_type in _CURRENT_DOC_TYPES:
+        return "CURRENT"
     fp = str((card or {}).get("fiscal_period") or "").strip()
     m = _YEAR_RE.match(fp)
     if m:
         return m.group(0)
-    if doc_type in _CURRENT_DOC_TYPES:
-        return "CURRENT"
     return "UNKNOWN"
 
 
@@ -177,6 +267,11 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
     ambiguous = 0
     unknown_doc_type = 0
     alias_resolved = 0
+    # ★ 内容指纹：标准答案包按内容寻址，索引里必须有指纹，否则「标准答案材料在库里
+    #   找不到」会被**误判**成真缺材料（实测踩过：meta 里没有 sha256 ⇒
+    #   预检恒报 GOLD_FILES_MISSING_IN_LIBRARY）。
+    #   ★ 指纹**直接取 Manifest 的 content_hash**（实测＝磁盘实算的**完整 64 位** sha256，
+    #     10/10 逐件相同）⇒ 不重算 ⇒ 真机 1663 份材料时 preflight/grade 不会整库重算哈希。
     for row in mf.list_manifest(library_id, limit=100000, db_path=db_path):
         card = cs.get_card(row["file_id"], db_path=db_path) or {}
         dt = resolve_material_doc_type(card)
@@ -192,12 +287,14 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
         meta.append({
             "file_id": row["file_id"],
             "relative_path": row["rel_path"],
+            "sha256": str(row.get("content_hash") or ""),
             "entity": ent or card_entity,
             "entity_basis": ent_basis or "CARD_INFERRED",
             "period": _material_period(card, dt),
             "doc_type": dt,
-            "part": "附注" if (_ATTACH_RE.search(row.get("rel_path") or "")
-                                  or _ATTACH_RE_EN.search(row.get("rel_path") or "")) else "正文",
+            # ★ part 口径**全仓只有一份**：复用认知卡层的 ``derive_part``
+            #   （``dd_v1_card_service``）—— 桥接层与规则层同一口径，不分叉。
+            "part": _part_of(row.get("rel_path") or "", row.get("file_name") or ""),
             "version_status": "DRAFT" if _DRAFT_RE.search(row.get("rel_path") or "") else "EFFECTIVE",
         })
     stats = {
@@ -215,12 +312,17 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
 # ─────────────────────────────────────────────────── 2. 义务侧：requirement → 语义义务
 
 def _obligation_period(obl: dict[str, Any], doc_type: str) -> str:
-    """义务期间 → 语义层期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。"""
+    """义务期间 → 语义层期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。
+
+    ★ **与 ``_material_period`` 同源**（司仓 C-1 裁定）：无年度口径类型
+      （执照 / 章程）恒为 ``CURRENT``（**优先于**年份）⇒ 材料侧与义务侧同值，
+      不会互相错位造成假缺口。年度信息仍留在 ``period_from`` / ``period_to``。
+    """
+    if doc_type in _CURRENT_DOC_TYPES:
+        return "CURRENT"
     y_from, y_to = obl.get("period_from", 0), obl.get("period_to", 0)
     if y_from and y_to and int(y_from) == int(y_to):
         return str(int(y_from))
-    if doc_type in _CURRENT_DOC_TYPES:
-        return "CURRENT"
     if y_from and y_to:
         return f"{int(y_from)}-{int(y_to)}"
     return "UNKNOWN"
@@ -262,8 +364,27 @@ def build_semantic_obligations(
     out: list[dict] = []
     basis_tally = {"AUTHORITY": 0, "ALIAS_RESOLVED": 0, "CARD_INFERRED": 0, "UNKNOWN": 0}
     truncated = 0
+    # ★★ 义务 → **清单题号**（``item_uid`` → ``item_no``）映射。
+    #   ★ **为什么必须带上**（#108 实测事故 D2）：
+    #     语义层全仓约定 ``item_id`` ＝ **清单题号**（``split_items``/``build_semantic_packet``
+    #     都这么写），而这里曾把**义务主键**塞进 ``item_id``
+    #     ⇒ 答卷与**题号**失联 ⇒ 题级覆盖统计（「42 题处理了几题」）**全落空**
+    #     ⇒ 真实考试报告出现「已处理 0｜未匹配 42」这种自相矛盾读数。
+    #   ⇒ 这里按库侧权威口径补回题号（拿不到就留空，**不猜**）。
+    item_no_by_uid: dict[str, str] = {}
+    try:
+        _conn = mf._connect(db_path)
+        for _r in _conn.execute(
+                "SELECT item_uid, item_no FROM dd_v1_checklist_items WHERE library_id=?",
+                (library_id,)):
+            item_no_by_uid[str(_r["item_uid"])] = str(_r["item_no"] or "")
+    except Exception:  # noqa: BLE001 —— 拿不到题号就留空（不猜、不退化）
+        item_no_by_uid = {}
     for obl in obl_rows:
         dt = str(obl.get("doc_type") or "").strip()
+        # ★ 类型待判定只做**标记**：分簇口径**一字不改**（既有六态契约不许动）。
+        #   标记随义务带到语义层，由 ``resolve_doc_type`` 开关决定要不要另开「类型判定池」。
+        doc_type_unresolved = not dt
         scope = str(obl.get("entity_scope") or "").strip()
         auth = rq.resolve_entities(library_id, scope, obl.get("period_to") or None,
                                    db_path=db_path) if scope else []
@@ -284,15 +405,22 @@ def build_semantic_obligations(
         for ent, basis in clusters:
             basis_tally[basis] += 1
             oid = obl["obligation_id"]
+            # ★ **清单题号**（语义层约定 ``item_id`` 就是它；见上方 D2 说明）
+            item_no = item_no_by_uid.get(str(obl.get("item_uid") or ""), "")
             out.append({
                 "obligation_id": f"{oid}@{ent}" if multi else oid,
                 "source_obligation_id": oid,
-                "item_id": oid,
+                "item_id": item_no or oid,
+                "item_no": item_no,
+                "question_id": rq.canonical_question_id(item_no) if item_no else "",
                 "text": obl.get("obligation") or "",
                 "entity": ent,
                 "entity_basis": basis,
                 "period": _obligation_period(obl, dt),
                 "doc_type": dt,
+                # ★ 类型待判定 ⇒ 语义层**不按类型筛证据**，由模型提出类型
+                "doc_type_unresolved": doc_type_unresolved,
+                "doc_type_source": "UNRESOLVED" if doc_type_unresolved else "RULE",
                 "required_parts": _required_parts(obl),
                 "doc_type_terms": rq.doc_type_search_terms(dt),
                 "split_method": "REQUIREMENT_SERVICE",
@@ -318,10 +446,13 @@ def bridge_library(
     budget: Any = None,
     workdir: Path | None = None,
     allow_real_material: bool = False,
+    resolve_doc_type: bool = False,
 ) -> dict[str, Any]:
     """把一个材料库的规则链结果桥接进语义层，返回**只作建议**的语义证据。
 
     ``adapter`` 为 None ⇒ **RULE_ONLY**（零外部调用、零费用、确定性）。
+    ``resolve_doc_type``：**显式打开**「规则层解析不出材料类型 ⇒ 交给模型判定」这条通道
+    （默认关闭 ⇒ 既有六态口径与既有契约一字不变）。
     ``adapter`` 给了 ⇒ 额外跑语义建议（``semantic_validation.accepted``），
     仍然只是建议，且**不改写**任何硬判定。
     """
@@ -346,6 +477,10 @@ def bridge_library(
     suggestions: list[dict] = []
     packet: dict[str, Any] = {}
     external_model_calls = 0
+    # ★ 这两个读数在「空输入」分支也会被外层读到 ⇒ 必须在分支**之外**初始化
+    #   （曾因初始化写在 else 分支里 ⇒ 空库时 UnboundLocalError ⇒ 已修）
+    agent_receipt: dict[str, Any] = {}
+    model_sel: dict[str, dict[str, Any]] = {}
 
     if not meta or not obl_out:
         degrade_reason = "EMPTY_INPUT：材料库或义务为空，无可桥接内容"
@@ -353,10 +488,14 @@ def bridge_library(
     else:
         # **G7：显式传 obligations ⇒ 语义层不再用 SPLIT_RE 二次切碎**
         packet = sem.build_semantic_packet(snapshot_dir, meta, [],
-                                           obligations=obl_out)
+                                           obligations=obl_out,
+                                           resolve_doc_type=resolve_doc_type)
+        agent_receipt = {}
+        model_sel = {}
         if adapter is not None:
             rec = sem.run_semantic(adapter, snapshot_dir, meta, [], budget,
-                                   workdir=workdir, obligations=obl_out)
+                                   workdir=workdir, obligations=obl_out,
+                                   resolve_doc_type=resolve_doc_type)
             v = rec.get("semantic_validation") or {}
             suggestions = list(v.get("accepted") or [])
             external_model_calls = int(rec.get("calls_used", 0) or 0)
@@ -365,13 +504,103 @@ def bridge_library(
             if mode != "AGENT_SUGGESTION":
                 degrade_reason = (degrade_reason
                                   or "模型未产出可接受建议（确定性门槛拦截或适配器不可用）")
+            # ★ 适配器回执 = 「模型参与」的**凭据**（身份不采信自填字段，认适配器实现）
+            _a = rec.get("adapter") or {}
+            _raw = str(_a.get("raw_text") or "")
+            # ★ 权威参与类别 = **按 adapter 对象（实现类）** 判定
+            _impl_class = adapter_participation_class(adapter)
+            _declared_class = adapter_provenance(str(_a.get("adapter_id") or ""))
+            _argv = [str(x) for x in (_a.get("argv_summary") or [])]
+            _argv0 = _argv[0] if _argv else ""
+            agent_receipt = {
+                "adapter_id": str(_a.get("adapter_id") or ""),
+                "vendor": str(_a.get("vendor") or ""),
+                "role": str(_a.get("role") or ""),
+                "status": str(_a.get("status") or ""),
+                "exit_code": _a.get("exit_code"),
+                "elapsed_s": _a.get("elapsed_s"),
+                "model_id_or_unknown": str(_a.get("model_id_or_unknown") or "UNKNOWN"),
+                # ★★ **框架 ≠ 服务商**（施工令 V3.0 §5.2）：pi 是框架，minimax-cn 是服务商
+                "framework": str(_a.get("framework") or ""),
+                # ★★ **模型身份的来源与核实状态**（施工令 V3.0 §7.1）
+                #   ★ `model_id_or_unknown` 只是「模型 id」；**核实过没有**是另一件事。
+                #   ★ 身份**只认 Agent 自己的元数据**（dsh 配置树 / pi 事件 / codex 执行记录），
+                #     拿不到就是 UNKNOWN ⇒ **不猜**。
+                "model_identity": dict((_a.get("provenance") or {}).get("model_identity") or {})
+                if isinstance(_a.get("provenance"), dict) else {},
+                "model_identity_source": str(_a.get("model_identity_source") or "UNKNOWN"),
+                "model_identity_verified": bool(_a.get("model_identity_verified")),
+                "cost_usd_or_UNKNOWN": _a.get("cost_usd_or_UNKNOWN", "UNKNOWN"),
+                "calls_used": external_model_calls,
+                # ★★ **P5 性能与成本账**（施工令 V3.0 §P5）：分 Agent 超时预算 / 重试明细 /
+                #   逐次成本 / 总耗时 ⇒ **跟成绩单一起留证**，不只躺在临时 workdir 里。
+                "budget": dict(rec.get("budget") or {}),
+                "attempts": list(rec.get("attempts") or []),
+                "perf": dict(rec.get("perf") or {}),
+                "raw_digest": ("sha256:" + hashlib.sha256(_raw.encode("utf-8")).hexdigest())
+                if _raw else "",
+                # ★ ★ **权威参与类别：按适配器**实现类**判定**（不看自填 id）
+                #   ⇒ 自造一个 `adapter_id="codex-cli"` 的替身**拿不到** HARNESS_MODEL
+                #   ⇒ id 级声明只作**旁证**记在 `declared_provenance`
+                "provenance": _impl_class,
+                # ★ **这次真的跑出回执了吗**（类别 ≠ 参与；第 6 轮复核 F1）
+                "participated": ad.participated_flag(_a),
+                # ★ ★ **口径标记**（第 8 轮独立复核的 F21）：这里是**回执口径**
+                "participated_scope": "RECEIPT",
+                "provenance_source": "ADAPTER_IMPLEMENTATION",
+                "declared_provenance": ad.declared_class_of(str(_a.get("adapter_id") or "")),
+                # ★ id 级声明与实现类**不一致** ⇒ 记录下来（自填 id 的替身会命中这条）
+                "provenance_mismatch": bool(_declared_class != "UNKNOWN_ADAPTER"
+                                            and _declared_class != _impl_class),
+                "implementation_verified": _impl_class != "UNKNOWN_ADAPTER",
+                # ★ **可核验运行痕迹**：真正被调起的可执行文件 / argv 摘要 / 工作目录
+                #   （摘要而非明文 ⇒ 不外泄材料内容，只留「跑了什么」的指纹）
+                "executable": _argv0,
+                "argv_digest": ("sha256:" + hashlib.sha256(
+                    "\x00".join(_argv).encode("utf-8")).hexdigest()) if _argv else "",
+                "workdir_digest": ("sha256:" + hashlib.sha256(
+                    str(_a.get("workdir") or "").encode("utf-8")).hexdigest())
+                if _a.get("workdir") else "",
+                "accepted_results": len(suggestions),
+                "note": ("★ 回执只证明「哪个适配器实现、哪次调用、回了什么摘要」；"
+                         "**不证明**判断出自哪个模型 —— 模型身份由适配器**实现**决定，"
+                         "自填的 adapter_id 只能作旁证"),
+            }
+            # ★ 每条义务的「模型选材」 ＋ **排除式选择凭据**
+            for _r in suggestions:
+                _oid = str(_r.get("obligation_id") or "")
+                if not _oid:
+                    continue
+                _picked = [str((cf or {}).get("file_id") or "")
+                           for cf in (_r.get("candidate_files") or []) if isinstance(cf, dict)]
+                _rej = [x for x in (_r.get("rejected_alternatives") or [])
+                        if isinstance(x, dict)]
+                _pool = list(packet.get("evidence", {}).get(_oid) or [])
+                model_sel[_oid] = {
+                    "obligation_id": _oid,
+                    "proposed_verdict": str(_r.get("proposed_verdict") or ""),
+                    "proposed_doc_type": str(_r.get("proposed_doc_type") or ""),
+                    "confidence_or_uncertain": _r.get("confidence_or_uncertain"),
+                    "agent_id": str(_r.get("agent_id") or ""),
+                    "provider": str(_r.get("provider") or ""),
+                    "model_id_or_unknown": str(_r.get("model_id_or_unknown") or "UNKNOWN"),
+                    "picked_file_ids": _picked,
+                    "rejected_alternatives": _rej,
+                    "discrimination": _discrimination_readings(_pool, _picked, _rej),
+                    "review_required": True,
+                    "approved": False,
+                }
         else:
             mode = "RULE_ONLY"
 
     evidence = packet.get("evidence") or {}
+    # ★「为什么没有候选」的结构化状态（语义层已算好，六态封闭枚举 + 过滤诊断）。
+    #   桥接层**只透传、不另算**（不新造第二套原因表）⇒ 薄入口拿到的口径与语义层同一个。
+    evidence_status = packet.get("evidence_status") or {}
     obligations_out: list[dict[str, Any]] = []
     for ob in obl_out:
         ev = evidence.get(ob["obligation_id"]) or []
+        st = evidence_status.get(ob["obligation_id"]) or {}
         # 主体是否**权威核验过**：只有 AUTHORITY 档才算。
         # 非权威档（目录名线索 / 无线索）时，证据里的材料**归属哪一家法人没被确认**，
         # 逐条标注，别让人把「候选」当成「这一家的材料」。
@@ -379,10 +608,17 @@ def bridge_library(
         obligations_out.append({
             "obligation_id": ob["obligation_id"],
             "source_obligation_id": ob["source_obligation_id"],
+            # ★★ **清单题号**（D2）：题级覆盖统计靠它把答卷行挂回题；
+            #   丢了 ⇒ 「42 题处理了几题」全落空（#108 实测形态）。
+            "item_no": str(ob.get("item_no") or ""),
+            "question_id": str(ob.get("question_id") or ""),
+            "item_id": str(ob.get("item_id") or ""),
             "entity": ob["entity"],
             "entity_basis": ob["entity_basis"],
             "subject_verified": subject_verified,
             "doc_type": ob["doc_type"],
+            "doc_type_unresolved": bool(ob.get("doc_type_unresolved")),
+            "doc_type_source": str(ob.get("doc_type_source") or ("UNRESOLVED" if not ob["doc_type"] else "RULE")),
             "period": ob["period"],
             "text": ob["text"],
             "required_parts": ob["required_parts"],
@@ -399,7 +635,26 @@ def bridge_library(
                 "version_status": e.get("version_status"),
                 "part": e.get("part"),
             } for e in ev],
-            "rule_hint": sem.rule_hint(ob, ev),
+            # ★ 候选为空时**必须说清为什么**：第三实参 ＝ 语义层算好的 no_candidate_reason
+            #   （封闭六态）⇒ 规则提示里不再只剩一个笼统的 MISSING。
+            #   候选**不为空**时该实参为 None ⇒ rule_hint 的既有行为逐字不变。
+            "rule_hint": sem.rule_hint(ob, ev, st.get("no_candidate_reason")),
+            # ★ 模型选材（**有才带**）：这是「模型参与了语义判断」的**落点**
+            #   ⇒ 考生答卷据此把选中来源标成 MODEL（而不是规则提示）。
+            "model_selection": model_sel.get(ob["obligation_id"]) or {},
+            # ★ 追加式：把结构化状态整体带出来（薄入口据此输出六态 ＋ 诊断）。
+            "evidence_status": {
+                "no_candidate_reason": st.get("no_candidate_reason"),
+                "candidate_status": st.get("candidate_status"),
+                "diagnostics": st.get("diagnostics") or {},
+                # ★★ WP3-d：候选窗口**触顶**的读数（禁静默漏检）
+                "candidate_cap": st.get("candidate_cap"),
+                "candidates_total": st.get("candidates_total"),
+                "candidates_used": st.get("candidates_used"),
+                "candidate_truncated": st.get("candidate_truncated"),
+                "truncated_candidate_count": st.get("truncated_candidate_count"),
+                "candidate_cap_note": st.get("candidate_cap_note"),
+            },
             "advisory_only": True,
             "review_required": True,
             "hard_verdict_touched": False,
@@ -435,6 +690,22 @@ def bridge_library(
         warnings.append(
             f"{obl_stats['entity_clusters_truncated']} 个主体分簇因超过上限被截断"
             f"（MAX_ENTITY_CLUSTERS={MAX_ENTITY_CLUSTERS}）；被截断的主体未被覆盖，如实记账")
+    # ★★ WP3-d：**候选窗口触顶**必须显式告警（禁静默漏检）。
+    #   旧实现只把截断数记在 diagnostics 里 ⇒ 用户侧看到的是「一切正常」，
+    #   而实际上还有 N 份候选**没看** ⇒ 那 N 份可能被当成「不存在」。
+    #   ⇒ 形状与上面的主体分簇告警一致（同一仓内现成样板）。
+    _trunc_total = 0
+    _trunc_obl = 0
+    for _o in obligations_out:
+        _st = _o.get("evidence_status") or {}
+        if _st.get("candidate_truncated"):
+            _trunc_obl += 1
+            _trunc_total += int(_st.get("truncated_candidate_count") or 0)
+    if _trunc_obl:
+        warnings.append(
+            f"{_trunc_obl} 条义务的候选窗口已达上限，合计还有 {_trunc_total} 份候选未看"
+            f"（MAX_FILES_PER_OBLIGATION={sem.MAX_FILES_PER_OBLIGATION}）；"
+            f"未看部分**不得**当作「不存在」，如实记账")
 
     return {
         "bridge_version": BRIDGE_VERSION,
@@ -443,6 +714,34 @@ def bridge_library(
         "mode": mode,
         "degrade_reason": degrade_reason,
         "external_model_calls": external_model_calls,
+        # ★ 模型参与的读数与凭据（**必须外显**：谁参与的、参与的类别、有没有排除式凭据）
+        "agent_receipt": agent_receipt,
+        "model_participation": {
+            "participated": bool(model_sel),
+            "provenance": str((agent_receipt or {}).get("provenance") or "RULE_ONLY"),
+            # ★★ **盖章**（第 6 轮独立复核的 F14：这里缺了它 ⇒ 答卷层跳过本块
+            #   ⇒ 命中 `rec["adapter"]`（那儿的 `participated` 是 None）⇒ **永远 False**
+            #   ⇒ **真跑了的模型参与被记成 RULE_ONLY**，且 degrade_reason 还写着
+            #   「这次没跑出回执」——**那句是假的**）。
+            #   ⇒ 本块与 `agent_receipt` 同源（同一份实现类判定）⇒ 盖章一致。
+            "provenance_source": str((agent_receipt or {}).get("provenance_source") or ""),
+            "run_participated": bool((agent_receipt or {}).get("participated")),
+            # ★ ★ **口径标记**（第 8 轮独立复核的 F21）：
+            #   ★ 本块那个 `participated` 是**选材口径**（「有义务用了模型选材」）
+            #   ★ `run_participated` 才是**回执口径**（「这次真的跑出了回执」）
+            #   ⇒ 显式标出来，下游才不会再把两者混着读。
+            "participated_scope": "SELECTION",
+            "run_participated_scope": "RECEIPT",
+            "declared_provenance": str((agent_receipt or {}).get("declared_provenance") or ""),
+            "obligations_with_model_selection": len(model_sel),
+            "discrimination_pass": sum(1 for m in model_sel.values()
+                                       if (m.get("discrimination") or {}).get("discrimination") == "PASS"),
+            "discrimination_weak": sum(1 for m in model_sel.values()
+                                       if (m.get("discrimination") or {}).get("discrimination") == "WEAK"),
+            "note": ("★ **RULE_ONLY 与 MODEL 严格分开**：mode=RULE_ONLY ⇒ 全程没有模型参与；"
+                     "mode=AGENT_SUGGESTION ⇒ 有适配器回执。"
+                     "★ 排除式凭据只证明判断**不是照抄第一个候选**，不证明判断出自模型。"),
+        },
         "advisory_only": True,
         "hard_verdict_touched": False,
         "key_space": {

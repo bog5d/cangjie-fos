@@ -1,0 +1,76 @@
+{
+  "schema_version": "dd_v1_exam_preflight.v1",
+  "exam_id": "EX-A4A-SYNTHETIC",
+  "exam_name": "A4a 合成考场",
+  "institution": "Institution_XX",
+  "status": "READY_FOR_FORMAL_SCORING",
+  "scoring_ready": true,
+  "checklist": {
+    "state": "FOUND",
+    "detail": "库内清单已登记，拆出 8 条原子义务",
+    "problems": [],
+    "item_count": 8,
+    "obligation_count": 8,
+    "declared_sha256": "",
+    "actual_sha256": "8a64fb7748712de3",
+    "checklist_id": "CL-A4A",
+    "institution": "Institution_XX"
+  },
+  "library": {
+    "state": "FOUND",
+    "detail": "图书馆已登记，快照 10 份材料",
+    "problems": [],
+    "library_id": "SIM-LIB",
+    "material_count": 10,
+    "declared_fingerprint": "",
+    "actual_fingerprint": "5119dab354c95c4edb8b402c5cfe04f6563e89c8d27f9ef9cd483005e41d0300",
+    "material_root": "/tmp/ddv1-sim-0i1_aaw9/material"
+  },
+  "gold": {
+    "state": "FOUND",
+    "detail": "标准答案已找到、映射完成、人工已确认 ⇒ 具备正式评分条件",
+    "problems": [],
+    "gold_pack_id": "GOLD-A4A-SYNTHETIC",
+    "manifest_path": "/tmp/ddv1-sim-0i1_aaw9/gold_pack/gold_manifest.json",
+    "confirmed_by": "合成测试（非人工批准）",
+    "confirmed_at": "2026-10-28T20:00:00+08:00",
+    "resolution": {
+      "obligations": 8,
+      "expected_files": 10,
+      "resolved": 10,
+      "missing_in_library": 0,
+      "ambiguous_content": 0,
+      "no_fingerprint": 0
+    },
+    "correspondence": {
+      "state": "CONFIRMED",
+      "problems": [],
+      "checklist_fingerprint_declared": "",
+      "library_fingerprint_declared": ""
+    },
+    "gold_fingerprint": "43119573248e65de0d372e9fc04bb334507d97b347a00b7ae350418b2b141a70"
+  },
+  "entity_scope": {
+    "state": "DECLARED",
+    "scope_mode": "SINGLE_ENTITY",
+    "group_root_id": "",
+    "entity_ids": [
+      "E01"
+    ],
+    "declared_by": "合成测试",
+    "declared_at": "2026-10-28T20:00:00+08:00",
+    "entities_registered": 2,
+    "unnamed_obligations": 0,
+    "problems": [],
+    "notes": []
+  },
+  "blockers": [],
+  "blocked_by": [],
+  "terms": {
+    "not_provided": [],
+    "not_mapped": [],
+    "not_confirmed": [],
+    "broken": []
+  },
+  "note": "预检通过 ⇒ 可开正式可评分业务考试"
+}

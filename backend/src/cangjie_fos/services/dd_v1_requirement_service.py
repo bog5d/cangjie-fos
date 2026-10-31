@@ -81,6 +81,13 @@ CREATE TABLE IF NOT EXISTS dd_v1_obligations (
     --   expected_count = N>0 ⇒ 权威份数 N（应有 N 份）
     expected_count    INTEGER DEFAULT 0,
     expected_count_basis TEXT NOT NULL DEFAULT 'UNKNOWN',
+    -- ★ WP3-c：必备 part（正文之外的组成部分；「（含附注）」这类要求）。
+    required_parts   TEXT NOT NULL DEFAULT '[]',
+    -- ★ WP1：义务的**稳定 ID**（可复算、不随排序变）。
+    --   obligation_id 仍是库内主键（旧库兼容）；obligation_key 是
+    --   **由内容算出**的稳定标识 ⇒ 独立 Reviewer 拿到 (库/机构/编号/原文/段序)
+    --   就能**复算**出同一条义务的 key，不依赖任何一次运行的中间状态。
+    obligation_key   TEXT NOT NULL DEFAULT '',
     fields_json      TEXT NOT NULL DEFAULT '{}',
     notes            TEXT NOT NULL DEFAULT '',
     created_at       REAL NOT NULL
@@ -139,6 +146,14 @@ _SEAL_ONLY = re.compile(r"(盖章|加盖.{0,4}公章|盖公章|签章)")
 _SIGN_ONLY = re.compile(r"(签字|签署|签名|法人签字)")
 # 允许「及其附件」「及附件」「附证明材料」等常见写法
 _ATTACH = re.compile(r"(?:其|本)?及?附件|附.{0,8}(?:证明|材料|文件|扫描件|清单)|连同|附件[:：]")
+# ★ WP3-c：**必备 part**（正文之外的组成部分）——「审计报告（含附注）」。
+#   ★ 这与「份数」（count 维）是**两条轴**：份数说的是「一式几份」，
+#     part 说的是「一件里有几个组成部分」。两条轴**分别算、合并显示**。
+#   ★ part 的**取值空间**只有三个（正文/附注/附录）——与认知卡侧的
+#     「part」字段同一口径（``dd_v1_card_service.derive_part``）。
+_REQUIRED_PART_NAMES = ("附注", "附录", "附件")
+_ATTACH_PART = re.compile(r"(?:含|附|带|连同|及)\s*("
+                           + "|".join(_REQUIRED_PART_NAMES) + r")")
 
 # ── 材料类型关键词（映射到认知卡 purpose 词典）──────────────────────────────
 _DOC_TYPE_RULES = (
@@ -153,6 +168,15 @@ _DOC_TYPE_RULES = (
     ("labor", "(劳动合同|社保|花名册|员工)"),
     ("contract", "(合同|协议)"),
 )
+
+#: 「当前有效」类材料（**没有年度口径**，取现行有效的一份）：执照 / 章程。
+#: ★ 与 ``_DOC_TYPE_RULES`` 同源 —— 任何一侧都**不得**另抄一份类型子集。
+#:   语义层、桥接层、正式入口的「期间 = CURRENT」判定都从这里取。
+CURRENT_DOC_TYPES = ("license", "charter")
+
+#: 权威材料类型取值域（**从 ``_DOC_TYPE_RULES`` 派生，不是第二份表**）。
+#: 语义层「模型提出材料类型」时只能取这些 key。
+CURRENT_DOC_TYPE_KEYS = tuple(k for k, _pat in _DOC_TYPE_RULES)
 
 
 # ── 材料类型的**唯一性口径**（G-A2-10）────────────────────────────────
@@ -210,7 +234,11 @@ def _ensure_columns(conn) -> None:
     except Exception:  # noqa: BLE001 — 表还不存在时无需补列
         return
     for name, ddl in (("expected_count", "INTEGER DEFAULT 0"),
-                      ("expected_count_basis", "TEXT NOT NULL DEFAULT 'UNKNOWN'")):
+                      ("expected_count_basis", "TEXT NOT NULL DEFAULT 'UNKNOWN'"),
+                      # ★ WP1：稳定义务 ID（可复算）
+                      ("obligation_key", "TEXT NOT NULL DEFAULT ''"),
+                      # ★ WP3-c：必备 part（JSON 数组文本）
+                      ("required_parts", "TEXT NOT NULL DEFAULT '[]'")):
         if name in have:
             continue
         try:
@@ -219,6 +247,25 @@ def _ensure_columns(conn) -> None:
             logger.info("已补齐列 dd_v1_obligations.%s", name)
         except Exception as exc:  # noqa: BLE001
             logger.warning("补列失败 dd_v1_obligations.%s：%s", name, exc)
+
+
+def obligation_key(library_id: str, institution: str, item_no: str,
+                   raw_text: str, seq: int, obligation_text: str) -> str:
+    """原子义务的**稳定 ID**（WP1）：**由内容算出**、可复算、不随排序变。
+
+    ★ 为什么要它：``obligation_id`` 是库内主键（历史上是随机 uuid），
+      独立 Reviewer 拿到交付清单**无法复算**同一条义务 ⇒ 追溯链断在第一环。
+    ★ 本 key 只由**内容**决定：库 / 机构 / 机构原编号 / 原文 / 段序 / 义务文本
+      ⇒ 同一份清单在任何机器、任何一次运行里算出的 key **逐位相同**。
+    ★ 段序（``seq``）取自**拆分后的段序**（不是排序位置）⇒ 与呈现顺序无关。
+    """
+    h = hashlib.sha256()
+    for part in (str(library_id or ""), str(institution or ""), str(item_no or ""),
+                 " ".join(str(raw_text or "").split()), str(int(seq or 0)),
+                 " ".join(str(obligation_text or "").split())):
+        h.update(part.encode("utf-8"))
+        h.update(b"\x1f")
+    return "OBL-" + h.hexdigest()[:24]
 
 
 @dataclass
@@ -241,6 +288,9 @@ class Obligation:
     # ★ A3（G-A3-1）：「应有几份」。0=未规定 / None=提及但不可判定 / N=权威份数。
     expected_count: int | None = 0
     expected_count_basis: str = UNKNOWN
+    # ★ WP3-c：必备 part（正文之外的组成部分；「（含附注）」这类要求）。
+    #   与 expected_count 是**两条轴**：份数＝一式几份，part＝一件里几部分。
+    required_parts: list = field(default_factory=list)
     notes: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -261,6 +311,7 @@ class Obligation:
             "disclosure": self.disclosure,
             "expected_count": self.expected_count,
             "expected_count_basis": self.expected_count_basis,
+            "required_parts": list(self.required_parts or []),
             "notes": self.notes,
         }
 
@@ -381,6 +432,10 @@ _SUBJECT_HINT_MARKERS = (
 
 #: 主体前缀 scope 的**唯一**前缀常量（仓内只有这一处定义）。
 ENTITY_HINT_PREFIX = "entity_hint:"
+#: ★ 考场契约声明的**单主体**范围（`contract_single:<entity_id>`）
+CONTRACT_SINGLE_PREFIX = "contract_single:"
+#: ★ 考场契约声明的**集团**范围（`contract_group:<root_entity_id>`）
+CONTRACT_GROUP_PREFIX = "contract_group:"
 
 #: 主体前缀在**文案**里的统一脱敏标签（客户标识 ⇒ 原文不得外露）。
 ENTITY_HINT_LABEL = "义务指名的主体（简称）"
@@ -657,6 +712,51 @@ def parse_doc_type(raw: str) -> tuple[str, str]:
     return "", UNKNOWN
 
 
+def parse_doc_type_spans(raw: str) -> list[tuple[str, int, int]]:
+    """文本里命中的**全部**规范材料类型及其位置（字符下标区间，左闭右开）。
+
+    与 ``parse_doc_type`` 的关系（**必须成立**，有用例锁死）：
+
+    - 文本里只有一类材料时，两者结论**逐位一致**；
+    - ``parse_doc_type`` 只返回**第一类**（规则表顺序），
+      本函数返回**全部**命中项 —— 供「一段文字里出现多类材料」的场景使用
+      （调用方自己决定怎么拆；本模块不替调用方做拆分决策）。
+
+    ★ **重叠消解**：不同类型的命中区间**重叠**时，按「规则表顺序优先、同序则命中更长者」取胜，
+      落败的一方**整段丢弃**。例：「劳动合同」里 labor 命中整词、contract 只命中「合同」⇒ 取 labor
+      ⇒ **不把一个复合词拆成两类**，与 ``parse_doc_type`` 结论一致。
+    ★ 同一个 key 的多处命中**全部保留**（调用方按 key 去重即可）。
+    """
+    text = str(raw or "")
+    spans: list[tuple[int, int, str, int]] = []   # (order, start, end, key)
+    for order, (key, pat) in enumerate(_DOC_TYPE_RULES):
+        for m in re.finditer(pat, text):
+            spans.append((order, m.start(), m.end(), key))
+    # 规则表顺序优先 ⇒ 复合词里「更靠前的规则」整体胜出
+    spans.sort(key=lambda s: (s[0], -(s[2] - s[1]), s[1]))
+    kept: list[tuple[str, int, int]] = []
+    for _order, st, en, key in spans:
+        if any(st < k_en and k_st < en for _k, k_st, k_en in kept):   # 与已保留的区间重叠
+            continue
+        kept.append((key, st, en))
+    kept.sort(key=lambda t: t[1])
+    return kept
+
+
+def parse_doc_types(raw: str) -> list[str]:
+    """文本里命中的**全部**规范材料类型（去重，按**出现位置**排序）。
+
+    - 判不出 ⇒ 空列表（**不得**拿扩展名或中文名占位）；
+    - 只有一类 ⇒ 与 ``parse_doc_type`` 一致；
+    - 多类 ⇒ 全部返回（复合词的重叠已由 ``parse_doc_type_spans`` 消解）。
+    """
+    out: list[str] = []
+    for key, _st, _en in parse_doc_type_spans(raw):
+        if key not in out:
+            out.append(key)
+    return out
+
+
 def parse_caliber(raw: str) -> tuple[str, str]:
     if _CALIBER_CONSOL.search(raw):
         return "consolidated", FACT
@@ -679,6 +779,44 @@ def parse_attachments(raw: str) -> tuple[int, str]:
     if _ATTACH.search(raw):
         return 1, FACT
     return 0, UNKNOWN
+
+
+def parse_required_parts(raw: str) -> list[str]:
+    """义务**要求哪些 part**（正文之外的组成部分）——WP3-c 的「应交 N 件」的第二个轴。
+
+    ★ 例：「2024年度审计报告（含附注）」⇒ ``["附注"]`` ⇒ 这条义务要交
+      **正文 ＋ 附注**两件 ⇒ 应交 2，而不是 1。
+    ★ **只认原文明文**（「含/附/带/连同/及 ＋ 附注|附录|附件」），
+      认不出就是空列表（**不猜**）。
+    ★ 与「份数」（count 维）是**两条轴**：份数＝一式几份，part＝一件里几部分。
+      展示层把两轴**合并报数**（应交 / 找到 / 缺），判定层**分别判**。
+    """
+    text = str(raw or "")
+    out: list[str] = []
+    for m in _ATTACH_PART.finditer(text):
+        name = m.group(1)
+        if name not in out:
+            out.append(name)
+    return out
+
+
+def required_parts_of(ob: dict) -> list[str]:
+    """从**义务行**取必备 part（库里存的是 JSON 数组文本）。
+
+    ★ **唯一**的取法（判定层 / 选中层 / 展示层共用）⇒ 不会各处各解一遍 JSON。
+    ★ 兼容两种形态：已是 list（内存态）或是 JSON 文本（DB 行）。
+    ★ 旧库没有这一列 ⇒ 取不到就是空列表（**不猜**）。
+    """
+    raw = (ob or {}).get("required_parts")
+    if isinstance(raw, list):
+        return [str(x) for x in raw if str(x).strip()]
+    if not raw:
+        return []
+    try:
+        out = json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+    return [str(x) for x in out if str(x).strip()] if isinstance(out, list) else []
 
 
 # ── 「应有几份」的份数口径（G-A3-1）────────────────────────────────────────
@@ -784,6 +922,8 @@ def build_obligations(
         ob.caliber, ob.caliber_basis = parse_caliber(part)
         ob.seal_required, _ = parse_seal(part)
         ob.needs_attachments, ob.attachment_basis = parse_attachments(part)
+        # ★ WP3-c：必备 part（正文之外的组成部分）——「（含附注）」这类要求。
+        ob.required_parts = parse_required_parts(part)
         # ★ A3（G-A3-1）：份数从**本段原文**解析（拆分后的每段各管各的份数）。
         ob.expected_count, ob.expected_count_basis = parse_expected_count(part)
         if ob.expected_count is None:
@@ -795,12 +935,75 @@ def build_obligations(
 
 _SPLIT_RE = re.compile(r"[、]|(?:以及)|(?:，\s*并且)")
 
+#: ★★ **受控**并列连接词（第二层）：``和`` / ``且`` / ``及`` / ``并且``。
+#:
+#: ★ **为什么加这一层**（`#108` 实测形态 · 本轮自动考试抓出）：
+#:   文档承诺「按并列连接词（**且**/以及/、/**及**）切分」，但实现只切
+#:   「、/以及/，并且」⇒ 「请提供 X **2024 年度审计报告和营业执照**」
+#:   只切出**一条**义务（doc_type 取第一个）⇒ **第二类材料的要求被静默吞掉**
+#:   ⇒ 机器只交了审计报告、营业执照没交，**且不报错**（业务上是漏交）。
+#:
+#: ★ **为什么必须「受控」**：裸切「和/及/且」会把正常句子切碎
+#:   （「涉及」「至少」「有且仅有」「以及」…）⇒ 宁可漏切，不可切错。
+#:   ⇒ **只有当连接词两侧都能解析出材料类型时才切**（两侧都是「要交什么」才叫并列）。
+#:   ⇒ 否定前缀表挡住「涉及/相关/累计/以及…」等词内出现的情形。
+#:
+#: ★★ **两道防线的主次（独立 Reviewer 用变异测试实测出来的，别写反）**：
+#:   ① 词内前缀黑名单（``_SPLIT_BLOCK_PREFIX``）= **第一道过滤**，挡掉明显是词内的连接词；
+#:   ② 「**两侧都能解析出材料类型**」（见 :func:`_split_guarded`）= **决定性兜底**。
+#:   ★ 实测：把 ① 整个去掉（改用裸 ``[和且及]``），负例（涉及/至少/有且仅有）**仍通过**；
+#:     把 ② 去掉 ⇒ 负例**立刻失败**（「有且仅有」被切成两条）。
+#:   ⇒ **真正的防线是 ②**；① 是快筛（省掉无谓的类型解析），不是正确性依赖项。
+#:   ⇒ 改动 ① 时**不必**担心破坏负例；但**绝不能**只依赖 ①。
+_SPLIT_RE2 = re.compile(r"并且|(?<![涉相累以即并未最尚无该其与])[和且及]")
+#: 词内出现「和/及/且」的常见前缀（禁止在此处切）
+_SPLIT_BLOCK_PREFIX = "涉相累以即并未最尚无该其与"
+
 
 def _split_parallel(raw: str) -> list[str]:
-    """按并列连接词拆分。只在**明显并列**处切，避免把长句切碎丢信息。"""
+    """按并列连接词拆分。只在**明显并列**处切，避免把长句切碎丢信息。
+
+    ★ 两层拆分：
+      ① ``_SPLIT_RE``：无条件安全（「、」「以及」「，并且」）；
+      ② ``_SPLIT_RE2``：**受控**（「和」「且」「及」「并且」）
+         ⇒ 只有**两侧都能解析出材料类型**才切（见 ``_split_guarded``）。
+    """
     parts = [p.strip(" 　；;，,。.") for p in _SPLIT_RE.split(raw)]
     parts = [p for p in parts if p]
-    return parts or [raw]
+    if not parts:
+        return [raw]
+    out: list[str] = []
+    for p in parts:
+        out.extend(_split_guarded(p, depth=0))
+    return out or [raw]
+
+
+def _split_guarded(part: str, depth: int = 0) -> list[str]:
+    """受控并列拆分：**两侧都能解析出材料类型**才切（否则原样返回）。
+
+    ★ 判据（可解释、可复核）：
+      连接词左段能解析出材料类型 **且** 右段也能解析出材料类型
+      ⇒ 两段都是「要交什么」⇒ 确实并列 ⇒ 切成两条原子义务。
+      否则（任一侧解析不出类型）⇒ 不切（宁可漏切，不可切错）。
+
+    ★ 深度上限 3：防止异常文本导致无界递归。
+    """
+    if depth >= 3:
+        return [part]
+    for m in _SPLIT_RE2.finditer(part):
+        left, right = part[:m.start()], part[m.end():]
+        if not left.strip() or not right.strip():
+            continue
+        try:
+            l_type, _ = parse_doc_type(left)
+            r_type, _ = parse_doc_type(right)
+        except Exception:  # noqa: BLE001 —— 解析不了就不切
+            continue
+        if not l_type or not r_type:
+            continue
+        return (_split_guarded(left.strip(" 　；;，,。."), depth + 1)
+                + _split_guarded(right.strip(" 　；;，,。."), depth + 1))
+    return [part]
 
 
 # ── 落库 ────────────────────────────────────────────────────────────────────
@@ -899,15 +1102,20 @@ def ingest_checklist(
                     entity_scope, entity_basis, period_from, period_to, period_basis,
                     doc_type, doc_type_basis, caliber, caliber_basis, seal_required,
                     needs_attachments, attachment_basis, disclosure,
-                    expected_count, expected_count_basis, fields_json,
-                    notes, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    expected_count, expected_count_basis, obligation_key,
+                    required_parts, fields_json, notes, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (uuid.uuid4().hex, item_uid, library_id, seq, ob.obligation,
                  ob.entity_scope, ob.entity_basis, ob.period_from, ob.period_to,
                  ob.period_basis, ob.doc_type, ob.doc_type_basis, ob.caliber,
                  ob.caliber_basis, ob.seal_required, ob.needs_attachments,
                  ob.attachment_basis, ob.disclosure,
                  ob.expected_count, ob.expected_count_basis,
+                 # ★ WP1：稳定 ID（由内容算出 ⇒ 可复算、不随排序变）
+                 obligation_key(library_id, institution,
+                                r.get("item_no") or "", raw, seq, ob.obligation),
+                 # ★ WP3-c：必备 part
+                 json.dumps(list(ob.required_parts or []), ensure_ascii=False),
                  json.dumps(payload, ensure_ascii=False),
                  "; ".join(ob.notes), now),
             )
@@ -970,6 +1178,128 @@ def list_obligations(
             "SELECT * FROM dd_v1_obligations WHERE library_id=? ORDER BY created_at",
             (library_id,))
     return [dict(r) for r in rows]
+
+
+# ── 统一数据契约（WP2 · #108 实测 P0-2）─────────────────────────────────────
+#
+# ★ **P0-2 形态**：同一张 42 题考卷，**库侧**拆出 91 条义务（覆盖 42 题），
+#   **运行器侧**只拆出 15 条（覆盖 12 题）⇒ 「题目拆解覆盖率」被低报成 28.6%。
+# ★ **根因（代码级）**：**两套拆解**并存 ——
+#   ① 库侧 `build_obligations`（按并列连接词切，**永不丢题**）；
+#   ② 运行器侧 `dd_v1_semantic_retrieval_service.split_items`
+#      （按材料类型切，**无类型关键词的整题丢弃** ⇒ 30 题被丢）。
+#   ⇒ 且 **Gold 的 obligation_id 引的是库侧那条** ⇒ 运行器用另一套 ⇒ 答卷与标准答案**根本对不上**。
+# ★ **处置（不是第三套拆解）**：**库侧那套是唯一权威** ⇒ 本模块把它**导出**成统一契约，
+#   运行器**消费**它 ⇒ 两侧必然一致。
+
+def canonical_question_id(item_no: str) -> str:
+    """题号**归一**（跨来源可 join 的唯一键）。
+
+    ★ **形态**（#108 实测）：清单里同一题在不同来源写法不同 ——
+      分部目录 ``1-1_基本资料``（带分部名后缀）vs 运行器条目 ``1-1-1``。
+      ⇒ 若按原样 join ⇒ **一题都对不上** ⇒ 覆盖率低报。
+    ★ 口径：**取 ``_`` 之前的编号部分** ＋ 空白/全角归一；★ **原样编号另存**（``item_no``），
+      ⇒ **归一只用于 join，不改写机构原编号**。
+    """
+    raw = str(item_no or "").strip()
+    if not raw:
+        return ""
+    head = re.split(r"[_＿]", raw, 1)[0].strip()
+    head = head.replace("　", " ").replace("－", "-").replace("—", "-")
+    head = re.sub(r"\s+", "", head)
+    return head
+
+
+def export_obligation_contract(library_id: str, *, db_path: Path | None = None,
+                               institution: str = "") -> dict:
+    """库侧原子义务 ⇒ **统一数据契约**（唯一权威拆解的对外形状）。
+
+    ★ 每条义务至少可追溯：**原始题号 / 原始题目文本 / 义务唯一 ID / 主体要求 /
+      期间要求 / 文件类型 / 对应证据（键）/ 处理状态**（施工令 WP2）。
+    ★ **永不丢题**：一条清单项 ⇒ **至少**一条义务；★ 规则层判不出材料类型时
+      **标 ``NEEDS_HUMAN_SPLIT``**（**不丢**，只标）⇒ 覆盖率口径不失真。
+    ★ 期间四态（``period_spec``）**复用** ``dd_v1_period_service.spec_from_obligation``
+      （与语义层同一入口 ⇒ 两端口径不分叉）。
+    """
+    conn = mf._connect(db_path)
+    _ensure_schema(conn)
+    items = {r["item_uid"]: dict(r) for r in conn.execute(
+        "SELECT * FROM dd_v1_checklist_items WHERE library_id=?", (library_id,))}
+    obl_rows = list_obligations(library_id, db_path=db_path)
+    from cangjie_fos.services import dd_v1_period_service as ps
+    out: list[dict[str, Any]] = []
+    for r in obl_rows:
+        item = items.get(r.get("item_uid")) or {}
+        raw_text = str(item.get("raw_text") or "")
+        item_no = str(item.get("item_no") or "")
+        ob_payload: dict[str, Any] = {}
+        try:
+            ob_payload = json.loads(r.get("fields_json") or "{}")
+        except (TypeError, ValueError):
+            ob_payload = {}
+        period_spec = ps.spec_from_obligation(ob_payload)
+        doc_type = str(r.get("doc_type") or "")
+        required_parts = []
+        try:
+            required_parts = list(json.loads(r.get("required_parts") or "[]"))
+        except (TypeError, ValueError):
+            required_parts = []
+        out.append({
+            # ── 身份与追溯 ──
+            "obligation_id": str(r.get("obligation_id") or ""),
+            "obligation_key": str(r.get("obligation_key") or ""),
+            "item_uid": str(r.get("item_uid") or ""),
+            "item_id": item_no,
+            "item_no": item_no,
+            "question_id": canonical_question_id(item_no),
+            "original_text": raw_text,
+            # ── 义务正文 ──
+            "text": str(r.get("obligation") or ""),
+            # ── 主体要求 ──
+            "entity": str(ob_payload.get("entity_scope") or r.get("entity_scope") or ""),
+            "entity_scope": str(r.get("entity_scope") or ""),
+            "entity_basis": str(r.get("entity_basis") or ""),
+            # ── 期间要求 ──
+            "period": str(r.get("period_from") or ""),
+            "period_from": int(r.get("period_from") or 0),
+            "period_to": int(r.get("period_to") or 0),
+            "period_basis": str(r.get("period_basis") or ""),
+            "period_spec": period_spec,
+            # ── 文件类型 ──
+            "doc_type": doc_type,
+            "doc_type_basis": str(r.get("doc_type_basis") or ""),
+            "doc_type_label": doc_type,
+            "doc_type_terms": doc_type_search_terms(doc_type) if doc_type else [],
+            "required_parts": required_parts,
+            "expected_count": r.get("expected_count"),
+            "seal_required": str(r.get("seal_required") or ""),
+            "caliber": str(r.get("caliber") or ""),
+            "needs_attachments": int(r.get("needs_attachments") or 0),
+            # ── 处理状态（★ **不丢题**：判不出类型只标，不删）──
+            "split_status": "SPLIT" if doc_type else "NEEDS_HUMAN_SPLIT",
+            "needs_human_split": not bool(doc_type),
+            "split_method": "REQUIREMENT_SERVICE_PARALLEL",
+            "notes": str(r.get("notes") or ""),
+        })
+    questions = sorted({o["question_id"] for o in out if o["question_id"]})
+    return {
+        "schema_version": "dd_v1_obligation_contract.v1",
+        "library_id": library_id,
+        "institution": institution,
+        "obligations": out,
+        "counts": {
+            "obligations": len(out),
+            "questions": len(questions),
+            "items": len(items),
+            "needs_human_split": sum(1 for o in out if o["needs_human_split"]),
+        },
+        "questions": questions,
+        "question_coverage": {
+            "items_ingested": len(items),
+            "questions_with_obligations": len(questions),
+            "coverage_ratio": (round(len(questions) / len(items), 6) if items else 0.0),
+        },
+    }
 
 
 # ── 权威主体登记（多主体覆盖的前提）─────────────────────────────────────────
@@ -1084,7 +1414,68 @@ def resolve_entities(
         return [r for r in rows if r["relation"] == "parent"]
     if scope == "self":
         return [r for r in rows if r["is_group_root"]]
+
+    # ★★ 考场契约声明的主体范围（`#108` 实测 P0-1 的正解）。
+    #
+    #   义务**没有指名主体**时，若考场契约里**明确声明**了范围（单主体 / 集团），
+    #   就按声明解析 ⇒ 主体维度**不再不可判定** ⇒ 不会全盘 UNCERTAIN、0 交付。
+    #
+    #   ★ 这**不是**「题目没写主体 ⇒ 集团所有公司都符合要求」：
+    #     名单来自**权威主体登记**（`dd_v1_entities`）＋ **契约里的显式声明**，
+    #     没有声明就没有这两个分支 ⇒ 仍然返回空 ⇒ 仍然判「不可判定」。
+    #
+    #   ★ 两个既有分支（group_and_subs 等）语义**一字未改**。
+    if scope.startswith(CONTRACT_SINGLE_PREFIX):
+        eid = scope.split(":", 1)[1].strip()
+        if not eid:
+            return []
+        return [r for r in rows if str(r.get("entity_id") or "") == eid]
+    if scope.startswith(CONTRACT_GROUP_PREFIX):
+        root_id = scope.split(":", 1)[1].strip()
+        if not root_id:
+            return []
+        members = _group_members(rows, root_id)
+        return [r for r in rows if str(r.get("entity_id") or "") in members]
     return []
+
+
+def _group_members(rows: list[dict], root_id: str) -> set[str]:
+    """集团成员 ＝ 根 ＋ 沿 ``parent_id`` 链向下的全部后代（**按登记结构**，不按目录名）。"""
+    by_parent: dict[str, list[str]] = {}
+    for r in rows:
+        pid = str(r.get("parent_id") or "").strip()
+        eid = str(r.get("entity_id") or "").strip()
+        if pid and eid:
+            by_parent.setdefault(pid, []).append(eid)
+    out: set[str] = {root_id}
+    frontier = [root_id]
+    while frontier:
+        cur = frontier.pop()
+        for child in by_parent.get(cur, []):
+            if child not in out:
+                out.add(child)
+                frontier.append(child)
+    return out
+
+
+def checklist_digest(library_id: str, db_path: Path | None = None) -> str:
+    """本库**当前**清单的内容指纹（与 ``ingest_checklist`` 返回的 ``checklist_fingerprint`` 同口径）。
+
+    用于考场预检：把「契约声明的考卷指纹」与「库内实际清单指纹」逐位对比。
+    """
+    conn = mf._connect(db_path)
+    _ensure_schema(conn)
+    rows = [dict(r) for r in conn.execute(
+        "SELECT item_no, raw_text, institution FROM dd_v1_checklist_items WHERE library_id=?",
+        (library_id,))]
+    fps = [_checklist_fingerprint(library_id, str(r.get("institution") or ""),
+                                  str(r.get("item_no") or ""), str(r.get("raw_text") or ""))
+           for r in rows]
+    if not fps:
+        # ★ 空清单**不产出指纹**（空串）—— 否则「没摄取清单」会被误读成
+        #   「清单指纹 = sha256(空)」这样一个看起来合法的非空值。
+        return ""
+    return _checklist_digest(fps)
 
 
 def entities_registered(library_id: str, db_path: Path | None = None) -> int:

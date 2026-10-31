@@ -1,0 +1,356 @@
+{
+  "schema_version": "dd_v1_exam_run_manifest.v1",
+  "run_id": "20261030T163914Z",
+  "exam": "B",
+  "exam_id": "DDV1-SYN-B",
+  "title": "考试B · 复杂业务",
+  "started_at": "2026-10-31T00:40:56+08:00",
+  "finished_at": "2026-10-31T00:40:56+08:00",
+  "elapsed_s": 102.42,
+  "git_sha": "8e5bcd117187655555d2f203a95038046ed4fa7c",
+  "git_dirty": false,
+  "environment": {
+    "platform": "linux",
+    "platform_release": "Linux-5.10.134-18.0.12.lifsea8.x86_64-x86_64-with-glibc2.36",
+    "platform_version": "#1 SMP Tue Aug 4 16:35:16 CST 2026",
+    "os_name": "Linux",
+    "machine": "x86_64",
+    "python": "3.11.2",
+    "python_implementation": "CPython",
+    "python_version_full": "3.11.2 (main, May 12 2026, 05:17:27) [GCC 12.2.0]",
+    "data_plane": "/workspace/plane-regen/B/data",
+    "out_dir": "/workspace/fos/.audit/gate-runs/B",
+    "note": "★ 数据面在仓库之外 ⇒ 合成考试数据不污染真实业务库"
+  },
+  "model": {
+    "agent_spec": "none",
+    "agent_result_file": "",
+    "examinee_mode": "RULE_ONLY",
+    "participated": false,
+    "requested_mode": "RULE_ONLY",
+    "execution_path": "RULE_ONLY",
+    "actual_model": "UNKNOWN",
+    "model_identity_verified": false,
+    "model_identity": {},
+    "examinee_framework": "",
+    "examinee_provider": "",
+    "degrade_reason": "",
+    "score_split": {
+      "score_name": "RULE_BASELINE_SCORE",
+      "rule_baseline_score": 95.67,
+      "ai_system_score": null,
+      "ai_system_score_status": "NOT_SCORED",
+      "model_identity_acceptable": false,
+      "delta": null,
+      "delta_is_causal": false,
+      "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+    }
+  },
+  "test_data_version": {
+    "fixture": "backend/tests/fixtures/dd-v1-exam-suite/exams/B",
+    "materials": 13,
+    "questions": 9,
+    "contract_obligations": 10,
+    "contract_questions": 9
+  },
+  "gold_version": {
+    "path": "/workspace/plane-regen/B/gold/gold-B.json",
+    "items": 10,
+    "fingerprint": "6ef9d45d010d0c7a00be9fcd26dde5d9a54ad58b26b58ea96706cb22da2437bf"
+  },
+  "results": {
+    "rc_run": 0,
+    "rc_answer": 0,
+    "rc_grade": 0,
+    "status": "SCORED_PARTIAL",
+    "scorecard_status": "SCORED_PARTIAL",
+    "scores": {
+      "question_understanding_coverage": 0.9,
+      "question_answer_coverage": 0.9,
+      "material_recall": 1.0,
+      "selection_precision": 0.866667,
+      "complete_delivery_ratio": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.1,
+      "total_score": 95.67
+    },
+    "score_split": {
+      "score_name": "RULE_BASELINE_SCORE",
+      "rule_baseline_score": 95.67,
+      "ai_system_score": null,
+      "ai_system_score_status": "NOT_SCORED",
+      "model_identity_acceptable": false,
+      "delta": null,
+      "delta_is_causal": false,
+      "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+    },
+    "run_provenance": {
+      "requested_mode": "RULE_ONLY",
+      "execution_path": "RULE_ONLY",
+      "examinee_agent": "",
+      "examinee_framework": "",
+      "examinee_provider": "",
+      "actual_model": "UNKNOWN",
+      "model_identity": {},
+      "model_identity_verified": false,
+      "model_participated": false,
+      "participated_scope": "NONE",
+      "gold_version": "6ef9d45d010d0c7a00be9fcd26dde5d9a54ad58b26b58ea96706cb22da2437bf",
+      "gold_source": "LOCAL_GOLD_PACK",
+      "gold_pack_id": "GOLD-SYN-B",
+      "answer_sheet_source": "dd_v1_answer_sheet.v1",
+      "source_snapshot_id": "",
+      "total_score": 95.67,
+      "scores": {
+        "question_understanding_coverage": 0.9,
+        "question_answer_coverage": 0.9,
+        "material_recall": 1.0,
+        "selection_precision": 0.866667,
+        "complete_delivery_ratio": 1.0,
+        "miss_rate": 0.0,
+        "wrong_rate": 0.1,
+        "total_score": 95.67
+      },
+      "score_split": {
+        "score_name": "RULE_BASELINE_SCORE",
+        "rule_baseline_score": 95.67,
+        "ai_system_score": null,
+        "ai_system_score_status": "NOT_SCORED",
+        "model_identity_acceptable": false,
+        "delta": null,
+        "delta_is_causal": false,
+        "delta_note": "★ 差值**只是观察值**：两次运行（规则基线 / 模型参与）不是受控对照实验，**不能**当作「模型带来的因果贡献」。要做归因须走错误分类与消融测试。"
+      },
+      "disclosure_safety": {
+        "status": "PASS",
+        "violations": 0,
+        "findings_count": 0
+      },
+      "gate_status": "NOT_EVALUATED_AT_GRADE_TIME",
+      "gate_note": "交付门禁由 delivery gate 在全部考试跑完后统一判定（见 .audit/gate-runs/门禁报告.json）；阅卷阶段**不**自行宣布门禁结果。",
+      "code_version": "8e5bcd117187655555d2f203a95038046ed4fa7c",
+      "evidence_paths": {
+        "answer_sheet": "/workspace/fos/.audit/gate-runs/B/answer/机器答卷-20261031-004055.json",
+        "gold": "/workspace/plane-regen/B/gold/gold-B.json",
+        "library": "LIB-DDVE-B"
+      }
+    },
+    "safety_gate": {
+      "violations": 0,
+      "findings": [],
+      "by_kind": {},
+      "selection_mismatches": 0,
+      "selection_mismatch_detail": [],
+      "selection_mismatch_by_kind": {},
+      "note_selection": "★ **只有实际交付的件才进安全闸封顶**；「选中但未交付」的错主体/错年份属**选材质量**问题 ⇒ 单列、**不封顶**。★ **错年度（WRONG_PERIOD）已按冻结评分规范进闸**（`safety.counted_kinds` 明列它 ⇒ 命中 ⇒ FAIL ＋ 封顶 59）；但**口径不可比**的期间（``CURRENT``/``当前``/``未知``）**不判**（派生元数据口径差异不算机器交错年份 ⇒ 不冤枉机器）。★ MAJOR-1（独立 Reviewer 第 3 轮）：此前实现把错年度完全排除在闸外 ⇒ 错年度交付可拿 100 分且 safety_gate=PASS ⇒ 与冻结规范矛盾 ⇒ 已修。",
+      "status": "PASS",
+      "note": "未发现安全闸违规"
+    },
+    "counts": {
+      "obligations": 10,
+      "obligations_with_expected_files": 8,
+      "expected_files": 13,
+      "selected_files": 15,
+      "hit_files": 13,
+      "extra_files": 2,
+      "delivered_files": 2,
+      "delivered_files_attributed": 3,
+      "understood": 9,
+      "answered": 9,
+      "complete": 8,
+      "missed": 0,
+      "wrong": 1
+    },
+    "exam_coverage": {
+      "questions_total": 9,
+      "denominator_source": "LIBRARY_OBLIGATION_CONTRACT",
+      "questions_processed": 9,
+      "questions_correct": 7,
+      "questions_unmatched": 0,
+      "questions_ambiguous": 0,
+      "questions_incomplete": 0,
+      "questions_unanswered": 0,
+      "verifiable_coverage": 1.0,
+      "questions": [
+        {
+          "question_id": "2-7",
+          "item_no": "2-7",
+          "state": "CORRECT",
+          "obligations": 2,
+          "graded_obligations": 2,
+          "original_text_head": "请提供合成母公司2024年度审计报告和营业执照"
+        },
+        {
+          "question_id": "2-4",
+          "item_no": "2-4",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2022年度审计报告"
+        },
+        {
+          "question_id": "2-6",
+          "item_no": "2-6",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司近三年经营情况说明"
+        },
+        {
+          "question_id": "2-2",
+          "item_no": "2-2",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司甲2023年度审计报告"
+        },
+        {
+          "question_id": "2-1",
+          "item_no": "2-1",
+          "state": "CORRECT",
+          "obligations": 3,
+          "graded_obligations": 1,
+          "original_text_head": "请提供集团及下属公司2024年度审计报告"
+        },
+        {
+          "question_id": "2-3",
+          "item_no": "2-3",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成子公司乙2024年度审计报告"
+        },
+        {
+          "question_id": "2-5",
+          "item_no": "2-5",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度营业执照"
+        },
+        {
+          "question_id": "2-8",
+          "item_no": "2-8",
+          "state": "CORRECT",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度审计报告"
+        },
+        {
+          "question_id": "2-9",
+          "item_no": "2-9",
+          "state": "NO_EXPECTED_FILES",
+          "obligations": 1,
+          "graded_obligations": 1,
+          "original_text_head": "请提供合成母公司2024年度纳税证明"
+        }
+      ],
+      "note": "分母来自**库侧权威题单**"
+    },
+    "gold_library_binding": {
+      "gold_items": 10,
+      "bound_exact": 10,
+      "rebound_by_key": 0,
+      "rebound": [],
+      "unbound": 0,
+      "unbound_detail": [],
+      "note": "★ 标准答案用**内容派生稳定键**（obligation_key）绑定图书馆；库内主键 uuid 每次建库都变 ⇒ 只存 uuid 的标准答案换快照即失效。unbound > 0 ⇒ 这些条目**落空**（不会被悄悄吞掉）。"
+    },
+    "gold_scorable": {
+      "scorable_obligations": 8,
+      "correct": 8,
+      "wrong": 0,
+      "denominator": 8,
+      "score_ratio": 1.0,
+      "not_included_reasons": {
+        "NO_EXPECTED_FILES": 1,
+        "AMBIGUOUS_CONTENT": 1
+      },
+      "not_included_total": 2,
+      "note": "★ 分母只含**Gold 已解析到具体材料**的义务；★ 其余原因逐条列出，★ **不得**把它们算成 0 分"
+    },
+    "gold_gaps": {
+      "schema_version": "dd_v1_gold_gap_report.v1",
+      "gold_pack_id": "GOLD-SYN-B",
+      "exam_id": "DDV1-SYN-B",
+      "counts": {
+        "obligations": 10,
+        "expected_files": 14,
+        "resolved": 13,
+        "gaps": 2,
+        "by_class": {
+          "D_FINGERPRINT_MISMATCH": 1,
+          "F_NEEDS_HUMAN_CONFIRM": 1
+        }
+      },
+      "gaps": [
+        {
+          "resolution": "AMBIGUOUS_CONTENT",
+          "resolution_note": "同一内容指纹命中 2 份图书馆材料（1b76c71fadf19c2b35142579a395e861, 475bf6e5d061be85de3de97561ed486d）⇒ 内容寻址无法唯一定位 ⇒ 需人工指定",
+          "gold_relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+          "gold_sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+          "gold_entity": "合成母公司",
+          "gold_period": "2024",
+          "gap_class": "D_FINGERPRINT_MISMATCH",
+          "candidates": [
+            {
+              "file_id": "475bf6e5d061be85de3de97561ed486d",
+              "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+              "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+              "entity": "合成母公司",
+              "period": "2024"
+            },
+            {
+              "file_id": "475bf6e5d061be85de3de97561ed486d",
+              "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+              "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+              "entity": "合成母公司",
+              "period": "2024"
+            }
+          ],
+          "remedy": "人工核对：库里同路径件的内容指纹与 Gold 记的不一致 ⇒ 是内容被替换，还是 Gold 记错",
+          "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+          "item_no": "2-9"
+        },
+        {
+          "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+          "item_no": "2-4",
+          "resolution": "NO_EXPECTED_FILES",
+          "resolution_note": "该义务在 Gold 清单里没有期望文件 ⇒ 无可比基准",
+          "gold_relative_path": "",
+          "gold_sha256": "",
+          "gold_entity": "",
+          "gold_period": "",
+          "gap_class": "F_NEEDS_HUMAN_CONFIRM",
+          "candidates": [],
+          "remedy": "人工补该义务的期望文件（Gold 侧）⇒ **不得**因此删义务"
+        }
+      ],
+      "note": "逐件待处置清单：★ **不删 Gold、不改 Gold**；A/B/C/D/E 由人工核对后**在本地纠正映射**，A（确实缺料）单列进补料清单"
+    },
+    "blocked_by": []
+  },
+  "failures": [],
+  "disclosure": {
+    "delivered_rows": 2,
+    "delivered_files": 2,
+    "manifest_path": "/workspace/plane-regen/B/data/deliveries/7c74a104cf964b47b37f254f4fcbb2fb/组包manifest.tsv",
+    "blocked_materials": 25,
+    "violations": 0,
+    "violation_detail": [],
+    "status": "PASS",
+    "policy_sendable_doc_types": [
+      "audit_report",
+      "financial_statement",
+      "license",
+      "tax"
+    ],
+    "note": "★ 受限材料若出现在交付清单 ⇒ 安全闸失效 ⇒ 断言 FAIL；「被拦了多少件」如实记账（拦截不是失败，是设计）。"
+  },
+  "artifacts": {
+    "answer_sheet": "/workspace/fos/.audit/gate-runs/B/answer/机器答卷-20261031-004055.json",
+    "scorecard_dir": "/workspace/fos/.audit/gate-runs/B/grade",
+    "run_report_dir": "/workspace/fos/.audit/gate-runs/B/run",
+    "gold_manifest": "/workspace/plane-regen/B/gold/gold-B.json"
+  }
+}

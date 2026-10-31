@@ -20,6 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from cangjie_fos.services import dd_v1_doc_type_service as dts
+from cangjie_fos.services import dd_v1_period_service as ps
+
 SCHEMA_VERSION = "dd_v1_agent_result.v1"
 PROMPT_VERSION = "fos71-wp01-p1"
 
@@ -33,6 +36,13 @@ RESULT_FIELDS = (
     "confidence_or_uncertain", "abstain_reason", "warnings", "elapsed",
     "token_usage_or_UNKNOWN",
 )
+#: ★ WP2：规则层解析不出材料类型时，由**模型**提出该题要哪一类材料。
+#:   **可选**字段（schema 里在 ``properties``、不在 ``required``）；
+#:   取值域限权威 10 类（``dd_v1_requirement_service.CURRENT_DOC_TYPE_KEYS``），
+#:   域外值在语义层被拒（``DOC_TYPE_PROPOSAL_MISMATCH`` 等）。
+OPTIONAL_RESULT_FIELDS = ("proposed_doc_type", "rejected_alternatives")
+#: 排除式选择凭据的字段（可选；每条必须有 file_id + reason）
+REJECTED_ALT_FIELDS = ("file_id", "reason")
 EVIDENCE_VERDICTS = ("MATCH", "PARTIAL", "OUTDATED")
 CANDIDATE_FIELDS = ("file_id", "relative_path", "sha256", "locator", "entity", "period", "match_reason")
 
@@ -111,6 +121,8 @@ def build_task_packet(
             "proposed_verdict 只能取 " + "/".join(ALLOWED_VERDICTS) + "；"
             "找不到就 MISSING 或 UNCERTAIN 并填 abstain_reason，绝不编造文件或路径。"
             "主体或期间不符的文件不能判 MATCH。你的输出只是建议，最终由人工审核。"
+            "★ 每条 result 的 item_id 与 obligation_id 都必须**原样照抄**"
+            "obligations 里对应那条义务的同名字段（item_id 是清单题号，不是义务主键）。"
         ),
         "obligations": obligations,
         "files": files,
@@ -137,17 +149,45 @@ def _rule_only(reason: str) -> ValidationReport:
     return ValidationReport(mode="RULE_ONLY", degrade_reason=reason)
 
 
+def _older_than_requirement(material_period: Any, ob: dict[str, Any]) -> bool:
+    """材料的年度是否**早于**义务要求的年度（更近的年度不叫过期）。"""
+    spec = ps.spec_from_obligation(ob or {})
+    years = [int(y) for y in (spec.get("years") or [])]
+    mp = ps.normalize_material_period(material_period)
+    if mp["kind"] != "YEAR" or not years:
+        return False
+    return int(mp["year"]) < min(years)
+
+
+def _pool_periods(ob: dict[str, Any] | None, meta: list[dict[str, Any]] | None) -> list[str]:
+    """同主体 + 同类型的材料期间标签（供「最新」口径比较；同主体不同类型不算）。"""
+    if not ob:
+        return []
+    ent = str(ob.get("entity") or "")
+    dt = dts.normalize_doc_type(ob.get("doc_type"))
+    out: list[str] = []
+    for m in meta or []:
+        if str(m.get("entity") or "") != ent:
+            continue
+        if dts.normalize_doc_type(m.get("doc_type")) != dt:
+            continue
+        out.append(str(m.get("period") or ""))
+    return out
+
+
 def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
                   obligations: dict[str, dict[str, str]],
-                  non_effective: frozenset[str] = frozenset()) -> list[str]:
+                  non_effective: frozenset[str] = frozenset(),
+                  pool_periods: list[str] | None = None) -> list[str]:
     if not isinstance(r, dict):
         return ["RESULT_NOT_OBJECT"]
     errs: list[str] = []
-    missing = [k for k in RESULT_FIELDS if k not in r]
+    required = [k for k in RESULT_FIELDS if k not in OPTIONAL_RESULT_FIELDS]
+    missing = [k for k in required if k not in r]
     if missing:
         errs.append("MISSING_FIELDS:" + ",".join(missing))
         return errs
-    extra = sorted(set(r) - set(RESULT_FIELDS))
+    extra = sorted(set(r) - set(RESULT_FIELDS) - set(OPTIONAL_RESULT_FIELDS))
     if extra:  # schema additionalProperties:false（复核 N1）
         errs.append("UNKNOWN_FIELDS:" + ",".join(extra))
     ob = obligations.get(r["obligation_id"])
@@ -162,6 +202,29 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
         errs.append("FORBIDDEN_VERDICT")  # 模型不能置 approved/deliverable（R4）
     elif verdict not in ALLOWED_VERDICTS:
         errs.append("INVALID_VERDICT")
+    # ★ 排除式选择凭据（可选）：每条必须有 file_id + reason；
+    #   file_id 必须在快照内（**不得**引用不存在的文件），
+    #   且**不得**是本次选中的那几件（否则「排除」自相矛盾）。
+    _picked = {str((cf or {}).get("file_id") or "")
+               for cf in (r.get("candidate_files") or []) if isinstance(cf, dict)}
+    _rej = r.get("rejected_alternatives")
+    if _rej is not None:
+        if not isinstance(_rej, list):
+            errs.append("REJECTED_ALTERNATIVES_NOT_LIST")
+        else:
+            for _i, _ra in enumerate(_rej):
+                if not isinstance(_ra, dict) or any(k not in _ra for k in REJECTED_ALT_FIELDS):
+                    errs.append(f"REJECTED_ALT_{_i}_MISSING_FIELDS")
+                    continue
+                if set(_ra) - set(REJECTED_ALT_FIELDS):
+                    errs.append(f"REJECTED_ALT_{_i}_UNKNOWN_FIELDS")
+                if not str(_ra.get("reason") or "").strip():
+                    errs.append(f"REJECTED_ALT_{_i}_EMPTY_REASON")
+                _fid = str(_ra.get("file_id") or "")
+                if _fid not in snap:
+                    errs.append(f"REJECTED_ALT_{_i}_NOT_IN_SNAPSHOT")
+                elif _fid in _picked:
+                    errs.append(f"REJECTED_ALT_{_i}_IS_PICKED")
     c = r["confidence_or_uncertain"]
     if not (c == "UNCERTAIN" or (isinstance(c, (int, float)) and not isinstance(c, bool) and 0 <= c <= 1)):
         errs.append("INVALID_CONFIDENCE")
@@ -185,18 +248,28 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
         if cf["sha256"] != sf.sha256:
             errs.append(f"CANDIDATE_{i}_SHA_MISMATCH")
         # 复核 N3：引用证据的判定（MATCH/PARTIAL/OUTDATED）都要过主体一致；
-        # MATCH/PARTIAL 还要过期间一致（OUTDATED 本身就是「期间不对」，只要求主体一致；
+        # MATCH/PARTIAL 还要过**期间**一致（OUTDATED 本身就是「期间不对」，只要求主体一致；
         # WP04：同期间但是草稿/被取代版本（non_effective）也允许 OUTDATED）。
+        # ★ R2-WP1：期间按**语义四态**判（``dd_v1_period_service``），不再拿字符串比字符串：
+        #   期间**已知且冲突** ⇒ PERIOD_MISMATCH；
+        #   期间**依据不足**（材料无年度标注／相对期间缺可验证锚点）⇒ PERIOD_BASIS_INSUFFICIENT
+        #   ⇒ **不得**升格 MATCH/PARTIAL（只能 UNCERTAIN，且必须写 abstain_reason）。
         if verdict in EVIDENCE_VERDICTS and ob is not None:
             if sf.entity != ob["entity"]:
                 errs.append(f"CANDIDATE_{i}_ENTITY_MISMATCH")
-            if verdict != "OUTDATED" and sf.period != ob["period"]:
-                errs.append(f"CANDIDATE_{i}_PERIOD_MISMATCH")
-            if verdict == "OUTDATED" and sf.period == ob["period"] and sf.file_id not in non_effective:
+            compat = ps.compatibility(ps.spec_from_obligation(ob), sf.period,
+                                       pool_periods=pool_periods)
+            if verdict != "OUTDATED":
+                if compat["status"] == "MISMATCH":
+                    errs.append(f"CANDIDATE_{i}_PERIOD_MISMATCH")
+                elif compat["status"] == "UNVERIFIABLE":
+                    errs.append(f"CANDIDATE_{i}_PERIOD_BASIS_INSUFFICIENT")
+            if verdict == "OUTDATED" and compat["status"] == "MATCH" and sf.file_id not in non_effective:
                 errs.append(f"CANDIDATE_{i}_OUTDATED_BUT_PERIOD_MATCHES")
             # #77 复核中：非草稿的 OUTDATED 必须引用「更早」的年度；比要求更新的年度不叫过期
-            if (verdict == "OUTDATED" and sf.file_id not in non_effective and sf.period != ob["period"]
-                    and not (sf.period.isdigit() and ob["period"].isdigit() and sf.period < ob["period"])):
+            if (verdict == "OUTDATED" and sf.file_id not in non_effective
+                    and compat["status"] != "MATCH"
+                    and not _older_than_requirement(sf.period, ob)):
                 errs.append(f"CANDIDATE_{i}_OUTDATED_NOT_OLDER")
     if verdict == "MATCH" and not cands:
         errs.append("MATCH_WITHOUT_EVIDENCE")
@@ -240,7 +313,8 @@ def validate_agent_output(
     # 复核 N2：义务覆盖必须完整，缺失的义务显式列出（不静默当作通过）
     rep.uncovered = sorted(set(obs) - set(seen))
     for r in results:
-        errs = _check_result(r, snap, sid, obs, non_effective_files)
+        errs = _check_result(r, snap, sid, obs, non_effective_files,
+                             pool_periods=_pool_periods(obs.get(r.get("obligation_id")), meta))
         if isinstance(r, dict) and r.get("obligation_id") in dup:
             errs.append("DUPLICATE_OBLIGATION")
         if errs:

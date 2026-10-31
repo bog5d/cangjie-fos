@@ -32,18 +32,21 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 
 ---
 
-## 当前状态（v1.9.6，2026-06-06）
+## 当前状态（v1.9.6，2026-10-23）
 
 | 项目 | 状态 |
 |------|------|
-| 版本 | **v1.9.6**（+ 资产瘦身四：删旧MatchMaker，机构档案收编到尽调台） |
-| 测试基线 | **803 passed**，0 failed |
+| 版本 | **v1.9.6**（+ 资产瘦身四：删旧MatchMaker，机构档案收编到尽调台）｜**版本号行沿用旧线**：DD-V1 线在 `CHANGELOG.md` 的 `[Unreleased]` 累积（该节最新已发布版为 1.25.0），发布号由发布负责人定，本轮**不代定** |
+| 测试基线 | **全量（标准命令）通过、无失败**（`cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q`；`test_doctor_script` 需本机 `.env` 与前端 `node_modules`，按本仓标准命令排除）。**用例条数不在本表登记**（随依赖完整度而变，自报数在别的环境不可复现）⇒ 以独立复核席在交卷 SHA 上的复跑读数为权威；本地读数、命令原文、退出码与取数时刻见 `docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md` §6.2 ｜★**T2（2026-10-23）本轮只跑受影响子集**（受改 API 覆盖的 24 个文件 ＋ G5 新增 1 个 ＝ 25 文件）：**364 collected / 0 failures / 0 errors / 0 skipped / exit 0**；基座侧同 24 文件 **353 / 0 / 0 / 0 / exit 0**（两侧命令逐字相同）⇒ 用例 ID 集合**删除 0 条、新增 11 条**（全为 G5 新增）⇒ **零退化**；★**本轮未跑全量**（全量由独立复核席在终态合并面执行）⇒ 上行「全量通过」**不是**本轮读数；★**skipped ＝ 0**（不触发「待处理」说明义务） |
+| 测试基线读数登记 | ★**上表测试基线行内的用例条数登记按仓规「用例条数不在本表登记」撤除**（原句一字不动，本行只作撤除说明，不删任何字符）；权威读数见 `docs/dd-v1-fos71/player2-p0-fix/EVIDENCE-PLAYER2-P0.md` §6.2；★**本轮（2026-10-23 T2）受影响子集的五元组读数登记在下方「最近做了什么」段**（该处登记事实读数不违反仓规） |
 | 压测 | `uv run python bench/dd_stress.py --scale large --charts`；CI 烟雾 `tests/test_dd_stress_smoke.py` |
 | 前端 | 已预编译在 `frontend/dist/`，后端启动时自动 serve |
 | 启动命令 | `cd backend && uv run uvicorn cangjie_fos.main:app --reload --port 8000` |
 | 测试命令 | `cd backend && uv run --extra dev pytest tests/ --ignore=tests/test_doctor_script.py -q` |
 | DB fixture | `_isolate_db_per_test` autouse：每测试独立 SQLite。用 `@pytest.mark.real_db` 声明豁免 |
 | Push hook | `.git/hooks/pre-push` 自动跑 DB fixture 测试 |
+| 本轮（2026-10-27） | 分支 `feat/71-player2-p0-fix-20261023`（PR #81 待独立复核）：**第三轮 P0** —— 主体判定改**归一后逐字相等**（母子不混桶）、期间接**四态**（无年度标注 ⇒ 不可判定，不得臆造年份）、多文件显示**「应交 N / 找到 M / 缺 K」**、候选触顶**显式报数**（规则路径 ＋ 语义层）、WP5 **7 项交付产出**（含 `SHA256SUMS` 与追溯链）、候选包与正式交付包**物理隔离**、材料在审核后被改过 ⇒ **审核失效强制重审**、义务**稳定 ID**、P0-3 缺陷（机器重算的等级 provenance 改 `INFERRED`）修复。读数件与 Windows 交接包在 `docs/dd-v1-fos71/ddv1-p0-round3/`；新增专项测试 18 条（修前 12 红 ⇒ 修后全绿）；**业务效果账仍 0/100 REAL_PASS**（待刘江 Windows 实测） |
+| 本轮（2026-10-23） | 分支 `feat/71-player2-p0-fix-20261023`（PR 待独立复核）：材料类型取值空间在代码里收敛为 `dd_v1_requirement_service._DOC_TYPE_RULES` 的 10 个英文 key（语义层不再保留第二张 7 类中文表）；证据池比较前做 doc_type 归一；空候选返回结构化原因；正式入口 `tools/dd_v1_local_run.py` 的 `scaffold` 按**文件名**判类型。证据包 `docs/dd-v1-fos71/player2-p0-fix/`（**业务效果账待刘江 Windows 实测**）；**T2（2026-10-23）**：G5 四服务文件（`dd_v1_card_service`／`dd_v1_doc_type_service`／`dd_v1_match_service`／`dd_v1_policy_service`）自 PR #83 并入本分支 —— 组包链改按**材料自身命中的全部类型**驱动披露闸（`doc_type` 仍为单值主类型，新增多值 `doc_types`），随附 G5 回归用例 `backend/tests/test_dd_v1_g5_mixed_type_packaging.py` 与读数件 `docs/dd-v1-fos71/g5-mixed-type-packaging/FULL-RUN-READING.md`（★业务效果账仍 **0/100 REAL_PASS**，本轮**不**代表效果已验证） |
 
 ---
 
@@ -107,6 +110,45 @@ cangjie-fos/（GitHub: bog5d/cangjie-fos）
 | scan status DB fallback | 服务重启后 `get_scan_status` 降级查 `dd_asset_index`，返回 `source: "db_fallback"` |
 | 导出 guard | 单文件 >100MB 跳过，累计 >500MB 终止。在 `dd_export_service.py` 顶部 `MB_LIMIT_PER_FILE` / `MB_LIMIT_TOTAL` 可调节 |
 | 新增测试 | `tests/test_dd_v072.py`（5个）
+
+---
+
+## 2026-10-27 刚做的事（第三轮 P0 · 匹配不完整 ＋ 真实交付链）
+
+| 改了哪里 | 做了什么 |
+|---------|---------|
+| `backend/src/cangjie_fos/services/dd_v1_match_service.py` | 主体判定由「blob 子串」改为**归一后逐字相等**（`resolve_card_subject` / `_subject_clues`）⇒ 母子不混桶；**法人主体不一致 ⇒ 不得 MATCHED**；期间改走 `dd_v1_period_service.compatibility` **四态**（材料无年度标注 ⇒ **不可判定**，不得臆造年份）；候选触顶**显式报数**（`candidate_cap` / `truncated_candidate_count` / `candidate_cap_note`）；「应交/找到/缺」三段式读数落库 |
+| `backend/src/cangjie_fos/services/dd_v1_requirement_service.py` | 新增 `parse_required_parts()` / `required_parts_of()`（**必备 part**：正文之外的组成部分，与「份数」是**两条轴**）＋ `obligation_key()`（**稳定义务 ID**，由内容算出、可复算）＋ `required_parts` 列 |
+| `backend/src/cangjie_fos/services/dd_v1_card_service.py` | 新增 `derive_part()` / `card_part()`（part 判定**全仓一份**，桥接层改为复用）；认知卡新增 `part` 字段；**P0-3 缺陷修复**：机器重算的敏感等级 provenance 由 `FACT` 改 **INFERRED**（⇒ 第二次类型纠正也会重算），「人工自定」判据改为 `_human_override()`；重建卡片时按**生效类型**重算并恢复人工的多值 `doc_types` |
+| `backend/src/cangjie_fos/services/dd_v1_selection_service.py` | 选中层支持**必备 part**（每个 part 各取一件，缺哪个逐个记明 ⇒ 找到正文**不等于**这条完成） |
+| `backend/src/cangjie_fos/services/dd_v1_package_service.py` | WP5 **7 项交付产出**（`01-`…`07-`）＋ `SHA256SUMS` ＋「正式交付包-说明.md」；候选包与正式交付包**物理隔离**（`<data_dir>/deliveries/<review_id>/`）＋各自标识；**审核失效预检**（材料在审核后被改过 ⇒ 强制重新审核、零复制）；候选材料保留**六件套**（原始路径/文件名/SHA256/主体/期间/类型）；放行与拦截**都**留规则依据；截断**必须报数** |
+| `backend/src/cangjie_fos/services/dd_v1_semantic_retrieval_service.py` | 候选窗口触顶**显式报数**（顶层 `candidate_cap` / `candidate_truncated` / `truncated_candidate_count` / `candidate_cap_note`）—— 旧实现只记在 `diagnostics` 里、且候选 ≥ 上限时状态仍报 `OK` ⇒ **静默漏检** |
+| `backend/src/cangjie_fos/services/dd_v1_bridge_service.py` | 透出候选窗口触顶读数 ＋ `warnings` 告警（与既有的主体分簇告警同形状）；part 判定改为复用认知卡层 |
+| `tools/dd_team_channel.py` | 终端显式报「实际考察候选 N 份｜触顶义务 M 条｜被上限挡掉 K 份」；正式交付包默认落在**与候选包平级**的目录；**审核失效**时明确拒绝并说明 |
+| `backend/tests/test_dd_v1_ddv1_p0_round3.py` | 第三轮 **18 条端到端**专项测试（每条走完「输入 → 检索 → 匹配 → 审核 → 组包」全链路），含独立 Reviewer 要求的 2 条 P0-3 回归（**修前必红、修后必绿**） |
+| `docs/dd-v1-fos71/ddv1-p0-round3/` | Windows 交接包（`WINDOWS-HANDOFF.md`，含**一页中文操作指南** ＋ 8 条测试的输入与预期 ＋ DSH 调用方式）＋ 证据件（`EVIDENCE.md`）＋ **合成交付包**（`交付包-合成样例/`，真实目录 ＋ 真实文件 ＋ `SHA256SUMS`，逐件复算） |
+
+★ 本轮**未改动任何既有测试文件**（`git diff --stat` 只含 8 个产品文件 ＋ 1 个新增测试文件 ＋ 文档）⇒ 无「把红改成绿」的口径问题。
+★ 本轮**新增专项测试读数**：修前（`7dd66b00` 独立 worktree）**12 failed / 6 passed** ⇒ 修后 **18 passed / 0 failed**。
+★ 全量回归：失败用例 ID 集合与基座**逐字相同**（6 条，全是缺 `OPENAI_API_KEY` 的既有环境失败）⇒ **零新增回归失败**；读数见 `docs/dd-v1-fos71/ddv1-p0-round3/EVIDENCE.md`。
+★ 业务效果账仍 **0/100 REAL_PASS**（真实材料库实测仍待刘江 Windows 侧完成）—— 本轮**不**代表效果已验证。
+
+---
+
+## 2026-10-23 刚做的事（T2 · G5 四服务文件并入 #81 线）
+
+| 改了哪里 | 做了什么 |
+|---------|---------|
+| `backend/src/cangjie_fos/services/dd_v1_doc_type_service.py` | 新增 `resolve_doc_types()`：**材料命中的全部类型**都保留（同一来源内多类不丢）；`resolve_doc_type()` 仍只给**单值主类型**（向后兼容，单值调用方读数逐字不变）；两 API 共用 `_type_sources()` 唯一来源口径 ⇒ 单值与多值结论**永不分叉** |
+| `backend/src/cangjie_fos/services/dd_v1_card_service.py` | 认知卡新增多值字段 `doc_types`（`doc_type` 保留为**主类型**，单值）；新增 `doc_types_key()`；敏感等级改按**全部命中类型取最严**（任一命中类型无默认等级 ⇒ 等级留空 ⇒ 不可外发） |
+| `backend/src/cangjie_fos/services/dd_v1_match_service.py` | 披露闸的输入改按**材料自己**命中的类型（不再是「整段的类型归属」）⇒ 段内**可外发类**材料不再被连坐；反向同时变严（段内受限类材料不再被段的类型放过） |
+| `backend/src/cangjie_fos/services/dd_v1_policy_service.py` | `evaluate()` 的 `doc_type` 支持多类型（`str`／`list`）：类型闸按「**全部**类型都在放行清单内」判定（含一类不在 ⇒ 整份材料**不可外发**，fail-closed）；规则按「命中任一类型即收紧」；单类型材料结论逐字不变 |
+| `backend/tests/test_dd_v1_g5_mixed_type_packaging.py` | G5 回归用例（新增 11 条）：成因环／传导环／后果环逐环钉住 ＋ **安全方向反向对照**（含受限类 ⇒ 仍必须被拦） |
+| `docs/dd-v1-fos71/g5-mixed-type-packaging/FULL-RUN-READING.md` | G5 全量回归读数件（命令／退出码／失败 ID 全集／取数时刻／被测对象身份／一次作废读数的自曝） |
+
+★ 本轮**只跑受影响子集**（25 文件），**未跑全量**（全量由独立复核席在终态合并面执行）；子集读数 **364 collected / 0 failures / 0 errors / 0 skipped / exit 0**（基座侧同 24 文件 353 / 0 / 0 / 0 / exit 0，用例 ID 集合删除 0 条 ⇒ 零退化）。
+★ 业务效果账仍 **0/100 REAL_PASS**（真实材料库实测未做）—— 本轮**不**代表效果已验证。
+★ **本轮受影响子集五元组（collected / failures / errors / skipped / 退出码）＝ 364 / 0 / 0 / 0 / 0**（基座侧同 24 文件 ＝ **353 / 0 / 0 / 0 / 0**，两侧命令逐字相同；用例 ID 集合删除 0 条、新增 11 条 ⇒ 零退化；失败 ID 全集 ＝ 空）；★**skipped ＝ 0**（不触发「待处理」说明义务）；★**本轮未跑全量**（全量由独立复核席在终态合并面执行）。★**上表测试基线行内的用例条数登记已按仓规「用例条数不在本表登记」撤除**（撤除说明见上表「测试基线读数登记」行；本段是本轮读数的登记面）。
 
 ---
 

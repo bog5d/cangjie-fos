@@ -72,8 +72,13 @@ def test_split_multi_doc_item_and_parts(pkt):
     obs = {o["obligation_id"]: o for o in pkt["obligations"]}
     assert set(obs) == {"R1-O1", "R2-O1", "R2-O2", "R4-O1"}
     assert obs["R1-O1"]["required_parts"] == ["正文", "附注"] and obs["R1-O1"]["period"] == "2024"
-    assert (obs["R2-O1"]["doc_type"], obs["R2-O1"]["period"]) == ("公司章程", "CURRENT")
-    assert (obs["R2-O2"]["doc_type"], obs["R2-O2"]["period"]) == ("社保缴纳证明", "2024")
+    # ★ WP1 口径更正（2026-10-23 考生2 P0）：doc_type 的取值空间是
+    #   ``dd_v1_requirement_service._DOC_TYPE_RULES`` 的 **10 个规范英文 key**。
+    #   旧断言写的是中文类型名（"公司章程" / "社保缴纳证明"）—— 那张 7 类中文表
+    #   只覆盖 10 类中的 7 类（缺 resolution / ip / contract），且与桥接层的英文 key
+    #   空间分叉 ⇒ 语义层证据池**恒空**。断言改为英文 key，语义不变（仍是同一类材料）。
+    assert (obs["R2-O1"]["doc_type"], obs["R2-O1"]["period"]) == ("charter", "CURRENT")
+    assert (obs["R2-O2"]["doc_type"], obs["R2-O2"]["period"]) == ("labor", "2024")
 
 
 def test_vague_item_is_flagged_not_guessed(pkt):
@@ -86,9 +91,43 @@ def test_split_is_deterministic():
     assert s.build_semantic_packet(SNAP, META, ITEMS) == s.build_semantic_packet(SNAP, META, ITEMS)
 
 
-def test_ambiguous_two_doc_types_in_one_segment_not_guessed():
+def test_ambiguous_two_doc_types_in_one_segment_split_into_atomic_obligations():
+    """★ WP1(a) 行为变更（2026-10-23 考生2 P0）：一段含多类 ⇒ 拆成多条原子义务。
+
+    **旧行为**：``_doc_type`` 命中数必须恰好为 1，否则整条丢弃
+    （NEEDS_HUMAN_SPLIT）⇒ 「审计报告/营业执照合订本」这类**合订本**整条判死，
+    业务事实是 54 条清单只拆出 7 条。
+
+    **新行为**：按类拆成多条原子义务（每条一类、共享该段期间），并留痕 ``AMBIGUOUS_SPLIT``。
+    断言从「整条丢弃」改为「拆成 2 条 + 留痕」—— **判据没有被削弱**：
+    拆出来的每条仍只认自己那一类材料（见 test_dd_v1_fos71_player2_p0.py 的反例）。
+    """
     obs, flags = s.split_item({"item_id": "X", "entity": "E", "text": "审计报告/营业执照合订本"})
-    assert obs == [] and flags["status"] == "NEEDS_HUMAN_SPLIT"
+    assert [o["doc_type"] for o in obs] == ["audit_report", "license"]
+    assert [o["obligation_id"] for o in obs] == ["X-O1", "X-O2"]
+    assert all(o["entity"] == "E" for o in obs)
+    # 共享该段期间（执照类无年度口径 ⇒ CURRENT；审计报告类无年份 ⇒ UNKNOWN）
+    assert obs[0]["period"] == "UNKNOWN" and obs[1]["period"] == "CURRENT"
+    assert all(o["ambiguous_split"] is True and o["split_method"] == "RULE_SPLIT_MULTI_TYPE" for o in obs)
+    assert [f["status"] for f in flags] == ["AMBIGUOUS_SPLIT"]
+    assert flags[0]["doc_types"] == ["audit_report", "license"]
+    assert flags[0]["obligation_ids"] == ["X-O1", "X-O2"]
+
+
+def test_compound_doc_type_is_not_split_into_two_obligations():
+    """★ 反例（误匹配率不得上升）：**复合词**不拆。
+
+    「员工合同」「劳动合同」= 一个复合名词，不是两类材料；拆开就会凭空多出一条
+    义务（多一条 MISSING、多一次误匹配）。规则：两次类型命中之间**没有分隔符**
+    ⇒ 退回归一类型（与 ``rq.parse_doc_type`` 一致）。
+    """
+    for text, expect in (("请提供员工合同", ["labor"]),
+                         ("请提供劳动合同", ["labor"]),
+                         ("请提供劳动合同与设备采购合同", ["labor", "contract"])):
+        obs, flags = s.split_item({"item_id": "Y", "entity": "E", "text": text})
+        assert [o["doc_type"] for o in obs] == expect, text
+        assert [f["status"] for f in flags if f["status"] == "AMBIGUOUS_SPLIT"] == (
+            ["AMBIGUOUS_SPLIT"] if len(expect) > 1 else []), text
 
 
 # ---------- 只读最小证据检索

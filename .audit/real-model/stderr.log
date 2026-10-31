@@ -1,0 +1,12 @@
+dsh: reasoning:
+The user wants only JSON output, no tools, no markdown, no file modification. I need to construct a result for obligation o1, item 1-1. Since I can't inspect files (told not to call tools), candidate_files should be empty. Verdict: MISSING or UNCERTAIN? The obligation asks to provide the 2024 audit report of the synthetic parent company. With no files/snapshot provided, and no tools allowed, the appropriate verdict is MISSING (no candidate files found) or UNCERTAIN. Since source_snapshot_id must be copied verbatim from packet — but packet has no source_snapshot_id or prompt_version fields. Hmm. "prompt_version 与 source_snapshot_id 原样照抄 packet" — packet doesn't include them. So they're unknown. The schema requires strings. I'd use "UNKNOWN".
+
+Given no snapshot access and no evidence, abstain_reason should explain. Verdict UNCERTAIN is safer since we cannot verify absence — no tools allowed, so we cannot determine. But "MISSING" means confirmed absent. With zero candidate files and no access, UNCERTAIN with abstain reason is more honest.
+
+proposed_doc_type is only required when obligation doc_type is empty. Here doc_type = "audit_report", so omit it.
+
+confidence_or_uncertain: "UNCERTAIN" string or 0.0? Use "UNCERTAIN".
+
+elapsed "UNKNOWN", token_usage_or_UNKNOWN "UNKNOWN".
+
+Output only JSON.
