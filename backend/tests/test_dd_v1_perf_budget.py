@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from cangjie_fos.services import dd_v1_agent_adapters as ad
+from cangjie_fos.services import dd_v1_agent_result_service as ar
 
 FX = Path(__file__).parent / "fixtures" / "dd_v1_fos71"
 SNAP = FX / "snapshot"
@@ -210,3 +211,98 @@ def test_perf_block_records_cost_token_and_elapsed(tmp_path):
     a0 = rec["attempts"][0]
     assert "cost_usd_or_UNKNOWN" in a0 and "error_code" in a0
     assert a0["n"] == 1 and a0["wall_elapsed_s"] >= 0
+
+
+# ─────────────────────────────────────────────────── 按任务规模缩放（实测驱动）
+
+def test_scaled_timeout_keeps_small_exams_on_the_base_budget():
+    """小卷行为**完全不变** ⇒ 既有读数（22.97s / 85.74s）仍然被基础预算覆盖。"""
+    base = ad.AGENT_TIMEOUT_BUDGETS["pi"]
+    # 实测：A 卷 3 义务 22.97s、B 卷 10 义务 85.74s ⇒ 两者都该落在基础预算内
+    assert ad.scaled_timeout_s(base, 3, "pi") == base
+    assert ad.scaled_timeout_s(base, 10, "pi") == base
+
+
+def test_scaled_timeout_covers_the_measured_42_question_run():
+    """★ 实测驱动：pi 跑 C 卷（54 义务）实际用 **141.01s**，固定 120s 预算**打满超时**。
+
+    ⇒ 缩放后的预算必须**明显覆盖**实测值（余量 ≥ 1.8 倍），否则修完还是会被砍。
+    """
+    measured = 141.01
+    t = ad.scaled_timeout_s(ad.AGENT_TIMEOUT_BUDGETS["pi"], 54, "pi")
+    assert t >= measured * 1.8, f"缩放预算 {t}s 覆盖不了实测 {measured}s（余量不足）"
+    assert t <= ad.TASK_SIZE_TIMEOUT_CAP_S
+
+
+def test_scaled_timeout_is_monotonic_in_task_size():
+    base = ad.AGENT_TIMEOUT_BUDGETS["pi"]
+    prev = 0.0
+    for n in (0, 1, 3, 10, 20, 42, 54, 100):
+        t = ad.scaled_timeout_s(base, n, "pi")
+        assert t >= prev, f"义务数 {n} 的预算 {t}s 比上一档小了 ⇒ 不是单调"
+        prev = t
+
+
+def test_scaled_timeout_never_exceeds_the_cap():
+    """★ 「不会导致无限等待」这条纪律的落地处：任何规模都不许超过硬上限。"""
+    cap = ad.TASK_SIZE_TIMEOUT_CAP_S
+    assert ad.scaled_timeout_s(ad.AGENT_TIMEOUT_BUDGETS["pi"], 10_000, "pi") == cap
+    assert ad.scaled_timeout_s(ad.AGENT_TIMEOUT_BUDGETS["codex-cli"], 10_000, "codex-cli") == cap
+
+
+def test_explicit_operator_timeout_is_not_scaled():
+    """操作员显式给的超时**优先** ⇒ 不参与缩放。"""
+    b = ad.budget_for_framework("pi", timeout_s=42.0)
+    assert b.timeout_explicit is True
+    scaled = ad.scale_budget_for_task(b, 54, "pi")
+    assert scaled.timeout_s == 42.0
+
+
+def test_default_budget_is_scaled_and_total_wall_clock_follows():
+    """没显式给超时 ⇒ 按规模缩放，且**总墙钟上限跟着走**（否则第一次就被砍 ⇒ 等于没缩）。"""
+    b = ad.budget_for_framework("pi")
+    assert b.timeout_explicit is False
+    scaled = ad.scale_budget_for_task(b, 54, "pi")
+    assert scaled.timeout_s > b.timeout_s
+    assert scaled.max_total_s >= scaled.timeout_s
+    assert scaled.max_total_s == pytest.approx(
+        scaled.timeout_s * scaled.max_calls
+        + scaled.retry_backoff_s * max(0, scaled.max_calls - 1)
+    )
+
+
+def test_run_agent_scales_the_budget_by_the_packet_size(tmp_path):
+    """★ 端到端：大 packet ⇒ 实际用的单次超时被放大；小 packet ⇒ 不变。"""
+    good = tmp_path / "good.json"
+    good.write_text(json.dumps({"results": []}), encoding="utf-8")
+    exe = _fake(tmp_path, "codex", f"""
+        open("out.json", "w", encoding="utf-8").write(open({str(good)!r}, encoding="utf-8").read())
+    """)
+    base_packet = ar.build_task_packet(SNAP, META, OBS)
+    big = dict(base_packet)
+    big["obligations"] = [{"obligation_id": f"o{i}"} for i in range(60)]
+    wd = _wd(tmp_path)
+    rec = ad.run_agent(ad.CodexAdapter(exe), SNAP, META, OBS,
+                       ad.budget_for_framework("codex-cli"),
+                       workdir=wd, packet=big)
+    used = rec["budget"]["timeout_s"]
+    assert used > ad.AGENT_TIMEOUT_BUDGETS["codex-cli"], (
+        f"60 条义务的 packet 仍用 {used}s 超时 ⇒ 缩放没生效")
+    assert used == ad.scaled_timeout_s(ad.AGENT_TIMEOUT_BUDGETS["codex-cli"], 60, "codex-cli")
+
+
+def test_run_agent_keeps_explicit_timeout_even_for_a_big_packet(tmp_path):
+    """★ 调用方**显式**给的超时 ⇒ 大 packet 也**不缩放**（显式配置优先）。"""
+    good = tmp_path / "good.json"
+    good.write_text(json.dumps({"results": []}), encoding="utf-8")
+    exe = _fake(tmp_path, "codex", f"""
+        open("out.json", "w", encoding="utf-8").write(open({str(good)!r}, encoding="utf-8").read())
+    """)
+    base_packet = ar.build_task_packet(SNAP, META, OBS)
+    big = dict(base_packet)
+    big["obligations"] = [{"obligation_id": f"o{i}"} for i in range(60)]
+    wd = _wd(tmp_path)
+    rec = ad.run_agent(ad.CodexAdapter(exe), SNAP, META, OBS,
+                       ad.Budget(timeout_s=11.0, max_calls=1, retry_backoff_s=0.0),
+                       workdir=wd, packet=big)
+    assert rec["budget"]["timeout_s"] == 11.0

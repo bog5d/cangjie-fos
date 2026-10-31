@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import os
@@ -82,6 +83,11 @@ class Budget:
     max_calls: int = 1
     max_cost_usd: float = 0.0
     require_known_cost: bool = False  # 付费 Adapter 置 True：费用 UNKNOWN 视为超预算
+    #: ★ 单次超时是**调用方显式给的**吗？
+    #: ★ 默认 **True**（直接 ``Budget(timeout_s=…)`` 构造 ⇒ 调用方明确指定了 ⇒ **不参与**缩放）；
+    #:   只有 :func:`budget_for_framework` 走**框架预算表**取默认值时才是 False ⇒ 才参与按规模缩放。
+    #:   （操作员显式配置优先；``--agent-timeout`` 亦然。）
+    timeout_explicit: bool = True
     retry_backoff_s: float = 2.0
     max_total_s: float = 900.0
 
@@ -128,6 +134,7 @@ def budget_for_framework(framework: str, *, max_calls: int = 2,
     - ``max_calls`` 默认 2：TIMEOUT / CALL_FAILED 会重试 1 次（失败恢复）。
     """
     key = (framework or "").strip().lower()
+    explicit = timeout_s is not None
     t = AGENT_TIMEOUT_BUDGETS.get(key, DEFAULT_TIMEOUT_S) if timeout_s is None else float(timeout_s)
     if t <= 0:
         raise ValueError(f"BAD_TIMEOUT_S:{t}")
@@ -135,8 +142,76 @@ def budget_for_framework(framework: str, *, max_calls: int = 2,
         raise ValueError(f"BAD_MAX_CALLS:{max_calls}")
     return Budget(timeout_s=t, max_calls=max_calls, max_cost_usd=max_cost_usd,
                   require_known_cost=require_known_cost, retry_backoff_s=retry_backoff_s,
+                  timeout_explicit=bool(explicit),
                   max_total_s=(t * max_calls + retry_backoff_s * max(0, max_calls - 1)
                                if max_total_s is None else float(max_total_s)))
+
+
+# ── ★★ 按**任务规模**缩放单次超时（施工令 V3.0 §P5） ─────────────────────────
+#
+# **为什么要有这一层（实测事故，不是理论推演）**
+#
+# 分 Agent 超时预算表（``AGENT_TIMEOUT_BUDGETS``）是**按框架**给的**固定值**
+# （pi=120s / dsh=300s / codex=300s），**与任务规模无关**。
+# 但单次调用的耗时**随题目/义务条数增长** ⇒ 固定预算对大卷**结构性不够**：
+#
+#   本机实测（2026-10-31，真实模型调用，合成考场）：
+#     pi · A 卷（3 义务，prompt 13.5KB）→ 22.97s   ⇒ 120s 预算够
+#     pi · B 卷（10 义务，prompt 55KB） → 85.74s   ⇒ 120s 预算够（余量仅 1.4 倍）
+#     pi · C 卷（**54 义务**，prompt 325KB）→ **120.45s 打满超时** ⇒ 跑不完，回执缺失
+#     pi · C 卷（同一卷，超时放宽到 900s）→ **141.01s 跑完**，AI_SYSTEM_SCORE=100.0
+#
+# ⇒ **只差 21 秒**。⇒ 固定 120s 把「模型本来能考完」误判成「模型没参与」
+#   （考试状态 FAIL、AI 成绩 NOT_SCORED）——**这是护栏在正确地报假绿，
+#   但根因在预算，不在模型**。
+#
+# ★ 缩放**不能**变成「无限等待」：有**硬上限**（``TASK_SIZE_TIMEOUT_CAP_S``），
+#   且总墙钟上限 ``max_total_s`` 随缩放后的单次超时一起走（重试也不会无限拖）。
+# ★ **操作员显式给的超时优先**（``--agent-timeout``）⇒ 不参与缩放。
+
+#: 每条义务的**增量耗时**（秒）。按上表实测取整并留约 2 倍余量。
+TASK_SIZE_PER_OBLIGATION_S: dict[str, float] = {
+    "pi": 5.0,
+    "deepseek-harness": 5.0,
+    "codex-cli": 5.0,
+}
+#: 未在表内的框架用的**保守缺省**。
+TASK_SIZE_PER_OBLIGATION_DEFAULT_S = 5.0
+#: 规模缩放里的**固定开销**（秒）：进程启动 + 上下文准备 + 回执收尾。
+TASK_SIZE_FIXED_S = 20.0
+#: ★ **硬上限**：任何规模都不许超过它 ⇒ 「不会导致无限等待」这条纪律的落地处。
+TASK_SIZE_TIMEOUT_CAP_S = 600.0
+
+
+def scaled_timeout_s(base_timeout_s: float, n_obligations: int, framework: str = "") -> float:
+    """按**义务条数**给出该次调用的单次超时（秒）。
+
+    口径：``max(框架基础预算, 固定开销 + 每义务增量 × 义务条数)``，再被**硬上限**截断。
+
+    ★ 单调性：义务条数越多 ⇒ 超时**只增不减** ⇒ 小卷的行为**完全不变**
+      （实测 A/B 两卷都仍取基础预算 120s）。
+    """
+    key = (framework or "").strip().lower()
+    per = TASK_SIZE_PER_OBLIGATION_S.get(key, TASK_SIZE_PER_OBLIGATION_DEFAULT_S)
+    n = max(0, int(n_obligations or 0))
+    needed = TASK_SIZE_FIXED_S + per * n
+    return min(TASK_SIZE_TIMEOUT_CAP_S, max(float(base_timeout_s), needed))
+
+
+def scale_budget_for_task(budget: Budget, n_obligations: int, framework: str = "") -> Budget:
+    """按任务规模缩放**单次超时**（并同步总墙钟上限）。
+
+    ★ 操作员**显式**给的超时（``--agent-timeout``）**不缩放**。
+    ★ 总墙钟上限跟着缩放后的单次超时走（否则第一次调用就被上限砍掉 ⇒ 等于没缩放）。
+    """
+    if budget.timeout_explicit:
+        return budget
+    t = scaled_timeout_s(budget.timeout_s, n_obligations, framework)
+    if t == budget.timeout_s:
+        return budget
+    max_total = (t * budget.max_calls
+                 + budget.retry_backoff_s * max(0, budget.max_calls - 1))
+    return dataclasses.replace(budget, timeout_s=t, max_total_s=max_total)
 
 
 def adapter_framework(adapter: Any) -> str:
@@ -775,6 +850,14 @@ def run_agent(adapter: Any, snapshot_dir: Path, meta: list[dict[str, str]],
     if budget.max_cost_usd < 0:
         raise ValueError("budget.max_cost_usd must be >= 0")
     packet = packet if packet is not None else ar.build_task_packet(snapshot_dir, meta, obligations)
+    # ★★ **按任务规模缩放单次超时**（施工令 P5；这里 packet 已就位 ⇒ 规模**已知**）。
+    #   小卷行为**完全不变**（实测 A/B 两卷仍取基础预算）；大卷（42 题）不再被固定预算砍断。
+    #   ★ 显式给的超时（``--agent-timeout``）不参与缩放（操作员配置优先）。
+    budget = scale_budget_for_task(
+        budget,
+        n_obligations=len(packet.get("obligations") or []) or len(obligations or []),
+        framework=adapter_framework(adapter),
+    )
     # 必须是绝对路径：CLI 以 cwd=wd 启动，相对路径的 -C 会被二次拼接（WP03 Mac 实测 codex exit 1）
     wd = (workdir or prepare_workdir(packet)).resolve()
     if workdir:
