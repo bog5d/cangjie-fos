@@ -66,6 +66,19 @@ VERDICT_FAIL = "FAIL"
 
 _IDENTITY_UNKNOWN = "UNKNOWN"
 
+#: ★ 身份字段的**权威来源要求**（`ai-auto-exam-gate` 规范 §2.2「模型身份必须走 Agent 自己的
+#: 官方元数据」）：
+#: 产物里的 `model_id_or_unknown` **必须**由 adapter 从 **Agent 自己的元数据**写入
+#: （codex：自己的执行记录 rollout 里的 `turn_context.model`；pi：事件流里的
+#: `message_end.message.model`；dsh：配置树的 `agent-default-model`）。
+#: ⇒ 本门禁**只认产物里已核实的值**；拿不到 ⇒ `UNKNOWN` ⇒ **过不了身份门禁**
+#: （这是设计，不是缺陷）。
+#: ⇒ **禁止**用人工在报告/说明字段里手填身份来蒙混过关（⇒ 调用方自报的 True 不能覆盖产物）。
+IDENTITY_SOURCE_REQUIREMENT = (
+    "identity_verified 只认产物里由 adapter 从 Agent 自己元数据写入的 model_id_or_unknown；"
+    "拿不到即 UNKNOWN ⇒ 过不了身份门禁（禁止人工手填身份蒙混）"
+)
+
 
 def _is_real_agent_record(rec: dict[str, Any]) -> bool:
     """判断一条 run record 是否代表**真实 adapter 调用**（而不是规则链产物）。
@@ -83,13 +96,26 @@ def _is_real_agent_record(rec: dict[str, Any]) -> bool:
     return bool(raw and str(raw).strip())
 
 
-def _degraded(rec: dict[str, Any]) -> bool:
+def _degrade_reason(rec: dict[str, Any]) -> str | None:
+    """取降级原因（规范 §2.1 要求「必须记录…降级原因」⇒ 不许只记一个布尔）。"""
     validation = rec.get("validation") or {}
     if not isinstance(validation, dict):
-        return False
-    if validation.get("degrade_reason"):
-        return True
-    return bool(validation.get("uncovered_obligations"))
+        return None
+    reason = validation.get("degrade_reason")
+    if reason:
+        return str(reason)
+    if validation.get("uncovered_obligations"):
+        uncovered = validation.get("uncovered_obligations")
+        try:
+            n = len(uncovered)
+        except TypeError:
+            n = 0
+        return "UNCOVERED_OBLIGATIONS:%d" % n
+    return None
+
+
+def _degraded(rec: dict[str, Any]) -> bool:
+    return _degrade_reason(rec) is not None
 
 
 def _model_ids(run_records: Iterable[dict[str, Any]]) -> list[str]:
@@ -125,7 +151,8 @@ def evaluate_participation_gate(run_records: list[dict[str, Any]] | None, *,
 
     records = [r for r in (run_records or []) if isinstance(r, dict)]
     real_agent_records = [r for r in records if _is_real_agent_record(r)]
-    degraded = any(_degraded(r) for r in records)
+    degrade_reasons = [r for r in (_degrade_reason(x) for x in records) if r]
+    degraded = bool(degrade_reasons)
     model_ids = _model_ids(records)
 
     # —— 三个字段分开记 ——
@@ -172,6 +199,7 @@ def evaluate_participation_gate(run_records: list[dict[str, Any]] | None, *,
         "failures": failures,
         "ai_score": ai_score,
         "degraded": degraded,
+        "degrade_reason": degrade_reasons,   # ★ 规范 §2.1：必须记录**降级原因**，不许只有布尔
         "evidence": {
             "n_run_records": len(records),
             "n_real_agent_records": len(real_agent_records),
@@ -179,5 +207,6 @@ def evaluate_participation_gate(run_records: list[dict[str, Any]] | None, *,
             "model_ids_unverified": sorted(set(ids_unverified)),
             "note": "identity_verified 只反映**产物里读得到的事实**；"
                     "调用方自报的 True 不能覆盖产物里的 UNKNOWN。",
+            "identity_source_requirement": IDENTITY_SOURCE_REQUIREMENT,
         },
     }

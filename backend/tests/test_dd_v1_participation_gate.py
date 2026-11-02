@@ -121,6 +121,20 @@ class ParticipationGateHappyPaths(unittest.TestCase):
         self.assertEqual(res["ai_score"], AI_NOT_SCORED, res)
         self.assertIn(GATE_MODE_DOWNGRADED, res["failures"], res)
 
+    def test_degrade_reason_is_recorded_not_only_a_boolean(self):
+        """规范 §2.1：降级必须**记录原因**，不许只有一个布尔。"""
+        rec = _record_with_identity("gpt-5.6-sol")
+        rec["validation"]["degrade_reason"] = "provider timeout"
+        res = evaluate_participation_gate([rec], requested_mode=MODE_AUTO)
+        self.assertTrue(res["degraded"], res)
+        self.assertIn("provider timeout", res["degrade_reason"], res)
+
+    def test_identity_source_requirement_is_declared(self):
+        """规范 §2.2：身份必须来自 Agent 自己的权威元数据 ⇒ 门禁必须写明这条要求。"""
+        res = evaluate_participation_gate([], requested_mode=MODE_RULE_ONLY)
+        self.assertIn("Agent 自己", res["evidence"]["identity_source_requirement"], res)
+        self.assertIn("禁止人工手填", res["evidence"]["identity_source_requirement"], res)
+
     def test_mode_must_be_one_of_three(self):
         with self.assertRaises(ValueError):
             evaluate_participation_gate([], requested_mode="SOMETHING_ELSE")
