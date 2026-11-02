@@ -238,6 +238,17 @@
     }
   },
   "scoring_rules": {
+    "threshold_freeze": {
+      "frozen_at": "2026-10-22T12:30:00+08:00",
+      "frozen_at_basis": "与 backend/tests/fixtures/dd-v1-fos71-a4/gold.json 同批冻结（confirmed_at）",
+      "frozen_by": "DD-V1/FOS71 业务侧（机械核对口径，非人工批准）",
+      "retroactive": true,
+      "retroactive_note": "★ 本条是补记：阈值 0.8 在该时点已生效，但当时没有把冻结时间写进合同。补记后该阈值不得再改（改 = 换 spec 版本 + 留差异说明）；补记本身不改变任何历史读数。",
+      "frozen_thresholds": ["high_confidence_threshold"],
+      "not_frozen": ["rerun_agreement_threshold"],
+      "not_frozen_reason": "WP05-PRE-1 仍 OPEN ⇒ 稳定性阈值未冻结；在其被业务方定值前，不得给出「稳定性达标」结论",
+      "rule": "阈值必须在考试前冻结并进版本控制（附 frozen_at）；结果不得反过来改阈值"
+    },
     "version": "fos71-scoring-v1",
     "gold_required": true,
     "no_gold_status": "NOT_SCORABLE",
