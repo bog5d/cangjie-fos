@@ -96,3 +96,26 @@ def test_wp03_n4_gold_not_on_executor_host_and_manual_not_examinee():
     assert c["scoring_rules"]["manual_reply_counts_as_examinee"] is False
     assert any("执行器主机" in x for x in c["gate"]["acceptance_criteria"])
     assert "执行器主机任何可读位置" in (CONTRACT.parent / "SPEC-WP02.md").read_text("utf-8")
+
+
+def test_thresholds_are_frozen_with_timestamp():
+    """阈值必须在**考试前**冻结：进版本控制 + 附 `frozen_at` + 写明冻结人。
+
+    ★ 这条是「阈值未冻结」缺口的守卫：删掉 `frozen_at`、或偷偷把未冻结的阈值填上
+    （而对应的 OPEN 项还挂着），本测试必须**变红**。
+    """
+    from datetime import datetime
+
+    c = _c()
+    sr = c["scoring_rules"]
+    tf = sr["threshold_freeze"]
+    assert tf["frozen_at"], "阈值冻结必须带 frozen_at"
+    datetime.fromisoformat(tf["frozen_at"])          # 必须是可解析的 ISO 时间戳
+    assert tf["frozen_by"], "必须写明是谁冻结的"
+    assert "high_confidence_threshold" in tf["frozen_thresholds"]
+    assert sr["high_confidence_threshold"] == 0.8
+
+    # 未冻结的阈值必须**明确列出**，且对应的 OPEN 项仍然 OPEN（不许偷偷定值）
+    assert "rerun_agreement_threshold" in tf["not_frozen"]
+    assert sr["rerun_agreement_threshold"] is None, "未冻结的阈值不许先填值"
+    assert any(i["id"] == "WP05-PRE-1" and i["status"] == "OPEN" for i in c["open_items"])
