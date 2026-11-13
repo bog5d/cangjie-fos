@@ -24,6 +24,17 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Provision OCR prerequisites used by existing real tests
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-chi-sim fonts-noto-cjk
+          tesseract --version
+          tesseract --list-langs | grep -qx chi_sim
+          FONT_COUNT=$(fc-list :lang=zh family | wc -l)
+          test "$FONT_COUNT" -ge 1
+          echo "OCR prerequisites: chi_sim=true, Chinese font families available"
+
       - name: Install dependencies
         working-directory: backend
         run: uv sync --extra dev
@@ -89,6 +100,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Provision OCR prerequisites used by existing real tests
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-chi-sim fonts-noto-cjk
+          tesseract --version
+          tesseract --list-langs | grep -qx chi_sim
+          FONT_COUNT=$(fc-list :lang=zh family | wc -l)
+          test "$FONT_COUNT" -ge 1
+          echo "OCR prerequisites: chi_sim=true, Chinese font families available"
 
       - name: Install dependencies
         working-directory: backend
