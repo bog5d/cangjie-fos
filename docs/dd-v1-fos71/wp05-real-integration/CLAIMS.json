@@ -1,0 +1,76 @@
+{
+  "schema_version": "dd_v1_claims.v1",
+  "purpose": "「声称 ↔ 实现」清单：每条声称都必须有可机读的实现证据；证据不命中即虚假 PASS（UNSUPPORTED）",
+  "repo_root_relative_to": "仓库根目录（backend/ 与 docs/ 的上一级）",
+  "claims": [
+    {
+      "id": "G8-PARTICIPATION-GATE",
+      "claim": "G8 真实模型参与门禁已落地（requested_mode / execution_path / identity_verified 三字段分开记，fail-closed）",
+      "status": "IMPLEMENTED",
+      "evidence": [
+        {
+          "type": "file_exists",
+          "path": "backend/src/cangjie_fos/services/dd_v1_participation_gate.py"
+        },
+        {
+          "type": "grep",
+          "path": "backend/src/cangjie_fos/services/dd_v1_participation_gate.py",
+          "pattern": "NO_REAL_MODEL_RUN_AT_ALL|MODEL_IDENTITY_UNVERIFIED|MODE_DOWNGRADED",
+          "min_hits": 3
+        }
+      ],
+      "note": "门禁**尚未**接入既有评分主流程（只新增独立模块 + 独立回归测试）"
+    },
+    {
+      "id": "G8-GATE-REGRESSION",
+      "claim": "G8 门禁有对抗性回归测试（覆盖两类反例：全 RULE_ONLY 回放、身份塌缩成布尔）",
+      "status": "IMPLEMENTED",
+      "evidence": [
+        {
+          "type": "file_exists",
+          "path": "backend/tests/test_dd_v1_participation_gate.py"
+        },
+        {
+          "type": "grep",
+          "path": "backend/tests/test_dd_v1_participation_gate.py",
+          "pattern": "counterexample_a|counterexample_b",
+          "min_hits": 2
+        }
+      ]
+    },
+    {
+      "id": "THRESHOLD-FROZEN-AT",
+      "claim": "验收阈值已在考试前冻结（进版本控制 + 附 frozen_at + 写明冻结人）",
+      "status": "IMPLEMENTED",
+      "evidence": [
+        {
+          "type": "json_path_exists",
+          "path": "docs/dd-v1-fos71/wp02/GOAL-CONTRACT-WP02.json",
+          "json_path": "scoring_rules.threshold_freeze.frozen_at"
+        },
+        {
+          "type": "json_value",
+          "path": "docs/dd-v1-fos71/wp02/GOAL-CONTRACT-WP02.json",
+          "json_path": "scoring_rules.threshold_freeze.frozen_by",
+          "equals": "DD-V1/FOS71 业务侧（机械核对口径，非人工批准）"
+        }
+      ],
+      "note": "★ 补记（retroactive）：阈值 0.8 当时已生效但没写冻结时间；rerun_agreement_threshold **仍未冻结**（WP05-PRE-1 OPEN）"
+    },
+    {
+      "id": "GOLD-HUMAN-APPROVED",
+      "claim": "独立人工 Gold 已就位（每条都有真人批准）",
+      "status": "IMPLEMENTED",
+      "evidence": [
+        {
+          "type": "json_items_all",
+          "path": "backend/tests/fixtures/dd-v1-fos71-a4/gold.json",
+          "json_path": "$",
+          "field": "confirmed_by",
+          "not_contains": "非人工批准"
+        }
+      ],
+      "note": "★ 这条**故意**写成「已落地」，用来证明守卫能抓到虚假 PASS：仓内 gold.json 的 8 条 confirmed_by 全是「司仓机械核对（非人工批准）」⇒ 逐条证据不命中 ⇒ 守卫判 UNSUPPORTED ⇒ PR 不得据此宣称「人工 Gold 就位」。★ 业务方完成真人逐条批准后（confirmed_by 换成真人标识），本条**自动变绿** ⇒ 这就是「独立人工 Gold」缺口的**可机读关闭条件**。"
+    }
+  ]
+}
