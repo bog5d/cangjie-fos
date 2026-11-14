@@ -1,0 +1,4 @@
+  · 已接模型适配器：deepseek-harness（本机运行，材料不出本机）
+  · 调用预算：框架 deepseek-harness｜单次超时 300s｜最多调用 2 次｜退避 2s｜总墙钟上限 602s
+  · 模型参与：**有**｜参与类别 `HARNESS_MODEL`｜适配器 `deepseek-harness`｜厂商 `deepseek-harness`｜调用 1 次｜被接受的模型结果 54 条｜排除式凭据 PASS 0 条 / WEAK 54 条
+    · ★ 排除式凭据只证明判断**不是照抄第一个候选**，**不证明**判断出自模型；模型身份看适配器实现。

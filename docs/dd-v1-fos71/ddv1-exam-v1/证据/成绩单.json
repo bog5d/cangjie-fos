@@ -1,0 +1,531 @@
+{
+  "schema_version": "dd_v1_scorecard.v1",
+  "exam_id": "EX-A4A-SYNTHETIC",
+  "status": "SCORED",
+  "graded_at": "2026-10-29T03:08:29+08:00",
+  "scores": {
+    "question_understanding_coverage": 1.0,
+    "question_answer_coverage": 1.0,
+    "material_recall": 0.9,
+    "selection_precision": 0.45,
+    "complete_delivery_ratio": 0.25,
+    "miss_rate": 0.0,
+    "wrong_rate": 0.75,
+    "total_score": 64.5
+  },
+  "counts": {
+    "obligations": 8,
+    "obligations_with_expected_files": 8,
+    "expected_files": 10,
+    "selected_files": 20,
+    "hit_files": 9,
+    "extra_files": 11,
+    "delivered_files": 1,
+    "understood": 8,
+    "answered": 8,
+    "complete": 2,
+    "missed": 0,
+    "wrong": 6
+  },
+  "rows": [
+    {
+      "obligation_id": "de8b8381e7f34e7e80dffe01209b4a4f",
+      "item_no": "de8b8381e7f34e7e80dffe01209b4a4f",
+      "outcome": "OVER_DELIVERED",
+      "expected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "selected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "extra": [
+        "cb8da0b3ccb55f7e9f2a4e774752ee45"
+      ],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "2c1fa777a3474a709d0c3280c66e9ad5",
+      "item_no": "2c1fa777a3474a709d0c3280c66e9ad5",
+      "outcome": "OVER_DELIVERED",
+      "expected_files": [
+        "241aa18509bf90620009a2b6c31a98b2"
+      ],
+      "selected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "241aa18509bf90620009a2b6c31a98b2"
+      ],
+      "extra": [
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "e0aed07a24104a9bacf184297289d8fa",
+      "item_no": "e0aed07a24104a9bacf184297289d8fa",
+      "outcome": "OVER_DELIVERED",
+      "expected_files": [
+        "241aa18509bf90620009a2b6c31a98b2"
+      ],
+      "selected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "241aa18509bf90620009a2b6c31a98b2"
+      ],
+      "extra": [
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "17da88b525a843ffb09227dcdcd5c45a",
+      "item_no": "17da88b525a843ffb09227dcdcd5c45a",
+      "outcome": "OVER_DELIVERED",
+      "expected_files": [
+        "241aa18509bf90620009a2b6c31a98b2"
+      ],
+      "selected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "241aa18509bf90620009a2b6c31a98b2"
+      ],
+      "extra": [
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "43e6c5580185468bba1be1b604ef3f07",
+      "item_no": "43e6c5580185468bba1be1b604ef3f07",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "f656bcddc8c19bae202365c3ba6655a0"
+      ],
+      "selected_files": [
+        "f656bcddc8c19bae202365c3ba6655a0"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "f656bcddc8c19bae202365c3ba6655a0"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "a4780db706da463abd77055653ea17b2",
+      "item_no": "a4780db706da463abd77055653ea17b2",
+      "outcome": "CORRECT",
+      "expected_files": [
+        "ba22dff5d64703ba313c9590244d2efe"
+      ],
+      "selected_files": [
+        "ba22dff5d64703ba313c9590244d2efe"
+      ],
+      "delivered_files": [
+        "ba22dff5d64703ba313c9590244d2efe"
+      ],
+      "hit": [
+        "ba22dff5d64703ba313c9590244d2efe"
+      ],
+      "extra": [],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "ac3a3271e7274b1381e8c9865b7e0097",
+      "item_no": "ac3a3271e7274b1381e8c9865b7e0097",
+      "outcome": "WRONG_ONLY",
+      "expected_files": [
+        "d40a24fd68ada3a30ee3dfd90fc8dda4"
+      ],
+      "selected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "delivered_files": [],
+      "hit": [],
+      "extra": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "missed": [
+        "d40a24fd68ada3a30ee3dfd90fc8dda4"
+      ],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    },
+    {
+      "obligation_id": "266c8b2553964279a78593c60fd90e4b",
+      "item_no": "266c8b2553964279a78593c60fd90e4b",
+      "outcome": "OVER_DELIVERED",
+      "expected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "selected_files": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "delivered_files": [],
+      "hit": [
+        "241aa18509bf90620009a2b6c31a98b2",
+        "dfaa0928fb09d8b50d662fa926019ab7"
+      ],
+      "extra": [
+        "cb8da0b3ccb55f7e9f2a4e774752ee45"
+      ],
+      "missed": [],
+      "expected_verdict": "MATCH",
+      "agent_verdict": "MATCH",
+      "answered": true,
+      "understood": true,
+      "doc_type_source": "RULE",
+      "abstain_reason": "",
+      "resolution_state": "RESOLVED"
+    }
+  ],
+  "safety_gate": {
+    "violations": 0,
+    "findings": [],
+    "by_kind": {},
+    "selection_mismatches": 3,
+    "selection_mismatch_detail": [
+      {
+        "kind": "WRONG_ENTITY",
+        "obligation_id": "ac3a3271e7274b1381e8c9865b7e0097",
+        "file_id": "241aa18509bf90620009a2b6c31a98b2",
+        "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
+        "delivered": false
+      },
+      {
+        "kind": "WRONG_ENTITY",
+        "obligation_id": "ac3a3271e7274b1381e8c9865b7e0097",
+        "file_id": "cb8da0b3ccb55f7e9f2a4e774752ee45",
+        "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
+        "delivered": false
+      },
+      {
+        "kind": "WRONG_ENTITY",
+        "obligation_id": "ac3a3271e7274b1381e8c9865b7e0097",
+        "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+        "detail": "**选中但未交付**的材料主体与该义务的期望主体不一致",
+        "delivered": false
+      }
+    ],
+    "selection_mismatch_by_kind": {
+      "WRONG_ENTITY": 3
+    },
+    "note_selection": "错主体/错年份属**选材质量**问题，单列且**不封顶**；只有**实际交付**的件才进安全闸封顶；★ **期间（年份）只影响本单列指标**，不进安全闸、不封顶（派生元数据口径差异不算机器交错年份）",
+    "status": "PASS",
+    "note": "未发现安全闸违规"
+  },
+  "gold_resolution": {
+    "gold_pack_id": "GOLD-A4A-SYNTHETIC",
+    "exam_id": "EX-A4A-SYNTHETIC",
+    "items": [
+      {
+        "obligation_id": "de8b8381e7f34e7e80dffe01209b4a4f",
+        "item_no": "de8b8381e7f34e7e80dffe01209b4a4f",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+            "file_id": "241aa18509bf90620009a2b6c31a98b2",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          },
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
+            "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "241aa18509bf90620009a2b6c31a98b2",
+          "dfaa0928fb09d8b50d662fa926019ab7"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "2c1fa777a3474a709d0c3280c66e9ad5",
+        "item_no": "2c1fa777a3474a709d0c3280c66e9ad5",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+            "file_id": "241aa18509bf90620009a2b6c31a98b2",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "241aa18509bf90620009a2b6c31a98b2"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "e0aed07a24104a9bacf184297289d8fa",
+        "item_no": "e0aed07a24104a9bacf184297289d8fa",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+            "file_id": "241aa18509bf90620009a2b6c31a98b2",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "241aa18509bf90620009a2b6c31a98b2"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "17da88b525a843ffb09227dcdcd5c45a",
+        "item_no": "17da88b525a843ffb09227dcdcd5c45a",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+            "file_id": "241aa18509bf90620009a2b6c31a98b2",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "241aa18509bf90620009a2b6c31a98b2"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "43e6c5580185468bba1be1b604ef3f07",
+        "item_no": "43e6c5580185468bba1be1b604ef3f07",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_社保缴纳证明_2024.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "03e10a0ff0c3806d1390293b374cbd066f84e5ac081b32a08e9fc9781cfcf763",
+            "file_id": "f656bcddc8c19bae202365c3ba6655a0",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "f656bcddc8c19bae202365c3ba6655a0"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "a4780db706da463abd77055653ea17b2",
+        "item_no": "a4780db706da463abd77055653ea17b2",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_营业执照_2024.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "3ea4f277e508b86bf6f15768e60ae90cba45cab50846324933f92e5cce5cc0c6",
+            "file_id": "ba22dff5d64703ba313c9590244d2efe",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "ba22dff5d64703ba313c9590244d2efe"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "ac3a3271e7274b1381e8c9865b7e0097",
+        "item_no": "ac3a3271e7274b1381e8c9865b7e0097",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体乙/BLIND-0001_BLIND-0002_BLIND-0004_审计报告_2024_正文.txt",
+            "gold_entity": "主体乙",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "cfa825ecff154147e0661ceabfea79ad2366b91f5aea6c1452cb4e38de9a328e",
+            "file_id": "d40a24fd68ada3a30ee3dfd90fc8dda4",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "d40a24fd68ada3a30ee3dfd90fc8dda4"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      },
+      {
+        "obligation_id": "266c8b2553964279a78593c60fd90e4b",
+        "item_no": "266c8b2553964279a78593c60fd90e4b",
+        "expected_verdict": "MATCH",
+        "expected_files": [
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_正文.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "7fae9776ce1badfee0110b293d23a96b99edc9b85a5bf9111a099a57f67d190c",
+            "file_id": "241aa18509bf90620009a2b6c31a98b2",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          },
+          {
+            "gold_relative_path": "主体甲/BLIND-0001_BLIND-0003_BLIND-0004_审计报告_2024_附注.txt",
+            "gold_entity": "主体甲",
+            "gold_period": "2024",
+            "gold_doc_type": "",
+            "role": "primary",
+            "sha256": "ff0ba4a62d7751c99a4b88b1ad43ef51329ea6854b01efc3952534ece8f42c90",
+            "file_id": "dfaa0928fb09d8b50d662fa926019ab7",
+            "resolution": "RESOLVED",
+            "resolution_note": "按 SHA256 内容指纹唯一命中图书馆材料"
+          }
+        ],
+        "resolved_file_ids": [
+          "241aa18509bf90620009a2b6c31a98b2",
+          "dfaa0928fb09d8b50d662fa926019ab7"
+        ],
+        "resolution_state": "RESOLVED",
+        "note": ""
+      }
+    ],
+    "summary": {
+      "obligations": 8,
+      "expected_files": 10,
+      "resolved": 10,
+      "missing_in_library": 0,
+      "ambiguous_content": 0,
+      "no_fingerprint": 0
+    }
+  },
+  "examinee_mode": "RULE_ONLY",
+  "leak_report": {
+    "leaked": false,
+    "leak_count": 0,
+    "leaks": [],
+    "note": "Gold 泄漏 ⇒ 安全失败，不得进入正式评分；本检测只覆盖结构面，不覆盖进程级隔离"
+  },
+  "selection_source": {
+    "RULE_HINT": 8
+  },
+  "scoring_spec_fingerprint": "bd02ad8ba4ee71f19f13fdb8027ae52c08000e2e6b904bc5d77b378fe3d7bd9e",
+  "scoring_spec_id": "DDV1-EXAM-SCORING-V1",
+  "zero_delivery_forced_zero": false,
+  "zero_hit_forced_zero": false,
+  "note": "按冻结口径计算"
+}

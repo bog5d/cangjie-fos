@@ -1,0 +1,2165 @@
+{
+  "library": "LIB-DDVE-B",
+  "institution": "合成机构B",
+  "generated_at": "2026-10-31T00:40:44",
+  "input_snapshot": {
+    "input_snapshot_id": "c1f59483275a21f8c4c7982bea70d030a11aae58f22a3928ed3408362851f5f7",
+    "checklist_fingerprint": "5a7ce9bbd809a93b",
+    "material_digest": "b3a2439b231e23e18778afc992a6e6b4055abe5d09522b23c0f59a47a0ff685a",
+    "material_files": 13,
+    "code_sha": "8e5bcd117187655555d2f203a95038046ed4fa7c"
+  },
+  "human_approval_required": true,
+  "sent_to_institution": false,
+  "disclosure_policy": {
+    "policy_version": "ddv1-exam-policy-B-v1",
+    "loaded": true,
+    "load_error": "",
+    "default_level": "RESTRICTED",
+    "known_levels": [
+      "CONFIDENTIAL",
+      "INTERNAL",
+      "PUBLIC",
+      "RESTRICTED"
+    ],
+    "externally_sendable_levels": [
+      "PUBLIC"
+    ],
+    "sendable_doc_types": [
+      "license",
+      "audit_report",
+      "tax",
+      "financial_statement"
+    ],
+    "doc_type_gate_active": true,
+    "sensitivity_defaults": {
+      "audit_report": "PUBLIC",
+      "financial_statement": "PUBLIC",
+      "tax": "PUBLIC",
+      "license": "PUBLIC",
+      "charter": "RESTRICTED",
+      "capital": "RESTRICTED",
+      "resolution": "RESTRICTED",
+      "ip": "RESTRICTED",
+      "labor": "RESTRICTED",
+      "contract": "RESTRICTED"
+    },
+    "sensitivity_defaults_active": true,
+    "rejected_sensitivity_defaults": [],
+    "effective": "按策略分级执行"
+  },
+  "summary": {
+    "materials": 13,
+    "parse": {
+      "ok": 0,
+      "partial": 0,
+      "failed": 0,
+      "skipped": 0
+    },
+    "obligations": 10,
+    "by_verdict": {
+      "UNCERTAIN": 1,
+      "CONFLICT": 7,
+      "MATCHED": 2
+    },
+    "candidate_cap": 20
+  },
+  "understanding_quality": {
+    "entity_basis": {
+      "FACT": 6,
+      "INFERRED": 3,
+      "UNKNOWN": 1
+    },
+    "period_basis": {
+      "FACT": 9,
+      "INFERRED": 0,
+      "UNKNOWN": 1
+    },
+    "doc_type_basis": {
+      "FACT": 9,
+      "INFERRED": 0,
+      "UNKNOWN": 1
+    },
+    "caliber_basis": {
+      "FACT": 5,
+      "INFERRED": 0,
+      "UNKNOWN": 5
+    },
+    "attachment_basis": {
+      "FACT": 0,
+      "INFERRED": 0,
+      "UNKNOWN": 10
+    }
+  },
+  "card_provenance": {
+    "FACT": 74,
+    "INFERRED": 72,
+    "UNKNOWN": 101
+  },
+  "candidate_expansion": {
+    "enabled": true,
+    "steps": [
+      60,
+      180
+    ],
+    "expanded_obligations": 0,
+    "verdict_changed": 0,
+    "stop_reasons": {},
+    "candidates_checked_total": 0,
+    "candidates_unchecked_total": 0,
+    "obligations": [],
+    "note": "0 条义务触顶后做了分批扩展（分批 (60, 180)）；共检查 0 份候选，还有 0 份未看；其中 0 条义务的结论因扩展而改变"
+  },
+  "semantic_bridge": {
+    "ran": true,
+    "mode": "RULE_ONLY",
+    "degrade_reason": "NO_ADAPTER_PROVIDED：未接适配器，只出确定性规则提示（零外部调用、零费用）",
+    "external_model_calls": 0,
+    "advisory_only": true,
+    "review_required": true,
+    "changes_hard_verdict": false,
+    "sent_to_institution": false,
+    "warnings": [],
+    "counts": {
+      "materials": 13,
+      "doc_type_unknown": 2,
+      "entity_ambiguous": 0,
+      "entity_alias_resolved": 0,
+      "entity_declared": 13,
+      "authoritative_entities": 3,
+      "entity_aliases": 0,
+      "obligations_in": 10,
+      "obligations_out": 12,
+      "entity_basis": {
+        "AUTHORITY": 12,
+        "ALIAS_RESOLVED": 0,
+        "CARD_INFERRED": 0,
+        "UNKNOWN": 0
+      },
+      "entity_clusters_truncated": 0,
+      "obligations_with_evidence": 12,
+      "evidence_total": 27
+    },
+    "agent_receipt": {},
+    "model_participation": {
+      "participated": false,
+      "provenance": "RULE_ONLY",
+      "provenance_source": "",
+      "run_participated": false,
+      "participated_scope": "SELECTION",
+      "run_participated_scope": "RECEIPT",
+      "declared_provenance": "",
+      "obligations_with_model_selection": 0,
+      "discrimination_pass": 0,
+      "discrimination_weak": 0,
+      "note": "★ **RULE_ONLY 与 MODEL 严格分开**：mode=RULE_ONLY ⇒ 全程没有模型参与；mode=AGENT_SUGGESTION ⇒ 有适配器回执。★ 排除式凭据只证明判断**不是照抄第一个候选**，不证明判断出自模型。"
+    },
+    "obligations": [
+      {
+        "obligation_id": "c769875422954331b2359c84f5d4042d",
+        "source_obligation_id": "c769875422954331b2359c84f5d4042d",
+        "item_no": "2-7",
+        "question_id": "2-7",
+        "text": "营业执照",
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "license",
+        "period": "CURRENT",
+        "period_spec": {
+          "kind": "CURRENT",
+          "years": [],
+          "literal": "CURRENT",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [
+            "该类无年度口径（当前有效类）⇒ 期间口径为 CURRENT，不继承段落年份"
+          ],
+          "latest": false,
+          "current_mode": "LABEL"
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "2ae5ea69b3f5cd22009e7f76e36fe812",
+            "b99f3ac5a73b9dc335d4fd0131ba2079"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 9,
+            "available_doc_types": [
+              "audit_report",
+              "tax"
+            ],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 4,
+            "rejected_by_doc_type": 7,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 0,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "CURRENT",
+              "years": [],
+              "literal": "CURRENT",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [
+                "该类无年度口径（当前有效类）⇒ 期间口径为 CURRENT，不继承段落年份"
+              ],
+              "latest": false,
+              "current_mode": "LABEL"
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 9,
+          "available_doc_types": [
+            "audit_report",
+            "tax"
+          ],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 4,
+          "rejected_by_doc_type": 7,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 0,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "CURRENT",
+            "years": [],
+            "literal": "CURRENT",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [
+              "该类无年度口径（当前有效类）⇒ 期间口径为 CURRENT，不继承段落年份"
+            ],
+            "latest": false,
+            "current_mode": "LABEL"
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+            "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+            "locator": "L1-L1",
+            "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+            "entity": "合成母公司",
+            "period": "CURRENT",
+            "doc_type": "license",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+            "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+            "locator": "L1-L1",
+            "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+            "entity": "合成母公司",
+            "period": "CURRENT",
+            "doc_type": "license",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+        "source_obligation_id": "b6db6e633e9841078977f6681fc6c56c",
+        "item_no": "2-4",
+        "question_id": "2-4",
+        "text": "请提供合成子公司乙2022年度审计报告",
+        "entity": "合成子公司乙",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2022",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2022
+          ],
+          "literal": "2022年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MISSING",
+          "files": [],
+          "note": "OTHER_PERIODS_AVAILABLE"
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "PERIOD_OR_VERSION_MISMATCH",
+          "diagnostics": {
+            "entity_materials": 2,
+            "available_doc_types": [],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 11,
+            "rejected_by_doc_type": 0,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 2,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2022
+              ],
+              "literal": "2022年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MISMATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "PERIOD_OR_VERSION_MISMATCH",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 2,
+          "available_doc_types": [],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 11,
+          "rejected_by_doc_type": 0,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 2,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2022
+            ],
+            "literal": "2022年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MISMATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+            "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+            "entity": "合成子公司乙",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "c5d22032df3f59aa210ea984155a0d6a",
+            "sha256": "1848f05fa12d7de1d9f037b479f18e3b83bb6a9b42f4e758d96b18a6657b71ab",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+            "entity": "合成子公司乙",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "d8537d53bb0f4ec29000044d6b26f999",
+        "source_obligation_id": "d8537d53bb0f4ec29000044d6b26f999",
+        "item_no": "2-6",
+        "question_id": "2-6",
+        "text": "请提供合成母公司近三年经营情况说明",
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "",
+        "period": "2022-2024",
+        "period_spec": {
+          "kind": "RELATIVE",
+          "years": [
+            2022,
+            2023,
+            2024
+          ],
+          "literal": "近三年",
+          "relative": {
+            "span": 3,
+            "unit": "YEAR",
+            "mode": "WINDOW"
+          },
+          "anchor": {
+            "year": 2024,
+            "date": null,
+            "source": "EXPLICIT_CONFIG",
+            "literal": "",
+            "note": "锚点年度 2024（来源：EXPLICIT_CONFIG）"
+          },
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [
+            "相对期间「近三年」需可验证截止日期（锚点）才能展开",
+            "相对期间「近三年」按锚点 2024 展开为 2022-2023-2024"
+          ],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "29ba53b6e613697220ebf8c13d7b0271",
+            "e4ceacfba45c49b190d3cfe2d8f6dbf1"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 9,
+            "available_doc_types": [
+              "audit_report",
+              "tax",
+              "license"
+            ],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 4,
+            "rejected_by_doc_type": 7,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 0,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "UNKNOWN",
+              "years": [],
+              "literal": "",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "UNKNOWN",
+              "notes": [
+                "文本未声明期间 ⇒ 期间维度不构成门槛（不得据此判否，也不得据此升格）"
+              ],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "NOT_A_CONSTRAINT",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 9,
+          "available_doc_types": [
+            "audit_report",
+            "tax",
+            "license"
+          ],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 4,
+          "rejected_by_doc_type": 7,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 0,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "UNKNOWN",
+            "years": [],
+            "literal": "",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "UNKNOWN",
+            "notes": [
+              "文本未声明期间 ⇒ 期间维度不构成门槛（不得据此判否，也不得据此升格）"
+            ],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "NOT_A_CONSTRAINT",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "29ba53b6e613697220ebf8c13d7b0271",
+            "sha256": "4f5bb586f25fc2c1fbfc927f0ce6dc6708850c3f88978e5eeda1c9e3522b392e",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "e4ceacfba45c49b190d3cfe2d8f6dbf1",
+            "sha256": "8b1f319ca3b410fabe3b1ea4a8c5ec09dde1a9e6916b9f9c397e8fb8ef9c64af",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+            "entity": "合成母公司",
+            "period": "2023",
+            "doc_type": "",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "9f593f92b8914de19fa39fb9e1cb0c84",
+        "source_obligation_id": "9f593f92b8914de19fa39fb9e1cb0c84",
+        "item_no": "2-2",
+        "question_id": "2-2",
+        "text": "请提供合成子公司甲2023年度审计报告",
+        "entity": "合成子公司甲",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2023",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2023
+          ],
+          "literal": "2023年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "e55a35d140ed4d95c7522a0ab62ae91e"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 2,
+            "available_doc_types": [],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 11,
+            "rejected_by_doc_type": 0,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 1,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2023
+              ],
+              "literal": "2023年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 2,
+          "available_doc_types": [],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 11,
+          "rejected_by_doc_type": 0,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 1,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2023
+            ],
+            "literal": "2023年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
+            "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+            "entity": "合成子公司甲",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "131dc51c758d767b6fab7d7594baa437",
+            "sha256": "aad89e1a1073cd414edb09eb286b99ea5b5049ba0b1e3b58d985377d52b80026",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+            "entity": "合成子公司甲",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7@合成母公司",
+        "source_obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
+        "item_no": "2-1",
+        "question_id": "2-1",
+        "text": "请提供集团及下属公司2024年度审计报告",
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2024",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2024
+          ],
+          "literal": "2024年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 3,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "a25d83f078d213e8db395b786a8b7fb3"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 9,
+            "available_doc_types": [
+              "tax",
+              "license"
+            ],
+            "candidates_total": 3,
+            "candidates_used": 3,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 4,
+            "rejected_by_doc_type": 6,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 1,
+            "rejected_by_version": 1,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2024
+              ],
+              "literal": "2024年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 3,
+          "candidates_used": 3,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 9,
+          "available_doc_types": [
+            "tax",
+            "license"
+          ],
+          "candidates_total": 3,
+          "candidates_used": 3,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 4,
+          "rejected_by_doc_type": 6,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 1,
+          "rejected_by_version": 1,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2024
+            ],
+            "literal": "2024年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+            "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "91f1a03f0774c04d8612bfdac7a83fed",
+            "sha256": "39a1a0ceac91a65d629b10cf59e51985003d7a99b7f9fca75adbdde06abcc0af",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "DRAFT",
+            "part": "正文"
+          },
+          {
+            "file_id": "cfca05e0da9f638f746170d7a13e83fb",
+            "sha256": "8c6b9a0a9d233f37b4adb80f852d5e90a3dde1fb7f81dfa07d9bd50fcf601d7b",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+            "entity": "合成母公司",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7@合成子公司甲",
+        "source_obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
+        "item_no": "2-1",
+        "question_id": "2-1",
+        "text": "请提供集团及下属公司2024年度审计报告",
+        "entity": "合成子公司甲",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2024",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2024
+          ],
+          "literal": "2024年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "131dc51c758d767b6fab7d7594baa437"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 2,
+            "available_doc_types": [],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 11,
+            "rejected_by_doc_type": 0,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 1,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2024
+              ],
+              "literal": "2024年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 2,
+          "available_doc_types": [],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 11,
+          "rejected_by_doc_type": 0,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 1,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2024
+            ],
+            "literal": "2024年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "131dc51c758d767b6fab7d7594baa437",
+            "sha256": "aad89e1a1073cd414edb09eb286b99ea5b5049ba0b1e3b58d985377d52b80026",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+            "entity": "合成子公司甲",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "e55a35d140ed4d95c7522a0ab62ae91e",
+            "sha256": "a89c4e43115cc9b67cc042c5e34b57d43c8b1aa749392d2c9c10684f0b61d1f7",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+            "entity": "合成子公司甲",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7@合成子公司乙",
+        "source_obligation_id": "ce4ea2a2933d4bfea924eabb407e56b7",
+        "item_no": "2-1",
+        "question_id": "2-1",
+        "text": "请提供集团及下属公司2024年度审计报告",
+        "entity": "合成子公司乙",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2024",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2024
+          ],
+          "literal": "2024年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "5142b1b7b3111f1878511d6cac53eb71"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 2,
+            "available_doc_types": [],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 11,
+            "rejected_by_doc_type": 0,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 1,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2024
+              ],
+              "literal": "2024年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 2,
+          "available_doc_types": [],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 11,
+          "rejected_by_doc_type": 0,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 1,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2024
+            ],
+            "literal": "2024年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+            "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+            "entity": "合成子公司乙",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "c5d22032df3f59aa210ea984155a0d6a",
+            "sha256": "1848f05fa12d7de1d9f037b479f18e3b83bb6a9b42f4e758d96b18a6657b71ab",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+            "entity": "合成子公司乙",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "bc2da82e7ba04c5a803e4270cd8e38b5",
+        "source_obligation_id": "bc2da82e7ba04c5a803e4270cd8e38b5",
+        "item_no": "2-3",
+        "question_id": "2-3",
+        "text": "请提供合成子公司乙2024年度审计报告",
+        "entity": "合成子公司乙",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2024",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2024
+          ],
+          "literal": "2024年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "5142b1b7b3111f1878511d6cac53eb71"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 2,
+            "available_doc_types": [],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 11,
+            "rejected_by_doc_type": 0,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 1,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2024
+              ],
+              "literal": "2024年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 2,
+          "available_doc_types": [],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 11,
+          "rejected_by_doc_type": 0,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 1,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2024
+            ],
+            "literal": "2024年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "5142b1b7b3111f1878511d6cac53eb71",
+            "sha256": "0f49088a68f675a9485953e5781698e9e104fcd9afc54ba778cec849b74e84d6",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+            "entity": "合成子公司乙",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "c5d22032df3f59aa210ea984155a0d6a",
+            "sha256": "1848f05fa12d7de1d9f037b479f18e3b83bb6a9b42f4e758d96b18a6657b71ab",
+            "locator": "L1-L3",
+            "relative_path": "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+            "entity": "合成子公司乙",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "bcd1e0e676574e7d90da7c91f3865a86",
+        "source_obligation_id": "bcd1e0e676574e7d90da7c91f3865a86",
+        "item_no": "2-5",
+        "question_id": "2-5",
+        "text": "请提供合成母公司2024年度营业执照",
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "license",
+        "period": "CURRENT",
+        "period_spec": {
+          "kind": "CURRENT",
+          "years": [],
+          "literal": "CURRENT",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [
+            "该类无年度口径（当前有效类）⇒ 期间口径为 CURRENT，不继承段落年份"
+          ],
+          "latest": false,
+          "current_mode": "LABEL"
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "2ae5ea69b3f5cd22009e7f76e36fe812",
+            "b99f3ac5a73b9dc335d4fd0131ba2079"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 9,
+            "available_doc_types": [
+              "audit_report",
+              "tax"
+            ],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 4,
+            "rejected_by_doc_type": 7,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 0,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "CURRENT",
+              "years": [],
+              "literal": "CURRENT",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [
+                "该类无年度口径（当前有效类）⇒ 期间口径为 CURRENT，不继承段落年份"
+              ],
+              "latest": false,
+              "current_mode": "LABEL"
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 9,
+          "available_doc_types": [
+            "audit_report",
+            "tax"
+          ],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 4,
+          "rejected_by_doc_type": 7,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 0,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "CURRENT",
+            "years": [],
+            "literal": "CURRENT",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [
+              "该类无年度口径（当前有效类）⇒ 期间口径为 CURRENT，不继承段落年份"
+            ],
+            "latest": false,
+            "current_mode": "LABEL"
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+            "sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+            "locator": "L1-L1",
+            "relative_path": "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+            "entity": "合成母公司",
+            "period": "CURRENT",
+            "doc_type": "license",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "b99f3ac5a73b9dc335d4fd0131ba2079",
+            "sha256": "20de468333a68dc602057a6b708fba034b60744fe0d76141bdcb77f188cdd64e",
+            "locator": "L1-L1",
+            "relative_path": "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+            "entity": "合成母公司",
+            "period": "CURRENT",
+            "doc_type": "license",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "defdcfd90b1a41789bd09e80c2af6865",
+        "source_obligation_id": "defdcfd90b1a41789bd09e80c2af6865",
+        "item_no": "2-7",
+        "question_id": "2-7",
+        "text": "请提供合成母公司2024年度审计报告",
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2024",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2024
+          ],
+          "literal": "2024年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 3,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "a25d83f078d213e8db395b786a8b7fb3"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 9,
+            "available_doc_types": [
+              "tax",
+              "license"
+            ],
+            "candidates_total": 3,
+            "candidates_used": 3,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 4,
+            "rejected_by_doc_type": 6,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 1,
+            "rejected_by_version": 1,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2024
+              ],
+              "literal": "2024年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 3,
+          "candidates_used": 3,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 9,
+          "available_doc_types": [
+            "tax",
+            "license"
+          ],
+          "candidates_total": 3,
+          "candidates_used": 3,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 4,
+          "rejected_by_doc_type": 6,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 1,
+          "rejected_by_version": 1,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2024
+            ],
+            "literal": "2024年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+            "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "91f1a03f0774c04d8612bfdac7a83fed",
+            "sha256": "39a1a0ceac91a65d629b10cf59e51985003d7a99b7f9fca75adbdde06abcc0af",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "DRAFT",
+            "part": "正文"
+          },
+          {
+            "file_id": "cfca05e0da9f638f746170d7a13e83fb",
+            "sha256": "8c6b9a0a9d233f37b4adb80f852d5e90a3dde1fb7f81dfa07d9bd50fcf601d7b",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+            "entity": "合成母公司",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "b0d0fa8de23f400e9327bf06859ca204",
+        "source_obligation_id": "b0d0fa8de23f400e9327bf06859ca204",
+        "item_no": "2-8",
+        "question_id": "2-8",
+        "text": "请提供合成母公司2024年度审计报告",
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "audit_report",
+        "period": "2024",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2024
+          ],
+          "literal": "2024年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 3,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "a25d83f078d213e8db395b786a8b7fb3"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 9,
+            "available_doc_types": [
+              "tax",
+              "license"
+            ],
+            "candidates_total": 3,
+            "candidates_used": 3,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 4,
+            "rejected_by_doc_type": 6,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 1,
+            "rejected_by_version": 1,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2024
+              ],
+              "literal": "2024年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 3,
+          "candidates_used": 3,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 9,
+          "available_doc_types": [
+            "tax",
+            "license"
+          ],
+          "candidates_total": 3,
+          "candidates_used": 3,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 4,
+          "rejected_by_doc_type": 6,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 1,
+          "rejected_by_version": 1,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2024
+            ],
+            "literal": "2024年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "a25d83f078d213e8db395b786a8b7fb3",
+            "sha256": "4c96e667c01a8072e5054d1a87c84cba1d7d8aa34a8cc43e7b1964e7dbc6b789",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "91f1a03f0774c04d8612bfdac7a83fed",
+            "sha256": "39a1a0ceac91a65d629b10cf59e51985003d7a99b7f9fca75adbdde06abcc0af",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "DRAFT",
+            "part": "正文"
+          },
+          {
+            "file_id": "cfca05e0da9f638f746170d7a13e83fb",
+            "sha256": "8c6b9a0a9d233f37b4adb80f852d5e90a3dde1fb7f81dfa07d9bd50fcf601d7b",
+            "locator": "L1-L3",
+            "relative_path": "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+            "entity": "合成母公司",
+            "period": "2023",
+            "doc_type": "audit_report",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      },
+      {
+        "obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+        "source_obligation_id": "a776ebe96bf643fd87e82ac60ca4ca4b",
+        "item_no": "2-9",
+        "question_id": "2-9",
+        "text": "请提供合成母公司2024年度纳税证明",
+        "entity": "合成母公司",
+        "entity_basis": "AUTHORITY",
+        "model_selection": {},
+        "subject_verified": true,
+        "doc_type": "tax",
+        "period": "2024",
+        "period_spec": {
+          "kind": "EXPLICIT",
+          "years": [
+            2024
+          ],
+          "literal": "2024年度",
+          "relative": null,
+          "anchor": null,
+          "declared_anchor": null,
+          "resolved": true,
+          "basis": "FACT",
+          "notes": [],
+          "latest": false,
+          "current_mode": null
+        },
+        "evidence_count": 2,
+        "rule_hint": {
+          "verdict": "MATCH",
+          "files": [
+            "1b76c71fadf19c2b35142579a395e861",
+            "475bf6e5d061be85de3de97561ed486d"
+          ]
+        },
+        "evidence_status": {
+          "no_candidate_reason": null,
+          "candidate_status": "OK",
+          "diagnostics": {
+            "entity_materials": 9,
+            "available_doc_types": [
+              "audit_report",
+              "license"
+            ],
+            "candidates_total": 2,
+            "candidates_used": 2,
+            "truncated_candidate_count": 0,
+            "rejected_by_entity": 4,
+            "rejected_by_doc_type": 7,
+            "rejected_by_permission": 0,
+            "rejected_by_period": 0,
+            "rejected_by_version": 0,
+            "rejected_by_attachment": 0,
+            "period_unverifiable": 0,
+            "read_errors": 0,
+            "doc_type_filter": "EXACT_MATCH",
+            "period_spec": {
+              "kind": "EXPLICIT",
+              "years": [
+                2024
+              ],
+              "literal": "2024年度",
+              "relative": null,
+              "anchor": null,
+              "declared_anchor": null,
+              "resolved": true,
+              "basis": "FACT",
+              "notes": [],
+              "latest": false,
+              "current_mode": null
+            },
+            "period_anchor": null,
+            "period_status": "MATCH",
+            "period_abstain_reason": null
+          },
+          "candidate_cap": 6,
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "candidate_truncated": false,
+          "truncated_candidate_count": 0,
+          "candidate_cap_note": ""
+        },
+        "candidate_status": "OK",
+        "no_candidate_reason": null,
+        "diagnostics": {
+          "entity_materials": 9,
+          "available_doc_types": [
+            "audit_report",
+            "license"
+          ],
+          "candidates_total": 2,
+          "candidates_used": 2,
+          "truncated_candidate_count": 0,
+          "rejected_by_entity": 4,
+          "rejected_by_doc_type": 7,
+          "rejected_by_permission": 0,
+          "rejected_by_period": 0,
+          "rejected_by_version": 0,
+          "rejected_by_attachment": 0,
+          "period_unverifiable": 0,
+          "read_errors": 0,
+          "doc_type_filter": "EXACT_MATCH",
+          "period_spec": {
+            "kind": "EXPLICIT",
+            "years": [
+              2024
+            ],
+            "literal": "2024年度",
+            "relative": null,
+            "anchor": null,
+            "declared_anchor": null,
+            "resolved": true,
+            "basis": "FACT",
+            "notes": [],
+            "latest": false,
+            "current_mode": null
+          },
+          "period_anchor": null,
+          "period_status": "MATCH",
+          "period_abstain_reason": null
+        },
+        "candidates": [
+          {
+            "file_id": "1b76c71fadf19c2b35142579a395e861",
+            "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+            "locator": "L1-L1",
+            "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "tax",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          },
+          {
+            "file_id": "475bf6e5d061be85de3de97561ed486d",
+            "sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+            "locator": "L1-L1",
+            "relative_path": "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+            "entity": "合成母公司",
+            "period": "2024",
+            "doc_type": "tax",
+            "subject_verified": true,
+            "version_status": "EFFECTIVE",
+            "part": "正文"
+          }
+        ]
+      }
+    ]
+  },
+  "delivered": [
+    {
+      "file_id": "2ae5ea69b3f5cd22009e7f76e36fe812",
+      "delivered_path": "2-5/合成母公司_2024年度_营业执照_正本.txt",
+      "source_sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+      "copy_sha256": "7a9a8f6502fba5cc3a096763a049e76a16174c62ea0e1cd766d5a2aa19ac97da",
+      "hash_match": true,
+      "obligation_key": "OBL-6ef5a61f24b34c12ed40e8c1",
+      "obligation_text": "请提供合成母公司2024年度营业执照",
+      "verdict": "MATCHED",
+      "gate": "PASS"
+    },
+    {
+      "file_id": "1b76c71fadf19c2b35142579a395e861",
+      "delivered_path": "2-9/合成母公司_2024年度_纳税证明_正本_副本.txt",
+      "source_sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+      "copy_sha256": "08fc8756d29359e64329ca44942f2d55c9ce8d3cdb563cc7817bd8041db596cb",
+      "hash_match": true,
+      "obligation_key": "OBL-bbd3c31956e7f7e545171163",
+      "obligation_text": "请提供合成母公司2024年度纳税证明",
+      "verdict": "MATCHED",
+      "gate": "PASS"
+    }
+  ],
+  "obligations": [
+    {
+      "obligation": "营业执照",
+      "verdict": "UNCERTAIN",
+      "missing": "主体维度不可判定：义务未指名主体，而本库登记了多个主体，无法判定该义务针对哪个主体；不得无门槛放行为 MATCHED",
+      "candidates": [
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成子公司乙2022年度审计报告",
+      "verdict": "CONFLICT",
+      "missing": "同一主体/期间存在 1 组内容冲突，需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型; 期间缺 1/1 年（维度：期间）; 材料类型缺 1/1 份（维度：材料类型）",
+      "candidates": [
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成母公司近三年经营情况说明",
+      "verdict": "CONFLICT",
+      "missing": "（留痕）候选中有 4 份材料属于**另一个已登记法人** ⇒ 已按主体维度排除，不计入覆盖、也不进交付集合; 同一主体/期间存在 1 组内容冲突，需人工裁定; 材料类型认不出，无法判定是否同一材料类型；候选中有 2 份材料类型认不出，且**可能是本义务要求的那一份**；需人工确认材料类型; 期间缺 1/3 年（维度：期间）",
+      "candidates": [
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成子公司甲2023年度审计报告",
+      "verdict": "CONFLICT",
+      "missing": "（留痕）候选中有 2 份材料属于**另一个已登记法人** ⇒ 已按主体维度排除，不计入覆盖、也不进交付集合; 同一主体/期间存在 1 组内容冲突，需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型",
+      "candidates": [
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt"
+      ]
+    },
+    {
+      "obligation": "请提供集团及下属公司2024年度审计报告",
+      "verdict": "CONFLICT",
+      "missing": "同一主体/期间存在 1 组内容冲突，需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型",
+      "candidates": [
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成子公司乙2024年度审计报告",
+      "verdict": "CONFLICT",
+      "missing": "（留痕）候选中有 3 份材料属于**另一个已登记法人** ⇒ 已按主体维度排除，不计入覆盖、也不进交付集合; 同一主体/期间存在 1 组内容冲突，需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型",
+      "candidates": [
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成母公司2024年度营业执照",
+      "verdict": "MATCHED",
+      "missing": "（留痕）候选材料中同一主体/期间存在 1 组内容冲突，但这些冲突涉及的材料类型与本义务要求的材料类型**确定不同** ⇒ 不可能是本义务要求的那一份，不改判本义务；仍需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型",
+      "candidates": [
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成母公司2024年度审计报告",
+      "verdict": "CONFLICT",
+      "missing": "（留痕）候选中有 2 份材料属于**另一个已登记法人** ⇒ 已按主体维度排除，不计入覆盖、也不进交付集合; 同一主体/期间存在 1 组内容冲突，需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型",
+      "candidates": [
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成母公司2024年度审计报告",
+      "verdict": "CONFLICT",
+      "missing": "（留痕）候选中有 2 份材料属于**另一个已登记法人** ⇒ 已按主体维度排除，不计入覆盖、也不进交付集合; 同一主体/期间存在 1 组内容冲突，需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型",
+      "candidates": [
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt"
+      ]
+    },
+    {
+      "obligation": "请提供合成母公司2024年度纳税证明",
+      "verdict": "MATCHED",
+      "missing": "（留痕）候选材料中同一主体/期间存在 1 组内容冲突，但这些冲突涉及的材料类型与本义务要求的材料类型**确定不同** ⇒ 不可能是本义务要求的那一份，不改判本义务；仍需人工裁定; （留痕）候选中有 2 份材料类型认不出，但它们**不是**本义务要求的材料类型（全文无该类型关键词）⇒ 不可能是本义务要求的那一份，不阻断结论；仍需人工确认材料类型",
+      "candidates": [
+        "合成母公司/合成母公司_2024年度_纳税证明_正本.txt",
+        "合成母公司/合成母公司_2024年度_纳税证明_正本_副本.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2024年度_审计报告_草稿.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_副本.txt",
+        "合成母公司/合成母公司_2024年度_营业执照_正本.txt",
+        "合成母公司/合成母公司_2024年度_经营情况说明_说明.txt",
+        "合成母公司/合成母公司_2023年度_审计报告_正文.txt",
+        "合成母公司/合成母公司_2023年度_经营情况说明_说明.txt",
+        "合成子公司乙/合成子公司乙_2024年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2024年度_审计报告_正文.txt",
+        "合成子公司乙/合成子公司乙_2023年度_审计报告_正文.txt",
+        "合成子公司甲/合成子公司甲_2023年度_审计报告_正文.txt"
+      ]
+    }
+  ]
+}

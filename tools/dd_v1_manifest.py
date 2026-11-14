@@ -548,11 +548,12 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    """``argv`` 可选（默认取 ``sys.argv``）—— 便于测试**直接调用真实入口**。"""
     from cangjie_fos.services.dd_v1_package_service import ApprovalRequired
     p = build_parser()
     try:
-        a = p.parse_args()
+        a = p.parse_args(argv)
     except SystemExit as e:
         return 2 if e.code else 0
     try:

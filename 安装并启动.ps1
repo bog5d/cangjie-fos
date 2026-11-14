@@ -1,4 +1,4 @@
-# 解压后于 CangJie_FOS 根目录运行：预检 + 启动 uvicorn（本机单用户）
+﻿# 解压后于 CangJie_FOS 根目录运行：预检 + 启动 uvicorn（本机单用户）
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $OutputEncoding = [Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"

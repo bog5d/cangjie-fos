@@ -1,131 +1,167 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "dd_v1_agent_result.v1",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "results"
-  ],
-  "properties": {
-    "results": {
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "dd_v1_agent_result.v1",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+  "results"
+ ],
+ "properties": {
+  "results": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "item_id",
+     "obligation_id",
+     "agent_id",
+     "provider",
+     "model_id_or_unknown",
+     "prompt_version",
+     "source_snapshot_id",
+     "candidate_files",
+     "proposed_verdict",
+     "confidence_or_uncertain",
+     "abstain_reason",
+     "warnings",
+     "elapsed",
+     "token_usage_or_UNKNOWN"
+    ],
+    "properties": {
+     "item_id": {
+      "type": "string"
+     },
+     "obligation_id": {
+      "type": "string"
+     },
+     "agent_id": {
+      "type": "string"
+     },
+     "provider": {
+      "type": "string"
+     },
+     "model_id_or_unknown": {
+      "type": "string"
+     },
+     "prompt_version": {
+      "type": "string"
+     },
+     "source_snapshot_id": {
+      "type": "string"
+     },
+     "candidate_files": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "item_id",
-          "obligation_id",
-          "agent_id",
-          "provider",
-          "model_id_or_unknown",
-          "prompt_version",
-          "source_snapshot_id",
-          "candidate_files",
-          "proposed_verdict",
-          "confidence_or_uncertain",
-          "abstain_reason",
-          "warnings",
-          "elapsed",
-          "token_usage_or_UNKNOWN"
-        ],
-        "properties": {
-          "item_id": {
-            "type": "string"
-          },
-          "obligation_id": {
-            "type": "string"
-          },
-          "agent_id": {
-            "type": "string"
-          },
-          "provider": {
-            "type": "string"
-          },
-          "model_id_or_unknown": {
-            "type": "string"
-          },
-          "prompt_version": {
-            "type": "string"
-          },
-          "source_snapshot_id": {
-            "type": "string"
-          },
-          "candidate_files": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "file_id",
-                "relative_path",
-                "sha256",
-                "locator",
-                "entity",
-                "period",
-                "match_reason"
-              ],
-              "properties": {
-                "file_id": {
-                  "type": "string"
-                },
-                "relative_path": {
-                  "type": "string"
-                },
-                "sha256": {
-                  "type": "string"
-                },
-                "locator": {
-                  "type": "string"
-                },
-                "entity": {
-                  "type": "string"
-                },
-                "period": {
-                  "type": "string"
-                },
-                "match_reason": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "proposed_verdict": {
-            "type": "string",
-            "enum": [
-              "MATCH",
-              "PARTIAL",
-              "OUTDATED",
-              "CONFLICT",
-              "MISSING",
-              "UNCERTAIN"
-            ]
-          },
-          "confidence_or_uncertain": {
-            "type": [
-              "number",
-              "string"
-            ]
-          },
-          "abstain_reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "warnings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "elapsed": {
-            "type": "string"
-          },
-          "token_usage_or_UNKNOWN": {
-            "type": "string"
-          }
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "file_id",
+        "relative_path",
+        "sha256",
+        "locator",
+        "entity",
+        "period",
+        "match_reason"
+       ],
+       "properties": {
+        "file_id": {
+         "type": "string"
+        },
+        "relative_path": {
+         "type": "string"
+        },
+        "sha256": {
+         "type": "string"
+        },
+        "locator": {
+         "type": "string"
+        },
+        "entity": {
+         "type": "string"
+        },
+        "period": {
+         "type": "string"
+        },
+        "match_reason": {
+         "type": "string"
         }
+       }
       }
+     },
+     "proposed_verdict": {
+      "type": "string",
+      "enum": [
+       "MATCH",
+       "PARTIAL",
+       "OUTDATED",
+       "CONFLICT",
+       "MISSING",
+       "UNCERTAIN"
+      ]
+     },
+     "proposed_doc_type": {
+      "type": "string",
+      "enum": [
+       "audit_report",
+       "financial_statement",
+       "tax",
+       "license",
+       "charter",
+       "capital",
+       "resolution",
+       "ip",
+       "labor",
+       "contract"
+      ],
+      "description": "仅当该义务的 doc_type 为空（规则层解析不出）时必填：由模型判定该题要哪一类材料。取值限权威 10 类。判断不出来就 UNCERTAIN + abstain_reason，不许猜。"
+     },
+     "confidence_or_uncertain": {
+      "type": [
+       "number",
+       "string"
+      ]
+     },
+     "abstain_reason": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "warnings": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "elapsed": {
+      "type": "string"
+     },
+     "token_usage_or_UNKNOWN": {
+      "type": "string"
+     },
+     "rejected_alternatives": {
+      "type": "array",
+      "description": "★ 可选：模型**排除**掉了哪些候选、为什么（排除式选择凭据）。每条必须带 file_id 与 reason；file_id 必须在快照内且**不得**是本次选中件。★ 这是「判断不是『取第一个』」的**机器可验**凭据；它**不证明**判断出自模型（模型身份靠适配器回执）。",
+      "items": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "file_id",
+        "reason"
+       ],
+       "properties": {
+        "file_id": {
+         "type": "string"
+        },
+        "reason": {
+         "type": "string"
+        }
+       }
+      }
+     }
     }
+   }
   }
+ }
 }

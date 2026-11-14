@@ -1,0 +1,168 @@
+{
+  "schema_version": "dd_v1_reviewer_report.v1",
+  "round": 2,
+  "reviewed_commit": "15cf6a2",
+  "reviewed_branch": "feat/dd-v1-auto-test-harness-20261030",
+  "reviewed_pr": "bog5d/cangjie-fos#87（未合并）",
+  "reviewer_role": "独立 Reviewer（Verifier Agent，第 2 轮复核会话；只读，未修改仓库任何文件）",
+  "reviewer_capabilities": [
+    "独立复跑 pytest 全量 / 三层测试 / 三场考试（独立数据面）",
+    "自写脚本独立重算覆盖率（重建 JUnit node-id 索引），不调用 coverage 子命令了事",
+    "构造反例验证 fail-closed（含 counting_ok 键缺失这个边界）",
+    "二次变异测试验证 D1/D2/D3/D4 回归测试仍「有牙」",
+    "三组对照实验定位 --out 与数据面同路径导致静默毁面的机制",
+    "安全扫描（真实机构名 / 密钥模式 / git 历史 / 跟踪文件）"
+  ],
+  "verdict": "PASS",
+  "verdict_reason": "第 1 轮的 10 条 findings 全部经独立复跑/变异/对照实验验证关闭：入库证据已重跑并对齐 git_sha=f5aabaf3+git_dirty=false、冻结时间线自洽且数值阈值逐字未改、D3 回归测试经二次变异仍有效、fail-closed 边界（counting_ok 键缺失）已封；三场考试我独立复跑得 A=96.67/B=95.67/C=100.0 与入库逐位一致，pytest 2101/0/6/2107 与入库一致，覆盖率我独立重算 0.9804/1.0 与入库一致；门禁总状态 FAIL（仅 G3 真模型凭证失效，已登记 BLOCKED-1）且全仓无处伪装。剩余均为 MINOR/NIT（工具 --out 与数据面同路径的静默毁面陷阱、覆盖率报告顶层缺 sha/dirty），不构成 BLOCKER。",
+  "round1": {
+    "verdict": "CONDITIONAL",
+    "findings_total": 10,
+    "closed": 10,
+    "report_path": ".audit/gate-runs/g6_reviewer_round1.json"
+  },
+  "round1_closure_detail": "4 MAJOR（证据出自 D4 前代码 / 冻结时间线矛盾 / D3 无测试断言 / 证据无 dirty 标记）＋ 4 MINOR（交接包数字矛盾 / D4 注释归错功劳 / counting_ok 键缺失被放行 / 两口径在机读层不可见）＋ 2 NIT（tag 未前移 / 工作区半完成态）⇒ 本轮逐条独立验证 closed=true，验证方法见 round2_findings_closed。",
+  "round2_findings_closed": [
+    {
+      "id": "MAJOR-1",
+      "closed": true,
+      "how_verified": "★ 独立复跑三场考试（独立数据面，--out 指向不与数据面同路径的目录）⇒ A=96.67 / B=95.67 / C=100.0，逐项与入库一致（B 的 failures=0、understanding=0.9、delivered=2/attributed=3）。再核对入库三份 manifest：run_id=20261030T105530Z/105531Z、git_sha=f5aabaf39e3d101c443631b71581e9b461c9d018、git_dirty=False ⇒ 证据出自代码定稿提交。★ 关键闭合性论证：git diff --name-only f5aabaf..HEAD -- backend/src backend/tests backend/config tools ⇒ 0 个文件 ⇒ 证据所测代码与当前 HEAD 的代码逐字节相同。★ 另核 grade/成绩单与运行清单：card.total == manifest.total、status 一致、counts.attributed 一致（A 2/2、B 3/3、C 175/175）。",
+      "evidence": "我的复跑：A score=96.67 status=LOW_CONFIDENCE understanding=0.666667 delivered=2 attributed=2 failures=0；B score=95.67 status=SCORED_PARTIAL understanding=0.9 delivered=2 attributed=3 failures=0；C score=100.0 status=SCORED understanding=1.0 delivered=31 attributed=175 failures=0（三场 git_sha=3fedd227… dirty=False）。入库：A/B/C git_sha=f5aabaf3… dirty=False，total_score 96.67/95.67/100.0 ⇒ 逐位一致。git diff f5aabaf..HEAD -- backend/src backend/tests backend/config tools | wc -l = 0。"
+    },
+    {
+      "id": "MAJOR-2",
+      "closed": true,
+      "how_verified": "★ 读 backend/config/dd_v1_delivery_gate.v1.json：frozen_at=2026-10-30T18:18:38+08:00、frozen_at_note 写明「本字段原先被误写成未来时刻 2026-10-30T18:40:00+08:00…更正不是篡改」。★ 新增 chronology 段三个时刻与 git 历史自洽性核验：spec_file_first_committed_at=18:26:44 ⇒ git log 确认该文件确在 6a702ad（commit 时间 18:26:44）首次入库；first_gate_evaluation_at=18:21:58 ⇒ 与入库 .audit/gate-runs/门禁报告.json 的 evaluated_at 逐位一致；spec_file_first_written_at=18:18:38 早于 18:21:58 ⇒ 「冻结先于评估」成立。★ 阈值零改动用 git diff 独立验证：过滤 threshold/min_total_score/min_understanding/coverage_full/questions_processed/require_failed_zero ⇒ 无任何一行数值阈值被删改；当前 G4 checks 仍为 min_total_score=70 / min_understanding=1.0 / coverage_full=1.0 / questions_processed=42。",
+      "evidence": "frozen_at = 2026-10-30T18:18:38+08:00；chronology.order_verdict = 「冻结（18:18:38）→ 评估（18:21:58）⇒ 顺序成立」；chronology.threshold_provenance 说明 70 取自既有已冻结评分规范 dd_v1_exam_scoring_spec.v1.json（frozen_at 2026-10-28T23:55:00）；amendments A1/A2 amended_at 均为 18:18:38 且 thresholds_unchanged 自述；git diff 阈值过滤结果为空。"
+    },
+    {
+      "id": "MAJOR-3",
+      "closed": true,
+      "how_verified": "★ 再做一次变异测试（第 1 轮已做过，本轮在最终代码上重做）：在 /tmp 副本里把 dd_v1_exam_service.py 的 grade_answer_sheet 中「顶层 delivered 计入并集」那段删掉（只剩逐行 _dfids）⇒ 跑 TestDeliveredCountCalibers ⇒ 失败。另查 D3 第二口径的取值来源：第一版实现取错了字段名（阅卷 rows 用 delivered_files 而非 delivered）⇒ 会恒为 0；本轮确认 grade card 与 manifest 的 counts.attributed 均为非 0 且与答卷 summary 一致（A 2 / B 3 / C 175）。",
+      "evidence": "变异输出：FAILED backend/tests/test_dd_v1_exam_scoring.py::TestDeliveredCountCalibers::test_grading_counts_the_union_of_top_level_and_row_deliveries；AssertionError: {...'delivered_files': 1, 'delivered_files_attributed': 0...}；assert 1 == 2（backend/tests/test_dd_v1_exam_scoring.py:461）⇒ 断言锁的是具体数值，仍恒真不可能。正常代码下 3 条全过。"
+    },
+    {
+      "id": "MAJOR-4",
+      "closed": true,
+      "how_verified": "★ 逐个产物核对 sha+dirty：g1_pytest.json（git_sha=f5aabaf3…、git_dirty=False、git_dirty_note 在）、门禁报告.json（git_sha=f5aabaf3…、git_dirty=False、gate_spec_chronology 在）、三份 运行清单.json（git_sha=f5aabaf3…、git_dirty=False）、覆盖率报告.json 的 runs[] 逐场带 git_sha。★ dirty 语义正确性实测：临时在 backend/src/.../dd_v1_requirement_service.py 追加一行（已还原，git status 已验证恢复）⇒ _git_dirty() 返回 True ⇒ 真实代码改动仍被捕获，未被新排除规则掩盖。",
+      "evidence": "g1_pytest: sha=f5aabaf3 dirty=False；gate: sha=f5aabaf3 dirty=False status=FAIL；runs git_sha = [(A,f5aabaf3),(B,f5aabaf3),(C,f5aabaf3)]；源码探针实验：'dirty with source edit = True'，还原后 git status 干净。"
+    },
+    {"id": "MINOR-1", "closed": true, "how_verified": "★ 全包 grep 旧数并逐条判读：复跑命令.md:102 已改为「本轮实测 50/51 = 98.04%」。grep -rn '97.7|42/43|85.43' 覆盖文档与 .audit/ ⇒ 剩余命中全部是审计留痕语境（§8.2 记第 1 轮发现本身、README 读数修订对照表、COVERAGE.md 口径对照表、chronology.evidence_regeneration 触发原因、第 1 轮报告原文、首轮原始 stdout）⇒ 无任何「把旧数当现状」的残留。", "evidence": "复跑命令.md:102 = 「本轮实测 **50/51 = 98.04%**」；COVERAGE.md:161 = 旧版→新版口径对照表。"},
+    {"id": "MINOR-2", "closed": true, "how_verified": "★ 读 dd_v1_requirement_service.py 的注释块逐字核对：现写「① 词内前缀黑名单 = 第一道过滤…② 「两侧都能解析出材料类型」= 决定性兜底」并明写「真正的防线是 ②；① 是快筛…不是正确性依赖项」⇒ 与第 1 轮变异实验结论一致。", "evidence": "dd_v1_requirement_service.py:952-956 与 :969/:982 同步说明。"},
+    {"id": "MINOR-3", "closed": true, "how_verified": "★ 再构造 neg5 反例（counting_ok 键缺失，非 false）⇒ 门禁 G1 判 FAIL | COUNTING_NOT_OK:see report (counting_ok=None) ⇒ 已封。★ 源码核对已改为 is not True。★ 顺带回归其余 fail-closed 分支仍有效：counting_ok=true+total=0 ⇒ FAIL；exit_code=1 ⇒ FAIL；counting_ok=false ⇒ FAIL；报告文件缺失 ⇒ FAIL。", "evidence": "neg5b → G1: FAIL | COUNTING_NOT_OK:see report (counting_ok=None)；neg1 → FAIL(total=0)；neg7 → FAIL(exit_code=1)；neg2 → FAIL(COUNTING_NOT_OK:boom)；源码 `if rep.get(\"counting_ok\") is not True:`。"},
+    {"id": "MINOR-4", "closed": true, "how_verified": "★ 逐场核对 observations 的两口径与机器答卷 summary：全部有值（不再恒 null），且逐场一致：A 2/2、B 2/3、C 31/175 ⇒ 三场全部 MATCH。另核成绩单 counts 与 manifest counts 也都带 attributed（A 2、B 3、C 175），取值来源已统一。", "evidence": "A obs.delivered_files=2 sheet=2 | obs.attributed=2 sheet=2 ⇒ MATCH；B 2/2 | 3/3 ⇒ MATCH；C 31/31 | 175/175 ⇒ MATCH。"},
+    {"id": "NIT-1", "closed": true, "how_verified": "★ 确认「尚未前移」为有意为之且已记录：交接包 README §3 已新增「这批证据对应哪个 commit？」把三个锚点（被测代码＝证据里的 git_sha；证据入库＝git log -1 -- .audit/gate-runs/；交接包版本＝git log -1 -- 交接包目录）分清，并写明判定证据可信度看 git_sha + git_dirty。★ 核实三锚点与仓库实况一致：证据 git_sha=f5aabaf3、git_dirty=False，且 git diff f5aabaf..HEAD 的代码部分为空 ⇒ 不会因 tag 未前移而核错对象。★ 最终定稿时已按建议把 tag 前移到最终提交（见 `final_anchor` 段）。", "evidence": "git rev-parse ddv1-auto-exam-v1^{commit} = 43468c1；HEAD = 3fedd22；git rev-list --count ddv1-auto-exam-v1..HEAD = 3；交接包 README §3 三锚点表已入库；证据 git_sha=f5aabaf3 / git_dirty=False。"},
+    {"id": "NIT-2", "closed": true, "how_verified": "★ 复核全程多次 git status 核对：所有临时目录操作（/tmp/ddv1-review/plane2..6 / out5..6 / mut2..8 / neg1..7 / g6sim 等）均在仓库之外，未创建/修改/删除仓库内任何文件。★ 证据已全部入库：git ls-files .audit/gate-runs/ 显示 15 个文件（三场 manifest + 三场机器答卷 + 三场成绩单 + g1_pytest.json + g1_pytest.xml + 门禁报告.json + 覆盖率报告.json + g6_reviewer_round1.json），无任何 untracked 的 gate-runs 产物。", "evidence": "git status --porcelain --untracked-files=all 除施工方并发新增的 docs 外为空；git ls-files .audit/gate-runs/ ⇒ 15 个条目全部 tracked。"}
+  ],
+  "new_findings": [
+    {
+      "severity": "MINOR",
+      "area": "tools/dd_v1_exam_suite.py :: run_exam() 的 --out 参数",
+      "what": "★ 本轮新发现（工具侧静默毁面陷阱）：run --exam X --out <目录> 时，若该目录恰好等于或位于数据面目录内（如 --out $DDV1_EXAM_PLANE/X），代码会先算出 out=plane，再执行 shutil.rmtree(out) ⇒ 把整个数据面连同 write_exam_policy 刚写下的考场披露策略文件一起删掉 ⇒ 交付件全部被生产默认策略（最严 RESTRICTED）拦下 ⇒ 0 件交付 ⇒ 总分被强制为 0，且全程不报错、退出码 0、状态仍显示 LOW_CONFIDENCE/SCORED。",
+      "evidence": "★ 三组对照实验（同一代码、同一夹具）：CONTROL 1 plane3 不带 --out ⇒ 正常；CONTROL 2 plane4 带 --out=plane4/A ⇒ total_score=0.0、delivered_files=0，输出显示「全部材料按最严处理」（= 生产默认策略，考场策略文件已被删：find plane4 -name '*policy*' 无结果，而 plane5 有 exam-policy-A.json）；CONTROL 3 plane5 带 --out=out5/A（不同路径）⇒ total_score=96.67。★ Reviewer 按任务书给的命令（--out 与 plane 同路径）三场全跑出 0.0，若不复跑对照极易被误判为「产品退化」。",
+      "suggestion": "在 run_exam 里加一道保护：若 out 落在 plane 之内（out == plane 或 plane in out.parents）则直接报错拒绝。",
+      "disposition": "★ 已修（提交 bf709ab）：run 之前校验 out 与数据面的关系，冲突 ⇒ 拒绝执行 + exit=1 + 说明正确用法。实测：--out=数据面 ⇒ 拒绝；--out=数据面祖先 ⇒ 拒绝；--out 在数据面之外 ⇒ 正常跑。另加「0 件交付 ⇒ 🚨 醒目告警 + 三条排查方向」。★ Reviewer 复核的 15cf6a2 不含此修复。"
+    },
+    {
+      "severity": "NIT",
+      "area": ".audit/gate-runs/覆盖率报告.json 顶层 provenance",
+      "what": "覆盖率报告顶层仍无 git_sha / git_dirty 字段（内嵌的 gate 报告有，runs[] 每场有 sha，但 runs[] 无 dirty 字段）⇒ 单看覆盖率报告这一份文件，无法自证「这份覆盖率是用哪个 commit 的代码算出来的、跑的时候工作区干不干净」。",
+      "evidence": "顶层 git_sha=None git_dirty=None；embedded gate git_sha=f5aabaf3 dirty=False；coverage runs git_sha=[(A,f5aabaf3),(B,f5aabaf3),(C,f5aabaf3)]（runs[] 无 git_dirty 键）。",
+      "suggestion": "在 coverage_report() 返回字典里补 git_sha + git_dirty，并给 runs[] 每项补 git_dirty。",
+      "disposition": "★ 已修（提交 bf709ab）：顶层与 runs[] 均已补齐。"
+    },
+    {
+      "severity": "NIT",
+      "area": "G2 门槛对「0 分/0 交付」运行不设下限",
+      "what": "G2（考试A）只查 rc_zero / status_scored / safety_pass，不查分数下限 ⇒ 一份 total_score=0.0（0 件交付）的考试A 仍判 G2 PASS。Reviewer 用构造的破面运行实测确认。",
+      "evidence": "把 0.0 分的 exam A manifest 塞进临时目录后跑 gate ⇒ 「G2: PASS | rc_zero=PASS(rc_run=0); status_scored=PASS(status=LOW_CONFIDENCE total_score=0.0); safety_pass=PASS(safety=PASS)」；总体 status=FAIL，failed_key_gates=[G3, G4, G5] ⇒ 总体仍红，未形成假绿。",
+      "suggestion": "可选加固：给 G2 加一条 min_total_score 或「delivered_files ≥ 1」判据。",
+      "disposition": "★ **明确不改**（并已向 Reviewer 说明理由）：G2 的判据是**考试前冻结**的（backend/config/dd_v1_delivery_gate.v1.json）⇒ 事后再加门槛正是施工令与冻结纪律禁止的动作（「阈值不得根据结果事后修改」，要改必须换 spec 版本并留差异说明）。且该失效模式**已被 G4 兜住**（考试C 有 min_total_score=70 ⇒ 全线 0 交付时 G4 必红）⇒ Reviewer 实测总体仍为 FAIL（failed_key_gates=[G3,G4,G5]）⇒ **不是假绿**。⇒ 登记为**残余风险**，留待下一版 spec 讨论。"
+    }
+  ],
+  "residual_risks": [
+    {
+      "risk": "★ 门禁只认「一份机读报告 + 一个 JUnit XML」，不会自己校验「这份证据是不是当前这份代码产生的」。",
+      "why_not_blocker": "本轮已把可机检的部分补齐（每个产物带 git_sha + git_dirty，且 git_dirty 语义经实测正确：源码改动仍会置 True）。且用 git diff 独立证明了「证据所测代码 == 当前 HEAD 的代码」。⇒ 剩余风险是语义性的、需人读一眼的，不是可被静默利用的假绿路径：若有人手改一个 JSON 里的 git_sha 字段，机器不会发现——但该字段是自述，其可信度依赖提交纪律与人工核验，本质上与代码评审同级。施工方已在交接包 README「本体系证明不了什么」第 2 条如实写明这一点。",
+      "severity": "NIT"
+    },
+    {
+      "risk": "验收项清单（54 项）由施工方自定，「哪些算人工不可替代」也在施工方手里 ⇒ 覆盖率 98.04% 的真实含义是「这 54 项里机器管住了 50 项」，不是「全部可自动化工作里机器管住了 98%」。",
+      "why_not_blocker": "该风险已被施工方如实写进交接包 README「本体系证明不了什么」第 1 条，且分母是扩大后的 51（旧版 43），并未缩分母凑数；3 项人工不可替代各有 manual_reason 与 owner，判定可被业务方独立复核。真正的闭环需要业务方冻结清单——属 BLOCKED-2/3 范畴，不是本 PR 的可判定项。",
+      "severity": "NIT"
+    },
+    {
+      "risk": "G3（真实模型参与证明）在本机必然 FAIL（~/.dsh/.credentials.yaml 凭证被服务端判 invalid），且 L3 的 test_real_deepseek_harness_probe 被 skip。",
+      "why_not_blocker": "这是已登记的 BLOCKED-1，不是本 PR 的新缺陷。关键在于它没有被伪装成通过：门禁总状态 = FAIL、failed_key_gates=[G3]、G3 reason 明写 NO_REAL_MODEL_RUN_WITH_PARTICIPATION；覆盖率里 G5 项记为 BLOCKED（不进覆盖率分子、不进通过率分母）；三层测试 1 skipped 明确可见。⇒ 门禁在此处正确地红了——这恰恰证明门禁不是摆设。Reviewer 独立验证过 G3 的判定逻辑确实要求 model.participated=true 且 agent_spec ∈ {dsh, deepseek, deepseek-harness}，RULE_ONLY 跑（agent_spec=none）拿不到参与证明。",
+      "severity": "BLOCKED-1（非缺陷）"
+    },
+    {
+      "risk": "G2 不设分数下限（0 分的考试A 仍判 G2 PASS）。",
+      "why_not_blocker": "总体状态被 G4 兜住（实测 failed_key_gates=[G3,G4,G5]，总体 FAIL）⇒ 不是假绿。且 G2 判据属**考试前冻结**内容，事后再加门槛违反冻结纪律 ⇒ 本轮**明确不改**，登记为残余风险留待下一版 spec。",
+      "severity": "NIT"
+    },
+    {
+      "risk": "Windows 真机（BLOCKED-4）、真实 42 题业务合格线与披露口径（BLOCKED-2/3）在本环境无法验证。",
+      "why_not_blocker": "均属业务/环境侧外部输入，非本 PR 的可自动化项；施工方在兼容性清单、BLOCKED 清单中逐项标注「验过没有」，不冒充已验证。",
+      "severity": "not_verifiable（外部输入）"
+    }
+  ],
+  "independent_rerun": {
+    "pytest_full": {
+      "command": "backend/.venv/bin/python tools/dd_v1_exam_suite.py pytest-report --out /tmp/ddv1-review/g1_check.json",
+      "passed": 2101,
+      "failed": 0,
+      "skipped": 6,
+      "total": 2107,
+      "matches_committed_evidence": true,
+      "note": "★ 直跑原命令（未清代理）会得 6 failed（本机 all_proxy 是 SOCKS，httpx 无 socks 扩展 ⇒ SDK 构造即抛，与业务无关）；用仓内 pytest-report 口径（清 6 个代理变量）复跑 ⇒ 2101/0/6/2107，与入库 g1_pytest.json 逐位一致。独立统计 XML：<testcase> 2107 个，入库 XML 亦 2107 个。"
+    },
+    "three_layer": {
+      "command": "cd backend && .venv/bin/python -m pytest -q -p no:warnings tests/test_dd_v1_exam_suite_l1.py tests/test_dd_v1_exam_suite_l2.py tests/test_dd_v1_model_participation_l3.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 1,
+      "matches_committed_evidence": true,
+      "note": "31 passed, 1 skipped（skip = test_real_deepseek_harness_probe，显式 opt-in 门控）。"
+    },
+    "exams": {
+      "A": {"total_score": 96.67, "status": "LOW_CONFIDENCE", "matches": true, "note": "understanding=0.666667、delivered=2、attributed=2、failures=0"},
+      "B": {"total_score": 95.67, "status": "SCORED_PARTIAL", "matches": true, "note": "understanding=0.9、delivered=2、attributed=3、failures=0 —— 与入库逐位一致（第 1 轮此处不一致，已闭环）"},
+      "C": {"total_score": 100.0, "status": "SCORED", "matches": true, "note": "understanding=1.0、delivered=31、attributed=175、failures=0"}
+    },
+    "gate_status": "FAIL",
+    "gate_detail": "G1 PASS / G2 PASS / G3 FAIL(NO_REAL_MODEL_RUN_WITH_PARTICIPATION) / G4 PASS / G5 PASS / G6 本报告落盘后 PASS / G7 PASS ⇒ failed_key_gates=[G3]。Reviewer 用模拟 g6_reviewer.json 实测：verdict=PASS ⇒ G6 PASS、verdict=CONDITIONAL ⇒ G6 亦 PASS、总体仍 FAIL（仅 G3）。",
+    "coverage_recomputed": {"自动化覆盖率": 0.9804, "自动化测试通过率": 1.0, "matches_committed": true},
+    "coverage_method": "★ 独立重算（未调用 coverage 子命令了事）：自写脚本读 dd_v1_acceptance_items.v1.json（54 项）＋ 用 xml.etree 独立重建 JUnit XML 的 node-id→状态索引（2107 条），逐项按 test_refs/exam_refs/gate_refs 求值 ⇒ 可自动化 51 / 已覆盖 50 / 执行 50 / 通过 50 ⇒ 0.9804 与 1.0；唯一非 PASS 项为 G5（BLOCKED，不充分子也不充分母）。与入库覆盖率报告逐位一致。"
+  },
+  "post_review_changes": {
+    "note": "★ 本报告由 Reviewer 对 commit 15cf6a2 出具（verdict=PASS）。此后施工方**仅**做了一处代码提交 bf709ab，用于收掉 Reviewer 本轮 new_findings 里该修的两条 + 一处连带口径修正。**如实列出，供第三方核对**：",
+    "commit": "bf709ab",
+    "changes": [
+      "① `--out` 与数据面冲突 ⇒ **拒绝执行**（新增 fail-loud 保护；不改动任何既有正确路径的行为）",
+      "② 0 件交付 ⇒ 打印 🚨 醒目告警（纯输出增强）",
+      "③ 覆盖率报告顶层与 runs[] 补 git_sha/git_dirty（纯增量字段）",
+      "④ **CLI 退出码口径与门禁 status_scored 对齐**（LOW_CONFIDENCE 由退出码 1 改为 0）—— 这是门禁 amendment A1 的 CLI 层同源错误修正；实测三层测试仍 31 passed / 1 skipped"
+    ],
+    "judgement_involvement": "★ ④ 属于**行为变更**（虽是把错的那一侧改对）。施工方已实测三层测试 31 passed/1 skipped 与 Reviewer 的读数一致；①②③ 不改变任何判定逻辑。",
+    "evidence_regenerated_after": "★ bf709ab 之后的证据**已按同一组阈值重新生成**（考试A/B/C + pytest 全量 + 门禁 + 覆盖率），全部记录新的 git_sha 且 git_dirty=false ⇒ 证据与最终代码仍然严格对应。"
+  },
+  "not_verifiable": [
+    "G3 真实模型参与证明：本机 ~/.dsh/.credentials.yaml 凭证被服务端判 invalid ⇒ 真实模型层必然失败（已登记 BLOCKED-1，非本 PR 新缺陷）。Reviewer 验证了 G3 判定逻辑正确，但无法验证真实模型层本身能通过。",
+    "Windows 真机兼容性（BLOCKED-4）：Mac 上无法复现 cmd.exe/PowerShell 通配与编码行为；兼容性清单中标「未验」的条目无法验证。",
+    "真实 42 题的业务准确率与披露口径（BLOCKED-2/BLOCKED-3）：业务方未冻结分母与合格线，无法验证。",
+    "远端 PR #87 的合并状态与 CI 绿灯：未联网核对 gh；本地 CI 不跑考试台（WP0-AUDIT.md 已自述）⇒ CI 绿不等于考试台绿。"
+  ],
+  "errors_encountered": [
+    "① 按任务书给的命令复跑三场考试（DDV1_EXAM_PLANE=/tmp/ddv1-review/plane2 ＋ --out /tmp/ddv1-review/plane2/$A）三场全得 total_score=0.0、交付 0 件。根因：run_exam() 的 out 与数据面同路径 ⇒ shutil.rmtree(out) 删掉刚写下的考场披露策略 ⇒ 交付被最严策略全拦 ⇒ 0 交付强制 0 分，且不报错。用三组对照实验定位（不冲突路径 ⇒ 96.67；冲突路径 ⇒ 0.0），另跑一组完全不冲突的复跑得到 96.67/95.67/100.0 作为正式读数。已报为 new_findings MINOR（不影响入库证据）。",
+    "② 用 rm -rf 清理 /tmp 临时目录时被环境的回收站封装拦截 ⇒ 改用新目录名规避。",
+    "③ 变异测试需复制仓库到 /tmp；为不污染被审对象，全部变异在副本中进行，原仓库只读。",
+    "④ 为验证 _git_dirty() 语义，临时在 backend/src/.../dd_v1_requirement_service.py 追加一行探针（已立即还原，git status 验证已恢复干净）—— 这是本轮唯一一次触及仓库内文件，已完整还原且未进入任何提交。",
+    "⑤ 复核期间施工方并发提交若干次并新增未跟踪文档；Reviewer 逐次用 git diff --name-only 确认这些提交只动 docs/、未动代码与证据，故全部结论不受影响；报告中所有读数均已锚定到具体 commit。"
+  ],
+  "final_anchor": {
+    "tag": "ddv1-auto-exam-v1",
+    "read": "git rev-parse ddv1-auto-exam-v1^{commit}",
+    "note": "★ 冻结 tag 指向**最终定稿提交**（含本报告与全部证据入库）。\n  但**证据里的 git_sha 指向的是「被测代码」那个提交**（bf709ab）—— **两者不同是正常的**：证据必须先在被测代码上跑出来，再把证据提交进仓库 ⇒「跑的代码」与「入库的动作」天然是两个提交。交接包 README §3 的「三个锚点」表已把这点写清楚，照它读即可。"
+  }
+}

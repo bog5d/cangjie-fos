@@ -1,0 +1,45 @@
+E       AssertionError: doctor.py 退出码非 0
+E         stdout:
+E         
+E         ====================================================
+E           仓颉 FOS — 系统诊断
+E         ====================================================
+E         
+E         [✅] Python 版本: Python 3.13.12
+E         [✅] uv 包管理器: uv 0.10.12 (00d72dac7 2026-03-19 aarch64-apple-darwin)
+E         [✅] Python 依赖: 依赖已安装
+E         [✅] 端口 8000: 端口 8000 空闲
+E         [✅] data/ 目录: data/ 目录已存在
+E         [✅] FFmpeg: ffmpeg version 8.1 Copyright (c) 2000-2026 the FFmpeg develo
+E         [✅] SQLite 可写: SQLite 可写
+E         [❌] .env 配置: backend/.env 不存在（API 密钥未配置）
+E             → 运行 --fix 自动从 .env.example 复制
+E         [❌] 前端 node_modules: 前端依赖未安装
+E             → 运行：cd frontend && npm ci
+E         
+E         ====================================================
+E         ❌ 发现 2 个问题。运行 python tools/doctor.py --fix 可自动修复部分问题。
+E         ====================================================
+E         
+E         
+E         stderr:
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backen...2 个问题。运行 python tools/doctor.py --fix 可自动修复部分问题。\n====================================================\n\n', stderr='').returncode
+
+tests/test_doctor_script.py:22: AssertionError
+=============================== warnings summary ===============================
+tests/test_dd_v1_obligation_contract_wp2.py: 300 warnings
+  /Users/mac/.minimax/sessions/mvs_b44860ec1e1b4eb081ffa519f250ea3f/workspace/cangjie-fos/backend/src/cangjie_fos/services/dd_v1_requirement_service.py:1144: DeprecationWarning: 'maxsplit' is passed as positional argument
+    head = re.split(r"[_＿]", raw, 1)[0].strip()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_dd_material_architecture.py::TestPhase1FullText::test_refine_overrides_confidence_when_not_satisfied
+FAILED tests/test_dd_material_architecture.py::TestPhase1FullText::test_refine_confirms_when_satisfied
+FAILED tests/test_dd_material_architecture.py::TestPhase2Verdict::test_verdict_assigned_without_content_no_llm
+FAILED tests/test_dd_material_architecture.py::TestPhase2Verdict::test_refine_circuit_breaker_on_llm_down
+FAILED tests/test_dd_redteam.py::TestPromptInjection::test_refine_zero_overlap_clamps_even_if_model_says_green
+FAILED tests/test_dd_redteam.py::TestPromptInjection::test_refine_keeps_green_when_overlap_real
+FAILED tests/test_doctor_script.py::test_doctor_script_exits_zero - Assertion...
+pull_latest: 无法读取 analytics/: HTTP Error 401: Unauthorized

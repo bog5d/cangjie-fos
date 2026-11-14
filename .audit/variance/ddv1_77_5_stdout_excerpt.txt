@@ -1,0 +1,39 @@
+# ★ 归档说明（独立 Reviewer 第 4 轮 MINOR-2 的处置）
+# 本文件是 **2026-10-30 22:34—22:36 那次干净树重生成**里，dsh 真实考生打出 77.5 时，
+# 考试台工具**自己打印**到 stdout 的运行摘要（原文逐字，未编辑）。
+# ★ **该次运行的完整「运行清单.json」没有归档**：它被随后一次重生成覆盖了
+#   （同目录 `.audit/gate-runs/A-dsh/` 被覆盖；数据面也重建了）⇒ 仓内 19 份运行清单无一份
+#   git_sha=0b1ec84。⇒ **本条证据强度有限**：只有工具 stdout 摘要 + 源日志的 sha256。
+#   ⇒ 按项目自己的规则（证据必须逐份自证干净），它**不足以**作为「分布」证据，
+#   只能作为「**出现过一次**干净树低分读数」的记录。
+#
+# 源日志：/tmp/regen_evidence.log（仓外，未入库）
+# 源日志 sha256：b96426fffa833531d40d0a9c52e43a71a629c81f9e9d3670fa937c5301d59839
+# 产生该读数的命令（/tmp/regen_evidence.sh 第 3 步）：
+#   backend/.venv/bin/python tools/dd_v1_exam_suite.py run --exam A --run-mode AGENT_REQUIRED \
+#       --agent dsh --allow-local-dsh --out .audit/gate-runs/A-dsh
+# 被测代码 commit：0b1ec84918e251763f0715e5f0aabc2251ee7544（git_dirty=false）
+# run_id：20261030T143443Z
+#
+# ──────────── 原文开始 ────────────
+{
+  "exam": "A",
+  "run_id": "20261030T143443Z",
+  "status": "LOW_CONFIDENCE",
+  "scores": {
+    "question_understanding_coverage": 0.666667,
+    "question_answer_coverage": 1.0,
+    "material_recall": 0.75,
+    "selection_precision": 1.0,
+    "complete_delivery_ratio": 0.666667,
+    "miss_rate": 0.333333,
+    "wrong_rate": 0.0,
+    "total_score": 77.5
+  },
+  "delivered_files": 2,
+  "delivered_files_attributed": 2,
+  "safety": "PASS",
+  "failures": 1,
+  "manifest": ".audit/gate-runs/A-dsh/运行清单.json"
+}
+# ──────────── 原文结束 ────────────

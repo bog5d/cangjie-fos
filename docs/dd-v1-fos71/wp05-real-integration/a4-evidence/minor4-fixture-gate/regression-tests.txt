@@ -1,0 +1,53 @@
+MINOR-4 回归守卫判别力 · 修前/修后对照
+生成时间：2026-10-23T10:53:06Z
+被测树：��分支 feat/71-minor4-fixture-gate）
+解释器：/Users/mac/cangjie-fos-wt-a2/backend/.venv/bin/python
+
+==========================================================
+【第一段】修前：tools/dd_v1_local_run.py 回退到原始态（sha256 15282351088537ee…）
+==========================================================
+15282351088537ee79f12620
+    
+        monkeypatch.setattr(lr.sem, "local_material_snapshot", spy)
+        args = ["run", "--material-root", str(mat), "--meta", str(meta),
+                "--items", str(items), "--out", str(tmp_path / "run"),
+                "--adapter", "manual", "--synthetic-replies", str(FIXTURE / "replies")]
+    
+        assert lr.main(args) == 3                     # 仓外材料 ⇒ 闸口拒绝
+        assert seen["allow_real"] is False            # ★ 闸口收到的 allow_real 必须是 False
+    
+        # 把规则打成 True ⇒ 闸口收到的 allow_real 必须变成 True
+        # ⇒ 证明 cmd_run **只**经由该规则决策（没有第二处硬编码判定）
+>       monkeypatch.setattr(lr, "_fixture_exempt", lambda p: True)
+E       AttributeError: <module 'dd_v1_local_run' from '/Users/mac/cangjie-fos-wt-m4/tools/dd_v1_local_run.py'> has no attribute '_fixture_exempt'
+
+tests/test_dd_v1_minor4_fixture_gate.py:187: AttributeError
+----------------------------- Captured stderr call -----------------------------
+拒绝：BLOCKED: 真实材料需要操作员在本机显式 --allow-real-material；默认只允许合成 fixture
+=========================== short test summary info ============================
+FAILED tests/test_dd_v1_minor4_fixture_gate.py::test_outside_material_blinding_into_repo_fixtures_is_blocked
+FAILED tests/test_dd_v1_minor4_fixture_gate.py::test_exemption_rule_depends_only_on_original_material_root
+FAILED tests/test_dd_v1_minor4_fixture_gate.py::test_cmd_run_decides_exemption_via_the_single_rule
+========================= 3 failed, 2 passed in 1.00s ==========================
+
+==========================================================
+【第二段】修后：幂等补丁脚本重新落盘（sha256 e8d85b8327c9db3b…）
+==========================================================
+OK      P1 闸口收紧（fixture 豁免只按原始材料根）：命中 1 ⇒ 已替换
+OK      P2 守卫函数入库（_fixture_exempt + 写入门）：命中 1 ⇒ 已替换
+OK      P3 写入门接线（任何写入之前先拦）：命中 1 ⇒ 已替换
+WRITTEN /Users/mac/cangjie-fos-wt-m4/tools/dd_v1_local_run.py
+e8d85b8327c9db3bcea99ba2
+============================= test session starts ==============================
+platform darwin -- Python 3.13.12, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/mac/cangjie-fos-wt-m4/backend
+configfile: pyproject.toml
+plugins: playwright-0.7.2, langsmith-0.7.32, asyncio-1.3.0, base-url-2.1.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 5 items
+
+tests/test_dd_v1_minor4_fixture_gate.py .....                            [100%]
+
+============================== 5 passed in 0.75s ===============================
+
+★ 结论：修前 3 红（T2/T4/T5）+ 2 绿（T1/T3）；修后 5 绿 ⇒ 守卫真判别力成立。

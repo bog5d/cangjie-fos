@@ -1,0 +1,54 @@
+{
+  "old_label": "旧版本 abc4627（accuracy 口径）",
+  "new_label": "新版本（0—100 冻结口径）",
+  "baseline_established": false,
+  "comparable": false,
+  "old_status": "LOW_CONFIDENCE",
+  "new_status": "SCORED",
+  "old_spec_fingerprint": null,
+  "new_spec_fingerprint": "bd02ad8ba4ee71f19f13fdb8027ae52c08000e2e6b904bc5d77b378fe3d7bd9e",
+  "same_scoring_spec": false,
+  "rows": [
+    {
+      "metric": "question_understanding_coverage",
+      "label": "题目理解率",
+      "old": null,
+      "new": 1.0,
+      "delta": null,
+      "note": "未建立可比基线"
+    },
+    {
+      "metric": "material_recall",
+      "label": "材料召回率",
+      "old": null,
+      "new": 0.9,
+      "delta": null,
+      "note": "未建立可比基线"
+    },
+    {
+      "metric": "selection_precision",
+      "label": "选材准确率",
+      "old": null,
+      "new": 0.45,
+      "delta": null,
+      "note": "未建立可比基线"
+    },
+    {
+      "metric": "complete_delivery_ratio",
+      "label": "完整交付率",
+      "old": null,
+      "new": 0.25,
+      "delta": null,
+      "note": "未建立可比基线"
+    },
+    {
+      "metric": "total_score",
+      "label": "总分",
+      "old": null,
+      "new": 64.5,
+      "delta": null,
+      "note": "未建立可比基线"
+    }
+  ],
+  "note": "同口径比较"
+}
