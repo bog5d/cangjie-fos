@@ -20,6 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from cangjie_fos.services import dd_v1_doc_type_service as dts
+from cangjie_fos.services import dd_v1_period_service as ps
+
 SCHEMA_VERSION = "dd_v1_agent_result.v1"
 PROMPT_VERSION = "fos71-wp01-p1"
 
@@ -137,9 +140,36 @@ def _rule_only(reason: str) -> ValidationReport:
     return ValidationReport(mode="RULE_ONLY", degrade_reason=reason)
 
 
+def _older_than_requirement(material_period: Any, ob: dict[str, Any]) -> bool:
+    """材料的年度是否**早于**义务要求的年度（更近的年度不叫过期）。"""
+    spec = ps.spec_from_obligation(ob or {})
+    years = [int(y) for y in (spec.get("years") or [])]
+    mp = ps.normalize_material_period(material_period)
+    if mp["kind"] != "YEAR" or not years:
+        return False
+    return int(mp["year"]) < min(years)
+
+
+def _pool_periods(ob: dict[str, Any] | None, meta: list[dict[str, Any]] | None) -> list[str]:
+    """同主体 + 同类型的材料期间标签（供「最新」口径比较；同主体不同类型不算）。"""
+    if not ob:
+        return []
+    ent = str(ob.get("entity") or "")
+    dt = dts.normalize_doc_type(ob.get("doc_type"))
+    out: list[str] = []
+    for m in meta or []:
+        if str(m.get("entity") or "") != ent:
+            continue
+        if dts.normalize_doc_type(m.get("doc_type")) != dt:
+            continue
+        out.append(str(m.get("period") or ""))
+    return out
+
+
 def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
                   obligations: dict[str, dict[str, str]],
-                  non_effective: frozenset[str] = frozenset()) -> list[str]:
+                  non_effective: frozenset[str] = frozenset(),
+                  pool_periods: list[str] | None = None) -> list[str]:
     if not isinstance(r, dict):
         return ["RESULT_NOT_OBJECT"]
     errs: list[str] = []
@@ -185,18 +215,28 @@ def _check_result(r: Any, snap: dict[str, SnapshotFile], snap_id: str,
         if cf["sha256"] != sf.sha256:
             errs.append(f"CANDIDATE_{i}_SHA_MISMATCH")
         # 复核 N3：引用证据的判定（MATCH/PARTIAL/OUTDATED）都要过主体一致；
-        # MATCH/PARTIAL 还要过期间一致（OUTDATED 本身就是「期间不对」，只要求主体一致；
+        # MATCH/PARTIAL 还要过**期间**一致（OUTDATED 本身就是「期间不对」，只要求主体一致；
         # WP04：同期间但是草稿/被取代版本（non_effective）也允许 OUTDATED）。
+        # ★ R2-WP1：期间按**语义四态**判（``dd_v1_period_service``），不再拿字符串比字符串：
+        #   期间**已知且冲突** ⇒ PERIOD_MISMATCH；
+        #   期间**依据不足**（材料无年度标注／相对期间缺可验证锚点）⇒ PERIOD_BASIS_INSUFFICIENT
+        #   ⇒ **不得**升格 MATCH/PARTIAL（只能 UNCERTAIN，且必须写 abstain_reason）。
         if verdict in EVIDENCE_VERDICTS and ob is not None:
             if sf.entity != ob["entity"]:
                 errs.append(f"CANDIDATE_{i}_ENTITY_MISMATCH")
-            if verdict != "OUTDATED" and sf.period != ob["period"]:
-                errs.append(f"CANDIDATE_{i}_PERIOD_MISMATCH")
-            if verdict == "OUTDATED" and sf.period == ob["period"] and sf.file_id not in non_effective:
+            compat = ps.compatibility(ps.spec_from_obligation(ob), sf.period,
+                                       pool_periods=pool_periods)
+            if verdict != "OUTDATED":
+                if compat["status"] == "MISMATCH":
+                    errs.append(f"CANDIDATE_{i}_PERIOD_MISMATCH")
+                elif compat["status"] == "UNVERIFIABLE":
+                    errs.append(f"CANDIDATE_{i}_PERIOD_BASIS_INSUFFICIENT")
+            if verdict == "OUTDATED" and compat["status"] == "MATCH" and sf.file_id not in non_effective:
                 errs.append(f"CANDIDATE_{i}_OUTDATED_BUT_PERIOD_MATCHES")
             # #77 复核中：非草稿的 OUTDATED 必须引用「更早」的年度；比要求更新的年度不叫过期
-            if (verdict == "OUTDATED" and sf.file_id not in non_effective and sf.period != ob["period"]
-                    and not (sf.period.isdigit() and ob["period"].isdigit() and sf.period < ob["period"])):
+            if (verdict == "OUTDATED" and sf.file_id not in non_effective
+                    and compat["status"] != "MATCH"
+                    and not _older_than_requirement(sf.period, ob)):
                 errs.append(f"CANDIDATE_{i}_OUTDATED_NOT_OLDER")
     if verdict == "MATCH" and not cands:
         errs.append("MATCH_WITHOUT_EVIDENCE")
@@ -240,7 +280,8 @@ def validate_agent_output(
     # 复核 N2：义务覆盖必须完整，缺失的义务显式列出（不静默当作通过）
     rep.uncovered = sorted(set(obs) - set(seen))
     for r in results:
-        errs = _check_result(r, snap, sid, obs, non_effective_files)
+        errs = _check_result(r, snap, sid, obs, non_effective_files,
+                             pool_periods=_pool_periods(obs.get(r.get("obligation_id")), meta))
         if isinstance(r, dict) and r.get("obligation_id") in dup:
             errs.append("DUPLICATE_OBLIGATION")
         if errs:

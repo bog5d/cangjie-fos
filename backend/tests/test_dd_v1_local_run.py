@@ -272,3 +272,63 @@ def test_gold_inside_text_root_refused(material):
     with pytest.raises(PermissionError, match="GOLD_INSIDE"):
         lr.main(["score", "--run-dir", str(material / "out"), "--gold", str(t / "g.json"),
                  "--out", str(material / "s.json"), "--text-root", str(t)])
+
+
+# ---------- 六态（候选为空的原因）在 CLI 侧外显 ----------
+def test_cli_run_exposes_six_state_for_empty_candidates(material, capsys):
+    """★ CLI 侧也要外显六态：候选为空在 CLI 上**可区分六种原因**。
+
+    ★ 与薄入口（``tools/dd_team_channel.py``）**同口径**：机读三键
+      （``candidate_status``／``no_candidate_reason``／``diagnostics``）＋人读原因。
+      两端不再是一边齐一边空。
+    ★ 判定口径不变：原因只从语义层封闭枚举取（``s.NO_CANDIDATE_REASONS``），
+      CLI 不另造原因表，也**不把「候选为空」统一伪装成 MISSING**。
+    """
+    items = json.loads((material / "items.json").read_text("utf-8"))
+    # 两个「候选为空」的场景：主体名下无材料 ／ 主体判不出
+    items.append({"item_id": "R5", "entity": "另册不存在法人",
+                  "text": "提供另册不存在法人2024年度审计报告"})
+    items.append({"item_id": "R6", "entity": "", "text": "提供2024年度审计报告"})
+    (material / "items.json").write_text(json.dumps(items, ensure_ascii=False), "utf-8")
+    cfg = _fake_dsh(material, material)
+    assert _run(material, "--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg)) == 0
+
+    summ = json.loads((material / "out" / "run_summary.json").read_text("utf-8"))
+    rows = [r for g in summ["groups"] for r in (g.get("obligations") or [])]
+    empty = {r["obligation_id"]: r for r in rows if r.get("no_candidate_reason")}
+    # ★ 两个空候选场景必须给出**不同**原因 ⇒ 不是笼统的「缺材料」
+    assert empty["R5-O1"]["no_candidate_reason"] == "NO_MATERIAL"
+    assert empty["R6-O1"]["no_candidate_reason"] == "UNKNOWN_ENTITY"
+    for r in empty.values():
+        assert r["candidate_status"] == "NO_CANDIDATE"
+        assert r["no_candidate_reason"] in s.NO_CANDIDATE_REASONS   # 权威枚举
+        assert isinstance(r["diagnostics"], dict) and r["diagnostics"]
+    # ★ 判定(MISSING)相同而**原因**不同 ⇒ 六态是判定之外的增量信息，不是把判定换个说法
+    assert empty["R5-O1"]["verdict"] == empty["R6-O1"]["verdict"] == "MISSING"
+    # 机读容器：语义层原样透传（逐义务三键齐全）
+    for g in summ["groups"]:
+        if g.get("adapter_status") != "OK":
+            continue
+        assert set(g["evidence_status"]) == {r["obligation_id"] for r in g["obligations"]}
+        for oid, st in g["evidence_status"].items():
+            assert set(st) >= {"candidate_status", "no_candidate_reason", "diagnostics"}
+    # 人读面：六态原因逐条写得出（不合并成一句话）
+    md = (material / "out" / "six_state.md").read_text("utf-8")
+    assert "R5-O1" in md and "R6-O1" in md
+    assert "NO_MATERIAL" in md and "UNKNOWN_ENTITY" in md
+    # stdout 也是机读面（逐行 JSON）：六态三键随行出去
+    lines = [json.loads(x) for x in capsys.readouterr().out.splitlines() if x.strip().startswith("{")]
+    got = {g["group"]: g for g in lines if "group" in g}
+    assert got["R5"]["obligations"][0]["no_candidate_reason"] == "NO_MATERIAL"
+    assert got["R6"]["obligations"][0]["no_candidate_reason"] == "UNKNOWN_ENTITY"
+
+
+def test_cli_six_state_text_lists_the_six_reasons(material):
+    """★ 人读面必须把**六种原因**都写出来（取值域来自语义层封闭枚举，不是 CLI 自己列的）。"""
+    items = json.loads((material / "items.json").read_text("utf-8"))
+    (material / "items.json").write_text(json.dumps(items, ensure_ascii=False), "utf-8")
+    cfg = _fake_dsh(material, material)
+    assert _run(material, "--allow-real-material", "--allow-local-dsh", "--dsh-config", str(cfg)) == 0
+    md = (material / "out" / "six_state.md").read_text("utf-8")
+    for reason in s.NO_CANDIDATE_REASONS:
+        assert reason in md

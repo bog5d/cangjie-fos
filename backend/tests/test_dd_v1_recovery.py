@@ -211,12 +211,33 @@ def test_crash_does_not_duplicate_or_lose_same_name_files(tmp_path):
 
 
 # ── 2. 规模基线（工程性能，非业务效果）─────────────────────────────────────
+#: 墙钟护栏的余量：增量扫描**不得比全量慢 3 倍以上**（只卡灾难性退化）。
+#:
+#: ★ **为什么取 3.0（可复算依据）**：
+#:   - 本用例同协议实测（Linux 沙箱；20 主体×25 份＝500 份，N=8 次）：增量/全量
+#:     ∈ [0.717, 0.973]（中位 0.808）；40 主体×25 份＝1000 份，N=8 次：∈ [0.608, 0.777]
+#:     （中位 0.712）⇒ 零余量的严格小于在**正常路径**上最多只剩 2.7% 余量。
+#:   - 独立复核席在同协议下登记过基座侧「增量慢于全量」的读数 ⇒ 该断言在**同侧同协议**下
+#:     **红与绿都翻转过** ⇒ 红不可作红灯依据、绿不可作绿灯依据。
+#:   - 3.0 远高于已观测到的比值区间（正常 ≤ 0.98；把快跳打断的变异实测 ≈ 1.03），
+#:     只在**增量整体退化成重扫**（灾难性退化）时才可能触发。
+#:   - ★ 这条**只是护栏**、**不是**本用例主判据；主判据是下面那条**功能判据**
+#:     （增量重算哈希次数 ＝ 0），它与机器负载**无关** ⇒ 机器再慢也不会翻红。
+_WALLCLOCK_SLACK = 3.0
+
+
 @pytest.mark.parametrize("n_subjects,n_files", [(20, 25), (40, 25)])
-def test_scale_baseline(tmp_path, n_subjects, n_files, capsys):
+def test_scale_baseline(tmp_path, n_subjects, n_files, capsys, monkeypatch):
     """规模基线：记录扫描耗时与吞吐。
 
     **这不是业务效果证据**，仅用于回归对比与容量预估。
-    阈值刻意宽松（只卡灾难性退化），避免把机器性能差异误判为回归。
+    ★ 判据分两条（**自述与实现一致**）：
+      1. **功能判据（主）**：增量这一轮**一次内容哈希都不许重算**
+         （(size,mtime) 快跳生效）⇒ 与机器负载**无关**，确定性成立。
+      2. **墙钟护栏（次）**：增量不得比全量慢 ``_WALLCLOCK_SLACK`` 倍以上
+         ⇒ 只卡**灾难性退化**（增量整体退化成重扫），不卡机器性能差异。
+    ★ 墙钟**不作成败判据**：它在同侧同协议下红绿都翻转过（独立复核席登记），
+      红不可作红灯依据、绿不可作绿灯依据 ⇒ 墙钟只作记录与护栏。
     """
     root = _make_library(tmp_path, n_subjects, n_files)
     db = _db(tmp_path)
@@ -227,12 +248,30 @@ def test_scale_baseline(tmp_path, n_subjects, n_files, capsys):
     res = mf.build_manifest("lib1", mode="full", db_path=db)
     full_s = time.perf_counter() - t0
 
+    # ★ 观测量：增量这一轮**重算了多少次内容哈希**。
+    #   `compute_content_hash` 是模块级函数 ⇒ 打桩即命中生产路径（不是另写一份逻辑）。
+    hash_calls: list[int] = []
+    _real_hash = mf.compute_content_hash
+
+    def _counting_hash(path):
+        hash_calls.append(1)
+        return _real_hash(path)
+
+    monkeypatch.setattr(mf, "compute_content_hash", _counting_hash)
     t1 = time.perf_counter()
     inc = mf.build_manifest("lib1", mode="incremental", db_path=db)
     inc_s = time.perf_counter() - t1
+    monkeypatch.setattr(mf, "compute_content_hash", _real_hash)
+    rehashed = len(hash_calls)
 
     assert res["added"] == total
     assert inc["added"] == 0 and inc["unchanged"] == total
+
+    # ★ **功能判据（主）**：快跳生效 ⇒ 增量**零哈希重算**。
+    #   ★ 为什么不能只看 added/unchanged：快跳被打断时，增量会**重算哈希后仍报 unchanged**
+    #     （实测：500 份、快跳被打断 ⇒ unchanged 仍 500，而哈希重算了 500 次）
+    #     ⇒ 「unchanged == 总数」**分不出**快跳有没有生效 ⇒ 必须看哈希计数。
+    assert rehashed == 0, f"增量扫描重算了 {rehashed} 次内容哈希（size+mtime 快跳未生效？）"
 
     # WAL 模式下近期写入可能仍在 -wal 里，只量主库会严重低估，8 B/份 之类是测量假象
     db_size = sum(
@@ -244,13 +283,15 @@ def test_scale_baseline(tmp_path, n_subjects, n_files, capsys):
         per_file = db_size / total
         print(f"\n[scale] {total} 份 | 全量 {full_s:.2f}s "
               f"({total / max(full_s, 1e-6):.0f} 份/s) | "
-              f"增量 {inc_s:.2f}s ({total / max(inc_s, 1e-6):.0f} 份/s) | "
+              f"增量 {inc_s:.2f}s ({total / max(inc_s, 1e-6):.0f} 份/s，"
+              f"比值 {inc_s / max(full_s, 1e-9):.2f}×，重算哈希 {rehashed} 次) | "
               f"库 {db_size / 1024:.0f} KB ({per_file:.0f} B/份) | "
               f"外推 1万份≈{per_file * 10000 / 1024 / 1024:.0f} MB, "
               f"10万份≈{per_file * 100000 / 1024 / 1024:.0f} MB")
 
-    # 增量必须显著快于全量：mtime 快跳生效
-    assert inc_s < full_s, "增量扫描应快于全量（size+mtime 快跳未生效？）"
+    # 墙钟护栏（次）：只卡灾难性退化，不卡机器性能差异（余量与依据见 _WALLCLOCK_SLACK）。
+    assert inc_s <= full_s * _WALLCLOCK_SLACK, \
+        f"增量扫描比全量慢 {inc_s / max(full_s, 1e-9):.2f} 倍（size+mtime 快跳整体失效？）"
     # 每份记录的库占用上限。实测约 4.7 KB/份（64B content_hash + 32B file_id +
     # 多列路径/时间 + 3 个索引），外推 10 万份约 470 MB；超过 8 KB/份说明
     # Schema 出现意外膨胀，属回归。

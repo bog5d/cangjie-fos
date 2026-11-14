@@ -76,6 +76,27 @@ def is_canonical(doc_type: str) -> bool:
     return bool(rq.doc_type_search_terms(raw))
 
 
+def normalize_doc_type(value: str) -> str:
+    """把**任意来源**的 doc_type 归一到规范 key（英文）。
+
+    这是「**比较/归一环节**」的唯一入口：证据池、义务侧、材料侧都先过这里，
+    再做相等比较 ⇒ **两侧 key 空间不同就不会再把证据池筛空**。
+
+    - 已是规范 key（``audit_report`` 等）⇒ 原样返回（大小写归一）；
+    - 中文类型名（审计报告 / 社保缴纳证明 等）⇒ 用 ``rq.parse_doc_type`` 归一到 key
+      （**旧 meta / 旧 fixture 里的中文 doc_type 仍然可用**，不必一次性改完调用方）；
+    - 文件扩展名（pdf / xlsx）、乱写、认不出 ⇒ **空串**（= UNKNOWN），
+      **不得**拿扩展名或中文名占位。
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    if is_canonical(raw):
+        return raw.lower()
+    key, _basis = rq.parse_doc_type(raw)
+    return key
+
+
 #: **索引/目录件**识别（这类文件**不是材料**，只是同目录材料的列表）
 _INDEX_ARTIFACT_RE = re.compile(
     r"(索引|目录|文件说明|材料目录|readme|^index)", re.IGNORECASE)
@@ -111,55 +132,117 @@ def is_index_artifact(file_name: str) -> bool:
     return False
 
 
+def _type_sources(file_name: str, text: str, purpose: str) -> list[tuple[str, str, str, str]]:
+    """按取值顺序给出各来源的 ``(kind, loc, rule, 待检文本)``。
+
+    ★ **取值顺序不可改**：文件名 → 正文头部 → 卡片用途。
+      本函数是 :func:`resolve_doc_type` 与 :func:`resolve_doc_types` 的**唯一来源口径**，
+      两个 API 共用 ⇒ 单值结论与多值结论**永不分叉**。
+    """
+    name = Path(str(file_name or "")).name.strip()
+    out: list[tuple[str, str, str, str]] = []
+    if name:
+        out.append((
+            "filename_keyword", name,
+            "文件名命中规范材料类型关键词。"
+            "只取文件自己的名字，不取目录名"
+            "（目录名常是别的材料的类型，不能当作本材料的类型）",
+            name,
+        ))
+    head = str(text or "")[:CONTENT_HEAD_CHARS]
+    if head:
+        out.append((
+            "content_keyword", f"{name}#正文头部",
+            "正文头部命中规范材料类型关键词；"
+            "材料类型是推断结论，不是法律事实",
+            head,
+        ))
+    pur = str(purpose or "")
+    if pur:
+        out.append((
+            "purpose_keyword", f"{name}#purpose",
+            "卡片用途关键词命中规范材料类型",
+            pur,
+        ))
+    return out
+
+
 def resolve_doc_type(
     file_name: str = "",
     text: str = "",
     purpose: str = "",
 ) -> tuple[str, str, list[dict]]:
-    """解析材料的规范类型。
+    """解析材料的规范类型（**主类型**，单值）。
 
     返回 ``(key, provenance, evidence)``：
     认不出时 ``key == ""``、``provenance == UNKNOWN``，**evidence 仍要说明为什么不知道**。
+
+    ★ **主类型** = 命中来源里的**第一类**（规则表顺序，与 :func:`rq.parse_doc_type` 逐位一致）。
+      一份材料可能命中多类（见 :func:`resolve_doc_types`）——**本 API 仍只给主类型**
+      （向后兼容：单值调用方的读数一字不变），多值判定请用 :func:`resolve_doc_types`。
     """
-    name = Path(str(file_name or "")).name.strip()
-
-    # 1) 文件名关键词
-    if name:
-        key, _basis = rq.parse_doc_type(name)
+    for kind, loc, rule, src in _type_sources(file_name, text, purpose):
+        key, _basis = rq.parse_doc_type(src)
         if key:
             return key, INFERRED, [{
-                "kind": "filename_keyword",
-                "loc": name,
-                "rule": "文件名命中规范材料类型关键词。"
-                        "只取文件自己的名字，不取目录名"
-                        "（目录名常是别的材料的类型，不能当作本材料的类型）",
+                "kind": kind,
+                "loc": loc,
+                "rule": rule,
             }]
 
-    # 2) 正文关键词（只看头部）
-    head = str(text or "")[:CONTENT_HEAD_CHARS]
-    if head:
-        key, _basis = rq.parse_doc_type(head)
-        if key:
-            return key, INFERRED, [{
-                "kind": "content_keyword",
-                "loc": f"{name}#正文头部",
-                "rule": "正文头部命中规范材料类型关键词；"
-                        "材料类型是推断结论，不是法律事实",
-            }]
-
-    # 3) 卡片用途
-    pur = str(purpose or "")
-    if pur:
-        key, _basis = rq.parse_doc_type(pur)
-        if key:
-            return key, INFERRED, [{
-                "kind": "purpose_keyword",
-                "loc": f"{name}#purpose",
-                "rule": "卡片用途关键词命中规范材料类型",
-            }]
-
-    # 4) 认不出 —— 留空标 UNKNOWN，**不用扩展名占位**
+    # 认不出 —— 留空标 UNKNOWN，**不用扩展名占位**
     return "", UNKNOWN, [{
+        "kind": "unresolved",
+        "note": "未识别材料类型；不得用文件扩展名或中文类型名占位"
+                "（认不出就是认不出，交给人工）",
+    }]
+
+
+def resolve_doc_types(
+    file_name: str = "",
+    text: str = "",
+    purpose: str = "",
+) -> tuple[list[str], str, str, list[dict]]:
+    """解析材料命中的**全部**规范类型（G5 修复面）。
+
+    返回 ``(types, primary, provenance, evidence)``：
+    - ``types`` ＝ 命中来源里**全部**命中的类型（按出现位置排序）；
+    - ``primary`` ＝ 与 :func:`resolve_doc_type` **逐位一致**的主类型；
+    - 认不出时 ``types == []``、``primary == ""``、``provenance == UNKNOWN``。
+
+    ## 为什么要多值（G5）
+
+    一份材料**可以同时命中多类**（例：正文里既有审计报告又有营业执照）。
+    过去只有单值口径 ⇒ 组包链只能给材料落**一个**类型 ⇒ 段内**可外发类**的材料
+    被归到同段的另一类 ⇒ 授权组包取不到它（PR #81 登记缺口 G5）。
+    ⇒ 材料的类型必须**全部保留**，由**披露闸**逐类判定。
+
+    ## 两条不可越过的边界
+
+    1. **不跨来源合并**：文件名命中的类型不会被正文命中覆盖（反之亦然）。
+       否则「合同正文里提到营业执照」会被误判成「营业执照材料」。
+    2. **同一来源内的多个命中一律保留**（这才是 G5 的修复面）。
+    """
+    for kind, loc, rule, src in _type_sources(file_name, text, purpose):
+        types = rq.parse_doc_types(src)
+        if types:
+            primary, _basis = rq.parse_doc_type(src)
+            evidence = [{
+                "kind": kind,
+                "loc": loc,
+                "rule": rule,
+            }]
+            if len(types) > 1:
+                evidence.append({
+                    "kind": "multi_type_match",
+                    "loc": loc,
+                    "note": f"同一来源命中 {len(types)} 类材料类型：{types}；"
+                            "全部保留（材料不因命中多类而丢失任一类型）",
+                })
+            return list(types), primary, INFERRED, evidence
+
+    # 认不出 —— 留空标 UNKNOWN，**不用扩展名占位**
+    return [], "", UNKNOWN, [{
         "kind": "unresolved",
         "note": "未识别材料类型；不得用文件扩展名或中文类型名占位"
                 "（认不出就是认不出，交给人工）",

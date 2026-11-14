@@ -1,0 +1,9 @@
+机构编号	原文	原子义务	义务ID	主体范围	主体出处	期间	期间出处	材料类型	类型出处	应有份数	应有附件	判定	应交	找到	缺	交付闸
+R1	提供主体甲2024年度审计报告（含附注）	提供主体甲2024年度审计报告（含附注）	OBL-a23e610ea442d1f74612986a	主体-1	INFERRED	2024-2024	FACT	audit_report	FACT	清单未规定	0	CONFLICT	2	4	0	BLOCKED
+R2	提供主体甲2024年度审计报告	提供主体甲2024年度审计报告	OBL-638a658523a67f58cfc78af2	主体-1	INFERRED	2024-2024	FACT	audit_report	FACT	清单未规定	0	CONFLICT	1	4	0	BLOCKED
+R3	提供主体甲2024年度审计报告正本	提供主体甲2024年度审计报告正本	OBL-cd6590d94adbce9350fd08bc	主体-1	INFERRED	2024-2024	FACT	audit_report	FACT	清单未规定	0	CONFLICT	1	4	0	BLOCKED
+R4	提供主体甲2024年度审计报告副本	提供主体甲2024年度审计报告副本	OBL-f6c8fd99c180dbad605cbdcf	主体-1	INFERRED	2024-2024	FACT	audit_report	FACT	清单未规定	0	CONFLICT	1	4	0	BLOCKED
+R5	提供主体甲2024年度社保缴纳证明	提供主体甲2024年度社保缴纳证明	OBL-ac0ee5247772dfb3a052349a	主体-1	INFERRED	2024-2024	FACT	labor	FACT	清单未规定	0	MATCHED	1	1	0	PASS
+R6	提供主体甲2024年度营业执照	提供主体甲2024年度营业执照	OBL-425c7e26bdb66e0e149e2a8b	主体-1	INFERRED	2024-2024	FACT	license	FACT	清单未规定	0	MATCHED	1	1	0	PASS
+R7	提供主体甲2024年度审计报告补充说明	提供主体甲2024年度审计报告补充说明	OBL-17cacc858d5c9fca6383c5fb	主体-1	INFERRED	2024-2024	FACT	audit_report	FACT	清单未规定	0	CONFLICT	1	4	0	BLOCKED
+R8	提供主体甲2024年度审计报告再版本	提供主体甲2024年度审计报告再版本	OBL-2c2c38d258f17fb49d4efedd	主体-1	INFERRED	2024-2024	FACT	audit_report	FACT	清单未规定	0	CONFLICT	1	4	0	BLOCKED

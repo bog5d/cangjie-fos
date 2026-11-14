@@ -1,0 +1,56 @@
+[
+  {
+    "item_no": "R1",
+    "obligation_id": "942a3b19bf5340d7ac9a52bd0abfce14",
+    "obligation": "提供主体甲2024年度审计报告（含附注）",
+    "verdict": "CONFLICT",
+    "gate_reason": "逐条义务未过审核闸（判定=CONFLICT）：不确定/未齐套 ⇒ 默认不进正式交付包（需人工逐条确认后方可放行）",
+    "would_deliver": 0,
+    "candidates": []
+  },
+  {
+    "item_no": "R2",
+    "obligation_id": "40fcfe3fd65046be91e986b54d2548e3",
+    "obligation": "提供主体甲2024年度审计报告",
+    "verdict": "CONFLICT",
+    "gate_reason": "逐条义务未过审核闸（判定=CONFLICT）：不确定/未齐套 ⇒ 默认不进正式交付包（需人工逐条确认后方可放行）",
+    "would_deliver": 0,
+    "candidates": []
+  },
+  {
+    "item_no": "R3",
+    "obligation_id": "fd94c5628e434c5b816d476f326c3b38",
+    "obligation": "提供主体甲2024年度审计报告正本",
+    "verdict": "CONFLICT",
+    "gate_reason": "逐条义务未过审核闸（判定=CONFLICT）：不确定/未齐套 ⇒ 默认不进正式交付包（需人工逐条确认后方可放行）",
+    "would_deliver": 0,
+    "candidates": []
+  },
+  {
+    "item_no": "R4",
+    "obligation_id": "278f3f7ff31748e5833371592476ffe3",
+    "obligation": "提供主体甲2024年度审计报告副本",
+    "verdict": "CONFLICT",
+    "gate_reason": "逐条义务未过审核闸（判定=CONFLICT）：不确定/未齐套 ⇒ 默认不进正式交付包（需人工逐条确认后方可放行）",
+    "would_deliver": 0,
+    "candidates": []
+  },
+  {
+    "item_no": "R7",
+    "obligation_id": "617eab2072794fc8933c08ad5c429909",
+    "obligation": "提供主体甲2024年度审计报告补充说明",
+    "verdict": "CONFLICT",
+    "gate_reason": "逐条义务未过审核闸（判定=CONFLICT）：不确定/未齐套 ⇒ 默认不进正式交付包（需人工逐条确认后方可放行）",
+    "would_deliver": 0,
+    "candidates": []
+  },
+  {
+    "item_no": "R8",
+    "obligation_id": "207ea94672e54ff7b0f70bf86db3a4ea",
+    "obligation": "提供主体甲2024年度审计报告再版本",
+    "verdict": "CONFLICT",
+    "gate_reason": "逐条义务未过审核闸（判定=CONFLICT）：不确定/未齐套 ⇒ 默认不进正式交付包（需人工逐条确认后方可放行）",
+    "would_deliver": 0,
+    "candidates": []
+  }
+]

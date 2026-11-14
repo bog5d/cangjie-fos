@@ -81,9 +81,23 @@ _YEAR_RE = re.compile(r"^\d{4}")
 _ATTACH_RE = re.compile(r"附注|附件|附录|appendix", re.I)
 #: 英文命名的附注文件（fixture 用 ``*_notes.txt``；``body``/``memo`` 不算附件）
 _ATTACH_RE_EN = re.compile(r"(^|[_\-])notes([_\-.]|$)", re.I)
+
+
+def _part_of(rel_path: str, file_name: str = "") -> str:
+    """part 判定：**唯一**口径在认知卡层（``dd_v1_card_service.derive_part``）。
+
+    ★ 桥接层**不再**自己写一份 part 规则 ⇒ 全仓只有一份 part 判定。
+      英文 ``*_notes.txt`` 形态仍单独识别（fixture 约定），与中文口径合并。
+    """
+    from cangjie_fos.services import dd_v1_card_service as cs  # noqa: PLC0415
+    part = cs.derive_part(rel_path, file_name)
+    if part == cs.PART_MAIN and _ATTACH_RE_EN.search(rel_path or ""):
+        return "附注"
+    return part
 _DRAFT_RE = re.compile(r"草稿|征求意见|draft", re.I)
-#: 与入口 B 的 ``scaffold`` 保持一致的「当前有效」类材料（执照/章程无年度）
-_CURRENT_DOC_TYPES = ("license", "charter")
+#: 与入口 B 的 ``scaffold`` 保持一致的「当前有效」类材料（执照/章程无年度）。
+#: ★ 取值空间来自 requirement service（``rq.CURRENT_DOC_TYPES``）—— **不另抄一份**。
+_CURRENT_DOC_TYPES = rq.CURRENT_DOC_TYPES
 
 
 # ─────────────────────────────────────────────────── 1. 材料侧：清单 + 认知卡 → meta
@@ -114,13 +128,24 @@ def resolve_material_doc_type(card: dict[str, Any] | None) -> str:
 
 
 def _material_period(card: dict[str, Any], doc_type: str) -> str:
-    """材料期间 → 语义层的期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。"""
+    """材料期间 → 语义层的期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。
+
+    ★ **唯一模型（司仓 C-1 裁定）**：语义层 period 空间对「无年度口径类型」
+      （``rq.CURRENT_DOC_TYPES``：执照 / 章程）**只有一个取值 CURRENT**
+      ⇒ 该类**优先于**年份取 ``CURRENT``。
+      年度信息**不丢**：仍留在 ``card.fiscal_period``（材料卡片）与 requirement 的
+      ``period_from`` / ``period_to``（义务卡）里，只是不进语义层 period。
+
+    ★ 为什么要改口径：材料侧「年份优先」+ 义务侧「恒 CURRENT」⇒ **反向假缺口**
+      （执照材料 period=2022、执照义务 period=CURRENT ⇒ 池里有材料、可用候选为空）。
+      两侧同源（都判 CURRENT）⇒ 口径一致，不再互相错位。
+    """
+    if doc_type in _CURRENT_DOC_TYPES:
+        return "CURRENT"
     fp = str((card or {}).get("fiscal_period") or "").strip()
     m = _YEAR_RE.match(fp)
     if m:
         return m.group(0)
-    if doc_type in _CURRENT_DOC_TYPES:
-        return "CURRENT"
     return "UNKNOWN"
 
 
@@ -196,8 +221,9 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
             "entity_basis": ent_basis or "CARD_INFERRED",
             "period": _material_period(card, dt),
             "doc_type": dt,
-            "part": "附注" if (_ATTACH_RE.search(row.get("rel_path") or "")
-                                  or _ATTACH_RE_EN.search(row.get("rel_path") or "")) else "正文",
+            # ★ part 口径**全仓只有一份**：复用认知卡层的 ``derive_part``
+            #   （``dd_v1_card_service``）—— 桥接层与规则层同一口径，不分叉。
+            "part": _part_of(row.get("rel_path") or "", row.get("file_name") or ""),
             "version_status": "DRAFT" if _DRAFT_RE.search(row.get("rel_path") or "") else "EFFECTIVE",
         })
     stats = {
@@ -215,12 +241,17 @@ def build_meta(library_id: str, *, db_path: Path | None = None) -> tuple[list[di
 # ─────────────────────────────────────────────────── 2. 义务侧：requirement → 语义义务
 
 def _obligation_period(obl: dict[str, Any], doc_type: str) -> str:
-    """义务期间 → 语义层期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。"""
+    """义务期间 → 语义层期间空间（``YYYY`` / ``CURRENT`` / ``UNKNOWN``）。
+
+    ★ **与 ``_material_period`` 同源**（司仓 C-1 裁定）：无年度口径类型
+      （执照 / 章程）恒为 ``CURRENT``（**优先于**年份）⇒ 材料侧与义务侧同值，
+      不会互相错位造成假缺口。年度信息仍留在 ``period_from`` / ``period_to``。
+    """
+    if doc_type in _CURRENT_DOC_TYPES:
+        return "CURRENT"
     y_from, y_to = obl.get("period_from", 0), obl.get("period_to", 0)
     if y_from and y_to and int(y_from) == int(y_to):
         return str(int(y_from))
-    if doc_type in _CURRENT_DOC_TYPES:
-        return "CURRENT"
     if y_from and y_to:
         return f"{int(y_from)}-{int(y_to)}"
     return "UNKNOWN"
@@ -369,9 +400,13 @@ def bridge_library(
             mode = "RULE_ONLY"
 
     evidence = packet.get("evidence") or {}
+    # ★「为什么没有候选」的结构化状态（语义层已算好，六态封闭枚举 + 过滤诊断）。
+    #   桥接层**只透传、不另算**（不新造第二套原因表）⇒ 薄入口拿到的口径与语义层同一个。
+    evidence_status = packet.get("evidence_status") or {}
     obligations_out: list[dict[str, Any]] = []
     for ob in obl_out:
         ev = evidence.get(ob["obligation_id"]) or []
+        st = evidence_status.get(ob["obligation_id"]) or {}
         # 主体是否**权威核验过**：只有 AUTHORITY 档才算。
         # 非权威档（目录名线索 / 无线索）时，证据里的材料**归属哪一家法人没被确认**，
         # 逐条标注，别让人把「候选」当成「这一家的材料」。
@@ -399,7 +434,23 @@ def bridge_library(
                 "version_status": e.get("version_status"),
                 "part": e.get("part"),
             } for e in ev],
-            "rule_hint": sem.rule_hint(ob, ev),
+            # ★ 候选为空时**必须说清为什么**：第三实参 ＝ 语义层算好的 no_candidate_reason
+            #   （封闭六态）⇒ 规则提示里不再只剩一个笼统的 MISSING。
+            #   候选**不为空**时该实参为 None ⇒ rule_hint 的既有行为逐字不变。
+            "rule_hint": sem.rule_hint(ob, ev, st.get("no_candidate_reason")),
+            # ★ 追加式：把结构化状态整体带出来（薄入口据此输出六态 ＋ 诊断）。
+            "evidence_status": {
+                "no_candidate_reason": st.get("no_candidate_reason"),
+                "candidate_status": st.get("candidate_status"),
+                "diagnostics": st.get("diagnostics") or {},
+                # ★★ WP3-d：候选窗口**触顶**的读数（禁静默漏检）
+                "candidate_cap": st.get("candidate_cap"),
+                "candidates_total": st.get("candidates_total"),
+                "candidates_used": st.get("candidates_used"),
+                "candidate_truncated": st.get("candidate_truncated"),
+                "truncated_candidate_count": st.get("truncated_candidate_count"),
+                "candidate_cap_note": st.get("candidate_cap_note"),
+            },
             "advisory_only": True,
             "review_required": True,
             "hard_verdict_touched": False,
@@ -435,6 +486,22 @@ def bridge_library(
         warnings.append(
             f"{obl_stats['entity_clusters_truncated']} 个主体分簇因超过上限被截断"
             f"（MAX_ENTITY_CLUSTERS={MAX_ENTITY_CLUSTERS}）；被截断的主体未被覆盖，如实记账")
+    # ★★ WP3-d：**候选窗口触顶**必须显式告警（禁静默漏检）。
+    #   旧实现只把截断数记在 diagnostics 里 ⇒ 用户侧看到的是「一切正常」，
+    #   而实际上还有 N 份候选**没看** ⇒ 那 N 份可能被当成「不存在」。
+    #   ⇒ 形状与上面的主体分簇告警一致（同一仓内现成样板）。
+    _trunc_total = 0
+    _trunc_obl = 0
+    for _o in obligations_out:
+        _st = _o.get("evidence_status") or {}
+        if _st.get("candidate_truncated"):
+            _trunc_obl += 1
+            _trunc_total += int(_st.get("truncated_candidate_count") or 0)
+    if _trunc_obl:
+        warnings.append(
+            f"{_trunc_obl} 条义务的候选窗口已达上限，合计还有 {_trunc_total} 份候选未看"
+            f"（MAX_FILES_PER_OBLIGATION={sem.MAX_FILES_PER_OBLIGATION}）；"
+            f"未看部分**不得**当作「不存在」，如实记账")
 
     return {
         "bridge_version": BRIDGE_VERSION,
